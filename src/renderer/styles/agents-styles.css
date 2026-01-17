@@ -1,0 +1,275 @@
+/* ========================================
+   AGENTS STYLES - Agents-specific styles
+   Uses Inter font for UI, Geist Mono for code
+   ======================================== */
+
+/* ========================================
+   1. THEME OVERRIDES
+   ======================================== */
+
+[data-agents-page] {
+  /* Override muted to be lighter for better code block visibility */
+  --muted: 0 0% 94%;
+  /* neutral-100 */
+  --muted-foreground: 0 0% 45%;
+
+  /* Custom text selection colors - uses theme's editor.selectionBackground */
+  --selection-bg: var(--selection, var(--primary));
+
+  /* Agents sidebar width */
+  --sidebar-width: 240px;
+
+  /* Agents positioning */
+  position: relative;
+
+  /* Use Inter font */
+  font-family: "Inter", system-ui, sans-serif;
+  font-weight: 400;
+}
+
+/* Apply font to all portals, dialogs, popovers on agents pages */
+body:has([data-agents-page]) [data-radix-portal],
+body:has([data-agents-page]) [data-radix-popper-content-wrapper],
+body:has([data-agents-page]) [role="dialog"],
+body:has([data-agents-page]) [data-sonner-toaster],
+body:has([data-agents-page]) [data-sonner-toast] {
+  font-family: "Inter", system-ui, sans-serif;
+  font-weight: 400;
+
+  /* Custom text selection colors - uses theme's editor.selectionBackground */
+  --selection-bg: var(--selection, var(--primary));
+}
+
+/* Dark theme */
+.dark [data-agents-page] {
+  /* Override muted to be brighter for better code block visibility */
+  --muted: 0 0% 14%;
+  /* ~#242424 - visible on dark backgrounds */
+  --muted-foreground: 0 0% 55%;
+
+  /* Custom text selection colors - uses theme's editor.selectionBackground */
+  --selection-bg: var(--selection, var(--primary));
+}
+
+/* ========================================
+   2. TEXT SELECTION
+   ======================================== */
+
+/* Allow explicit opt-in text selection when needed */
+[data-agents-page] .allow-text-selection,
+[data-agents-page] .allow-text-selection *,
+[data-agents-page] .allow-text-selection *:before,
+[data-agents-page] .allow-text-selection *:after {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+}
+
+/* Custom text selection colors - only background, keep original text color */
+[data-agents-page] ::selection {
+  background-color: hsl(var(--selection-bg));
+}
+
+[data-agents-page] ::-moz-selection {
+  background-color: hsl(var(--selection-bg));
+}
+
+/* ========================================
+   3. SCROLLBAR STYLES
+   ======================================== */
+
+/* Thin scrollbar styling for agents pages */
+[data-agents-page] {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
+}
+
+[data-agents-page] ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+[data-agents-page] ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+[data-agents-page] ::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 2px;
+}
+
+[data-agents-page] ::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* ========================================
+   4. TL BACKGROUND (Timeline background)
+   ======================================== */
+
+/* tl-background is now controlled by the theme system in builtin-themes.ts */
+
+/* ========================================
+   5. FOCUS STYLES
+   ======================================== */
+
+/* Focus styles for buttons and interactive elements only, not text inputs */
+[data-agents-page] button:focus-visible,
+[data-agents-page] [role="button"]:focus-visible,
+[data-agents-page] a:focus-visible {
+  outline: 2px solid hsl(var(--foreground) / 0.5);
+  outline-offset: 2px;
+}
+
+/* ========================================
+   6. ANIMATION UTILITIES
+   ======================================== */
+
+@keyframes agents-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes agents-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+[data-agents-page] .animate-fade-in {
+  animation: agents-fade-in 200ms ease-out;
+}
+
+[data-agents-page] .animate-slide-up {
+  animation: agents-slide-up 200ms ease-out;
+}
+
+/* ========================================
+   7. iOS PWA TOUCH OPTIMIZATIONS
+   ======================================== */
+
+/* Improve tap responsiveness - remove tap highlight and optimize touch */
+[data-agents-page] button,
+[data-agents-page] [role="button"],
+[data-agents-page] a,
+[data-agents-page] [data-chat-item],
+[data-agents-page] [data-subchat-index] {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  /* Disable 300ms tap delay on mobile */
+  touch-action: manipulation;
+}
+
+/* Disable hover effects on touch devices to prevent double-tap issue */
+@media (hover: none) and (pointer: coarse) {
+  /* Force all hover states to be ignored on touch devices */
+  [data-agents-page] [data-chat-item],
+  [data-agents-page] [data-chat-item]:hover,
+  [data-agents-page] [data-chat-item]:focus {
+    /* Reset hover/focus background - use inherit to match parent or selected state */
+    transition: none !important;
+  }
+  
+  /* Override Tailwind hover utilities specifically */
+  [data-agents-page] .hover\:bg-foreground\/5:hover,
+  [data-agents-page] .hover\:text-foreground:hover,
+  [data-agents-page] .hover\:bg-muted\/50:hover,
+  [data-agents-page] .hover\:bg-foreground\/10:hover,
+  [data-agents-page] .hover\:bg-foreground\/15:hover {
+    background-color: unset !important;
+    color: unset !important;
+  }
+  
+  /* Ensure active state provides immediate feedback */
+  [data-agents-page] button:active,
+  [data-agents-page] [role="button"]:active,
+  [data-agents-page] [data-chat-item]:active,
+  [data-agents-page] [data-subchat-index]:active {
+    transform: scale(0.98);
+    transition: transform 100ms ease-out;
+  }
+}
+
+/* ========================================
+   8. DIALOG STYLES
+   ======================================== */
+
+/* Ring-4 for all dialogs on agents pages */
+body:has([data-agents-page]) [data-canvas-dialog],
+[data-agents-page] [data-canvas-dialog],
+body:has([data-agents-page]) .canvas-dialog,
+[data-agents-page] .canvas-dialog {
+  --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0
+    var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+  --tw-ring-shadow: var(--tw-ring-inset) 0 0 0
+    calc(4px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+  --tw-ring-opacity: 1;
+  --tw-ring-color: rgb(229 231 235 / 0.8);
+  /* neutral-200/80 */
+  box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow) !important;
+}
+
+/* Dark mode ring for all dialogs */
+.dark body:has([data-agents-page]) [data-canvas-dialog],
+.dark [data-agents-page] [data-canvas-dialog],
+.dark body:has([data-agents-page]) .canvas-dialog,
+.dark [data-agents-page] .canvas-dialog {
+  --tw-ring-color: rgb(38 38 38 / 0.8);
+  /* neutral-800/80 */
+}
+
+/* Dark theme for agents portals - apply popover color */
+.dark body:has([data-agents-page]) [data-radix-portal],
+.dark body:has([data-agents-page]) [data-radix-popper-content-wrapper],
+.dark body:has([data-agents-page]) [role="dialog"],
+.dark [data-radix-portal] [role="dialog"],
+.dark .canvas-dialog {
+  /* Apply popover color to dialogs and portals */
+  --popover: 0 0% 9%;
+  /* #171717 */
+
+  /* Override muted to be brighter for better code block visibility */
+  --muted: 0 0% 14%;
+  --muted-foreground: 0 0% 55%;
+}
+
+/* ========================================
+   9. GIT DIFF VIEW STYLES
+   ======================================== */
+
+/* Git Diff View Customization - compact 12px font size for diffs */
+.agent-diff-wrapper {
+  /* Set CSS variables that @git-diff-view/react uses */
+  --diff-font-size--: 12px;
+  --diff-line-height--: 1.5;
+  font-size: 12px;
+  line-height: 1.5;
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* Specific elements that need consistent styling */
+.agent-diff-wrapper .diff-line-content-item,
+.agent-diff-wrapper .diff-line-syntax-raw,
+.agent-diff-wrapper .unified-diff-table,
+.agent-diff-wrapper .diff-line-num {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* Monospace font for code elements */
+.agent-diff-wrapper code,
+.agent-diff-wrapper pre {
+  font-size: 12px;
+  font-family: "Geist Mono", ui-monospace, monospace;
+}

@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+release/
+release-*/
+out/
+
+# IDE
+.idea/
+*.swp
+*.swo
+.vscode/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment
+.env
+.env.local
+
+# electron-vite temp files
+electron.vite.config.*.mjs
+
+# Claude binary (downloaded at build time)
+resources/bin/

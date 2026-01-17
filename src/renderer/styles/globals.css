@@ -1,0 +1,437 @@
+@import "./agents-styles.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 9%;
+    /* Monochrome primary - near black */
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 0 0% 96%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --input-background: 0 0% 98%;
+    /* Monochrome focus ring */
+    --ring: 0 0% 9%;
+    /* Monochrome text selection */
+    --selection: 0 0% 9% / 0.12;
+    --radius: 15px;
+    /* Plan Mode - gray instead of orange */
+    --plan-mode: 0 0% 45%;
+    --plan-mode-foreground: 0 0% 100%;
+    /* Timeline/Content background */
+    --tl-background: 0 0% 98%;
+  }
+
+  .dark {
+    --background: 0 0% 7%;
+    --foreground: 0 0% 93%;
+    --card: 0 0% 9%;
+    --card-foreground: 0 0% 93%;
+    --popover: 0 0% 11%;
+    --popover-foreground: 0 0% 93%;
+    /* Monochrome primary - light for dark mode */
+    --primary: 0 0% 93%;
+    --primary-foreground: 0 0% 7%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 93%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 55%;
+    --accent: 0 0% 15%;
+    --accent-foreground: 0 0% 93%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 18%;
+    --input: 0 0% 18%;
+    --input-background: 0 0% 11%;
+    /* Monochrome focus ring */
+    --ring: 0 0% 93%;
+    /* Monochrome text selection */
+    --selection: 0 0% 100% / 0.15;
+    /* Plan Mode - gray instead of orange */
+    --plan-mode: 0 0% 55%;
+    --plan-mode-foreground: 0 0% 7%;
+    /* Timeline/Content background */
+    --tl-background: 0 0% 11%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 1;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* Disable text selection on UI elements */
+.no-select {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Hide scrollbar but keep scroll functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+/* Drag region for window */
+.drag-region {
+  -webkit-app-region: drag;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* Chroma gradient animation for special keywords */
+@keyframes chroma-slide {
+  0% {
+    background-position: 100% 0;
+  }
+  40% {
+    background-position: 0% 0;
+  }
+  45% {
+    background-position: 0% 0;
+  }
+  46% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: 100% 0;
+  }
+}
+
+.chroma-text {
+  background-image: linear-gradient(
+    90deg,
+    #171717 0%,
+    #171717 30%,
+    #525252 42%,
+    #737373 50%,
+    #525252 58%,
+    #171717 70%,
+    #171717 100%
+  );
+  background-size: 300% 100%;
+  background-position: 100% 0;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.chroma-text-animate {
+  animation: chroma-slide 2s ease-out infinite;
+}
+
+/* Dark theme chroma colors */
+.dark .chroma-text {
+  background-image: linear-gradient(
+    90deg,
+    #ededed 0%,
+    #ededed 30%,
+    #a3a3a3 42%,
+    #d4d4d4 50%,
+    #a3a3a3 58%,
+    #ededed 70%,
+    #ededed 100%
+  );
+}
+
+/* Sonner Toast Styling - Google-style layout */
+[data-sonner-toaster] {
+  --normal-bg: hsl(var(--popover));
+  --normal-text: hsl(var(--popover-foreground));
+  --normal-border: hsl(var(--border));
+  --border-radius: var(--radius);
+  /* Override rich colors - all toasts should be neutral */
+  --success-bg: hsl(var(--popover));
+  --success-border: hsl(var(--border));
+  --success-text: hsl(var(--popover-foreground));
+  --info-bg: hsl(var(--popover));
+  --info-border: hsl(var(--border));
+  --info-text: hsl(var(--popover-foreground));
+  --warning-bg: hsl(var(--popover));
+  --warning-border: hsl(var(--border));
+  --warning-text: hsl(var(--popover-foreground));
+  --error-bg: hsl(var(--popover));
+  --error-border: hsl(var(--border));
+  --error-text: hsl(var(--popover-foreground));
+}
+
+[data-sonner-toast][data-styled="true"] {
+  padding: 12px 16px;
+  padding-right: 32px;
+  gap: 8px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Icon on the left */
+[data-sonner-toast] [data-icon] {
+  margin-top: 1px;
+  color: hsl(var(--muted-foreground));
+  width: 16px;
+  height: 16px;
+}
+
+[data-sonner-toast] [data-icon] svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Loading spinner - match icon size */
+[data-sonner-toast] .sonner-loading-wrapper {
+  --size: 16px;
+}
+
+[data-sonner-toast] .sonner-loading-bar {
+  background: hsl(var(--muted-foreground));
+}
+
+/* Content wrapper - take remaining space */
+[data-sonner-toast] [data-content] {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Title styling */
+[data-sonner-toast] [data-title] {
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+/* Description styling */
+[data-sonner-toast] [data-description] {
+  color: hsl(var(--muted-foreground));
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* Action button - on its own row at the bottom right */
+[data-sonner-toast][data-styled="true"] [data-button] {
+  position: absolute;
+  bottom: 12px;
+  right: 8px;
+  background: transparent !important;
+  color: hsl(var(--foreground)) !important;
+  font-weight: 500;
+  font-size: 13px;
+  padding: 4px 12px;
+  height: auto;
+  border: 1px solid hsl(var(--border)) !important;
+  border-radius: 2px;
+  margin: 0 !important;
+  transition: background-color 150ms ease-out, transform 150ms ease-out;
+}
+
+[data-sonner-toast][data-styled="true"] [data-button]:hover {
+  background: hsl(var(--foreground) / 0.1) !important;
+}
+
+[data-sonner-toast][data-styled="true"] [data-button]:active {
+  transform: scale(0.97);
+}
+
+/* Add bottom padding when button exists */
+[data-sonner-toast][data-styled="true"]:has([data-button]) {
+  padding-bottom: 44px;
+}
+
+/* Close button - inside toast, top right corner */
+[data-sonner-toast] [data-close-button] {
+  position: absolute !important;
+  top: 8px !important;
+  right: 8px !important;
+  left: unset !important;
+  transform: none !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 2px !important;
+  color: hsl(var(--muted-foreground));
+  width: 20px;
+  height: 20px;
+}
+
+[data-sonner-toast] [data-close-button]:hover {
+  color: hsl(var(--foreground));
+  background: hsl(var(--accent)) !important;
+}
+
+/* Terminal link popup */
+.xterm-link-popup {
+  font-family: "Geist Mono", ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 4px 8px;
+  border-radius: 2px;
+  background: hsl(var(--popover));
+  border: 1px solid hsl(var(--border));
+  color: hsl(var(--popover-foreground));
+  position: absolute;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  pointer-events: auto;
+}
+
+/* ========================================
+   VIBRANCY/TRANSPARENCY STYLES
+   For Liquid Glass themes with native macOS vibrancy
+   ======================================== */
+
+/*
+ * When vibrancy is active, make ONLY the root elements transparent.
+ * This allows the native macOS blur effect to show through.
+ *
+ * IMPORTANT: Do NOT make intermediate containers transparent!
+ * The theme already has semi-transparent colors (with alpha) that
+ * will provide the glass tint effect. Overriding them with
+ * transparent would break the layering.
+ */
+html.vibrancy-active,
+html.vibrancy-active body,
+html.vibrancy-active #root,
+html.vibrancy-active .loading-container {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/*
+ * Make the outermost containers transparent to prevent stacking.
+ * The app wrapper and its first-level children should be transparent.
+ * Only the actual content containers should have the glass tint.
+ */
+html.vibrancy-active [data-agents-page] {
+  background-color: transparent !important;
+}
+
+/* The main flex container inside [data-agents-page] */
+html.vibrancy-active [data-agents-page] > div.flex {
+  background-color: transparent !important;
+  background: transparent !important;
+}
+
+/* The content flex container */
+html.vibrancy-active [data-agents-page] > div > div.flex-1 {
+  background-color: transparent !important;
+  background: transparent !important;
+}
+
+/* Popovers and dialogs get subtle backdrop blur for better layering */
+html.vibrancy-active [data-radix-portal] [role="dialog"],
+html.vibrancy-active [data-radix-popper-content-wrapper] > * {
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+
+/* Toast notifications */
+html.vibrancy-active [data-sonner-toast] {
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+
+/* ========================================
+   VIBRANCY FALLBACK (Windows/Linux)
+   CSS-only transparency when native vibrancy unavailable
+   ======================================== */
+
+/* Fallback: use CSS backdrop-filter where supported */
+.vibrancy-fallback:not(.vibrancy-active) body {
+  /* Slight transparency on body */
+  background: hsl(var(--background) / 0.95) !important;
+}
+
+/* Sidebar gets blur effect */
+.vibrancy-fallback:not(.vibrancy-active) [data-sidebar] {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  background: hsl(var(--card) / 0.85) !important;
+}
+
+/* For browsers that don't support backdrop-filter */
+@supports not (backdrop-filter: blur(10px)) {
+  .vibrancy-fallback:not(.vibrancy-active) [data-sidebar] {
+    background: hsl(var(--card) / 0.95) !important;
+  }
+}
+
+/* ========================================
+   REDUCE TRANSPARENCY SUPPORT
+   Per Apple accessibility guidelines - respect user preference
+   ======================================== */
+
+@media (prefers-reduced-transparency: reduce) {
+  /* Remove transparency from root elements */
+  html.vibrancy-active,
+  html.vibrancy-active body,
+  html.vibrancy-active #root {
+    background: hsl(var(--background)) !important;
+  }
+
+  /* Make sidebar opaque */
+  html.vibrancy-active [data-sidebar] {
+    background: hsl(var(--card) / 0.95) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* Make panels and containers more opaque */
+  html.vibrancy-active [data-agents-page] {
+    background: hsl(var(--background)) !important;
+  }
+
+  /* Disable backdrop blur on dialogs/popovers */
+  html.vibrancy-active [data-radix-portal] [role="dialog"],
+  html.vibrancy-active [data-radix-popper-content-wrapper] > * {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: hsl(var(--popover)) !important;
+  }
+}

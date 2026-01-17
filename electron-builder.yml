@@ -1,0 +1,9 @@
+# electron-builder config with environment variables
+# This extends the base config in package.json
+
+mac:
+  # Code signing identity - set via APPLE_IDENTITY env var
+  # Example: "Developer ID Application: Your Name (TEAM_ID)"
+  identity: ${env.APPLE_IDENTITY}
+  notarize:
+    teamId: ${env.APPLE_TEAM_ID}

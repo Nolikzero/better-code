@@ -1,83 +1,91 @@
-"use client"
+"use client";
 
-import { useEffect, useState, useRef, useCallback } from "react"
-import { AnimatePresence, motion } from "motion/react"
-import { createPortal } from "react-dom"
+import { AnimatePresence, motion } from "motion/react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 // Desktop: stub for next/image
-const Image = ({ src, alt, width, height, className }: any) => <img src={src} alt={alt} width={width} height={height} className={className} />
-import { useTheme } from "next-themes"
-import { X } from "lucide-react"
-import { useAtom } from "jotai"
-import { Button } from "../../../components/ui/button"
-import { agentsDebugModeAtom } from "../atoms"
+const Image = ({ src, alt, width, height, className }: any) => (
+  <img
+    src={src}
+    alt={alt}
+    width={width}
+    height={height}
+    className={className}
+  />
+);
+import { useAtom } from "jotai";
+import { X } from "lucide-react";
+import { useTheme } from "next-themes";
+import { Button } from "../../../components/ui/button";
+import { agentsDebugModeAtom } from "../atoms";
 
-const EASING_CURVE = [0.55, 0.055, 0.675, 0.19] as const
+const EASING_CURVE = [0.55, 0.055, 0.675, 0.19] as const;
 
-const ONBOARDING_STORAGE_KEY = "agents-onboarding-seen"
+const ONBOARDING_STORAGE_KEY = "agents-onboarding-seen";
 
 // Self-contained onboarding dialog that checks localStorage
 // Shows only the welcome screen - full onboarding is at /agents/onboarding
 export function AgentsOnboardingDialog() {
-  const [mounted, setMounted] = useState(false)
-  const [isOpen, setIsOpen] = useState(false)
-  const openAtRef = useRef<number>(0)
-  const { resolvedTheme } = useTheme()
-  const [debugMode, setDebugMode] = useAtom(agentsDebugModeAtom)
+  const [mounted, setMounted] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const openAtRef = useRef<number>(0);
+  const { resolvedTheme } = useTheme();
+  const [debugMode, setDebugMode] = useAtom(agentsDebugModeAtom);
 
   useEffect(() => {
-    setMounted(true)
+    setMounted(true);
 
     // Check if debug mode wants to reset onboarding
     if (debugMode.enabled && debugMode.resetOnboarding) {
-      localStorage.removeItem(ONBOARDING_STORAGE_KEY)
+      localStorage.removeItem(ONBOARDING_STORAGE_KEY);
       // Reset the flag to prevent infinite loops
-      setDebugMode((prev) => ({ ...prev, resetOnboarding: false }))
+      setDebugMode((prev) => ({ ...prev, resetOnboarding: false }));
     }
 
     // Check localStorage on mount
-    const hasSeenOnboarding = localStorage.getItem(ONBOARDING_STORAGE_KEY)
+    const hasSeenOnboarding = localStorage.getItem(ONBOARDING_STORAGE_KEY);
     if (!hasSeenOnboarding) {
-      setIsOpen(true)
+      setIsOpen(true);
     }
-  }, [debugMode.enabled, debugMode.resetOnboarding, setDebugMode])
+  }, [debugMode.enabled, debugMode.resetOnboarding, setDebugMode]);
 
   useEffect(() => {
     if (isOpen) {
-      openAtRef.current = performance.now()
+      openAtRef.current = performance.now();
     }
-  }, [isOpen])
+  }, [isOpen]);
 
   const handleClose = useCallback(() => {
-    const canInteract = performance.now() - openAtRef.current > 250
-    if (!canInteract) return
+    const canInteract = performance.now() - openAtRef.current > 250;
+    if (!canInteract) return;
 
     // Mark onboarding as seen
-    localStorage.setItem(ONBOARDING_STORAGE_KEY, "true")
-    setIsOpen(false)
-  }, [])
+    localStorage.setItem(ONBOARDING_STORAGE_KEY, "true");
+    setIsOpen(false);
+  }, []);
 
   // Handle ESC key to close dialog
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        e.preventDefault()
-        handleClose()
+        e.preventDefault();
+        handleClose();
       } else if (e.key === "Enter") {
-        e.preventDefault()
-        handleClose()
+        e.preventDefault();
+        handleClose();
       }
-    }
+    };
 
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [isOpen, handleClose])
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, handleClose]);
 
-  if (!mounted) return null
+  if (!mounted) return null;
 
-  const portalTarget = typeof document !== "undefined" ? document.body : null
-  if (!portalTarget) return null
+  const portalTarget = typeof document !== "undefined" ? document.body : null;
+  if (!portalTarget) return null;
 
   return createPortal(
     <AnimatePresence mode="wait" initial={false}>
@@ -111,7 +119,10 @@ export function AgentsOnboardingDialog() {
               className="w-[90vw] max-w-[384px] pointer-events-auto relative"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="bg-background rounded-sm border shadow-2xl overflow-hidden" data-canvas-dialog>
+              <div
+                className="bg-background rounded-sm border shadow-2xl overflow-hidden"
+                data-canvas-dialog
+              >
                 {/* Close Button */}
                 <button
                   type="button"
@@ -122,57 +133,57 @@ export function AgentsOnboardingDialog() {
                   <span className="sr-only">Close</span>
                 </button>
 
-                  <div className="flex flex-col">
-                    {/* Images Section */}
-                    <div className="bg-primary px-5 pt-10 flex items-start justify-center">
-                      <div className="relative w-full flex items-start justify-center pt-4">
-                        {/* Container showing only top 70% of image (16/7 aspect ratio = 70% of 16/10) */}
+                <div className="flex flex-col">
+                  {/* Images Section */}
+                  <div className="bg-primary px-5 pt-10 flex items-start justify-center">
+                    <div className="relative w-full flex items-start justify-center pt-4">
+                      {/* Container showing only top 70% of image (16/7 aspect ratio = 70% of 16/10) */}
+                      <div
+                        className="relative w-full overflow-hidden rounded-t-lg border"
+                        style={{ aspectRatio: "16/7", maxHeight: "126px" }}
+                      >
                         <div
-                          className="relative w-full overflow-hidden rounded-t-lg border"
-                          style={{ aspectRatio: "16/7", maxHeight: "126px" }}
+                          className="absolute inset-0"
+                          style={{ height: "142.86%", top: 0 }}
                         >
-                          <div
-                            className="absolute inset-0"
-                            style={{ height: "142.86%", top: 0 }}
-                          >
-                            <Image
-                              src={
-                                resolvedTheme === "dark"
-                                  ? "/agents-onboarding-dark.webp"
-                                  : "/agents-onboarding-light.webp"
-                              }
-                              alt="Agents interface"
-                              fill
-                              className="object-cover"
-                              style={{ objectPosition: "top" }}
-                            />
-                          </div>
+                          <Image
+                            src={
+                              resolvedTheme === "dark"
+                                ? "/agents-onboarding-dark.webp"
+                                : "/agents-onboarding-light.webp"
+                            }
+                            alt="Agents interface"
+                            fill
+                            className="object-cover"
+                            style={{ objectPosition: "top" }}
+                          />
                         </div>
                       </div>
                     </div>
+                  </div>
 
-                    {/* Content */}
-                    <div className="p-5 space-y-2">
-                      <h2 className="text-base font-semibold">
-                        Welcome to Agents
-                      </h2>
-                      <p className="text-[13px] text-muted-foreground leading-relaxed">
+                  {/* Content */}
+                  <div className="p-5 space-y-2">
+                    <h2 className="text-base font-semibold">
+                      Welcome to Agents
+                    </h2>
+                    <p className="text-[13px] text-muted-foreground leading-relaxed">
                       This tool makes you significantly more productive in your
                       daily routine.
-                      </p>
+                    </p>
 
-                      {/* Button - bottom right */}
-                      <div className="flex justify-end pt-1">
-                        <Button
-                          size="sm"
+                    {/* Button - bottom right */}
+                    <div className="flex justify-end pt-1">
+                      <Button
+                        size="sm"
                         onClick={handleClose}
                         className="h-7 text-xs rounded-md"
-                        >
-                          Let's go
-                        </Button>
-                      </div>
+                      >
+                        Let's go
+                      </Button>
                     </div>
                   </div>
+                </div>
               </div>
             </motion.div>
           </div>
@@ -180,5 +191,5 @@ export function AgentsOnboardingDialog() {
       )}
     </AnimatePresence>,
     portalTarget,
-  )
+  );
 }

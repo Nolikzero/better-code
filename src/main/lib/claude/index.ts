@@ -1,10 +1,10 @@
-export { createTransformer } from "./transform"
-export type { UIMessageChunk, MessageMetadata } from "./types"
+export { createTransformer } from "./transform";
+export type { UIMessageChunk, MessageMetadata } from "./types";
 export {
   logRawClaudeMessage,
   getLogsDirectory,
   cleanupOldLogs,
-} from "./raw-logger"
+} from "./raw-logger";
 export {
   buildClaudeEnv,
   getClaudeShellEnvironment,
@@ -13,5 +13,5 @@ export {
   getBundledClaudeBinaryPath,
   getClaudeBinaryPath,
   clearClaudeBinaryCache,
-} from "./env"
-export type { ClaudeBinaryResult } from "./env"
+} from "./env";
+export type { ClaudeBinaryResult } from "./env";

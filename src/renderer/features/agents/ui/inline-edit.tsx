@@ -1,17 +1,17 @@
-"use client"
+"use client";
 
-import { Input } from "../../../components/ui/input"
-import { useEffect, useRef } from "react"
+import { useEffect, useRef } from "react";
+import { Input } from "../../../components/ui/input";
 
 interface InlineEditProps {
-  value: string
-  onChange: (value: string) => void
-  onSave: () => void
-  onCancel: () => void
-  isEditing: boolean
-  disabled?: boolean
-  className?: string
-  placeholder?: string
+  value: string;
+  onChange: (value: string) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  isEditing: boolean;
+  disabled?: boolean;
+  className?: string;
+  placeholder?: string;
 }
 
 export function InlineEdit({
@@ -24,16 +24,16 @@ export function InlineEdit({
   className = "",
   placeholder = "",
 }: InlineEditProps) {
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null);
   // Use refs to avoid stale closures and effect re-runs
-  const onSaveRef = useRef(onSave)
-  const onCancelRef = useRef(onCancel)
+  const onSaveRef = useRef(onSave);
+  const onCancelRef = useRef(onCancel);
 
   // Keep refs up to date
   useEffect(() => {
-    onSaveRef.current = onSave
-    onCancelRef.current = onCancel
-  }, [onSave, onCancel])
+    onSaveRef.current = onSave;
+    onCancelRef.current = onCancel;
+  }, [onSave, onCancel]);
 
   // Auto-focus and select text when editing starts
   useEffect(() => {
@@ -41,53 +41,53 @@ export function InlineEdit({
       // Use setTimeout to ensure the input is rendered first
       const timeoutId = setTimeout(() => {
         if (inputRef.current) {
-          inputRef.current.focus()
-          inputRef.current.select()
+          inputRef.current.focus();
+          inputRef.current.select();
         }
-      }, 0)
+      }, 0);
 
-      return () => clearTimeout(timeoutId)
+      return () => clearTimeout(timeoutId);
     }
-  }, [isEditing])
+  }, [isEditing]);
 
   // Handle clicks outside to save and exit editing mode
   useEffect(() => {
-    if (!isEditing) return
+    if (!isEditing) return;
 
     const handleClickOutside = (event: MouseEvent) => {
       if (
         inputRef.current &&
         !inputRef.current.contains(event.target as Node)
       ) {
-        onSaveRef.current()
+        onSaveRef.current();
       }
-    }
+    };
 
     // Add delay to avoid immediate trigger
     const timeoutId = setTimeout(() => {
-      document.addEventListener("mousedown", handleClickOutside)
-    }, 100)
+      document.addEventListener("mousedown", handleClickOutside);
+    }, 100);
 
     return () => {
-      clearTimeout(timeoutId)
-      document.removeEventListener("mousedown", handleClickOutside)
-    }
-  }, [isEditing]) // Removed onSave from deps - using ref instead
+      clearTimeout(timeoutId);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isEditing]); // Removed onSave from deps - using ref instead
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
-      e.preventDefault()
-      e.stopPropagation()
-      onSaveRef.current()
+      e.preventDefault();
+      e.stopPropagation();
+      onSaveRef.current();
     } else if (e.key === "Escape") {
-      e.preventDefault()
-      e.stopPropagation()
-      onCancelRef.current()
+      e.preventDefault();
+      e.stopPropagation();
+      onCancelRef.current();
     }
-  }
+  };
 
   if (!isEditing) {
-    return null
+    return null;
   }
 
   return (
@@ -100,6 +100,5 @@ export function InlineEdit({
       disabled={disabled}
       placeholder={placeholder}
     />
-  )
+  );
 }
-

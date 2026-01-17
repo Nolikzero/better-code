@@ -1,15 +1,15 @@
-import { router, publicProcedure } from "../index"
-import { z } from "zod"
-import { nativeTheme } from "electron"
+import { nativeTheme } from "electron";
+import { z } from "zod";
 import {
-  isLiquidGlassSupported,
-  enableLiquidGlass,
   disableLiquidGlass,
+  enableLiquidGlass,
   getLiquidGlassState,
-} from "../../liquid-glass"
+  isLiquidGlassSupported,
+} from "../../liquid-glass";
+import { publicProcedure, router } from "../index";
 
 // Store current vibrancy state
-let currentVibrancy: string | null = null
+let currentVibrancy: string | null = null;
 
 /**
  * Vibrancy types supported by Electron on macOS
@@ -22,7 +22,7 @@ const vibrancyTypes = [
   "hud",
   "sheet",
   "popover",
-] as const
+] as const;
 
 export const windowRouter = router({
   /**
@@ -36,42 +36,42 @@ export const windowRouter = router({
         visualEffectState: z
           .enum(["followWindow", "active", "inactive"])
           .optional(),
-      })
+      }),
     )
     .mutation(({ input, ctx }) => {
-      const win = ctx.getWindow()
+      const win = ctx.getWindow();
 
       if (!win) {
-        return { success: false, reason: "no-window" }
+        return { success: false, reason: "no-window" };
       }
 
       if (process.platform !== "darwin") {
         // Non-macOS: vibrancy not supported, but we can still track the request
         // The renderer will use CSS fallback
-        currentVibrancy = input.type
-        return { success: true, fallback: true }
+        currentVibrancy = input.type;
+        return { success: true, fallback: true };
       }
 
       try {
         if (input.type === null) {
           // Disable vibrancy - restore solid background
-          win.setVibrancy(null as any)
+          win.setVibrancy(null as any);
           win.setBackgroundColor(
-            nativeTheme.shouldUseDarkColors ? "#09090b" : "#ffffff"
-          )
-          currentVibrancy = null
-          console.log("[Window] Vibrancy disabled")
+            nativeTheme.shouldUseDarkColors ? "#09090b" : "#ffffff",
+          );
+          currentVibrancy = null;
+          console.log("[Window] Vibrancy disabled");
         } else {
           // Enable vibrancy - must set transparent background first
-          win.setBackgroundColor("#00000000")
-          win.setVibrancy(input.type as any)
-          currentVibrancy = input.type
-          console.log(`[Window] Vibrancy enabled: ${input.type}`)
+          win.setBackgroundColor("#00000000");
+          win.setVibrancy(input.type as any);
+          currentVibrancy = input.type;
+          console.log(`[Window] Vibrancy enabled: ${input.type}`);
         }
-        return { success: true }
+        return { success: true };
       } catch (error) {
-        console.error("[Window] setVibrancy failed:", error)
-        return { success: false, reason: "error" }
+        console.error("[Window] setVibrancy failed:", error);
+        return { success: false, reason: "error" };
       }
     }),
 
@@ -83,7 +83,7 @@ export const windowRouter = router({
       platform: process.platform,
       vibrancy: currentVibrancy,
       supported: process.platform === "darwin",
-    }
+    };
   }),
 
   /**
@@ -101,46 +101,44 @@ export const windowRouter = router({
             opaque: z.boolean().optional(),
           })
           .optional(),
-      })
+      }),
     )
     .mutation(({ input, ctx }) => {
-      const win = ctx.getWindow()
+      const win = ctx.getWindow();
 
       if (!win) {
-        return { success: false, reason: "no-window" }
+        return { success: false, reason: "no-window" };
       }
 
       if (!isLiquidGlassSupported()) {
         // Fall back to legacy vibrancy for older macOS
         console.log(
-          "[Window] Liquid glass not supported, falling back to vibrancy"
-        )
-        return { success: true, fallback: true, supported: false }
+          "[Window] Liquid glass not supported, falling back to vibrancy",
+        );
+        return { success: true, fallback: true, supported: false };
       }
 
       try {
         if (input.enabled) {
           // Set transparent background before enabling (required for glass effect)
-          win.setBackgroundColor("#00000000")
-          const glassId = enableLiquidGlass(win, input.options)
+          win.setBackgroundColor("#00000000");
+          const glassId = enableLiquidGlass(win, input.options);
           if (glassId !== null) {
-            console.log(`[Window] Liquid glass enabled with ID: ${glassId}`)
-            return { success: true, glassId }
-          } else {
-            return { success: false, reason: "enable-failed" }
+            console.log(`[Window] Liquid glass enabled with ID: ${glassId}`);
+            return { success: true, glassId };
           }
-        } else {
-          disableLiquidGlass()
-          // Restore opaque background when disabling
-          win.setBackgroundColor(
-            nativeTheme.shouldUseDarkColors ? "#09090b" : "#ffffff"
-          )
-          console.log("[Window] Liquid glass disabled")
-          return { success: true }
+          return { success: false, reason: "enable-failed" };
         }
+        disableLiquidGlass();
+        // Restore opaque background when disabling
+        win.setBackgroundColor(
+          nativeTheme.shouldUseDarkColors ? "#09090b" : "#ffffff",
+        );
+        console.log("[Window] Liquid glass disabled");
+        return { success: true };
       } catch (error) {
-        console.error("[Window] setLiquidGlass failed:", error)
-        return { success: false, reason: "error" }
+        console.error("[Window] setLiquidGlass failed:", error);
+        return { success: false, reason: "error" };
       }
     }),
 
@@ -148,10 +146,10 @@ export const windowRouter = router({
    * Get current liquid glass state
    */
   getLiquidGlass: publicProcedure.query(() => {
-    const state = getLiquidGlassState()
+    const state = getLiquidGlassState();
     return {
       ...state,
       platform: process.platform,
-    }
+    };
   }),
-})
+});

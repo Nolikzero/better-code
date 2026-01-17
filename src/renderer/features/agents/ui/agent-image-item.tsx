@@ -1,30 +1,30 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useCallback } from "react"
-import { X, ImageOff, ChevronLeft, ChevronRight } from "lucide-react"
-import { IconSpinner } from "../../../components/ui/icons"
+import { ChevronLeft, ChevronRight, ImageOff, X } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import {
   HoverCard,
-  HoverCardTrigger,
   HoverCardContent,
-} from "../../../components/ui/hover-card"
+  HoverCardTrigger,
+} from "../../../components/ui/hover-card";
+import { IconSpinner } from "../../../components/ui/icons";
 
 interface ImageData {
-  id: string
-  filename: string
-  url: string
+  id: string;
+  filename: string;
+  url: string;
 }
 
 interface AgentImageItemProps {
-  id: string
-  filename: string
-  url: string
-  isLoading?: boolean
-  onRemove?: () => void
+  id: string;
+  filename: string;
+  url: string;
+  isLoading?: boolean;
+  onRemove?: () => void;
   /** All images in the group for gallery navigation */
-  allImages?: ImageData[]
+  allImages?: ImageData[];
   /** Index of this image in the group */
-  imageIndex?: number
+  imageIndex?: number;
 }
 
 export function AgentImageItem({
@@ -36,61 +36,73 @@ export function AgentImageItem({
   allImages,
   imageIndex = 0,
 }: AgentImageItemProps) {
-  const [isHovered, setIsHovered] = useState(false)
-  const [hasError, setHasError] = useState(false)
-  const [isFullscreen, setIsFullscreen] = useState(false)
-  const [currentIndex, setCurrentIndex] = useState(imageIndex)
+  const [isHovered, setIsHovered] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(imageIndex);
 
   // Use allImages if provided, otherwise create single-image array
-  const images = allImages || [{ id, filename, url }]
-  const hasMultipleImages = images.length > 1
-  const currentImage = images[currentIndex] || images[0]
+  const images = allImages || [{ id, filename, url }];
+  const hasMultipleImages = images.length > 1;
+  const currentImage = images[currentIndex] || images[0];
 
   const handleImageError = () => {
-    console.warn("[AgentImageItem] Failed to load image:", filename, url)
-    setHasError(true)
-  }
+    console.warn("[AgentImageItem] Failed to load image:", filename, url);
+    setHasError(true);
+  };
 
   const openFullscreen = () => {
-    setCurrentIndex(imageIndex)
-    setIsFullscreen(true)
-  }
+    setCurrentIndex(imageIndex);
+    setIsFullscreen(true);
+  };
 
   const closeFullscreen = useCallback(() => {
-    setIsFullscreen(false)
-  }, [])
+    setIsFullscreen(false);
+  }, []);
 
-  const goToPrevious = useCallback((e?: React.MouseEvent) => {
-    e?.stopPropagation()
-    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1))
-  }, [images.length])
+  const goToPrevious = useCallback(
+    (e?: React.MouseEvent) => {
+      e?.stopPropagation();
+      setCurrentIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
+    },
+    [images.length],
+  );
 
-  const goToNext = useCallback((e?: React.MouseEvent) => {
-    e?.stopPropagation()
-    setCurrentIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0))
-  }, [images.length])
+  const goToNext = useCallback(
+    (e?: React.MouseEvent) => {
+      e?.stopPropagation();
+      setCurrentIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
+    },
+    [images.length],
+  );
 
   // Handle keyboard navigation
   useEffect(() => {
-    if (!isFullscreen) return
+    if (!isFullscreen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       switch (e.key) {
         case "Escape":
-          closeFullscreen()
-          break
+          closeFullscreen();
+          break;
         case "ArrowLeft":
-          if (hasMultipleImages) goToPrevious()
-          break
+          if (hasMultipleImages) goToPrevious();
+          break;
         case "ArrowRight":
-          if (hasMultipleImages) goToNext()
-          break
+          if (hasMultipleImages) goToNext();
+          break;
       }
-    }
+    };
 
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [isFullscreen, hasMultipleImages, closeFullscreen, goToPrevious, goToNext])
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    isFullscreen,
+    hasMultipleImages,
+    closeFullscreen,
+    goToPrevious,
+    goToNext,
+  ]);
 
   return (
     <>
@@ -104,7 +116,10 @@ export function AgentImageItem({
             <IconSpinner className="size-4 text-muted-foreground" />
           </div>
         ) : hasError ? (
-          <div className="size-8 flex items-center justify-center bg-muted/50 rounded border border-destructive/20" title="Failed to load image">
+          <div
+            className="size-8 flex items-center justify-center bg-muted/50 rounded border border-destructive/20"
+            title="Failed to load image"
+          >
             <ImageOff className="size-4 text-destructive/50" />
           </div>
         ) : url ? (
@@ -136,8 +151,8 @@ export function AgentImageItem({
         {onRemove && (
           <button
             onClick={(e) => {
-              e.stopPropagation()
-              onRemove()
+              e.stopPropagation();
+              onRemove();
             }}
             className={`absolute -top-1.5 -right-1.5 size-4 rounded-full bg-background border border-border
                        flex items-center justify-center transition-[opacity,transform] duration-150 ease-out active:scale-[0.97] z-10
@@ -207,8 +222,8 @@ export function AgentImageItem({
                   <button
                     key={idx}
                     onClick={(e) => {
-                      e.stopPropagation()
-                      setCurrentIndex(idx)
+                      e.stopPropagation();
+                      setCurrentIndex(idx);
                     }}
                     className={`size-2 rounded-full transition-all ${
                       idx === currentIndex
@@ -229,5 +244,5 @@ export function AgentImageItem({
         </div>
       )}
     </>
-  )
+  );
 }

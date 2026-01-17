@@ -1,69 +1,69 @@
-"use client"
+"use client";
 
-import { useCallback, useMemo, useEffect, useRef, useState } from "react"
-import { useAtom, useAtomValue, useSetAtom } from "jotai"
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { AlignJustify, Play, Plus, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
+import { useShallow } from "zustand/react/shallow";
+import { Button } from "../../../components/ui/button";
 import {
-  loadingSubChatsAtom,
-  agentsSubChatUnseenChangesAtom,
-  agentsSubChatsSidebarModeAtom,
-  pendingUserQuestionsAtom,
-} from "../atoms"
-import { trpc } from "../../../lib/trpc"
-import { X, Plus, AlignJustify, Play } from "lucide-react"
+  ContextMenu,
+  ContextMenuTrigger,
+} from "../../../components/ui/context-menu";
 import {
-  IconSpinner,
-  PlanIcon,
   AgentIcon,
-  IconOpenSidebarRight,
-  PinFilledIcon,
-  DiffIcon,
   ClockIcon,
+  DiffIcon,
+  IconOpenSidebarRight,
+  IconSpinner,
+  PinFilledIcon,
+  PlanIcon,
   QuestionIcon,
-} from "../../../components/ui/icons"
-import { Button } from "../../../components/ui/button"
-import { cn } from "../../../lib/utils"
-import {
-  useAgentSubChatStore,
-  type SubChatMeta,
-} from "../stores/sub-chat-store"
-import { useShallow } from "zustand/react/shallow"
-import { PopoverTrigger } from "../../../components/ui/popover"
+} from "../../../components/ui/icons";
+import { Kbd } from "../../../components/ui/kbd";
+import { PopoverTrigger } from "../../../components/ui/popover";
+import { SearchCombobox } from "../../../components/ui/search-combobox";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "../../../components/ui/tooltip"
-import { Kbd } from "../../../components/ui/kbd"
-import { getShortcutKey } from "../../../lib/utils/platform"
+} from "../../../components/ui/tooltip";
+import { api } from "../../../lib/mock-api";
+import { trpc } from "../../../lib/trpc";
+import { cn } from "../../../lib/utils";
+import { getShortcutKey } from "../../../lib/utils/platform";
 import {
-  ContextMenu,
-  ContextMenuTrigger,
-} from "../../../components/ui/context-menu"
-import { InlineEdit } from "./inline-edit"
-import { api } from "../../../lib/mock-api"
-import { toast } from "sonner"
-import { SearchCombobox } from "../../../components/ui/search-combobox"
-import { SubChatContextMenu } from "./sub-chat-context-menu"
-import { formatTimeAgo } from "../utils/format-time-ago"
+  agentsSubChatUnseenChangesAtom,
+  agentsSubChatsSidebarModeAtom,
+  loadingSubChatsAtom,
+  pendingUserQuestionsAtom,
+} from "../atoms";
+import {
+  type SubChatMeta,
+  useAgentSubChatStore,
+} from "../stores/sub-chat-store";
+import { formatTimeAgo } from "../utils/format-time-ago";
+import { InlineEdit } from "./inline-edit";
+import { SubChatContextMenu } from "./sub-chat-context-menu";
 
 interface DiffStats {
-  fileCount: number
-  additions: number
-  deletions: number
-  isLoading: boolean
-  hasChanges: boolean
+  fileCount: number;
+  additions: number;
+  deletions: number;
+  isLoading: boolean;
+  hasChanges: boolean;
 }
 
 interface SubChatSelectorProps {
-  onCreateNew: () => void
-  isMobile?: boolean
-  onBackToChats?: () => void
-  onOpenPreview?: () => void
-  canOpenPreview?: boolean
-  onOpenDiff?: () => void
-  canOpenDiff?: boolean
-  isDiffSidebarOpen?: boolean
-  diffStats?: DiffStats
+  onCreateNew: () => void;
+  isMobile?: boolean;
+  onBackToChats?: () => void;
+  onOpenPreview?: () => void;
+  canOpenPreview?: boolean;
+  onOpenDiff?: () => void;
+  canOpenDiff?: boolean;
+  isDiffSidebarOpen?: boolean;
+  diffStats?: DiffStats;
 }
 
 export function SubChatSelector({
@@ -78,7 +78,14 @@ export function SubChatSelector({
   diffStats,
 }: SubChatSelectorProps) {
   // Use shallow comparison to prevent re-renders when arrays have same content
-  const { activeSubChatId, openSubChatIds, pinnedSubChatIds, allSubChats, parentChatId, togglePinSubChat } = useAgentSubChatStore(
+  const {
+    activeSubChatId,
+    openSubChatIds,
+    pinnedSubChatIds,
+    allSubChats,
+    parentChatId,
+    togglePinSubChat,
+  } = useAgentSubChatStore(
     useShallow((state) => ({
       activeSubChatId: state.activeSubChatId,
       openSubChatIds: state.openSubChatIds,
@@ -86,206 +93,213 @@ export function SubChatSelector({
       allSubChats: state.allSubChats,
       parentChatId: state.chatId,
       togglePinSubChat: state.togglePinSubChat,
-    }))
-  )
-  const [loadingSubChats] = useAtom(loadingSubChatsAtom)
-  const subChatUnseenChanges = useAtomValue(agentsSubChatUnseenChangesAtom)
-  const setSubChatUnseenChanges = useSetAtom(agentsSubChatUnseenChangesAtom)
+    })),
+  );
+  const [loadingSubChats] = useAtom(loadingSubChatsAtom);
+  const subChatUnseenChanges = useAtomValue(agentsSubChatUnseenChangesAtom);
+  const setSubChatUnseenChanges = useSetAtom(agentsSubChatUnseenChangesAtom);
   const [subChatsSidebarMode, setSubChatsSidebarMode] = useAtom(
     agentsSubChatsSidebarModeAtom,
-  )
-  const pendingQuestions = useAtomValue(pendingUserQuestionsAtom)
+  );
+  const pendingQuestions = useAtomValue(pendingUserQuestionsAtom);
 
   // Pending plan approvals from DB - only for open sub-chats
-  const { data: pendingPlanApprovalsData } = trpc.chats.getPendingPlanApprovals.useQuery(
-    { openSubChatIds },
-    { refetchInterval: 5000, enabled: openSubChatIds.length > 0, placeholderData: (prev) => prev }
-  )
+  const { data: pendingPlanApprovalsData } =
+    trpc.chats.getPendingPlanApprovals.useQuery(
+      { openSubChatIds },
+      {
+        refetchInterval: 5000,
+        enabled: openSubChatIds.length > 0,
+        placeholderData: (prev) => prev,
+      },
+    );
   const pendingPlanApprovals = useMemo(() => {
-    const set = new Set<string>()
+    const set = new Set<string>();
     if (pendingPlanApprovalsData) {
       for (const { subChatId } of pendingPlanApprovalsData) {
-        set.add(subChatId)
+        set.add(subChatId);
       }
     }
-    return set
-  }, [pendingPlanApprovalsData])
+    return set;
+  }, [pendingPlanApprovalsData]);
 
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false)
-  const tabsContainerRef = useRef<HTMLDivElement>(null)
-  const tabRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
-  const textRefs = useRef<Map<string, HTMLSpanElement>>(new Map())
-  const [truncatedTabs, setTruncatedTabs] = useState<Set<string>>(new Set())
-  const [showLeftGradient, setShowLeftGradient] = useState(false)
-  const [showRightGradient, setShowRightGradient] = useState(false)
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const tabsContainerRef = useRef<HTMLDivElement>(null);
+  const tabRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const textRefs = useRef<Map<string, HTMLSpanElement>>(new Map());
+  const [truncatedTabs, setTruncatedTabs] = useState<Set<string>>(new Set());
+  const [showLeftGradient, setShowLeftGradient] = useState(false);
+  const [showRightGradient, setShowRightGradient] = useState(false);
 
   // Map open IDs to metadata and sort: pinned first, then preserve user's tab order
   const openSubChats = useMemo(() => {
-    const pinnedChats: SubChatMeta[] = []
-    const unpinnedChats: SubChatMeta[] = []
+    const pinnedChats: SubChatMeta[] = [];
+    const unpinnedChats: SubChatMeta[] = [];
 
     // Separate pinned and unpinned while preserving order
     openSubChatIds.forEach((id) => {
-      const chat = allSubChats.find((sc) => sc.id === id)
-      if (!chat) return
+      const chat = allSubChats.find((sc) => sc.id === id);
+      if (!chat) return;
 
       if (pinnedSubChatIds.includes(id)) {
-        pinnedChats.push(chat)
+        pinnedChats.push(chat);
       } else {
-        unpinnedChats.push(chat)
+        unpinnedChats.push(chat);
       }
-    })
+    });
 
     // Sort pinned by recency (most recent first)
     pinnedChats.sort((a, b) => {
-      const aT = new Date(a.updated_at || a.created_at || "0").getTime()
-      const bT = new Date(b.updated_at || b.created_at || "0").getTime()
-      return bT - aT
-    })
+      const aT = new Date(a.updated_at || a.created_at || "0").getTime();
+      const bT = new Date(b.updated_at || b.created_at || "0").getTime();
+      return bT - aT;
+    });
 
     // Unpinned maintain their order from openSubChatIds (user's tab order)
-    return [...pinnedChats, ...unpinnedChats]
-  }, [openSubChatIds, allSubChats, pinnedSubChatIds])
+    return [...pinnedChats, ...unpinnedChats];
+  }, [openSubChatIds, allSubChats, pinnedSubChatIds]);
 
   const onSwitch = useCallback(
     (subChatId: string) => {
-      const store = useAgentSubChatStore.getState()
-      store.setActiveSubChat(subChatId)
+      const store = useAgentSubChatStore.getState();
+      store.setActiveSubChat(subChatId);
 
       // Clear unseen indicator for this sub-chat
       setSubChatUnseenChanges((prev: Set<string>) => {
         if (prev.has(subChatId)) {
-          const next = new Set(prev)
-          next.delete(subChatId)
-          return next
+          const next = new Set(prev);
+          next.delete(subChatId);
+          return next;
         }
-        return prev
-      })
+        return prev;
+      });
     },
     [setSubChatUnseenChanges],
-  )
+  );
 
   const onSwitchFromHistory = useCallback((subChatId: string) => {
-    const state = useAgentSubChatStore.getState()
-    const isAlreadyOpen = state.openSubChatIds.includes(subChatId)
+    const state = useAgentSubChatStore.getState();
+    const isAlreadyOpen = state.openSubChatIds.includes(subChatId);
 
     if (!isAlreadyOpen) {
-      state.addToOpenSubChats(subChatId)
+      state.addToOpenSubChats(subChatId);
     }
-    state.setActiveSubChat(subChatId)
-  }, [])
+    state.setActiveSubChat(subChatId);
+  }, []);
 
   const onCloseTab = useCallback((subChatId: string) => {
-    useAgentSubChatStore.getState().removeFromOpenSubChats(subChatId)
-  }, [])
+    useAgentSubChatStore.getState().removeFromOpenSubChats(subChatId);
+  }, []);
 
   const onCloseOtherTabs = useCallback((subChatId: string) => {
-    const state = useAgentSubChatStore.getState()
-    const idsToClose = state.openSubChatIds.filter((id) => id !== subChatId)
-    idsToClose.forEach((id) => state.removeFromOpenSubChats(id))
-    state.setActiveSubChat(subChatId)
-  }, [])
+    const state = useAgentSubChatStore.getState();
+    const idsToClose = state.openSubChatIds.filter((id) => id !== subChatId);
+    idsToClose.forEach((id) => state.removeFromOpenSubChats(id));
+    state.setActiveSubChat(subChatId);
+  }, []);
 
   const onCloseTabsToRight = useCallback(
     (subChatId: string, visualIndex: number) => {
-      const state = useAgentSubChatStore.getState()
+      const state = useAgentSubChatStore.getState();
 
       // Use visual order from sorted openSubChats, not storage order
-      const idsToClose = openSubChats.slice(visualIndex + 1).map((sc) => sc.id)
-      idsToClose.forEach((id) => state.removeFromOpenSubChats(id))
+      const idsToClose = openSubChats.slice(visualIndex + 1).map((sc) => sc.id);
+      idsToClose.forEach((id) => state.removeFromOpenSubChats(id));
     },
     [openSubChats],
-  )
+  );
 
-  const [editingSubChatId, setEditingSubChatId] = useState<string | null>(null)
-  const [editName, setEditName] = useState("")
-  const [editLoading, setEditLoading] = useState(false)
+  const [editingSubChatId, setEditingSubChatId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editLoading, setEditLoading] = useState(false);
 
   const renameMutation = api.agents.renameSubChat.useMutation({
     onSuccess: (_, variables) => {
       // Update local store
       useAgentSubChatStore
         .getState()
-        .updateSubChatName(variables.subChatId, variables.name)
+        .updateSubChatName(variables.subChatId, variables.name);
     },
     onError: (error) => {
       // Show helpful error message (like Canvas)
       if (error.data?.code === "NOT_FOUND") {
-        toast.error("Send a message first before renaming this chat")
+        toast.error("Send a message first before renaming this chat");
       } else {
-        toast.error("Failed to rename chat")
+        toast.error("Failed to rename chat");
       }
     },
-  })
+  });
 
   const handleRenameClick = useCallback((subChat: SubChatMeta) => {
     // Allow rename attempt, will show toast if not in DB yet (like Canvas)
-    setEditingSubChatId(subChat.id)
-    setEditName(subChat.name || "")
-  }, [])
+    setEditingSubChatId(subChat.id);
+    setEditName(subChat.name || "");
+  }, []);
 
   const handleEditSave = useCallback(
     async (subChat: SubChatMeta) => {
-      const trimmedName = editName.trim()
+      const trimmedName = editName.trim();
 
       // If name hasn't changed, just exit editing mode
       if (trimmedName === subChat.name) {
-        setEditingSubChatId(null)
-        return
+        setEditingSubChatId(null);
+        return;
       }
 
       if (!trimmedName) {
         // Reset to original name if empty
-        setEditName(subChat.name || "")
-        setEditingSubChatId(null)
-        return
+        setEditName(subChat.name || "");
+        setEditingSubChatId(null);
+        return;
       }
 
       // Store old name for revert on error (like Canvas)
-      const oldName = subChat.name
+      const oldName = subChat.name;
 
       // Optimistic update
-      useAgentSubChatStore.getState().updateSubChatName(subChat.id, trimmedName)
+      useAgentSubChatStore
+        .getState()
+        .updateSubChatName(subChat.id, trimmedName);
 
-      setEditLoading(true)
-      setEditingSubChatId(null)
-      setEditName("")
+      setEditLoading(true);
+      setEditingSubChatId(null);
+      setEditName("");
 
       try {
         await renameMutation.mutateAsync({
           subChatId: subChat.id,
           name: trimmedName,
-        })
+        });
       } catch {
         // Revert on error (like Canvas)
         useAgentSubChatStore
           .getState()
-          .updateSubChatName(subChat.id, oldName || "New Chat")
+          .updateSubChatName(subChat.id, oldName || "New Chat");
       } finally {
-        setEditLoading(false)
+        setEditLoading(false);
       }
     },
     [editName, renameMutation],
-  )
+  );
 
   const handleEditCancel = useCallback((subChat: SubChatMeta) => {
-    setEditName(subChat.name || "")
-    setEditingSubChatId(null)
-  }, [])
+    setEditName(subChat.name || "");
+    setEditingSubChatId(null);
+  }, []);
 
   const handleSelectFromHistory = useCallback(
     (subChat: SubChatMeta) => {
-      onSwitchFromHistory(subChat.id)
-      setIsHistoryOpen(false)
+      onSwitchFromHistory(subChat.id);
+      setIsHistoryOpen(false);
     },
     [onSwitchFromHistory],
-  )
+  );
 
   // Hotkey: / to open history popover when sidebar is closed (tabs mode)
   useEffect(() => {
     const handleHistoryHotkey = (e: KeyboardEvent) => {
       // Only in tabs mode (sidebar closed)
-      if (subChatsSidebarMode !== "tabs") return
+      if (subChatsSidebarMode !== "tabs") return;
 
       if (
         e.key === "/" &&
@@ -295,141 +309,143 @@ export function SubChatSelector({
         !e.shiftKey
       ) {
         // Don't trigger if already focused on an input/textarea
-        const activeEl = document.activeElement
+        const activeEl = document.activeElement;
         if (
           activeEl?.tagName === "INPUT" ||
           activeEl?.tagName === "TEXTAREA" ||
           activeEl?.hasAttribute("contenteditable")
         ) {
-          return
+          return;
         }
 
-        e.preventDefault()
-        e.stopPropagation()
-        setIsHistoryOpen(true)
+        e.preventDefault();
+        e.stopPropagation();
+        setIsHistoryOpen(true);
       }
-    }
+    };
 
-    window.addEventListener("keydown", handleHistoryHotkey, true)
+    window.addEventListener("keydown", handleHistoryHotkey, true);
     return () =>
-      window.removeEventListener("keydown", handleHistoryHotkey, true)
-  }, [subChatsSidebarMode])
+      window.removeEventListener("keydown", handleHistoryHotkey, true);
+  }, [subChatsSidebarMode]);
 
   // Keyboard shortcut: Cmd+Shift+T / Ctrl+Shift+T for new sub-chat
   // Scroll to active tab when it changes
   useEffect(() => {
-    if (!activeSubChatId || !tabsContainerRef.current) return
+    if (!activeSubChatId || !tabsContainerRef.current) return;
 
-    const container = tabsContainerRef.current
-    const activeTabElement = tabRefs.current.get(activeSubChatId)
+    const container = tabsContainerRef.current;
+    const activeTabElement = tabRefs.current.get(activeSubChatId);
 
     if (activeTabElement) {
       setTimeout(() => {
-        const containerRect = container.getBoundingClientRect()
-        const tabRect = activeTabElement.getBoundingClientRect()
+        const containerRect = container.getBoundingClientRect();
+        const tabRect = activeTabElement.getBoundingClientRect();
 
-        const isTabLeftOfView = tabRect.left < containerRect.left
-        const isTabRightOfView = tabRect.right > containerRect.right
+        const isTabLeftOfView = tabRect.left < containerRect.left;
+        const isTabRightOfView = tabRect.right > containerRect.right;
 
         if (isTabLeftOfView || isTabRightOfView) {
           const tabCenter =
-            activeTabElement.offsetLeft + activeTabElement.offsetWidth / 2
-          const containerCenter = container.offsetWidth / 2
-          const targetScroll = tabCenter - containerCenter
-          const maxScroll = container.scrollWidth - container.offsetWidth
-          const clampedScroll = Math.max(0, Math.min(targetScroll, maxScroll))
+            activeTabElement.offsetLeft + activeTabElement.offsetWidth / 2;
+          const containerCenter = container.offsetWidth / 2;
+          const targetScroll = tabCenter - containerCenter;
+          const maxScroll = container.scrollWidth - container.offsetWidth;
+          const clampedScroll = Math.max(0, Math.min(targetScroll, maxScroll));
 
           container.scrollTo({
             left: clampedScroll,
             behavior: "smooth",
-          })
+          });
         }
-      }, 0)
+      }, 0);
     }
-  }, [activeSubChatId, openSubChats])
+  }, [activeSubChatId, openSubChats]);
 
   // Check if text is truncated for each tab
   useEffect(() => {
     const checkTruncation = () => {
-      const newTruncated = new Set<string>()
+      const newTruncated = new Set<string>();
       textRefs.current.forEach((el, subChatId) => {
         if (el && el.scrollWidth > el.clientWidth) {
-          newTruncated.add(subChatId)
+          newTruncated.add(subChatId);
         }
-      })
-      setTruncatedTabs(newTruncated)
-    }
+      });
+      setTruncatedTabs(newTruncated);
+    };
 
-    checkTruncation()
+    checkTruncation();
 
-    const resizeObserver = new ResizeObserver(() => checkTruncation())
-    textRefs.current.forEach((el) => el && resizeObserver.observe(el))
+    const resizeObserver = new ResizeObserver(() => checkTruncation());
+    textRefs.current.forEach((el) => el && resizeObserver.observe(el));
 
-    return () => resizeObserver.disconnect()
-  }, [openSubChats, activeSubChatId])
+    return () => resizeObserver.disconnect();
+  }, [openSubChats, activeSubChatId]);
 
   // Sort sub-chats by most recent first for history
   const sortedSubChats = useMemo(
     () =>
       [...allSubChats].sort((a, b) => {
-        const aT = new Date(a.updated_at || a.created_at || "0").getTime()
-        const bT = new Date(b.updated_at || b.created_at || "0").getTime()
-        return bT - aT
+        const aT = new Date(a.updated_at || a.created_at || "0").getTime();
+        const bT = new Date(b.updated_at || b.created_at || "0").getTime();
+        return bT - aT;
       }),
     [allSubChats],
-  )
+  );
 
-  const hasNoChats = openSubChats.length === 0
+  const hasNoChats = openSubChats.length === 0;
 
   // Check scroll position for gradients
   const checkScrollPosition = useCallback(() => {
-    const container = tabsContainerRef.current
-    if (!container) return
+    const container = tabsContainerRef.current;
+    if (!container) return;
 
-    const { scrollLeft, scrollWidth, clientWidth } = container
-    const isScrollable = scrollWidth > clientWidth
+    const { scrollLeft, scrollWidth, clientWidth } = container;
+    const isScrollable = scrollWidth > clientWidth;
 
-    setShowLeftGradient(isScrollable && scrollLeft > 0)
+    setShowLeftGradient(isScrollable && scrollLeft > 0);
     setShowRightGradient(
       isScrollable && scrollLeft < scrollWidth - clientWidth - 1,
-    )
-  }, [])
+    );
+  }, []);
 
   // Update gradients on scroll
   useEffect(() => {
-    const container = tabsContainerRef.current
-    if (!container) return
+    const container = tabsContainerRef.current;
+    if (!container) return;
 
-    checkScrollPosition()
+    checkScrollPosition();
 
-    container.addEventListener("scroll", checkScrollPosition, { passive: true })
-    return () => container.removeEventListener("scroll", checkScrollPosition)
-  }, [checkScrollPosition])
+    container.addEventListener("scroll", checkScrollPosition, {
+      passive: true,
+    });
+    return () => container.removeEventListener("scroll", checkScrollPosition);
+  }, [checkScrollPosition]);
 
   // Update gradients when tabs change
   useEffect(() => {
-    checkScrollPosition()
-  }, [openSubChats, checkScrollPosition])
+    checkScrollPosition();
+  }, [openSubChats, checkScrollPosition]);
 
   // Update gradients on window resize
   useEffect(() => {
-    const handleResize = () => checkScrollPosition()
-    window.addEventListener("resize", handleResize)
-    return () => window.removeEventListener("resize", handleResize)
-  }, [checkScrollPosition])
+    const handleResize = () => checkScrollPosition();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [checkScrollPosition]);
 
   // Cleanup refs for closed tabs to prevent memory leaks
   useEffect(() => {
-    const openIds = new Set(openSubChatIds)
+    const openIds = new Set(openSubChatIds);
 
     // Remove refs for tabs that are no longer open
     tabRefs.current.forEach((_, id) => {
       if (!openIds.has(id)) {
-        tabRefs.current.delete(id)
-        textRefs.current.delete(id)
+        tabRefs.current.delete(id);
+        textRefs.current.delete(id);
       }
-    })
-  }, [openSubChatIds])
+    });
+  }, [openSubChatIds]);
 
   return (
     <div
@@ -501,17 +517,18 @@ export function SubChatSelector({
           {hasNoChats
             ? null
             : openSubChats.map((subChat, index) => {
-                const isActive = activeSubChatId === subChat.id
-                const isLoading = loadingSubChats.has(subChat.id)
-                const hasUnseen = subChatUnseenChanges.has(subChat.id)
-                const hasTabsToRight = index < openSubChats.length - 1
-                const isPinned = pinnedSubChatIds.includes(subChat.id)
+                const isActive = activeSubChatId === subChat.id;
+                const isLoading = loadingSubChats.has(subChat.id);
+                const hasUnseen = subChatUnseenChanges.has(subChat.id);
+                const hasTabsToRight = index < openSubChats.length - 1;
+                const isPinned = pinnedSubChatIds.includes(subChat.id);
                 // Get mode from sub-chat itself (defaults to "agent")
-                const mode = subChat.mode || "agent"
+                const mode = subChat.mode || "agent";
                 // Check if this chat is waiting for user answer
-                const hasPendingQuestion = pendingQuestions?.subChatId === subChat.id
+                const hasPendingQuestion =
+                  pendingQuestions?.subChatId === subChat.id;
                 // Check if this chat has a pending plan approval
-                const hasPendingPlan = pendingPlanApprovals.has(subChat.id)
+                const hasPendingPlan = pendingPlanApprovals.has(subChat.id);
 
                 return (
                   <ContextMenu key={subChat.id}>
@@ -519,23 +536,23 @@ export function SubChatSelector({
                       <button
                         ref={(el) => {
                           if (el) {
-                            tabRefs.current.set(subChat.id, el)
+                            tabRefs.current.set(subChat.id, el);
                           } else {
-                            tabRefs.current.delete(subChat.id)
+                            tabRefs.current.delete(subChat.id);
                           }
                         }}
                         onClick={(e) => {
-                          e.stopPropagation()
-                          e.preventDefault()
+                          e.stopPropagation();
+                          e.preventDefault();
                           if (editingSubChatId !== subChat.id) {
-                            onSwitch(subChat.id)
+                            onSwitch(subChat.id);
                           }
                         }}
                         onDoubleClick={(e) => {
-                          e.stopPropagation()
-                          e.preventDefault()
+                          e.stopPropagation();
+                          e.preventDefault();
                           if (editingSubChatId !== subChat.id) {
-                            handleRenameClick(subChat)
+                            handleRenameClick(subChat);
                           }
                         }}
                         className={cn(
@@ -602,9 +619,9 @@ export function SubChatSelector({
                           <span
                             ref={(el) => {
                               if (el) {
-                                textRefs.current.set(subChat.id, el)
+                                textRefs.current.set(subChat.id, el);
                               } else {
-                                textRefs.current.delete(subChat.id)
+                                textRefs.current.delete(subChat.id);
                               }
                             }}
                             className="relative z-0 text-left flex-1 min-w-0 pr-1 overflow-hidden block whitespace-nowrap"
@@ -642,8 +659,8 @@ export function SubChatSelector({
                                 role="button"
                                 tabIndex={-1}
                                 onClick={(e) => {
-                                  e.stopPropagation()
-                                  onCloseTab(subChat.id)
+                                  e.stopPropagation();
+                                  onCloseTab(subChat.id);
                                 }}
                                 className="relative z-20 hover:text-foreground rounded p-0.5 transition-[color,transform] duration-150 ease-out active:scale-[0.97] cursor-pointer"
                                 title={
@@ -675,7 +692,7 @@ export function SubChatSelector({
                       canCloseOtherTabs={openSubChats.length > 2}
                     />
                   </ContextMenu>
-                )
+                );
               })}
         </div>
 
@@ -728,12 +745,13 @@ export function SubChatSelector({
             renderItem={(subChat) => {
               const timeAgo = formatTimeAgo(
                 subChat.updated_at || subChat.created_at,
-              )
-              const isLoading = loadingSubChats.has(subChat.id)
-              const hasUnseen = subChatUnseenChanges.has(subChat.id)
-              const mode = subChat.mode || "agent"
-              const hasPendingQuestion = pendingQuestions?.subChatId === subChat.id
-              const hasPendingPlan = pendingPlanApprovals.has(subChat.id)
+              );
+              const isLoading = loadingSubChats.has(subChat.id);
+              const hasUnseen = subChatUnseenChanges.has(subChat.id);
+              const mode = subChat.mode || "agent";
+              const hasPendingQuestion =
+                pendingQuestions?.subChatId === subChat.id;
+              const hasPendingPlan = pendingPlanApprovals.has(subChat.id);
 
               return (
                 <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -748,14 +766,18 @@ export function SubChatSelector({
                     ) : (
                       <AgentIcon className="w-4 h-4 text-muted-foreground" />
                     )}
-                    {(hasPendingPlan || hasUnseen) && !isLoading && !hasPendingQuestion && (
-                      <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-popover flex items-center justify-center">
-                        <div className={cn(
-                          "w-1.5 h-1.5 rounded-full",
-                          hasPendingPlan ? "bg-amber-500" : "bg-[#307BD0]"
-                        )} />
-                      </div>
-                    )}
+                    {(hasPendingPlan || hasUnseen) &&
+                      !isLoading &&
+                      !hasPendingQuestion && (
+                        <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-popover flex items-center justify-center">
+                          <div
+                            className={cn(
+                              "w-1.5 h-1.5 rounded-full",
+                              hasPendingPlan ? "bg-amber-500" : "bg-[#307BD0]",
+                            )}
+                          />
+                        </div>
+                      )}
                   </div>
                   <span className="text-sm truncate flex-1">
                     {subChat.name || "New Chat"}
@@ -764,7 +786,7 @@ export function SubChatSelector({
                     {timeAgo}
                   </span>
                 </div>
-              )
+              );
             }}
             trigger={
               <Tooltip>
@@ -878,7 +900,6 @@ export function SubChatSelector({
           </Button>
         </div>
       )}
-
     </div>
-  )
+  );
 }

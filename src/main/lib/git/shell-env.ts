@@ -1,6 +1,6 @@
 import {
-	type ExecFileOptionsWithStringEncoding,
-	execFile,
+  type ExecFileOptionsWithStringEncoding,
+  execFile,
 } from "node:child_process";
 import os from "node:os";
 import { promisify } from "node:util";
@@ -29,78 +29,78 @@ let pathFixSucceeded = false;
  * Results are cached for 1 minute to avoid spawning shells repeatedly.
  */
 export async function getShellEnvironment(): Promise<Record<string, string>> {
-	const now = Date.now();
-	const ttl = isFallbackCache ? FALLBACK_CACHE_TTL_MS : CACHE_TTL_MS;
-	if (cachedEnv && now - cacheTime < ttl) {
-		// Return a copy to prevent caller mutations from corrupting cache
-		return { ...cachedEnv };
-	}
+  const now = Date.now();
+  const ttl = isFallbackCache ? FALLBACK_CACHE_TTL_MS : CACHE_TTL_MS;
+  if (cachedEnv && now - cacheTime < ttl) {
+    // Return a copy to prevent caller mutations from corrupting cache
+    return { ...cachedEnv };
+  }
 
-	const shell =
-		process.env.SHELL ||
-		(process.platform === "darwin" ? "/bin/zsh" : "/bin/bash");
+  const shell =
+    process.env.SHELL ||
+    (process.platform === "darwin" ? "/bin/zsh" : "/bin/bash");
 
-	try {
-		// Use -lc flags (not -ilc):
-		// -l: login shell (sources .zprofile/.profile for PATH setup)
-		// -c: execute command
-		// Avoids -i (interactive) to skip TTY prompts and reduce latency
-		const { stdout } = await execFileAsync(shell, ["-lc", "env"], {
-			timeout: 10_000,
-			env: {
-				...process.env,
-				HOME: os.homedir(),
-			},
-		});
+  try {
+    // Use -lc flags (not -ilc):
+    // -l: login shell (sources .zprofile/.profile for PATH setup)
+    // -c: execute command
+    // Avoids -i (interactive) to skip TTY prompts and reduce latency
+    const { stdout } = await execFileAsync(shell, ["-lc", "env"], {
+      timeout: 10_000,
+      env: {
+        ...process.env,
+        HOME: os.homedir(),
+      },
+    });
 
-		const env: Record<string, string> = {};
-		for (const line of stdout.split("\n")) {
-			const idx = line.indexOf("=");
-			if (idx > 0) {
-				const key = line.substring(0, idx);
-				const value = line.substring(idx + 1);
-				env[key] = value;
-			}
-		}
+    const env: Record<string, string> = {};
+    for (const line of stdout.split("\n")) {
+      const idx = line.indexOf("=");
+      if (idx > 0) {
+        const key = line.substring(0, idx);
+        const value = line.substring(idx + 1);
+        env[key] = value;
+      }
+    }
 
-		cachedEnv = env;
-		cacheTime = now;
-		isFallbackCache = false;
-		return { ...env };
-	} catch (error) {
-		console.warn(
-			`[shell-env] Failed to get shell environment: ${error}. Falling back to process.env`,
-		);
-		// Fall back to process.env if shell spawn fails
-		// Cache with shorter TTL so we retry sooner
-		const fallback: Record<string, string> = {};
-		for (const [key, value] of Object.entries(process.env)) {
-			if (typeof value === "string") {
-				fallback[key] = value;
-			}
-		}
-		cachedEnv = fallback;
-		cacheTime = now;
-		isFallbackCache = true;
-		return { ...fallback };
-	}
+    cachedEnv = env;
+    cacheTime = now;
+    isFallbackCache = false;
+    return { ...env };
+  } catch (error) {
+    console.warn(
+      `[shell-env] Failed to get shell environment: ${error}. Falling back to process.env`,
+    );
+    // Fall back to process.env if shell spawn fails
+    // Cache with shorter TTL so we retry sooner
+    const fallback: Record<string, string> = {};
+    for (const [key, value] of Object.entries(process.env)) {
+      if (typeof value === "string") {
+        fallback[key] = value;
+      }
+    }
+    cachedEnv = fallback;
+    cacheTime = now;
+    isFallbackCache = true;
+    return { ...fallback };
+  }
 }
 
 /**
  * Checks if git-lfs is available in the given environment.
  */
 export async function checkGitLfsAvailable(
-	env: Record<string, string>,
+  env: Record<string, string>,
 ): Promise<boolean> {
-	try {
-		await execFileAsync("git", ["lfs", "version"], {
-			timeout: 5_000,
-			env,
-		});
-		return true;
-	} catch {
-		return false;
-	}
+  try {
+    await execFileAsync("git", ["lfs", "version"], {
+      timeout: 5_000,
+      env,
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -108,9 +108,9 @@ export async function checkGitLfsAvailable(
  * Useful for testing or when environment changes are expected.
  */
 export function clearShellEnvCache(): void {
-	cachedEnv = null;
-	cacheTime = 0;
-	isFallbackCache = false;
+  cachedEnv = null;
+  cacheTime = 0;
+  isFallbackCache = false;
 }
 
 /**
@@ -120,54 +120,54 @@ export function clearShellEnvCache(): void {
  * shell environment only when needed, then persists the fix to process.env.PATH.
  */
 export async function execWithShellEnv(
-	cmd: string,
-	args: string[],
-	options?: Omit<ExecFileOptionsWithStringEncoding, "encoding">,
+  cmd: string,
+  args: string[],
+  options?: Omit<ExecFileOptionsWithStringEncoding, "encoding">,
 ): Promise<{ stdout: string; stderr: string }> {
-	try {
-		return await execFileAsync(cmd, args, { ...options, encoding: "utf8" });
-	} catch (error) {
-		// Only retry on ENOENT (command not found), only on macOS
-		// Skip if we've already successfully fixed PATH, or if a fix attempt is in progress
-		if (
-			process.platform !== "darwin" ||
-			pathFixSucceeded ||
-			pathFixAttempted ||
-			!(error instanceof Error) ||
-			!("code" in error) ||
-			error.code !== "ENOENT"
-		) {
-			throw error;
-		}
+  try {
+    return await execFileAsync(cmd, args, { ...options, encoding: "utf8" });
+  } catch (error) {
+    // Only retry on ENOENT (command not found), only on macOS
+    // Skip if we've already successfully fixed PATH, or if a fix attempt is in progress
+    if (
+      process.platform !== "darwin" ||
+      pathFixSucceeded ||
+      pathFixAttempted ||
+      !(error instanceof Error) ||
+      !("code" in error) ||
+      error.code !== "ENOENT"
+    ) {
+      throw error;
+    }
 
-		pathFixAttempted = true;
-		console.log("[shell-env] Command not found, deriving shell environment");
+    pathFixAttempted = true;
+    console.log("[shell-env] Command not found, deriving shell environment");
 
-		try {
-			const shellEnv = await getShellEnvironment();
+    try {
+      const shellEnv = await getShellEnvironment();
 
-			// Persist the fix to process.env so all subsequent calls benefit
-			if (shellEnv.PATH) {
-				process.env.PATH = shellEnv.PATH;
-				pathFixSucceeded = true;
-				console.log("[shell-env] Fixed process.env.PATH for GUI app");
-			}
+      // Persist the fix to process.env so all subsequent calls benefit
+      if (shellEnv.PATH) {
+        process.env.PATH = shellEnv.PATH;
+        pathFixSucceeded = true;
+        console.log("[shell-env] Fixed process.env.PATH for GUI app");
+      }
 
-			// Retry with fixed env (respect caller's other env vars, force PATH if present)
-			const retryEnv = shellEnv.PATH
-				? { ...shellEnv, ...options?.env, PATH: shellEnv.PATH }
-				: { ...shellEnv, ...options?.env };
+      // Retry with fixed env (respect caller's other env vars, force PATH if present)
+      const retryEnv = shellEnv.PATH
+        ? { ...shellEnv, ...options?.env, PATH: shellEnv.PATH }
+        : { ...shellEnv, ...options?.env };
 
-			return await execFileAsync(cmd, args, {
-				...options,
-				encoding: "utf8",
-				env: retryEnv,
-			});
-		} catch (retryError) {
-			// Shell env derivation or retry failed - allow future retries
-			pathFixAttempted = false;
-			console.error("[shell-env] Retry failed:", retryError);
-			throw retryError;
-		}
-	}
+      return await execFileAsync(cmd, args, {
+        ...options,
+        encoding: "utf8",
+        env: retryEnv,
+      });
+    } catch (retryError) {
+      // Shell env derivation or retry failed - allow future retries
+      pathFixAttempted = false;
+      console.error("[shell-env] Retry failed:", retryError);
+      throw retryError;
+    }
+  }
 }

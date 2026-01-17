@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { cn } from "../../lib/utils"
+import * as React from "react";
+import { cn } from "../../lib/utils";
 
 interface ButtonGroupProps extends React.HTMLAttributes<HTMLDivElement> {
-  children: React.ReactNode
+  children: React.ReactNode;
 }
 
 const ButtonGroup = React.forwardRef<HTMLDivElement, ButtonGroupProps>(
@@ -18,15 +18,15 @@ const ButtonGroup = React.forwardRef<HTMLDivElement, ButtonGroupProps>(
           "[&>button:first-child]:rounded-l-md",
           "[&>button:last-child]:rounded-r-md",
           "[&>button:not(:first-child)]:-ml-px",
-          className
+          className,
         )}
         {...props}
       >
         {children}
       </div>
-    )
-  }
-)
-ButtonGroup.displayName = "ButtonGroup"
+    );
+  },
+);
+ButtonGroup.displayName = "ButtonGroup";
 
-export { ButtonGroup }
+export { ButtonGroup };

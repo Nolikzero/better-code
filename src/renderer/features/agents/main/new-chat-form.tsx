@@ -1,17 +1,19 @@
-"use client"
+"use client";
 
-import { useVirtualizer } from "@tanstack/react-virtual"
-import { useAtom, useAtomValue, useSetAtom } from "jotai"
-import { AlignJustify, Plus } from "lucide-react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { createPortal } from "react-dom"
-import { Button } from "../../../components/ui/button"
+import { useVirtualizer } from "@tanstack/react-virtual";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
+// import { selectedTeamIdAtom } from "@/lib/atoms/team"
+import { atom } from "jotai";
+import { AlignJustify, Plus } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { Button } from "../../../components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "../../../components/ui/dropdown-menu"
+} from "../../../components/ui/dropdown-menu";
 import {
   AgentIcon,
   AttachIcon,
@@ -21,13 +23,19 @@ import {
   IconChevronDown,
   PlanIcon,
   SearchIcon,
-} from "../../../components/ui/icons"
+} from "../../../components/ui/icons";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "../../../components/ui/popover"
-import { cn } from "../../../lib/utils"
+} from "../../../components/ui/popover";
+import {
+  PROVIDER_MODELS,
+  type ProviderId,
+  defaultProviderIdAtom,
+  lastSelectedModelByProviderAtom,
+} from "../../../lib/atoms";
+import { cn } from "../../../lib/utils";
 import {
   agentsDebugModeAtom,
   isPlanModeAtom,
@@ -38,78 +46,69 @@ import {
   selectedAgentChatIdAtom,
   selectedDraftIdAtom,
   selectedProjectAtom,
-} from "../atoms"
-import {
-  defaultProviderIdAtom,
-  lastSelectedModelByProviderAtom,
-  PROVIDER_MODELS,
-  type ProviderId,
-} from "../../../lib/atoms"
-import { ProjectSelector } from "../components/project-selector"
-import { WorkModeSelector } from "../components/work-mode-selector"
-// import { selectedTeamIdAtom } from "@/lib/atoms/team"
-import { atom } from "jotai"
-const selectedTeamIdAtom = atom<string | null>(null)
+} from "../atoms";
+import { ProjectSelector } from "../components/project-selector";
+import { WorkModeSelector } from "../components/work-mode-selector";
+const selectedTeamIdAtom = atom<string | null>(null);
 // import { agentsSettingsDialogOpenAtom, agentsSettingsDialogActiveTabAtom } from "@/lib/atoms/agents-settings-dialog"
-const agentsSettingsDialogOpenAtom = atom(false)
-const agentsSettingsDialogActiveTabAtom = atom<string | null>(null)
+const agentsSettingsDialogOpenAtom = atom(false);
+const agentsSettingsDialogActiveTabAtom = atom<string | null>(null);
 // Desktop uses real tRPC
-import { toast } from "sonner"
-import { trpc } from "../../../lib/trpc"
-import {
-  AgentsSlashCommand,
-  COMMAND_PROMPTS,
-  type SlashCommandOption,
-} from "../commands"
-import { useAgentsFileUpload } from "../hooks/use-agents-file-upload"
-import { useFocusInputOnEnter } from "../hooks/use-focus-input-on-enter"
-import { useToggleFocusOnCmdEsc } from "../hooks/use-toggle-focus-on-cmd-esc"
-import {
-  AgentsFileMention,
-  AgentsMentionsEditor,
-  type AgentsMentionsEditorHandle,
-  type FileMentionOption,
-} from "../mentions"
-import { AgentImageItem } from "../ui/agent-image-item"
-import { AgentsHeaderControls } from "../ui/agents-header-controls"
+import { toast } from "sonner";
 // import { CreateBranchDialog } from "@/app/(alpha)/agents/{components}/create-branch-dialog"
 import {
   PromptInput,
   PromptInputActions,
   PromptInputContextItems,
-} from "../../../components/ui/prompt-input"
-import { agentsSidebarOpenAtom, agentsUnseenChangesAtom } from "../atoms"
-import { AgentSendButton } from "../components/agent-send-button"
-import { CreateBranchDialog } from "../components/create-branch-dialog"
-import { formatTimeAgo } from "../utils/format-time-ago"
-import { handlePasteEvent } from "../utils/paste-text"
+} from "../../../components/ui/prompt-input";
+import { trpc } from "../../../lib/trpc";
+import { agentsSidebarOpenAtom, agentsUnseenChangesAtom } from "../atoms";
 import {
-  loadGlobalDrafts,
-  saveGlobalDrafts,
-  generateDraftId,
+  AgentsSlashCommand,
+  COMMAND_PROMPTS,
+  type SlashCommandOption,
+} from "../commands";
+import { AgentSendButton } from "../components/agent-send-button";
+import { CreateBranchDialog } from "../components/create-branch-dialog";
+import { useAgentsFileUpload } from "../hooks/use-agents-file-upload";
+import { useFocusInputOnEnter } from "../hooks/use-focus-input-on-enter";
+import { useToggleFocusOnCmdEsc } from "../hooks/use-toggle-focus-on-cmd-esc";
+import {
   deleteNewChatDraft,
+  generateDraftId,
+  loadGlobalDrafts,
   markDraftVisible,
-  type DraftProject,
-} from "../lib/drafts"
+  saveGlobalDrafts,
+} from "../lib/drafts";
+import {
+  AgentsFileMention,
+  AgentsMentionsEditor,
+  type AgentsMentionsEditorHandle,
+  type FileMentionOption,
+} from "../mentions";
+import { AgentImageItem } from "../ui/agent-image-item";
+import { AgentsHeaderControls } from "../ui/agents-header-controls";
+import { formatTimeAgo } from "../utils/format-time-ago";
+import { handlePasteEvent } from "../utils/paste-text";
 // import type { PlanType } from "@/lib/config/subscription-plans"
-type PlanType = string
+type PlanType = string;
 
 // Codex icon (OpenAI style)
 const CodexIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
     <path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 7.896a4.485 4.485 0 0 1 2.366-1.973V11.6a.766.766 0 0 0 .388.676l5.815 3.355-2.02 1.168a.076.076 0 0 1-.071 0l-4.83-2.786A4.504 4.504 0 0 1 2.34 7.872zm16.597 3.855l-5.833-3.387L15.119 7.2a.076.076 0 0 1 .071 0l4.83 2.791a4.494 4.494 0 0 1-.676 8.105v-5.678a.79.79 0 0 0-.407-.667zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 0 0-.785 0L9.409 9.23V6.897a.066.066 0 0 1 .028-.061l4.83-2.787a4.5 4.5 0 0 1 6.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 0 1-.038-.057V6.075a4.5 4.5 0 0 1 7.375-3.453l-.142.08-4.778 2.758a.795.795 0 0 0-.393.681zm1.097-2.365l2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z" />
   </svg>
-)
+);
 
 // Provider definitions for UI
 const PROVIDERS: { id: ProviderId; name: string; hasModels: boolean }[] = [
   { id: "claude", name: "Claude Code", hasModels: true },
   { id: "codex", name: "OpenAI Codex", hasModels: true },
-]
+];
 
 interface NewChatFormProps {
-  isMobileFullscreen?: boolean
-  onBackToChats?: () => void
+  isMobileFullscreen?: boolean;
+  onBackToChats?: () => void;
 }
 
 export function NewChatForm({
@@ -117,92 +116,98 @@ export function NewChatForm({
   onBackToChats,
 }: NewChatFormProps = {}) {
   // UNCONTROLLED: just track if editor has content for send button
-  const [hasContent, setHasContent] = useState(false)
-  const [selectedTeamId] = useAtom(selectedTeamIdAtom)
-  const [selectedChatId, setSelectedChatId] = useAtom(selectedAgentChatIdAtom)
-  const [selectedDraftId, setSelectedDraftId] = useAtom(selectedDraftIdAtom)
-  const [sidebarOpen, setSidebarOpen] = useAtom(agentsSidebarOpenAtom)
+  const [hasContent, setHasContent] = useState(false);
+  const [selectedTeamId] = useAtom(selectedTeamIdAtom);
+  const [selectedChatId, setSelectedChatId] = useAtom(selectedAgentChatIdAtom);
+  const [selectedDraftId, setSelectedDraftId] = useAtom(selectedDraftIdAtom);
+  const [sidebarOpen, setSidebarOpen] = useAtom(agentsSidebarOpenAtom);
 
   // Current draft ID being edited (generated when user starts typing in empty form)
-  const currentDraftIdRef = useRef<string | null>(null)
-  const unseenChanges = useAtomValue(agentsUnseenChangesAtom)
+  const currentDraftIdRef = useRef<string | null>(null);
+  const unseenChanges = useAtomValue(agentsUnseenChangesAtom);
 
   // Check if any chat has unseen changes
-  const hasAnyUnseenChanges = unseenChanges.size > 0
-  const [lastSelectedRepo, setLastSelectedRepo] = useAtom(lastSelectedRepoAtom)
-  const [selectedProject, setSelectedProject] = useAtom(selectedProjectAtom)
+  const hasAnyUnseenChanges = unseenChanges.size > 0;
+  const [lastSelectedRepo, setLastSelectedRepo] = useAtom(lastSelectedRepoAtom);
+  const [selectedProject, setSelectedProject] = useAtom(selectedProjectAtom);
 
   // Fetch projects to validate selectedProject exists
   const { data: projectsList, isLoading: isLoadingProjects } =
-    trpc.projects.list.useQuery()
+    trpc.projects.list.useQuery();
 
   // Validate selected project exists in DB
   // While loading, trust the stored value to prevent flicker
   const validatedProject = useMemo(() => {
-    if (!selectedProject) return null
+    if (!selectedProject) return null;
     // While loading, trust localStorage value to prevent flicker
-    if (isLoadingProjects) return selectedProject
+    if (isLoadingProjects) return selectedProject;
     // After loading, validate against DB
-    if (!projectsList) return null
-    const exists = projectsList.some((p) => p.id === selectedProject.id)
-    return exists ? selectedProject : null
-  }, [selectedProject, projectsList, isLoadingProjects])
+    if (!projectsList) return null;
+    const exists = projectsList.some((p) => p.id === selectedProject.id);
+    return exists ? selectedProject : null;
+  }, [selectedProject, projectsList, isLoadingProjects]);
 
   // Clear invalid project from storage
   useEffect(() => {
     if (selectedProject && projectsList && !validatedProject) {
-      setSelectedProject(null)
+      setSelectedProject(null);
     }
-  }, [selectedProject, projectsList, validatedProject, setSelectedProject])
+  }, [selectedProject, projectsList, validatedProject, setSelectedProject]);
   // Provider & model selection (from global atoms)
-  const [defaultProvider, setDefaultProvider] = useAtom(defaultProviderIdAtom)
-  const [modelByProvider, setModelByProvider] = useAtom(lastSelectedModelByProviderAtom)
+  const [defaultProvider, setDefaultProvider] = useAtom(defaultProviderIdAtom);
+  const [modelByProvider, setModelByProvider] = useAtom(
+    lastSelectedModelByProviderAtom,
+  );
 
   // Derive current provider and model from global atoms
-  const currentProvider = PROVIDERS.find((p) => p.id === defaultProvider) || PROVIDERS[0]
-  const providerModels = PROVIDER_MODELS[defaultProvider] || PROVIDER_MODELS.claude
-  const currentModelId = modelByProvider[defaultProvider] || providerModels[0]?.id
-  const currentModel = providerModels.find((m) => m.id === currentModelId) || providerModels[0]
+  const currentProvider =
+    PROVIDERS.find((p) => p.id === defaultProvider) || PROVIDERS[0];
+  const providerModels =
+    PROVIDER_MODELS[defaultProvider] || PROVIDER_MODELS.claude;
+  const currentModelId =
+    modelByProvider[defaultProvider] || providerModels[0]?.id;
+  const currentModel =
+    providerModels.find((m) => m.id === currentModelId) || providerModels[0];
 
-  const [isPlanMode, setIsPlanMode] = useAtom(isPlanModeAtom)
-  const [workMode, setWorkMode] = useAtom(lastSelectedWorkModeAtom)
-  const debugMode = useAtomValue(agentsDebugModeAtom)
-  const setSettingsDialogOpen = useSetAtom(agentsSettingsDialogOpenAtom)
-  const setSettingsActiveTab = useSetAtom(agentsSettingsDialogActiveTabAtom)
-  const setJustCreatedIds = useSetAtom(justCreatedIdsAtom)
-  const [repoSearchQuery, setRepoSearchQuery] = useState("")
-  const [createBranchDialogOpen, setCreateBranchDialogOpen] = useState(false)
+  const [isPlanMode, setIsPlanMode] = useAtom(isPlanModeAtom);
+  const [workMode, setWorkMode] = useAtom(lastSelectedWorkModeAtom);
+  const debugMode = useAtomValue(agentsDebugModeAtom);
+  const setSettingsDialogOpen = useSetAtom(agentsSettingsDialogOpenAtom);
+  const setSettingsActiveTab = useSetAtom(agentsSettingsDialogActiveTabAtom);
+  const setJustCreatedIds = useSetAtom(justCreatedIdsAtom);
+  const [repoSearchQuery, setRepoSearchQuery] = useState("");
+  const [createBranchDialogOpen, setCreateBranchDialogOpen] = useState(false);
   // Parse owner/repo from GitHub URL
   const parseGitHubUrl = (url: string) => {
-    const match = url.match(/(?:github\.com\/)?([^\/]+)\/([^\/\s#?]+)/)
-    if (!match) return null
-    return `${match[1]}/${match[2].replace(/\.git$/, "")}`
-  }
-  const [repoPopoverOpen, setRepoPopoverOpen] = useState(false)
-  const [branchPopoverOpen, setBranchPopoverOpen] = useState(false)
+    const match = url.match(/(?:github\.com\/)?([^\/]+)\/([^\/\s#?]+)/);
+    if (!match) return null;
+    return `${match[1]}/${match[2].replace(/\.git$/, "")}`;
+  };
+  const [repoPopoverOpen, setRepoPopoverOpen] = useState(false);
+  const [branchPopoverOpen, setBranchPopoverOpen] = useState(false);
   const [lastSelectedBranches, setLastSelectedBranches] = useAtom(
     lastSelectedBranchesAtom,
-  )
-  const [branchSearch, setBranchSearch] = useState("")
+  );
+  const [branchSearch, setBranchSearch] = useState("");
 
   // Get/set selected branch for current project (persisted per project)
   const selectedBranch = validatedProject?.id
     ? lastSelectedBranches[validatedProject.id] || ""
-    : ""
+    : "";
   const setSelectedBranch = useCallback(
     (branch: string) => {
       if (validatedProject?.id) {
         setLastSelectedBranches((prev) => ({
           ...prev,
           [validatedProject.id]: branch,
-        }))
+        }));
       }
     },
     [validatedProject?.id, setLastSelectedBranches],
-  )
-  const branchListRef = useRef<HTMLDivElement>(null)
-  const editorRef = useRef<AgentsMentionsEditorHandle>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  );
+  const branchListRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<AgentsMentionsEditorHandle>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Image upload hook
   const {
@@ -211,72 +216,80 @@ export function NewChatForm({
     removeImage,
     clearImages,
     isUploading,
-  } = useAgentsFileUpload()
+  } = useAgentsFileUpload();
 
   // Mention dropdown state
-  const [showMentionDropdown, setShowMentionDropdown] = useState(false)
-  const [mentionSearchText, setMentionSearchText] = useState("")
-  const [mentionPosition, setMentionPosition] = useState({ top: 0, left: 0 })
+  const [showMentionDropdown, setShowMentionDropdown] = useState(false);
+  const [mentionSearchText, setMentionSearchText] = useState("");
+  const [mentionPosition, setMentionPosition] = useState({ top: 0, left: 0 });
 
   // Mention subpage navigation state
-  const [showingFilesList, setShowingFilesList] = useState(false)
-  const [showingSkillsList, setShowingSkillsList] = useState(false)
-  const [showingAgentsList, setShowingAgentsList] = useState(false)
-  const [showingToolsList, setShowingToolsList] = useState(false)
+  const [showingFilesList, setShowingFilesList] = useState(false);
+  const [showingSkillsList, setShowingSkillsList] = useState(false);
+  const [showingAgentsList, setShowingAgentsList] = useState(false);
+  const [showingToolsList, setShowingToolsList] = useState(false);
 
   // Slash command dropdown state
-  const [showSlashDropdown, setShowSlashDropdown] = useState(false)
-  const [slashSearchText, setSlashSearchText] = useState("")
-  const [slashPosition, setSlashPosition] = useState({ top: 0, left: 0 })
+  const [showSlashDropdown, setShowSlashDropdown] = useState(false);
+  const [slashSearchText, setSlashSearchText] = useState("");
+  const [slashPosition, setSlashPosition] = useState({ top: 0, left: 0 });
 
   // Mode tooltip state (floating tooltip like canvas)
   const [modeTooltip, setModeTooltip] = useState<{
-    visible: boolean
-    position: { top: number; left: number }
-    mode: "agent" | "plan"
-  } | null>(null)
-  const tooltipTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const hasShownTooltipRef = useRef(false)
-  const [modeDropdownOpen, setModeDropdownOpen] = useState(false)
+    visible: boolean;
+    position: { top: number; left: number };
+    mode: "agent" | "plan";
+  } | null>(null);
+  const tooltipTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hasShownTooltipRef = useRef(false);
+  const [modeDropdownOpen, setModeDropdownOpen] = useState(false);
 
   // Shift+Tab handler for mode switching (now handled inside input component via onShiftTab prop)
 
   // Keyboard shortcut: Enter to focus input when not already focused
-  useFocusInputOnEnter(editorRef)
+  useFocusInputOnEnter(editorRef);
 
   // Keyboard shortcut: Cmd+Esc to toggle focus/blur
-  useToggleFocusOnCmdEsc(editorRef)
+  useToggleFocusOnCmdEsc(editorRef);
 
   // Fetch repos from team
   // Desktop: no remote repos, we use local projects
-  const reposData = { repositories: [] }
-  const isLoadingRepos = false
+  // Type stub for compatibility with web app code
+  type RepoItem = {
+    id: string;
+    name: string;
+    full_name: string;
+    sandbox_status: "not_setup" | "in_progress" | "ready" | "error";
+    pushed_at?: string;
+  };
+  const reposData: { repositories: RepoItem[] } = { repositories: [] };
+  const isLoadingRepos = false;
 
   // Memoize repos arrays to prevent useEffect from running on every keystroke
   // Apply debug mode simulations
   const repos = useMemo(() => {
     if (debugMode.enabled && debugMode.simulateNoRepos) {
-      return []
+      return [];
     }
-    return reposData?.repositories || []
-  }, [reposData?.repositories, debugMode.enabled, debugMode.simulateNoRepos])
+    return reposData?.repositories || [];
+  }, [reposData?.repositories, debugMode.enabled, debugMode.simulateNoRepos]);
 
   const readyRepos = useMemo(() => {
     if (debugMode.enabled && debugMode.simulateNoReadyRepos) {
-      return []
+      return [];
     }
-    return repos.filter((r) => r.sandbox_status === "ready")
-  }, [repos, debugMode.enabled, debugMode.simulateNoReadyRepos])
+    return repos.filter((r) => r.sandbox_status === "ready");
+  }, [repos, debugMode.enabled, debugMode.simulateNoReadyRepos]);
 
   const notReadyRepos = useMemo(
     () => repos.filter((r) => r.sandbox_status !== "ready"),
     [repos],
-  )
+  );
 
   // Use state to avoid hydration mismatch
   const [resolvedRepo, setResolvedRepo] = useState<(typeof repos)[0] | null>(
     null,
-  )
+  );
 
   // Derive selected repo from saved or first available (client-side only)
   // Now includes all repos, not just ready ones
@@ -289,8 +302,8 @@ export function NewChatForm({
           name: lastSelectedRepo.name,
           full_name: lastSelectedRepo.full_name,
           sandbox_status: lastSelectedRepo.sandbox_status || "not_setup",
-        } as (typeof repos)[0])
-        return
+        } as (typeof repos)[0]);
+        return;
       }
 
       // Look in all repos by id or full_name
@@ -299,31 +312,31 @@ export function NewChatForm({
         (r) =>
           (lastSelectedRepo.id && r.id === lastSelectedRepo.id) ||
           r.full_name === lastSelectedRepo.full_name,
-      )
+      );
       if (stillExists) {
-        setResolvedRepo(stillExists)
-        return
+        setResolvedRepo(stillExists);
+        return;
       }
     }
 
     if (repos.length === 0) {
-      setResolvedRepo(null)
-      return
+      setResolvedRepo(null);
+      return;
     }
 
     // Auto-save first repo if none saved (prefer ready repos, then any)
     if (!lastSelectedRepo && repos.length > 0) {
-      const firstRepo = readyRepos[0] || repos[0]
+      const firstRepo = readyRepos[0] || repos[0];
       setLastSelectedRepo({
         id: firstRepo.id,
         name: firstRepo.name,
         full_name: firstRepo.full_name,
         sandbox_status: firstRepo.sandbox_status,
-      })
+      });
     }
 
-    setResolvedRepo(readyRepos[0] || repos[0] || null)
-  }, [lastSelectedRepo, repos, readyRepos, setLastSelectedRepo])
+    setResolvedRepo(readyRepos[0] || repos[0] || null);
+  }, [lastSelectedRepo, repos, readyRepos, setLastSelectedRepo]);
 
   // Desktop: fetch branches from local git repository
   const branchesQuery = trpc.changes.getBranches.useQuery(
@@ -332,25 +345,25 @@ export function NewChatForm({
       enabled: !!validatedProject?.path,
       staleTime: 30_000, // Cache for 30 seconds
     },
-  )
+  );
 
   // Transform branch data to match web app format
   const branches = useMemo(() => {
-    if (!branchesQuery.data) return []
+    if (!branchesQuery.data) return [];
 
-    const { local, remote, defaultBranch } = branchesQuery.data
+    const { local, remote, defaultBranch } = branchesQuery.data;
 
     // Combine local and remote branches, preferring local info
     const branchMap = new Map<
       string,
       {
-        name: string
-        protected: boolean
-        isDefault: boolean
-        committedAt: string | null
-        authorName: null
+        name: string;
+        protected: boolean;
+        isDefault: boolean;
+        committedAt: string | null;
+        authorName: null;
       }
-    >()
+    >();
 
     // Add remote branches first
     for (const name of remote) {
@@ -360,7 +373,7 @@ export function NewChatForm({
         isDefault: name === defaultBranch,
         committedAt: null,
         authorName: null,
-      })
+      });
     }
 
     // Override with local branches (they have commit dates)
@@ -373,31 +386,31 @@ export function NewChatForm({
           ? new Date(lastCommitDate).toISOString()
           : null,
         authorName: null,
-      })
+      });
     }
 
     // Sort: default first, then by commit date
     return Array.from(branchMap.values()).sort((a, b) => {
-      if (a.isDefault && !b.isDefault) return -1
-      if (!a.isDefault && b.isDefault) return 1
+      if (a.isDefault && !b.isDefault) return -1;
+      if (!a.isDefault && b.isDefault) return 1;
       // Sort by commit date (most recent first)
       if (a.committedAt && b.committedAt) {
         return (
           new Date(b.committedAt).getTime() - new Date(a.committedAt).getTime()
-        )
+        );
       }
-      if (a.committedAt) return -1
-      if (b.committedAt) return 1
-      return a.name.localeCompare(b.name)
-    })
-  }, [branchesQuery.data])
+      if (a.committedAt) return -1;
+      if (b.committedAt) return 1;
+      return a.name.localeCompare(b.name);
+    });
+  }, [branchesQuery.data]);
 
   // Filter branches based on search
   const filteredBranches = useMemo(() => {
-    if (!branchSearch.trim()) return branches
-    const search = branchSearch.toLowerCase()
-    return branches.filter((b) => b.name.toLowerCase().includes(search))
-  }, [branches, branchSearch])
+    if (!branchSearch.trim()) return branches;
+    const search = branchSearch.toLowerCase();
+    return branches.filter((b) => b.name.toLowerCase().includes(search));
+  }, [branches, branchSearch]);
 
   // Virtualizer for branch list - only active when popover is open
   const branchVirtualizer = useVirtualizer({
@@ -406,24 +419,24 @@ export function NewChatForm({
     estimateSize: () => 28, // Each item is h-7 (28px)
     overscan: 5,
     enabled: branchPopoverOpen, // Only virtualize when popover is open
-  })
+  });
 
   // Force virtualizer to re-measure when popover opens
   useEffect(() => {
     if (branchPopoverOpen) {
       // Small delay to ensure ref is attached
       const timer = setTimeout(() => {
-        branchVirtualizer.measure()
-      }, 0)
-      return () => clearTimeout(timer)
+        branchVirtualizer.measure();
+      }, 0);
+      return () => clearTimeout(timer);
     }
-  }, [branchPopoverOpen])
+  }, [branchPopoverOpen]);
 
   // Format relative time for branches (reuse shared utility)
   const formatRelativeTime = (dateString: string | null): string => {
-    if (!dateString) return ""
-    return formatTimeAgo(dateString)
-  }
+    if (!dateString) return "";
+    return formatTimeAgo(dateString);
+  };
 
   // Set default branch when project/branches change (only if no saved branch for this project)
   useEffect(() => {
@@ -432,71 +445,71 @@ export function NewChatForm({
       validatedProject?.id &&
       !selectedBranch
     ) {
-      setSelectedBranch(branchesQuery.data.defaultBranch)
+      setSelectedBranch(branchesQuery.data.defaultBranch);
     }
   }, [
     branchesQuery.data?.defaultBranch,
     validatedProject?.id,
     selectedBranch,
     setSelectedBranch,
-  ])
+  ]);
 
   // Auto-focus input when NewChatForm is shown (when clicking "New Chat")
   // Skip on mobile to prevent keyboard from opening automatically
   useEffect(() => {
-    if (isMobileFullscreen) return // Don't autofocus on mobile
+    if (isMobileFullscreen) return; // Don't autofocus on mobile
 
     // Small delay to ensure DOM is ready and animations complete
     const timeoutId = setTimeout(() => {
-      editorRef.current?.focus()
-    }, 150)
+      editorRef.current?.focus();
+    }, 150);
 
-    return () => clearTimeout(timeoutId)
-  }, [isMobileFullscreen]) // Run on mount and when mobile state changes
+    return () => clearTimeout(timeoutId);
+  }, [isMobileFullscreen]); // Run on mount and when mobile state changes
 
   // Track last saved text to avoid unnecessary updates
-  const lastSavedTextRef = useRef<string>("")
+  const lastSavedTextRef = useRef<string>("");
 
   // Track previous draft ID to detect when switching away from a draft
-  const prevSelectedDraftIdRef = useRef<string | null>(null)
+  const prevSelectedDraftIdRef = useRef<string | null>(null);
 
   // Restore draft when a specific draft is selected from sidebar
   // Or clear editor when "New Workspace" is clicked (selectedDraftId becomes null)
   useEffect(() => {
-    const hadDraftBefore = prevSelectedDraftIdRef.current !== null
-    prevSelectedDraftIdRef.current = selectedDraftId
+    const hadDraftBefore = prevSelectedDraftIdRef.current !== null;
+    prevSelectedDraftIdRef.current = selectedDraftId;
 
     if (!selectedDraftId) {
       // No draft selected - clear editor if we had a draft before (user clicked "New Workspace")
-      currentDraftIdRef.current = null
-      lastSavedTextRef.current = ""
+      currentDraftIdRef.current = null;
+      lastSavedTextRef.current = "";
       if (hadDraftBefore && editorRef.current) {
-        editorRef.current.clear()
-        setHasContent(false)
+        editorRef.current.clear();
+        setHasContent(false);
       }
-      return
+      return;
     }
 
-    const globalDrafts = loadGlobalDrafts()
-    const draft = globalDrafts[selectedDraftId]
+    const globalDrafts = loadGlobalDrafts();
+    const draft = globalDrafts[selectedDraftId];
     if (draft?.text) {
-      currentDraftIdRef.current = selectedDraftId
-      lastSavedTextRef.current = draft.text // Initialize to prevent immediate re-save
+      currentDraftIdRef.current = selectedDraftId;
+      lastSavedTextRef.current = draft.text; // Initialize to prevent immediate re-save
 
       // Try to set value immediately if editor is ready
       if (editorRef.current) {
-        editorRef.current.setValue(draft.text)
-        setHasContent(true)
+        editorRef.current.setValue(draft.text);
+        setHasContent(true);
       } else {
         // Fallback: wait for editor to initialize (rare case)
         const timeoutId = setTimeout(() => {
-          editorRef.current?.setValue(draft.text)
-          setHasContent(true)
-        }, 50)
-        return () => clearTimeout(timeoutId)
+          editorRef.current?.setValue(draft.text);
+          setHasContent(true);
+        }, 50);
+        return () => clearTimeout(timeoutId);
       }
     }
-  }, [selectedDraftId])
+  }, [selectedDraftId]);
 
   // Mark draft as visible when component unmounts (user navigates away)
   // This ensures the draft only appears in the sidebar after leaving the form
@@ -504,10 +517,10 @@ export function NewChatForm({
     return () => {
       // On unmount, mark current draft as visible so it appears in sidebar
       if (currentDraftIdRef.current) {
-        markDraftVisible(currentDraftIdRef.current)
+        markDraftVisible(currentDraftIdRef.current);
       }
-    }
-  }, [])
+    };
+  }, []);
 
   // Filter all repos by search (combined list) and sort by preview status
   const filteredRepos = repos
@@ -518,38 +531,38 @@ export function NewChatForm({
     )
     .sort((a, b) => {
       // 1. Repos with preview (sandbox_status === "ready") come first
-      const aHasPreview = a.sandbox_status === "ready"
-      const bHasPreview = b.sandbox_status === "ready"
-      if (aHasPreview && !bHasPreview) return -1
-      if (!aHasPreview && bHasPreview) return 1
+      const aHasPreview = a.sandbox_status === "ready";
+      const bHasPreview = b.sandbox_status === "ready";
+      if (aHasPreview && !bHasPreview) return -1;
+      if (!aHasPreview && bHasPreview) return 1;
 
       // 2. Sort by last commit date (pushed_at) - most recent first
-      const aDate = a.pushed_at ? new Date(a.pushed_at).getTime() : 0
-      const bDate = b.pushed_at ? new Date(b.pushed_at).getTime() : 0
-      return bDate - aDate
-    })
+      const aDate = a.pushed_at ? new Date(a.pushed_at).getTime() : 0;
+      const bDate = b.pushed_at ? new Date(b.pushed_at).getTime() : 0;
+      return bDate - aDate;
+    });
 
   // Create chat mutation (real tRPC)
-  const utils = trpc.useUtils()
+  const utils = trpc.useUtils();
   const createChatMutation = trpc.chats.create.useMutation({
     onSuccess: (data) => {
       // Clear editor and images only on success
-      editorRef.current?.clear()
-      clearImages()
-      clearCurrentDraft()
-      utils.chats.list.invalidate()
-      setSelectedChatId(data.id)
+      editorRef.current?.clear();
+      clearImages();
+      clearCurrentDraft();
+      utils.chats.list.invalidate();
+      setSelectedChatId(data.id);
       // Track this chat and its first subchat as just created for typewriter effect
-      const ids = [data.id]
+      const ids = [data.id];
       if (data.subChats?.[0]?.id) {
-        ids.push(data.subChats[0].id)
+        ids.push(data.subChats[0].id);
       }
-      setJustCreatedIds((prev) => new Set([...prev, ...ids]))
+      setJustCreatedIds((prev) => new Set([...prev, ...ids]));
     },
     onError: (error) => {
-      toast.error(error.message)
+      toast.error(error.message);
     },
-  })
+  });
 
   // Open folder mutation for selecting a project
   const openFolder = trpc.projects.openFolder.useMutation({
@@ -558,18 +571,18 @@ export function NewChatForm({
         // Optimistically update the projects list cache to prevent "Select repo" flash
         // This ensures validatedProject can find the new project immediately
         utils.projects.list.setData(undefined, (oldData) => {
-          if (!oldData) return [project]
+          if (!oldData) return [project];
           // Check if project already exists (reopened existing project)
-          const exists = oldData.some((p) => p.id === project.id)
+          const exists = oldData.some((p) => p.id === project.id);
           if (exists) {
             // Update existing project's timestamp
             return oldData.map((p) =>
               p.id === project.id ? { ...p, updatedAt: project.updatedAt } : p,
-            )
+            );
           }
           // Add new project at the beginning
-          return [project, ...oldData]
-        })
+          return [project, ...oldData];
+        });
 
         setSelectedProject({
           id: project.id,
@@ -583,46 +596,46 @@ export function NewChatForm({
             | null,
           gitOwner: project.gitOwner,
           gitRepo: project.gitRepo,
-        })
+        });
       }
     },
-  })
+  });
 
   const handleOpenFolder = async () => {
-    await openFolder.mutateAsync()
-  }
+    await openFolder.mutateAsync();
+  };
 
   const getProviderIcon = (providerId: ProviderId, className?: string) => {
     switch (providerId) {
       case "claude":
-        return <ClaudeCodeIcon className={className} />
+        return <ClaudeCodeIcon className={className} />;
       case "codex":
-        return <CodexIcon className={className} />
+        return <CodexIcon className={className} />;
       default:
-        return <ClaudeCodeIcon className={className} />
+        return <ClaudeCodeIcon className={className} />;
     }
-  }
+  };
 
   const handleSend = useCallback(() => {
     // Get value from uncontrolled editor
-    const message = editorRef.current?.getValue() || ""
+    const message = editorRef.current?.getValue() || "";
 
     if (!message.trim() || !selectedProject) {
-      return
+      return;
     }
 
     // Build message parts array (images first, then text)
     type MessagePart =
       | { type: "text"; text: string }
       | {
-          type: "data-image"
+          type: "data-image";
           data: {
-            url: string
-            mediaType?: string
-            filename?: string
-            base64Data?: string
-          }
-        }
+            url: string;
+            mediaType?: string;
+            filename?: string;
+            base64Data?: string;
+          };
+        };
 
     const parts: MessagePart[] = images
       .filter((img) => !img.isLoading && img.url)
@@ -634,10 +647,10 @@ export function NewChatForm({
           filename: img.filename,
           base64Data: img.base64Data,
         },
-      }))
+      }));
 
     if (message.trim()) {
-      parts.push({ type: "text" as const, text: message.trim() })
+      parts.push({ type: "text" as const, text: message.trim() });
     }
 
     // Create chat with selected project, branch, and initial message
@@ -649,7 +662,7 @@ export function NewChatForm({
         workMode === "worktree" ? selectedBranch || undefined : undefined,
       useWorktree: workMode === "worktree",
       mode: isPlanMode ? "plan" : "agent",
-    })
+    });
     // Editor and images are cleared in onSuccess callback
   }, [
     selectedProject,
@@ -659,60 +672,60 @@ export function NewChatForm({
     workMode,
     images,
     isPlanMode,
-  ])
+  ]);
 
   const handleMentionSelect = useCallback((mention: FileMentionOption) => {
     // Category navigation - enter subpage instead of inserting mention
     if (mention.type === "category") {
       if (mention.id === "files") {
-        setShowingFilesList(true)
-        return
+        setShowingFilesList(true);
+        return;
       }
       if (mention.id === "skills") {
-        setShowingSkillsList(true)
-        return
+        setShowingSkillsList(true);
+        return;
       }
       if (mention.id === "agents") {
-        setShowingAgentsList(true)
-        return
+        setShowingAgentsList(true);
+        return;
       }
       if (mention.id === "tools") {
-        setShowingToolsList(true)
-        return
+        setShowingToolsList(true);
+        return;
       }
     }
 
     // Otherwise: insert mention as normal
-    editorRef.current?.insertMention(mention)
-    setShowMentionDropdown(false)
+    editorRef.current?.insertMention(mention);
+    setShowMentionDropdown(false);
     // Reset subpage state
-    setShowingFilesList(false)
-    setShowingSkillsList(false)
-    setShowingAgentsList(false)
-    setShowingToolsList(false)
-  }, [])
+    setShowingFilesList(false);
+    setShowingSkillsList(false);
+    setShowingAgentsList(false);
+    setShowingToolsList(false);
+  }, []);
 
   // Save draft to localStorage when content changes
   const handleContentChange = useCallback(
     (hasContent: boolean) => {
-      setHasContent(hasContent)
-      const text = editorRef.current?.getValue() || ""
+      setHasContent(hasContent);
+      const text = editorRef.current?.getValue() || "";
 
       // Skip if text hasn't changed
       if (text === lastSavedTextRef.current) {
-        return
+        return;
       }
-      lastSavedTextRef.current = text
+      lastSavedTextRef.current = text;
 
-      const globalDrafts = loadGlobalDrafts()
+      const globalDrafts = loadGlobalDrafts();
 
       if (text.trim() && validatedProject) {
         // If no current draft ID, create a new one
         if (!currentDraftIdRef.current) {
-          currentDraftIdRef.current = generateDraftId()
+          currentDraftIdRef.current = generateDraftId();
         }
 
-        const key = currentDraftIdRef.current
+        const key = currentDraftIdRef.current;
         globalDrafts[key] = {
           text,
           updatedAt: Date.now(),
@@ -724,155 +737,155 @@ export function NewChatForm({
             gitRepo: validatedProject.gitRepo,
             gitProvider: validatedProject.gitProvider,
           },
-        }
-        saveGlobalDrafts(globalDrafts)
+        };
+        saveGlobalDrafts(globalDrafts);
       } else if (currentDraftIdRef.current) {
         // Text is empty - delete the current draft
-        deleteNewChatDraft(currentDraftIdRef.current)
-        currentDraftIdRef.current = null
+        deleteNewChatDraft(currentDraftIdRef.current);
+        currentDraftIdRef.current = null;
       }
     },
     [validatedProject],
-  )
+  );
 
   // Clear current draft when chat is created
   const clearCurrentDraft = useCallback(() => {
-    if (!currentDraftIdRef.current) return
+    if (!currentDraftIdRef.current) return;
 
-    deleteNewChatDraft(currentDraftIdRef.current)
-    currentDraftIdRef.current = null
-    setSelectedDraftId(null)
-  }, [setSelectedDraftId])
+    deleteNewChatDraft(currentDraftIdRef.current);
+    currentDraftIdRef.current = null;
+    setSelectedDraftId(null);
+  }, [setSelectedDraftId]);
 
   // Memoized callbacks to prevent re-renders
   const handleMentionTrigger = useCallback(
     ({ searchText, rect }: { searchText: string; rect: DOMRect }) => {
       if (validatedProject) {
-        setMentionSearchText(searchText)
-        setMentionPosition({ top: rect.top, left: rect.left })
+        setMentionSearchText(searchText);
+        setMentionPosition({ top: rect.top, left: rect.left });
         // Reset subpage state when opening dropdown
-        setShowingFilesList(false)
-        setShowingSkillsList(false)
-        setShowingAgentsList(false)
-        setShowingToolsList(false)
-        setShowMentionDropdown(true)
+        setShowingFilesList(false);
+        setShowingSkillsList(false);
+        setShowingAgentsList(false);
+        setShowingToolsList(false);
+        setShowMentionDropdown(true);
       }
     },
     [validatedProject],
-  )
+  );
 
   const handleCloseTrigger = useCallback(() => {
-    setShowMentionDropdown(false)
+    setShowMentionDropdown(false);
     // Reset subpage state when closing
-    setShowingFilesList(false)
-    setShowingSkillsList(false)
-    setShowingAgentsList(false)
-    setShowingToolsList(false)
-  }, [])
+    setShowingFilesList(false);
+    setShowingSkillsList(false);
+    setShowingAgentsList(false);
+    setShowingToolsList(false);
+  }, []);
 
   // Slash command handlers
   const handleSlashTrigger = useCallback(
     ({ searchText, rect }: { searchText: string; rect: DOMRect }) => {
-      setSlashSearchText(searchText)
-      setSlashPosition({ top: rect.top, left: rect.left })
-      setShowSlashDropdown(true)
+      setSlashSearchText(searchText);
+      setSlashPosition({ top: rect.top, left: rect.left });
+      setShowSlashDropdown(true);
     },
     [],
-  )
+  );
 
   const handleCloseSlashTrigger = useCallback(() => {
-    setShowSlashDropdown(false)
-  }, [])
+    setShowSlashDropdown(false);
+  }, []);
 
   const handleSlashSelect = useCallback(
     (command: SlashCommandOption) => {
       // Clear the slash command text from editor
-      editorRef.current?.clearSlashCommand()
-      setShowSlashDropdown(false)
+      editorRef.current?.clearSlashCommand();
+      setShowSlashDropdown(false);
 
       // Handle builtin commands
       if (command.category === "builtin") {
         switch (command.name) {
           case "clear":
-            editorRef.current?.clear()
-            break
+            editorRef.current?.clear();
+            break;
           case "plan":
             if (!isPlanMode) {
-              setIsPlanMode(true)
+              setIsPlanMode(true);
             }
-            break
+            break;
           case "agent":
             if (isPlanMode) {
-              setIsPlanMode(false)
+              setIsPlanMode(false);
             }
-            break
+            break;
           // Prompt-based commands - auto-send to agent
           case "review":
           case "pr-comments":
           case "release-notes":
           case "security-review": {
             const prompt =
-              COMMAND_PROMPTS[command.name as keyof typeof COMMAND_PROMPTS]
+              COMMAND_PROMPTS[command.name as keyof typeof COMMAND_PROMPTS];
             if (prompt) {
-              editorRef.current?.setValue(prompt)
+              editorRef.current?.setValue(prompt);
               // Auto-send the prompt to agent
-              setTimeout(() => handleSend(), 0)
+              setTimeout(() => handleSend(), 0);
             }
-            break
+            break;
           }
         }
-        return
+        return;
       }
 
       // Handle repository commands - auto-send to agent
       if (command.prompt) {
-        editorRef.current?.setValue(command.prompt)
-        setTimeout(() => handleSend(), 0)
+        editorRef.current?.setValue(command.prompt);
+        setTimeout(() => handleSend(), 0);
       }
     },
     [isPlanMode, setIsPlanMode, handleSend],
-  )
+  );
 
   // Paste handler for images and plain text
   // Uses async text insertion to prevent UI freeze with large text
   const handlePaste = useCallback(
     (e: React.ClipboardEvent) => handlePasteEvent(e, handleAddAttachments),
     [handleAddAttachments],
-  )
+  );
 
   // Drag and drop handlers
-  const [isDragOver, setIsDragOver] = useState(false)
+  const [isDragOver, setIsDragOver] = useState(false);
 
   // Focus state for ring
-  const [isFocused, setIsFocused] = useState(false)
+  const [isFocused, setIsFocused] = useState(false);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragOver(true)
-  }, [])
+    e.preventDefault();
+    setIsDragOver(true);
+  }, []);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragOver(false)
-  }, [])
+    e.preventDefault();
+    setIsDragOver(false);
+  }, []);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
-      e.preventDefault()
-      setIsDragOver(false)
+      e.preventDefault();
+      setIsDragOver(false);
       const files = Array.from(e.dataTransfer.files).filter((f) =>
         f.type.startsWith("image/"),
-      )
-      handleAddAttachments(files)
+      );
+      handleAddAttachments(files);
       // Focus after state update - use double rAF to wait for React render
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          editorRef.current?.focus()
-        })
-      })
+          editorRef.current?.focus();
+        });
+      });
     },
     [handleAddAttachments],
-  )
+  );
 
   // Context items for images
   const contextItems =
@@ -886,7 +899,7 @@ export function NewChatForm({
               id: img.id,
               filename: img.filename,
               url: img.url,
-            }))
+            }));
 
           return images.map((img, idx) => (
             <AgentImageItem
@@ -899,10 +912,10 @@ export function NewChatForm({
               allImages={allImages}
               imageIndex={idx}
             />
-          ))
+          ));
         })()}
       </div>
-    ) : null
+    ) : null;
 
   // Handle container click to focus editor
   const handleContainerClick = useCallback((e: React.MouseEvent) => {
@@ -910,9 +923,9 @@ export function NewChatForm({
       e.target === e.currentTarget ||
       !(e.target as HTMLElement).closest("button, [contenteditable]")
     ) {
-      editorRef.current?.focus()
+      editorRef.current?.focus();
     }
-  }, [])
+  }, []);
 
   return (
     <div className="flex h-full flex-col">
@@ -979,7 +992,9 @@ export function NewChatForm({
                   className={cn(
                     "border bg-input-background relative z-10 p-2 rounded-sm transition-[border-color] duration-150",
                     isDragOver && "border-dashed border-primary/50",
-                    isFocused && !isDragOver && "border-dashed border-foreground/30",
+                    isFocused &&
+                      !isDragOver &&
+                      "border-dashed border-foreground/30",
                   )}
                   maxHeight={240}
                   onSubmit={handleSend}
@@ -1013,14 +1028,14 @@ export function NewChatForm({
                       <DropdownMenu
                         open={modeDropdownOpen}
                         onOpenChange={(open) => {
-                          setModeDropdownOpen(open)
+                          setModeDropdownOpen(open);
                           if (!open) {
                             if (tooltipTimeoutRef.current) {
-                              clearTimeout(tooltipTimeoutRef.current)
-                              tooltipTimeoutRef.current = null
+                              clearTimeout(tooltipTimeoutRef.current);
+                              tooltipTimeoutRef.current = null;
                             }
-                            setModeTooltip(null)
-                            hasShownTooltipRef.current = false
+                            setModeTooltip(null);
+                            hasShownTooltipRef.current = false;
                           }
                         }}
                       >
@@ -1043,21 +1058,21 @@ export function NewChatForm({
                             onClick={() => {
                               // Clear tooltip before closing dropdown (onMouseLeave won't fire)
                               if (tooltipTimeoutRef.current) {
-                                clearTimeout(tooltipTimeoutRef.current)
-                                tooltipTimeoutRef.current = null
+                                clearTimeout(tooltipTimeoutRef.current);
+                                tooltipTimeoutRef.current = null;
                               }
-                              setModeTooltip(null)
-                              setIsPlanMode(false)
-                              setModeDropdownOpen(false)
+                              setModeTooltip(null);
+                              setIsPlanMode(false);
+                              setModeDropdownOpen(false);
                             }}
                             className="justify-between gap-2"
                             onMouseEnter={(e) => {
                               if (tooltipTimeoutRef.current) {
-                                clearTimeout(tooltipTimeoutRef.current)
-                                tooltipTimeoutRef.current = null
+                                clearTimeout(tooltipTimeoutRef.current);
+                                tooltipTimeoutRef.current = null;
                               }
                               const rect =
-                                e.currentTarget.getBoundingClientRect()
+                                e.currentTarget.getBoundingClientRect();
                               const showTooltip = () => {
                                 setModeTooltip({
                                   visible: true,
@@ -1066,25 +1081,25 @@ export function NewChatForm({
                                     left: rect.right + 8,
                                   },
                                   mode: "agent",
-                                })
-                                hasShownTooltipRef.current = true
-                                tooltipTimeoutRef.current = null
-                              }
+                                });
+                                hasShownTooltipRef.current = true;
+                                tooltipTimeoutRef.current = null;
+                              };
                               if (hasShownTooltipRef.current) {
-                                showTooltip()
+                                showTooltip();
                               } else {
                                 tooltipTimeoutRef.current = setTimeout(
                                   showTooltip,
                                   1000,
-                                )
+                                );
                               }
                             }}
                             onMouseLeave={() => {
                               if (tooltipTimeoutRef.current) {
-                                clearTimeout(tooltipTimeoutRef.current)
-                                tooltipTimeoutRef.current = null
+                                clearTimeout(tooltipTimeoutRef.current);
+                                tooltipTimeoutRef.current = null;
                               }
-                              setModeTooltip(null)
+                              setModeTooltip(null);
                             }}
                           >
                             <div className="flex items-center gap-2">
@@ -1099,20 +1114,21 @@ export function NewChatForm({
                             onClick={() => {
                               // Clear tooltip before closing dropdown (onMouseLeave won't fire)
                               if (tooltipTimeoutRef.current) {
-                                clearTimeout(tooltipTimeoutRef.current)
-                                tooltipTimeoutRef.current = null
+                                clearTimeout(tooltipTimeoutRef.current);
+                                tooltipTimeoutRef.current = null;
                               }
-                              setModeTooltip(null)
-                              setIsPlanMode(true)
-                              setModeDropdownOpen(false)
+                              setModeTooltip(null);
+                              setIsPlanMode(true);
+                              setModeDropdownOpen(false);
                             }}
                             className="justify-between gap-2"
                             onMouseEnter={(e) => {
                               if (tooltipTimeoutRef.current) {
-                                clearTimeout(tooltipTimeoutRef.current)
-                                tooltipTimeoutRef.current = null
+                                clearTimeout(tooltipTimeoutRef.current);
+                                tooltipTimeoutRef.current = null;
                               }
-                              const rect = e.currentTarget.getBoundingClientRect()
+                              const rect =
+                                e.currentTarget.getBoundingClientRect();
                               const showTooltip = () => {
                                 setModeTooltip({
                                   visible: true,
@@ -1121,25 +1137,25 @@ export function NewChatForm({
                                     left: rect.right + 8,
                                   },
                                   mode: "plan",
-                                })
-                                hasShownTooltipRef.current = true
-                                tooltipTimeoutRef.current = null
-                              }
+                                });
+                                hasShownTooltipRef.current = true;
+                                tooltipTimeoutRef.current = null;
+                              };
                               if (hasShownTooltipRef.current) {
-                                showTooltip()
+                                showTooltip();
                               } else {
                                 tooltipTimeoutRef.current = setTimeout(
                                   showTooltip,
                                   1000,
-                                )
+                                );
                               }
                             }}
                             onMouseLeave={() => {
                               if (tooltipTimeoutRef.current) {
-                                clearTimeout(tooltipTimeoutRef.current)
-                                tooltipTimeoutRef.current = null
+                                clearTimeout(tooltipTimeoutRef.current);
+                                tooltipTimeoutRef.current = null;
                               }
-                              setModeTooltip(null)
+                              setModeTooltip(null);
                             }}
                           >
                             <div className="flex items-center gap-2">
@@ -1192,7 +1208,7 @@ export function NewChatForm({
                           className="w-[180px]"
                         >
                           {providerModels.map((model) => {
-                            const isSelected = currentModelId === model.id
+                            const isSelected = currentModelId === model.id;
                             return (
                               <DropdownMenuItem
                                 key={model.id}
@@ -1200,19 +1216,22 @@ export function NewChatForm({
                                   setModelByProvider({
                                     ...modelByProvider,
                                     [defaultProvider]: model.id,
-                                  })
+                                  });
                                 }}
                                 className="gap-2 justify-between"
                               >
                                 <div className="flex items-center gap-1.5">
-                                  {getProviderIcon(defaultProvider, "h-3.5 w-3.5 text-muted-foreground shrink-0")}
+                                  {getProviderIcon(
+                                    defaultProvider,
+                                    "h-3.5 w-3.5 text-muted-foreground shrink-0",
+                                  )}
                                   <span>{model.displayName || model.name}</span>
                                 </div>
                                 {isSelected && (
                                   <CheckIcon className="h-3.5 w-3.5 shrink-0" />
                                 )}
                               </DropdownMenuItem>
-                            )
+                            );
                           })}
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -1227,9 +1246,9 @@ export function NewChatForm({
                         accept="image/jpeg,image/png"
                         multiple
                         onChange={(e) => {
-                          const files = Array.from(e.target.files || [])
-                          handleAddAttachments(files)
-                          e.target.value = "" // Reset to allow same file selection
+                          const files = Array.from(e.target.files || []);
+                          handleAddAttachments(files);
+                          e.target.value = ""; // Reset to allow same file selection
                         }}
                       />
                       {/* Attachment button */}
@@ -1278,9 +1297,9 @@ export function NewChatForm({
                       open={branchPopoverOpen}
                       onOpenChange={(open) => {
                         if (!open) {
-                          setBranchSearch("") // Clear search on close
+                          setBranchSearch(""); // Clear search on close
                         }
-                        setBranchPopoverOpen(open)
+                        setBranchPopoverOpen(open);
                       }}
                     >
                       <PopoverTrigger asChild>
@@ -1307,17 +1326,16 @@ export function NewChatForm({
                             value={branchSearch}
                             onChange={(e) => setBranchSearch(e.target.value)}
                             className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                            autoFocus
                           />
                           <Button
                             size="sm"
                             variant="ghost"
                             className="h-6 px-1.5 flex items-center gap-1 text-xs shrink-0"
                             onClick={(e) => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              setCreateBranchDialogOpen(true)
-                              setBranchPopoverOpen(false)
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setCreateBranchDialogOpen(true);
+                              setBranchPopoverOpen(false);
                             }}
                           >
                             <Plus className="h-3 w-3" />
@@ -1352,17 +1370,17 @@ export function NewChatForm({
                                 .getVirtualItems()
                                 .map((virtualItem) => {
                                   const branch =
-                                    filteredBranches[virtualItem.index]
+                                    filteredBranches[virtualItem.index];
                                   const isSelected =
                                     selectedBranch === branch.name ||
-                                    (!selectedBranch && branch.isDefault)
+                                    (!selectedBranch && branch.isDefault);
                                   return (
                                     <button
                                       key={branch.name}
                                       onClick={() => {
-                                        setSelectedBranch(branch.name)
-                                        setBranchPopoverOpen(false)
-                                        setBranchSearch("")
+                                        setSelectedBranch(branch.name);
+                                        setBranchPopoverOpen(false);
+                                        setBranchSearch("");
                                       }}
                                       className={cn(
                                         "flex items-center gap-1.5 w-[calc(100%-8px)] mx-1 px-1.5 text-sm text-left absolute left-0 top-0 rounded-md cursor-default select-none outline-none transition-colors",
@@ -1395,7 +1413,7 @@ export function NewChatForm({
                                         <CheckIcon className="h-4 w-4 shrink-0 ml-auto" />
                                       )}
                                     </button>
-                                  )
+                                  );
                                 })}
                             </div>
                           </div>
@@ -1415,7 +1433,7 @@ export function NewChatForm({
                         branchesQuery.data?.defaultBranch || "main"
                       }
                       onBranchCreated={(branchName) => {
-                        setSelectedBranch(branchName)
+                        setSelectedBranch(branchName);
                       }}
                     />
                   )}
@@ -1426,12 +1444,12 @@ export function NewChatForm({
                 <AgentsFileMention
                   isOpen={showMentionDropdown && !!validatedProject}
                   onClose={() => {
-                    setShowMentionDropdown(false)
+                    setShowMentionDropdown(false);
                     // Reset subpage state when dropdown closes
-                    setShowingFilesList(false)
-                    setShowingSkillsList(false)
-                    setShowingAgentsList(false)
-                    setShowingToolsList(false)
+                    setShowingFilesList(false);
+                    setShowingSkillsList(false);
+                    setShowingAgentsList(false);
+                    setShowingToolsList(false);
                   }}
                   onSelect={handleMentionSelect}
                   searchText={mentionSearchText}
@@ -1461,5 +1479,5 @@ export function NewChatForm({
         </div>
       </div>
     </div>
-  )
+  );
 }

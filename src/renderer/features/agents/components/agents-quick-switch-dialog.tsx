@@ -1,24 +1,34 @@
-"use client"
+"use client";
 
-import { useMemo } from "react"
-import { AnimatePresence } from "motion/react"
-import { createPortal } from "react-dom"
-import { useAtomValue } from "jotai"
-import { loadingSubChatsAtom } from "../atoms"
-import { AgentChatCard } from "./agent-chat-card"
+import { useAtomValue } from "jotai";
+import { AnimatePresence } from "motion/react";
+import { useMemo } from "react";
+import { createPortal } from "react-dom";
+import { loadingSubChatsAtom } from "../atoms";
+import { AgentChatCard } from "./agent-chat-card";
 
 interface AgentsQuickSwitchDialogProps {
-  isOpen: boolean
+  isOpen: boolean;
   chats: Array<{
-    id: string
-    name: string
-    meta: any
-    sandbox_id: string | null
-    updated_at: Date
-    projectId: string
-  }>
-  selectedIndex: number
-  projectsMap: Map<string, { gitOwner?: string | null; gitProvider?: string | null; gitRepo?: string | null; name: string }>
+    id: string;
+    name: string | null;
+    projectId: string;
+    updatedAt?: Date | null;
+    // Legacy fields - kept for compatibility
+    meta?: unknown;
+    sandbox_id?: string | null;
+    updated_at?: Date;
+  }>;
+  selectedIndex: number;
+  projectsMap: Map<
+    string,
+    {
+      gitOwner?: string | null;
+      gitProvider?: string | null;
+      gitRepo?: string | null;
+      name: string;
+    }
+  >;
 }
 
 export function AgentsQuickSwitchDialog({
@@ -27,14 +37,14 @@ export function AgentsQuickSwitchDialog({
   selectedIndex,
   projectsMap,
 }: AgentsQuickSwitchDialogProps) {
-  if (typeof window === "undefined") return null
+  if (typeof window === "undefined") return null;
 
   // Derive loading parent chat IDs from loadingSubChats Map
-  const loadingSubChats = useAtomValue(loadingSubChatsAtom)
+  const loadingSubChats = useAtomValue(loadingSubChatsAtom);
   const loadingChatIds = useMemo(
     () => new Set([...loadingSubChats.values()]),
     [loadingSubChats],
-  )
+  );
 
   return createPortal(
     <AnimatePresence>
@@ -63,9 +73,9 @@ export function AgentsQuickSwitchDialog({
                     }}
                   >
                     {chats.map((chat, index) => {
-                      const isSelected = index === selectedIndex
-                      const isLoading = loadingChatIds.has(chat.id)
-                      const project = projectsMap.get(chat.projectId)
+                      const isSelected = index === selectedIndex;
+                      const isLoading = loadingChatIds.has(chat.id);
+                      const project = projectsMap.get(chat.projectId);
 
                       return (
                         <AgentChatCard
@@ -78,7 +88,7 @@ export function AgentsQuickSwitchDialog({
                           gitProvider={project?.gitProvider}
                           repoName={project?.gitRepo || project?.name}
                         />
-                      )
+                      );
                     })}
                   </div>
                 )}
@@ -89,5 +99,5 @@ export function AgentsQuickSwitchDialog({
       )}
     </AnimatePresence>,
     document.body,
-  )
+  );
 }

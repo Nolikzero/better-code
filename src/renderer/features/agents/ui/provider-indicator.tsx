@@ -1,27 +1,26 @@
-"use client"
+"use client";
 
-import { useAtomValue } from "jotai"
-import { memo, useMemo } from "react"
-import { Button } from "../../../components/ui/button"
+import { useAtomValue } from "jotai";
+import { memo, useMemo } from "react";
+import { Button } from "../../../components/ui/button";
+import { ClaudeCodeIcon, CodexIcon } from "../../../components/ui/icons";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "../../../components/ui/tooltip"
-import { ClaudeCodeIcon, CodexIcon } from "../../../components/ui/icons"
+} from "../../../components/ui/tooltip";
 import {
-  defaultProviderIdAtom,
-  chatProviderOverridesAtom,
-  lastSelectedModelByProviderAtom,
   PROVIDER_INFO,
   PROVIDER_MODELS,
-  type ProviderId,
-} from "../../../lib/atoms"
-import { cn } from "../../../lib/utils"
+  chatProviderOverridesAtom,
+  defaultProviderIdAtom,
+  lastSelectedModelByProviderAtom,
+} from "../../../lib/atoms";
+import { cn } from "../../../lib/utils";
 
 interface ProviderIndicatorProps {
-  chatId: string
-  className?: string
+  chatId: string;
+  className?: string;
 }
 
 /**
@@ -34,26 +33,27 @@ export const ProviderIndicator = memo(function ProviderIndicator({
   chatId,
   className,
 }: ProviderIndicatorProps) {
-  const defaultProvider = useAtomValue(defaultProviderIdAtom)
-  const chatOverrides = useAtomValue(chatProviderOverridesAtom)
-  const modelsByProvider = useAtomValue(lastSelectedModelByProviderAtom)
+  const defaultProvider = useAtomValue(defaultProviderIdAtom);
+  const chatOverrides = useAtomValue(chatProviderOverridesAtom);
+  const modelsByProvider = useAtomValue(lastSelectedModelByProviderAtom);
 
   // Determine effective provider (per-chat override or global default)
   const effectiveProvider = useMemo(() => {
-    return chatOverrides[chatId] || defaultProvider
-  }, [chatOverrides, chatId, defaultProvider])
+    return chatOverrides[chatId] || defaultProvider;
+  }, [chatOverrides, chatId, defaultProvider]);
 
   // Get provider info
-  const providerInfo = PROVIDER_INFO[effectiveProvider]
-  const models = PROVIDER_MODELS[effectiveProvider]
-  const selectedModel = modelsByProvider[effectiveProvider]
-  const modelInfo = models?.find((m) => m.id === selectedModel)
+  const providerInfo = PROVIDER_INFO[effectiveProvider];
+  const models = PROVIDER_MODELS[effectiveProvider];
+  const selectedModel = modelsByProvider[effectiveProvider];
+  const modelInfo = models?.find((m) => m.id === selectedModel);
 
   // Get the appropriate icon
-  const ProviderIcon = effectiveProvider === "codex" ? CodexIcon : ClaudeCodeIcon
+  const ProviderIcon =
+    effectiveProvider === "codex" ? CodexIcon : ClaudeCodeIcon;
 
   // Check if this chat has an override
-  const hasOverride = chatId in chatOverrides
+  const hasOverride = chatId in chatOverrides;
 
   return (
     <Tooltip delayDuration={500}>
@@ -70,7 +70,10 @@ export const ProviderIndicator = memo(function ProviderIndicator({
           <ProviderIcon className="h-3.5 w-3.5" aria-hidden="true" />
           <span>{modelInfo?.displayName || selectedModel}</span>
           {hasOverride && (
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-500" aria-label="Custom provider" />
+            <span
+              className="w-1.5 h-1.5 rounded-full bg-blue-500"
+              aria-label="Custom provider"
+            />
           )}
         </Button>
       </TooltipTrigger>
@@ -88,5 +91,5 @@ export const ProviderIndicator = memo(function ProviderIndicator({
         </div>
       </TooltipContent>
     </Tooltip>
-  )
-})
+  );
+});

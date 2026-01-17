@@ -3,15 +3,15 @@
  * Centralized keyboard shortcut handling
  */
 
-import * as React from "react"
-import { useCallback, useMemo } from "react"
+import * as React from "react";
+import { useCallback, useMemo } from "react";
+import type { SettingsTab } from "../../../lib/atoms";
 import {
-  AgentActionContext,
   AGENT_ACTIONS,
+  type AgentActionContext,
   executeAgentAction,
   getAvailableAgentActions,
-} from "./agents-actions"
-import type { SettingsTab } from "../../../lib/atoms"
+} from "./agents-actions";
 
 // ============================================================================
 // HOTKEY MATCHING
@@ -22,36 +22,37 @@ import type { SettingsTab } from "../../../lib/atoms"
  * Supports: "?", "shift+?", "cmd+k", "cmd+shift+i"
  */
 function matchesHotkey(e: KeyboardEvent, hotkey: string): boolean {
-  const parts = hotkey.toLowerCase().split("+")
-  const key = parts[parts.length - 1]
-  const modifiers = parts.slice(0, -1)
+  const parts = hotkey.toLowerCase().split("+");
+  const key = parts[parts.length - 1];
+  const modifiers = parts.slice(0, -1);
 
-  const needsMeta = modifiers.includes("cmd") || modifiers.includes("meta")
-  const needsAlt = modifiers.includes("opt") || modifiers.includes("alt")
-  const needsCtrl = modifiers.includes("ctrl")
-  let needsShift = modifiers.includes("shift")
+  const needsMeta = modifiers.includes("cmd") || modifiers.includes("meta");
+  const needsAlt = modifiers.includes("opt") || modifiers.includes("alt");
+  const needsCtrl = modifiers.includes("ctrl");
+  let needsShift = modifiers.includes("shift");
 
   // "?" requires shift implicitly
   if (key === "?" && !modifiers.includes("shift")) {
-    needsShift = true
+    needsShift = true;
   }
 
-  if (needsMeta !== e.metaKey) return false
-  if (needsAlt !== e.altKey) return false
-  if (needsCtrl !== e.ctrlKey) return false
-  if (needsShift !== e.shiftKey) return false
+  if (needsMeta !== e.metaKey) return false;
+  if (needsAlt !== e.altKey) return false;
+  if (needsCtrl !== e.ctrlKey) return false;
+  if (needsShift !== e.shiftKey) return false;
 
-  const eventKey = e.key.toLowerCase()
-  const eventCode = e.code.toLowerCase()
+  const eventKey = e.key.toLowerCase();
+  const eventCode = e.code.toLowerCase();
 
-  if (eventKey === key) return true
-  if (key === "?" && eventKey === "?") return true
-  if (key === "/" && (eventKey === "/" || eventCode === "slash")) return true
-  if (key === "\\" && (eventKey === "\\" || eventCode === "backslash")) return true
-  if (key === "," && (eventKey === "," || eventCode === "comma")) return true
-  if (key.length === 1 && eventCode === `key${key}`) return true
+  if (eventKey === key) return true;
+  if (key === "?" && eventKey === "?") return true;
+  if (key === "/" && (eventKey === "/" || eventCode === "slash")) return true;
+  if (key === "\\" && (eventKey === "\\" || eventCode === "backslash"))
+    return true;
+  if (key === "," && (eventKey === "," || eventCode === "comma")) return true;
+  if (key.length === 1 && eventCode === `key${key}`) return true;
 
-  return false
+  return false;
 }
 
 // ============================================================================
@@ -59,21 +60,21 @@ function matchesHotkey(e: KeyboardEvent, hotkey: string): boolean {
 // ============================================================================
 
 export interface AgentsHotkeysManagerConfig {
-  setSelectedChatId?: (id: string | null) => void
-  setSidebarOpen?: (open: boolean | ((prev: boolean) => boolean)) => void
-  setSettingsDialogOpen?: (open: boolean) => void
-  setSettingsActiveTab?: (tab: SettingsTab) => void
-  setShortcutsDialogOpen?: (open: boolean) => void
-  selectedChatId?: string | null
+  setSelectedChatId?: (id: string | null) => void;
+  setSidebarOpen?: (open: boolean | ((prev: boolean) => boolean)) => void;
+  setSettingsDialogOpen?: (open: boolean) => void;
+  setSettingsActiveTab?: (tab: SettingsTab) => void;
+  setShortcutsDialogOpen?: (open: boolean) => void;
+  selectedChatId?: string | null;
 }
 
 export interface UseAgentsHotkeysOptions {
-  enabled?: boolean
-  preventDefault?: boolean
+  enabled?: boolean;
+  preventDefault?: boolean;
 }
 
 // Hotkeys that work even in inputs
-const GLOBAL_HOTKEYS = new Set(["open-shortcuts"])
+const GLOBAL_HOTKEYS = new Set(["open-shortcuts"]);
 
 // ============================================================================
 // HOTKEYS MANAGER HOOK
@@ -83,7 +84,7 @@ export function useAgentsHotkeys(
   config: AgentsHotkeysManagerConfig,
   options: UseAgentsHotkeysOptions = {},
 ) {
-  const { enabled = true, preventDefault = true } = options
+  const { enabled = true, preventDefault = true } = options;
 
   const createActionContext = useCallback(
     (): AgentActionContext => ({
@@ -102,37 +103,39 @@ export function useAgentsHotkeys(
       config.setShortcutsDialogOpen,
       config.selectedChatId,
     ],
-  )
+  );
 
   const handleHotkeyAction = useCallback(
     async (actionId: string) => {
-      const context = createActionContext()
-      const availableActions = getAvailableAgentActions(context)
-      const action = availableActions.find((a) => a.id === actionId)
+      const context = createActionContext();
+      const availableActions = getAvailableAgentActions(context);
+      const action = availableActions.find((a) => a.id === actionId);
 
-      if (!action) return
+      if (!action) return;
 
-      await executeAgentAction(actionId, context, "hotkey")
+      await executeAgentAction(actionId, context, "hotkey");
     },
     [createActionContext],
-  )
+  );
 
   // Listen for Cmd+N via IPC from main process (menu accelerator)
   React.useEffect(() => {
-    if (!enabled) return
-    if (!window.desktopApi?.onShortcutNewAgent) return
+    if (!enabled) return;
+    if (!window.desktopApi?.onShortcutNewAgent) return;
 
     const cleanup = window.desktopApi.onShortcutNewAgent(() => {
-      console.log("[Hotkey] Cmd+N received via IPC, executing create-new-agent")
-      handleHotkeyAction("create-new-agent")
-    })
+      console.log(
+        "[Hotkey] Cmd+N received via IPC, executing create-new-agent",
+      );
+      handleHotkeyAction("create-new-agent");
+    });
 
-    return cleanup
-  }, [enabled, handleHotkeyAction])
+    return cleanup;
+  }, [enabled, handleHotkeyAction]);
 
   // Direct listener for Cmd+\ - toggle sidebar
   React.useEffect(() => {
-    if (!enabled) return
+    if (!enabled) return;
 
     const handleToggleSidebar = (e: KeyboardEvent) => {
       if (
@@ -141,27 +144,28 @@ export function useAgentsHotkeys(
         !e.shiftKey &&
         !e.altKey
       ) {
-        e.preventDefault()
-        e.stopPropagation()
-        handleHotkeyAction("toggle-sidebar")
+        e.preventDefault();
+        e.stopPropagation();
+        handleHotkeyAction("toggle-sidebar");
       }
-    }
+    };
 
-    window.addEventListener("keydown", handleToggleSidebar, true)
-    return () => window.removeEventListener("keydown", handleToggleSidebar, true)
-  }, [enabled, handleHotkeyAction])
+    window.addEventListener("keydown", handleToggleSidebar, true);
+    return () =>
+      window.removeEventListener("keydown", handleToggleSidebar, true);
+  }, [enabled, handleHotkeyAction]);
 
   // Direct listener for ? - open shortcuts
   React.useEffect(() => {
-    if (!enabled) return
+    if (!enabled) return;
 
     const handleShortcuts = (e: KeyboardEvent) => {
-      const activeElement = document.activeElement
+      const activeElement = document.activeElement;
       const isInputFocused =
         activeElement instanceof HTMLInputElement ||
         activeElement instanceof HTMLTextAreaElement ||
         activeElement?.getAttribute("contenteditable") === "true" ||
-        activeElement?.closest('[contenteditable="true"]')
+        activeElement?.closest('[contenteditable="true"]');
 
       if (
         !isInputFocused &&
@@ -170,19 +174,19 @@ export function useAgentsHotkeys(
         !e.ctrlKey &&
         !e.altKey
       ) {
-        e.preventDefault()
-        e.stopPropagation()
-        handleHotkeyAction("open-shortcuts")
+        e.preventDefault();
+        e.stopPropagation();
+        handleHotkeyAction("open-shortcuts");
       }
-    }
+    };
 
-    window.addEventListener("keydown", handleShortcuts, true)
-    return () => window.removeEventListener("keydown", handleShortcuts, true)
-  }, [enabled, handleHotkeyAction])
+    window.addEventListener("keydown", handleShortcuts, true);
+    return () => window.removeEventListener("keydown", handleShortcuts, true);
+  }, [enabled, handleHotkeyAction]);
 
   // Direct listener for Cmd+, - open settings
   React.useEffect(() => {
-    if (!enabled) return
+    if (!enabled) return;
 
     const handleSettings = (e: KeyboardEvent) => {
       if (
@@ -191,15 +195,15 @@ export function useAgentsHotkeys(
         !e.shiftKey &&
         !e.altKey
       ) {
-        e.preventDefault()
-        e.stopPropagation()
-        handleHotkeyAction("open-settings")
+        e.preventDefault();
+        e.stopPropagation();
+        handleHotkeyAction("open-settings");
       }
-    }
+    };
 
-    window.addEventListener("keydown", handleSettings, true)
-    return () => window.removeEventListener("keydown", handleSettings, true)
-  }, [enabled, handleHotkeyAction])
+    window.addEventListener("keydown", handleSettings, true);
+    return () => window.removeEventListener("keydown", handleSettings, true);
+  }, [enabled, handleHotkeyAction]);
 
   // General hotkey handler for remaining actions
   const actionsWithHotkeys = useMemo(
@@ -213,64 +217,64 @@ export function useAgentsHotkeys(
           action.id !== "open-settings",
       ),
     [],
-  )
+  );
 
   const hotkeyMappings = useMemo(() => {
     const mappings: Array<{
-      actionId: string
-      hotkeys: string[]
-      isGlobal: boolean
-    }> = []
+      actionId: string;
+      hotkeys: string[];
+      isGlobal: boolean;
+    }> = [];
 
     for (const action of actionsWithHotkeys) {
-      if (!action.hotkey) continue
+      if (!action.hotkey) continue;
       const hotkeys = Array.isArray(action.hotkey)
         ? action.hotkey
-        : [action.hotkey]
-      const isGlobal = GLOBAL_HOTKEYS.has(action.id)
+        : [action.hotkey];
+      const isGlobal = GLOBAL_HOTKEYS.has(action.id);
       mappings.push({
         actionId: action.id,
         hotkeys: hotkeys.filter(Boolean) as string[],
         isGlobal,
-      })
+      });
     }
 
-    return mappings
-  }, [actionsWithHotkeys])
+    return mappings;
+  }, [actionsWithHotkeys]);
 
   React.useEffect(() => {
-    if (!enabled) return
+    if (!enabled) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement
+      const target = e.target as HTMLElement;
       const isInInput =
         target.tagName === "INPUT" ||
         target.tagName === "TEXTAREA" ||
-        target.isContentEditable
+        target.isContentEditable;
 
       for (const mapping of hotkeyMappings) {
-        if (isInInput && !mapping.isGlobal) continue
+        if (isInInput && !mapping.isGlobal) continue;
 
         for (const hotkey of mapping.hotkeys) {
           if (matchesHotkey(e, hotkey)) {
             if (preventDefault) {
-              e.preventDefault()
-              e.stopPropagation()
+              e.preventDefault();
+              e.stopPropagation();
             }
-            handleHotkeyAction(mapping.actionId)
-            return
+            handleHotkeyAction(mapping.actionId);
+            return;
           }
         }
       }
-    }
+    };
 
-    window.addEventListener("keydown", handleKeyDown, true)
-    return () => window.removeEventListener("keydown", handleKeyDown, true)
-  }, [enabled, preventDefault, hotkeyMappings, handleHotkeyAction])
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
+  }, [enabled, preventDefault, hotkeyMappings, handleHotkeyAction]);
 
   return {
     executeAction: handleHotkeyAction,
     getAvailableActions: () => getAvailableAgentActions(createActionContext()),
     createActionContext,
-  }
+  };
 }

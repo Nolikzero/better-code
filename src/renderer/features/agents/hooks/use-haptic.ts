@@ -1,6 +1,6 @@
-import { useCallback } from "react"
+import { useCallback } from "react";
 
-type HapticStyle = "light" | "medium" | "heavy"
+type HapticStyle = "light" | "medium" | "heavy";
 
 /**
  * Hook for triggering haptic feedback on supported devices (iOS Safari PWA).
@@ -16,15 +16,14 @@ export function useHaptic() {
   const trigger = useCallback((style: HapticStyle = "light") => {
     // Check if Vibration API is available
     if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-      const duration = style === "light" ? 10 : style === "medium" ? 20 : 30
+      const duration = style === "light" ? 10 : style === "medium" ? 20 : 30;
       try {
-        navigator.vibrate(duration)
+        navigator.vibrate(duration);
       } catch {
         // Silently fail if vibration is not allowed
       }
     }
-  }, [])
+  }, []);
 
-  return { trigger }
+  return { trigger };
 }
-

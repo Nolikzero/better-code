@@ -1,43 +1,43 @@
-"use client"
+"use client";
 
-import { useAtom } from "jotai"
-import { useState } from "react"
-import { Check, Copy, Terminal, X } from "lucide-react"
+import { useAtom } from "jotai";
+import { Check, Copy, Terminal, X } from "lucide-react";
+import { useState } from "react";
+import { pendingAuthRetryMessageAtom } from "../../features/agents/atoms";
+import { agentsLoginModalOpenAtom } from "../../lib/atoms";
+import { appStore } from "../../lib/jotai-store";
 import {
   AlertDialog,
-  AlertDialogContent,
   AlertDialogCancel,
-} from "../ui/alert-dialog"
-import { ClaudeCodeIcon } from "../ui/icons"
-import { Logo } from "../ui/logo"
-import { agentsLoginModalOpenAtom } from "../../lib/atoms"
-import { pendingAuthRetryMessageAtom } from "../../features/agents/atoms"
-import { appStore } from "../../lib/jotai-store"
+  AlertDialogContent,
+} from "../ui/alert-dialog";
+import { ClaudeCodeIcon } from "../ui/icons";
+import { Logo } from "../ui/logo";
 
 export function ClaudeLoginModal() {
-  const [open, setOpen] = useAtom(agentsLoginModalOpenAtom)
-  const [copied, setCopied] = useState(false)
+  const [open, setOpen] = useAtom(agentsLoginModalOpenAtom);
+  const [copied, setCopied] = useState(false);
 
   const handleCopyCommand = async () => {
-    await navigator.clipboard.writeText("claude login")
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
+    await navigator.clipboard.writeText("claude login");
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   // Clear pending retry when modal is dismissed
   const clearPendingRetry = () => {
-    const pending = appStore.get(pendingAuthRetryMessageAtom)
+    const pending = appStore.get(pendingAuthRetryMessageAtom);
     if (pending && !pending.readyToRetry) {
-      appStore.set(pendingAuthRetryMessageAtom, null)
+      appStore.set(pendingAuthRetryMessageAtom, null);
     }
-  }
+  };
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
-      clearPendingRetry()
+      clearPendingRetry();
     }
-    setOpen(newOpen)
-  }
+    setOpen(newOpen);
+  };
 
   return (
     <AlertDialog open={open} onOpenChange={handleOpenChange}>
@@ -87,11 +87,12 @@ export function ClaudeLoginModal() {
               )}
             </button>
             <p className="text-xs text-muted-foreground text-center">
-              After authenticating, close this dialog and try your message again.
+              After authenticating, close this dialog and try your message
+              again.
             </p>
           </div>
         </div>
       </AlertDialogContent>
     </AlertDialog>
-  )
+  );
 }

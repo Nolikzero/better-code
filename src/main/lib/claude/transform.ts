@@ -1,55 +1,64 @@
-import type { UIMessageChunk, MessageMetadata, MCPServerStatus, MCPServer } from "./types"
+import type {
+  MCPServer,
+  MCPServerStatus,
+  MessageMetadata,
+  UIMessageChunk,
+} from "./types";
 
 export function createTransformer() {
-  let textId: string | null = null
-  let textStarted = false
-  let started = false
-  let startTime: number | null = null
+  let textId: string | null = null;
+  let textStarted = false;
+  let started = false;
+  let startTime: number | null = null;
 
   // Track streaming tool calls
-  let currentToolCallId: string | null = null
-  let currentToolName: string | null = null
-  let accumulatedToolInput = ""
+  let currentToolCallId: string | null = null;
+  let currentToolName: string | null = null;
+  let accumulatedToolInput = "";
 
   // Track already emitted tool IDs to avoid duplicates
   // (tools can come via streaming AND in the final assistant message)
-  const emittedToolIds = new Set<string>()
+  const emittedToolIds = new Set<string>();
 
   // Track the last text block ID for final response marking
   // This is used to identify when there's a "final text" response after tools
-  let lastTextId: string | null = null
+  let lastTextId: string | null = null;
 
   // Track parent tool context for nested tools (e.g., Explore agent)
-  let currentParentToolUseId: string | null = null
+  let currentParentToolUseId: string | null = null;
 
   // Map original toolCallId -> composite toolCallId (for tool-result matching)
-  const toolIdMapping = new Map<string, string>()
+  const toolIdMapping = new Map<string, string>();
 
   // Track compacting system tool for matching status->boundary events
-  let lastCompactId: string | null = null
-  let compactCounter = 0
+  let lastCompactId: string | null = null;
+  let compactCounter = 0;
 
   // Track streaming thinking for Extended Thinking
-  let currentThinkingId: string | null = null
-  let accumulatedThinking = ""
-  let inThinkingBlock = false // Track if we're currently in a thinking block
+  let currentThinkingId: string | null = null;
+  let accumulatedThinking = "";
+  let inThinkingBlock = false; // Track if we're currently in a thinking block
 
   // Helper to create composite toolCallId: "parentId:childId" or just "childId"
-  const makeCompositeId = (originalId: string, parentId: string | null): string => {
-    if (parentId) return `${parentId}:${originalId}`
-    return originalId
-  }
+  const makeCompositeId = (
+    originalId: string,
+    parentId: string | null,
+  ): string => {
+    if (parentId) return `${parentId}:${originalId}`;
+    return originalId;
+  };
 
-  const genId = () => `text-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+  const genId = () =>
+    `text-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
   // Helper to end current text block
   function* endTextBlock(): Generator<UIMessageChunk> {
     if (textStarted && textId) {
-      yield { type: "text-end", id: textId }
+      yield { type: "text-end", id: textId };
       // Track the last text ID for final response marking
-      lastTextId = textId
-      textStarted = false
-      textId = null
+      lastTextId = textId;
+      textStarted = false;
+      textId = null;
     }
   }
 
@@ -57,168 +66,208 @@ export function createTransformer() {
   function* endToolInput(): Generator<UIMessageChunk> {
     if (currentToolCallId) {
       // Track this tool ID to avoid duplicates from assistant message
-      emittedToolIds.add(currentToolCallId)
-      
+      emittedToolIds.add(currentToolCallId);
+
       // Emit complete tool call with accumulated input
       yield {
         type: "tool-input-available",
         toolCallId: currentToolCallId,
         toolName: currentToolName || "unknown",
         input: accumulatedToolInput ? JSON.parse(accumulatedToolInput) : {},
-      }
-      currentToolCallId = null
-      currentToolName = null
-      accumulatedToolInput = ""
+      };
+      currentToolCallId = null;
+      currentToolName = null;
+      accumulatedToolInput = "";
     }
   }
 
   return function* transform(msg: any): Generator<UIMessageChunk> {
     // Debug: log all message types to understand what SDK sends
     if (msg.type === "system") {
-      console.log("[transform] SYSTEM message:", msg.subtype, msg)
+      console.log("[transform] SYSTEM message:", msg.subtype, msg);
     }
 
     // Track parent_tool_use_id for nested tools
     // Only update when explicitly present (don't reset on messages without it)
     if (msg.parent_tool_use_id !== undefined) {
-      currentParentToolUseId = msg.parent_tool_use_id
+      currentParentToolUseId = msg.parent_tool_use_id;
     }
 
     // Emit start once
     if (!started) {
-      started = true
-      startTime = Date.now()
-      yield { type: "start" }
-      yield { type: "start-step" }
+      started = true;
+      startTime = Date.now();
+      yield { type: "start" };
+      yield { type: "start-step" };
     }
 
     // Reset thinking state on new message start to prevent memory leaks
     if (msg.type === "stream_event" && msg.event?.type === "message_start") {
-      currentThinkingId = null
-      accumulatedThinking = ""
-      inThinkingBlock = false
+      currentThinkingId = null;
+      accumulatedThinking = "";
+      inThinkingBlock = false;
     }
 
     // ===== STREAMING EVENTS (token-by-token) =====
     if (msg.type === "stream_event") {
-      const event = msg.event
-      console.log("[transform] stream_event:", event?.type, "delta:", event?.delta?.type)
-      if (!event) return
+      const event = msg.event;
+      console.log(
+        "[transform] stream_event:",
+        event?.type,
+        "delta:",
+        event?.delta?.type,
+      );
+      if (!event) return;
 
       // Text block start
-      if (event.type === "content_block_start" && event.content_block?.type === "text") {
-        console.log("[transform] TEXT BLOCK START")
-        yield* endTextBlock()
-        yield* endToolInput()
-        textId = genId()
-        yield { type: "text-start", id: textId }
-        textStarted = true
-        console.log("[transform] textStarted set to TRUE, textId:", textId)
+      if (
+        event.type === "content_block_start" &&
+        event.content_block?.type === "text"
+      ) {
+        console.log("[transform] TEXT BLOCK START");
+        yield* endTextBlock();
+        yield* endToolInput();
+        textId = genId();
+        yield { type: "text-start", id: textId };
+        textStarted = true;
+        console.log("[transform] textStarted set to TRUE, textId:", textId);
       }
 
       // Text delta
-      if (event.type === "content_block_delta" && event.delta?.type === "text_delta") {
-        console.log("[transform] TEXT DELTA, textStarted:", textStarted, "delta:", event.delta.text?.slice(0, 20))
+      if (
+        event.type === "content_block_delta" &&
+        event.delta?.type === "text_delta"
+      ) {
+        console.log(
+          "[transform] TEXT DELTA, textStarted:",
+          textStarted,
+          "delta:",
+          event.delta.text?.slice(0, 20),
+        );
         if (!textStarted) {
-          yield* endToolInput()
-          textId = genId()
-          yield { type: "text-start", id: textId }
-          textStarted = true
+          yield* endToolInput();
+          textId = genId();
+          yield { type: "text-start", id: textId };
+          textStarted = true;
         }
-        yield { type: "text-delta", id: textId!, delta: event.delta.text || "" }
+        yield {
+          type: "text-delta",
+          id: textId!,
+          delta: event.delta.text || "",
+        };
       }
 
       // Content block stop
       if (event.type === "content_block_stop") {
-        console.log("[transform] CONTENT BLOCK STOP, textStarted:", textStarted)
+        console.log(
+          "[transform] CONTENT BLOCK STOP, textStarted:",
+          textStarted,
+        );
         if (textStarted) {
-          yield* endTextBlock()
-          console.log("[transform] after endTextBlock, textStarted:", textStarted)
+          yield* endTextBlock();
+          console.log(
+            "[transform] after endTextBlock, textStarted:",
+            textStarted,
+          );
         }
         if (currentToolCallId) {
-          yield* endToolInput()
+          yield* endToolInput();
         }
       }
 
       // Tool use start (streaming)
-      if (event.type === "content_block_start" && event.content_block?.type === "tool_use") {
-        yield* endTextBlock()
-        yield* endToolInput()
+      if (
+        event.type === "content_block_start" &&
+        event.content_block?.type === "tool_use"
+      ) {
+        yield* endTextBlock();
+        yield* endToolInput();
 
-        const originalId = event.content_block.id || genId()
-        currentToolCallId = makeCompositeId(originalId, currentParentToolUseId)
-        currentToolName = event.content_block.name || "unknown"
-        accumulatedToolInput = ""
+        const originalId = event.content_block.id || genId();
+        currentToolCallId = makeCompositeId(originalId, currentParentToolUseId);
+        currentToolName = event.content_block.name || "unknown";
+        accumulatedToolInput = "";
 
         // Store mapping for tool-result lookup
-        toolIdMapping.set(originalId, currentToolCallId)
+        toolIdMapping.set(originalId, currentToolCallId);
 
         // Emit tool-input-start for progressive UI
         yield {
           type: "tool-input-start",
           toolCallId: currentToolCallId,
-          toolName: currentToolName,
-        }
+          toolName: currentToolName as string, // Safe: just assigned on line 188
+        };
       }
 
       // Tool input delta
       if (event.delta?.type === "input_json_delta" && currentToolCallId) {
-        const partialJson = event.delta.partial_json || ""
-        accumulatedToolInput += partialJson
+        const partialJson = event.delta.partial_json || "";
+        accumulatedToolInput += partialJson;
 
         // Emit tool-input-delta for progressive UI
         yield {
           type: "tool-input-delta",
           toolCallId: currentToolCallId,
           inputTextDelta: partialJson,
-        }
+        };
       }
 
       // Thinking content block start (Extended Thinking)
-      if (event.type === "content_block_start" && event.content_block?.type === "thinking") {
-        currentThinkingId = `thinking-${Date.now()}`
-        accumulatedThinking = ""
-        inThinkingBlock = true
+      if (
+        event.type === "content_block_start" &&
+        event.content_block?.type === "thinking"
+      ) {
+        currentThinkingId = `thinking-${Date.now()}`;
+        accumulatedThinking = "";
+        inThinkingBlock = true;
         yield {
           type: "tool-input-start",
           toolCallId: currentThinkingId,
           toolName: "Thinking",
-        }
+        };
       }
 
       // Thinking/reasoning streaming - emit as tool-like chunks for UI
-      if (event.delta?.type === "thinking_delta" && currentThinkingId && inThinkingBlock) {
-        const thinkingText = String(event.delta.thinking || "")
-        
+      if (
+        event.delta?.type === "thinking_delta" &&
+        currentThinkingId &&
+        inThinkingBlock
+      ) {
+        const thinkingText = String(event.delta.thinking || "");
+
         // Accumulate and emit delta
-        accumulatedThinking += thinkingText
+        accumulatedThinking += thinkingText;
         yield {
           type: "tool-input-delta",
           toolCallId: currentThinkingId,
           inputTextDelta: thinkingText,
-        }
+        };
       }
-      
+
       // Thinking complete (content_block_stop while in thinking block)
-      if (event.type === "content_block_stop" && inThinkingBlock && currentThinkingId) {
+      if (
+        event.type === "content_block_stop" &&
+        inThinkingBlock &&
+        currentThinkingId
+      ) {
         // Emit the complete thinking tool
         yield {
           type: "tool-input-available",
           toolCallId: currentThinkingId,
           toolName: "Thinking",
           input: { text: accumulatedThinking },
-        }
+        };
         yield {
           type: "tool-output-available",
           toolCallId: currentThinkingId,
           output: { completed: true },
-        }
+        };
         // Track as emitted to skip duplicate from assistant message
-        emittedToolIds.add(currentThinkingId)
-        emittedToolIds.add("thinking-streamed") // Flag to skip complete block
-        currentThinkingId = null
-        accumulatedThinking = ""
-        inThinkingBlock = false
+        emittedToolIds.add(currentThinkingId);
+        emittedToolIds.add("thinking-streamed"); // Flag to skip complete block
+        currentThinkingId = null;
+        accumulatedThinking = "";
+        inThinkingBlock = false;
       }
     }
 
@@ -231,73 +280,85 @@ export function createTransformer() {
         if (block.type === "thinking" && block.thinking) {
           // Check if we already streamed this thinking block
           // We compare by checking if accumulated thinking matches
-          const wasStreamed = emittedToolIds.has("thinking-streamed")
-          
+          const wasStreamed = emittedToolIds.has("thinking-streamed");
+
           if (wasStreamed) {
-            continue
+            continue;
           }
-          
+
           // Emit as tool-input-available with special "Thinking" tool name
           // This allows the UI to render it like other tools
-          const thinkingId = genId()
+          const thinkingId = genId();
           yield {
             type: "tool-input-available",
             toolCallId: thinkingId,
             toolName: "Thinking",
             input: { text: block.thinking },
-          }
+          };
           // Immediately mark as complete
           yield {
             type: "tool-output-available",
             toolCallId: thinkingId,
             output: { completed: true },
-          }
+          };
         }
 
         if (block.type === "text") {
-          console.log("[transform] ASSISTANT TEXT block, textStarted:", textStarted, "text length:", block.text?.length)
-          yield* endToolInput()
+          console.log(
+            "[transform] ASSISTANT TEXT block, textStarted:",
+            textStarted,
+            "text length:",
+            block.text?.length,
+          );
+          yield* endToolInput();
 
           // Only emit text if we're NOT already streaming (textStarted = false)
           // When includePartialMessages is true, text comes via stream_event
           if (!textStarted) {
-            console.log("[transform] EMITTING assistant text (textStarted was false)")
-            textId = genId()
-            yield { type: "text-start", id: textId }
-            yield { type: "text-delta", id: textId, delta: block.text }
-            yield { type: "text-end", id: textId }
+            console.log(
+              "[transform] EMITTING assistant text (textStarted was false)",
+            );
+            textId = genId();
+            yield { type: "text-start", id: textId };
+            yield { type: "text-delta", id: textId, delta: block.text };
+            yield { type: "text-end", id: textId };
             // Track the last text ID for final response marking
-            lastTextId = textId
-            textId = null
+            lastTextId = textId;
+            textId = null;
           } else {
-            console.log("[transform] SKIPPING assistant text (textStarted is true)")
+            console.log(
+              "[transform] SKIPPING assistant text (textStarted is true)",
+            );
           }
           // If textStarted is true, we're mid-stream - skip this duplicate
         }
 
         if (block.type === "tool_use") {
-          yield* endTextBlock()
-          yield* endToolInput()
+          yield* endTextBlock();
+          yield* endToolInput();
 
           // Skip if already emitted via streaming
           if (emittedToolIds.has(block.id)) {
-            console.log("[transform] SKIPPING duplicate tool_use (already emitted via streaming):", block.id)
-            continue
+            console.log(
+              "[transform] SKIPPING duplicate tool_use (already emitted via streaming):",
+              block.id,
+            );
+            continue;
           }
 
-          emittedToolIds.add(block.id)
+          emittedToolIds.add(block.id);
 
-          const compositeId = makeCompositeId(block.id, currentParentToolUseId)
+          const compositeId = makeCompositeId(block.id, currentParentToolUseId);
 
           // Store mapping for tool-result lookup
-          toolIdMapping.set(block.id, compositeId)
+          toolIdMapping.set(block.id, compositeId);
 
           yield {
             type: "tool-input-available",
             toolCallId: compositeId,
             toolName: block.name,
             input: block.input,
-          }
+          };
         }
       }
     }
@@ -307,20 +368,21 @@ export function createTransformer() {
       for (const block of msg.message.content) {
         if (block.type === "tool_result") {
           // Lookup composite ID from mapping, fallback to original
-          const compositeId = toolIdMapping.get(block.tool_use_id) || block.tool_use_id
+          const compositeId =
+            toolIdMapping.get(block.tool_use_id) || block.tool_use_id;
 
           if (block.is_error) {
             yield {
               type: "tool-output-error",
               toolCallId: compositeId,
               errorText: String(block.content),
-            }
+            };
           } else {
             yield {
               type: "tool-output-available",
               toolCallId: compositeId,
               output: msg.tool_use_result || block.content,
-            }
+            };
           }
         }
       }
@@ -335,10 +397,15 @@ export function createTransformer() {
           mcp_servers: msg.mcp_servers,
           plugins: msg.plugins,
           skills: msg.skills?.length,
-        })
+        });
         // Map MCP servers with validated status type and additional info
         const mcpServers: MCPServer[] = (msg.mcp_servers || []).map(
-          (s: { name: string; status: string; serverInfo?: { name: string; version: string }; error?: string }) => ({
+          (s: {
+            name: string;
+            status: string;
+            serverInfo?: { name: string; version: string };
+            error?: string;
+          }) => ({
             name: s.name,
             status: (["connected", "failed", "pending", "needs-auth"].includes(
               s.status,
@@ -348,25 +415,25 @@ export function createTransformer() {
             ...(s.serverInfo && { serverInfo: s.serverInfo }),
             ...(s.error && { error: s.error }),
           }),
-        )
+        );
         yield {
           type: "session-init",
           tools: msg.tools || [],
           mcpServers,
           plugins: msg.plugins || [],
           skills: msg.skills || [],
-        }
+        };
       }
 
       // Compacting status - show as a tool
       if (msg.subtype === "status" && msg.status === "compacting") {
         // Create unique ID and save for matching with boundary event
-        lastCompactId = `compact-${Date.now()}-${compactCounter++}`
+        lastCompactId = `compact-${Date.now()}-${compactCounter++}`;
         yield {
           type: "system-Compact",
           toolCallId: lastCompactId,
           state: "input-streaming",
-        }
+        };
       }
 
       // Compact boundary - mark the compacting tool as complete
@@ -375,33 +442,39 @@ export function createTransformer() {
           type: "system-Compact",
           toolCallId: lastCompactId,
           state: "output-available",
-        }
-        lastCompactId = null // Clear for next compacting cycle
+        };
+        lastCompactId = null; // Clear for next compacting cycle
       }
     }
 
     // ===== RESULT (final) =====
     if (msg.type === "result") {
-      console.log("[transform] RESULT message, textStarted:", textStarted, "lastTextId:", lastTextId)
-      yield* endTextBlock()
-      yield* endToolInput()
+      console.log(
+        "[transform] RESULT message, textStarted:",
+        textStarted,
+        "lastTextId:",
+        lastTextId,
+      );
+      yield* endTextBlock();
+      yield* endToolInput();
 
-      const inputTokens = msg.usage?.input_tokens
-      const outputTokens = msg.usage?.output_tokens
+      const inputTokens = msg.usage?.input_tokens;
+      const outputTokens = msg.usage?.output_tokens;
       const metadata: MessageMetadata = {
         sessionId: msg.session_id,
         inputTokens,
         outputTokens,
-        totalTokens: inputTokens && outputTokens ? inputTokens + outputTokens : undefined,
+        totalTokens:
+          inputTokens && outputTokens ? inputTokens + outputTokens : undefined,
         totalCostUsd: msg.total_cost_usd,
         durationMs: startTime ? Date.now() - startTime : undefined,
         resultSubtype: msg.subtype || "success",
         // Include finalTextId for collapsing tools when there's a final response
         finalTextId: lastTextId || undefined,
-      }
-      yield { type: "message-metadata", messageMetadata: metadata }
-      yield { type: "finish-step" }
-      yield { type: "finish", messageMetadata: metadata }
+      };
+      yield { type: "message-metadata", messageMetadata: metadata };
+      yield { type: "finish-step" };
+      yield { type: "finish", messageMetadata: metadata };
     }
-  }
+  };
 }

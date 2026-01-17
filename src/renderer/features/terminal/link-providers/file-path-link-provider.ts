@@ -1,5 +1,14 @@
-import type { IBufferLine, ILink, ILinkProvider, Terminal as XTerm } from "xterm"
-import { isModifierPressed, showLinkPopup, removeLinkPopup } from "./link-popup"
+import type {
+  IBufferLine,
+  ILink,
+  ILinkProvider,
+  Terminal as XTerm,
+} from "xterm";
+import {
+  isModifierPressed,
+  removeLinkPopup,
+  showLinkPopup,
+} from "./link-popup";
 
 /**
  * File path link provider for xterm.js.
@@ -21,33 +30,33 @@ import { isModifierPressed, showLinkPopup, removeLinkPopup } from "./link-popup"
 // - Relative paths starting with ./ or ../
 // - Optionally followed by :line or :line:column
 const FILE_PATH_PATTERN =
-  /(?:^|[\s'"({\[])((?:\.\.?\/|\/)[^\s:'")\]}>]+?)(?::(\d+))?(?::(\d+))?(?=[\s'")\]}>]|$)/g
+  /(?:^|[\s'"({\[])((?:\.\.?\/|\/)[^\s:'")\]}>]+?)(?::(\d+))?(?::(\d+))?(?=[\s'")\]}>]|$)/g;
 
 /**
  * Get the text content of a buffer line.
  */
 function getLineText(line: IBufferLine): string {
-  let text = ""
+  let text = "";
   for (let i = 0; i < line.length; i++) {
-    text += line.getCell(i)?.getChars() || " "
+    text += line.getCell(i)?.getChars() || " ";
   }
-  return text
+  return text;
 }
 
 /**
  * Check if a path looks like a file (has an extension or is a dotfile).
  */
 function looksLikeFile(path: string): boolean {
-  const basename = path.split("/").pop() || ""
+  const basename = path.split("/").pop() || "";
 
   // Has an extension
   if (/\.[a-zA-Z0-9]+$/.test(basename)) {
-    return true
+    return true;
   }
 
   // Is a dotfile
   if (basename.startsWith(".") && basename.length > 1) {
-    return true
+    return true;
   }
 
   // Common extensionless files
@@ -62,13 +71,13 @@ function looksLikeFile(path: string): boolean {
     "CHANGELOG",
     "AUTHORS",
     "CONTRIBUTING",
-  ]
+  ];
 
   if (extensionlessFiles.includes(basename)) {
-    return true
+    return true;
   }
 
-  return false
+  return false;
 }
 
 export class FilePathLinkProvider implements ILinkProvider {
@@ -78,53 +87,57 @@ export class FilePathLinkProvider implements ILinkProvider {
       event: MouseEvent,
       path: string,
       line?: number,
-      column?: number
-    ) => void
+      column?: number,
+    ) => void,
   ) {}
 
   provideLinks(
     bufferLineNumber: number,
-    callback: (links: ILink[] | undefined) => void
+    callback: (links: ILink[] | undefined) => void,
   ): void {
-    const buffer = this.xterm.buffer.active
-    const line = buffer.getLine(bufferLineNumber)
+    const buffer = this.xterm.buffer.active;
+    const line = buffer.getLine(bufferLineNumber);
 
     if (!line) {
-      callback(undefined)
-      return
+      callback(undefined);
+      return;
     }
 
-    const lineText = getLineText(line)
-    const links: ILink[] = []
+    const lineText = getLineText(line);
+    const links: ILink[] = [];
 
-    let match: RegExpExecArray | null
-    FILE_PATH_PATTERN.lastIndex = 0
+    let match: RegExpExecArray | null;
+    FILE_PATH_PATTERN.lastIndex = 0;
 
     while ((match = FILE_PATH_PATTERN.exec(lineText)) !== null) {
-      const fullMatch = match[0]
-      const path = match[1]
-      const lineNum = match[2] ? parseInt(match[2], 10) : undefined
-      const colNum = match[3] ? parseInt(match[3], 10) : undefined
+      const fullMatch = match[0];
+      const path = match[1];
+      const lineNum = match[2] ? Number.parseInt(match[2], 10) : undefined;
+      const colNum = match[3] ? Number.parseInt(match[3], 10) : undefined;
 
       // Skip if it doesn't look like a file
       if (!looksLikeFile(path)) {
-        continue
+        continue;
       }
 
       // Calculate the actual start position (accounting for leading whitespace/quote)
-      const leadingChars = fullMatch.length - path.length - (match[2] ? match[2].length + 1 : 0) - (match[3] ? match[3].length + 1 : 0)
-      const startX = match.index + leadingChars
+      const leadingChars =
+        fullMatch.length -
+        path.length -
+        (match[2] ? match[2].length + 1 : 0) -
+        (match[3] ? match[3].length + 1 : 0);
+      const startX = match.index + leadingChars;
 
       // Build the link text (path with optional :line:col)
-      let linkText = path
+      let linkText = path;
       if (lineNum !== undefined) {
-        linkText += `:${lineNum}`
+        linkText += `:${lineNum}`;
         if (colNum !== undefined) {
-          linkText += `:${colNum}`
+          linkText += `:${colNum}`;
         }
       }
 
-      const endX = startX + linkText.length
+      const endX = startX + linkText.length;
 
       links.push({
         range: {
@@ -139,18 +152,18 @@ export class FilePathLinkProvider implements ILinkProvider {
         activate: (event: MouseEvent) => {
           // Require Cmd+Click (Mac) or Ctrl+Click (Windows/Linux)
           if (isModifierPressed(event)) {
-            this.onClick(event, path, lineNum, colNum)
+            this.onClick(event, path, lineNum, colNum);
           }
         },
         hover: (event: MouseEvent, text: string) => {
-          showLinkPopup(event, text)
+          showLinkPopup(event, text);
         },
         leave: () => {
-          removeLinkPopup()
+          removeLinkPopup();
         },
-      })
+      });
     }
 
-    callback(links.length > 0 ? links : undefined)
+    callback(links.length > 0 ? links : undefined);
   }
 }

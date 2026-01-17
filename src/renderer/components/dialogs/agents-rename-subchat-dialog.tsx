@@ -1,17 +1,16 @@
-import * as React from "react"
-import { useState, useEffect } from "react"
-import { createPortal } from "react-dom"
-import { cn } from "../../lib/utils"
-import { Button } from "../ui/button"
-import { Input } from "../ui/input"
-import { X } from "lucide-react"
+import { X } from "lucide-react";
+import type * as React from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
 
 interface AgentsRenameSubChatDialogProps {
-  isOpen: boolean
-  onClose: () => void
-  onSave: (name: string) => void
-  currentName: string
-  isLoading?: boolean
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (name: string) => void;
+  currentName: string;
+  isLoading?: boolean;
 }
 
 export function AgentsRenameSubChatDialog({
@@ -21,33 +20,33 @@ export function AgentsRenameSubChatDialog({
   currentName,
   isLoading = false,
 }: AgentsRenameSubChatDialogProps) {
-  const [name, setName] = useState(currentName)
+  const [name, setName] = useState(currentName);
 
   useEffect(() => {
-    setName(currentName)
-  }, [currentName, isOpen])
+    setName(currentName);
+  }, [currentName, isOpen]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        onClose()
+        onClose();
       }
-    }
+    };
 
     if (isOpen) {
-      document.addEventListener("keydown", handleKeyDown)
-      return () => document.removeEventListener("keydown", handleKeyDown)
+      document.addEventListener("keydown", handleKeyDown);
+      return () => document.removeEventListener("keydown", handleKeyDown);
     }
-  }, [isOpen, onClose])
+  }, [isOpen, onClose]);
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     if (name.trim()) {
-      onSave(name.trim())
+      onSave(name.trim());
     }
-  }
+  };
 
-  if (!isOpen || typeof document === "undefined") return null
+  if (!isOpen || typeof document === "undefined") return null;
 
   return createPortal(
     <div className="fixed inset-0 z-[100000] flex items-center justify-center">
@@ -88,6 +87,6 @@ export function AgentsRenameSubChatDialog({
         </form>
       </div>
     </div>,
-    document.body
-  )
+    document.body,
+  );
 }

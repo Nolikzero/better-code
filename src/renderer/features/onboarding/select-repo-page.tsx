@@ -1,17 +1,17 @@
-"use client"
+"use client";
 
-import { useAtom } from "jotai"
+import { useAtom } from "jotai";
 
-import { IconSpinner } from "../../components/ui/icons"
-import { Logo } from "../../components/ui/logo"
-import { trpc } from "../../lib/trpc"
-import { selectedProjectAtom } from "../agents/atoms"
+import { IconSpinner } from "../../components/ui/icons";
+import { Logo } from "../../components/ui/logo";
+import { trpc } from "../../lib/trpc";
+import { selectedProjectAtom } from "../agents/atoms";
 
 export function SelectRepoPage() {
-  const [, setSelectedProject] = useAtom(selectedProjectAtom)
+  const [, setSelectedProject] = useAtom(selectedProjectAtom);
 
   // Get tRPC utils for cache management
-  const utils = trpc.useUtils()
+  const utils = trpc.useUtils();
 
   // Open folder mutation
   const openFolder = trpc.projects.openFolder.useMutation({
@@ -19,15 +19,15 @@ export function SelectRepoPage() {
       if (project) {
         // Optimistically update the projects list cache
         utils.projects.list.setData(undefined, (oldData) => {
-          if (!oldData) return [project]
-          const exists = oldData.some((p) => p.id === project.id)
+          if (!oldData) return [project];
+          const exists = oldData.some((p) => p.id === project.id);
           if (exists) {
             return oldData.map((p) =>
-              p.id === project.id ? { ...p, updatedAt: project.updatedAt } : p
-            )
+              p.id === project.id ? { ...p, updatedAt: project.updatedAt } : p,
+            );
           }
-          return [project, ...oldData]
-        })
+          return [project, ...oldData];
+        });
 
         setSelectedProject({
           id: project.id,
@@ -41,14 +41,14 @@ export function SelectRepoPage() {
             | null,
           gitOwner: project.gitOwner,
           gitRepo: project.gitRepo,
-        })
+        });
       }
     },
-  })
+  });
 
   const handleOpenFolder = async () => {
-    await openFolder.mutateAsync()
-  }
+    await openFolder.mutateAsync();
+  };
 
   return (
     <div className="h-screen w-screen flex flex-col items-center justify-center bg-background select-none">
@@ -92,5 +92,5 @@ export function SelectRepoPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

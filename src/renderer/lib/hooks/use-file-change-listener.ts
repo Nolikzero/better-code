@@ -1,15 +1,15 @@
-import { useEffect } from "react"
-import { useQueryClient } from "@tanstack/react-query"
+import { useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 
 /**
  * Hook that listens for file changes from Claude Write/Edit tools
  * and invalidates the git status query to trigger a refetch
  */
 export function useFileChangeListener(worktreePath: string | null | undefined) {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   useEffect(() => {
-    if (!worktreePath) return
+    if (!worktreePath) return;
 
     const cleanup = window.desktopApi?.onFileChanged((data) => {
       // Check if the changed file is within our worktree
@@ -17,12 +17,12 @@ export function useFileChangeListener(worktreePath: string | null | undefined) {
         // Invalidate git status queries to trigger refetch
         queryClient.invalidateQueries({
           queryKey: [["changes", "getStatus"]],
-        })
+        });
       }
-    })
+    });
 
     return () => {
-      cleanup?.()
-    }
-  }, [worktreePath, queryClient])
+      cleanup?.();
+    };
+  }, [worktreePath, queryClient]);
 }

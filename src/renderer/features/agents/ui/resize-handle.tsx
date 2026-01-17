@@ -1,13 +1,13 @@
-"use client"
+"use client";
 
-import { cn } from "../../../lib/utils"
-import { motion } from "motion/react"
+import { motion } from "motion/react";
+import { cn } from "../../../lib/utils";
 
 interface ResizeHandleProps {
-  side: "left" | "right"
-  onPointerDown: (e: React.PointerEvent) => void
-  isResizing?: boolean
-  className?: string
+  side: "left" | "right";
+  onPointerDown: (e: React.PointerEvent) => void;
+  isResizing?: boolean;
+  className?: string;
 }
 
 export function ResizeHandle({
@@ -34,6 +34,5 @@ export function ResizeHandle({
       )}
       style={{ touchAction: "none" }}
     />
-  )
+  );
 }
-

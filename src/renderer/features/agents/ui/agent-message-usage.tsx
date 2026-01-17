@@ -1,48 +1,48 @@
-"use client"
+"use client";
 
-import { memo } from "react"
+import { memo } from "react";
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
-} from "../../../components/ui/hover-card"
-import { cn } from "../../../lib/utils"
+} from "../../../components/ui/hover-card";
+import { cn } from "../../../lib/utils";
 
 export interface AgentMessageMetadata {
-  sessionId?: string
-  totalCostUsd?: number
-  inputTokens?: number
-  outputTokens?: number
-  totalTokens?: number
-  finalTextId?: string
-  durationMs?: number
-  resultSubtype?: string
+  sessionId?: string;
+  totalCostUsd?: number;
+  inputTokens?: number;
+  outputTokens?: number;
+  totalTokens?: number;
+  finalTextId?: string;
+  durationMs?: number;
+  resultSubtype?: string;
 }
 
 interface AgentMessageUsageProps {
-  metadata?: AgentMessageMetadata
-  isStreaming?: boolean
-  isMobile?: boolean
+  metadata?: AgentMessageMetadata;
+  isStreaming?: boolean;
+  isMobile?: boolean;
 }
 
 function formatTokens(tokens: number): string {
   if (tokens >= 1000) {
-    return `${(tokens / 1000).toFixed(1)}k`
+    return `${(tokens / 1000).toFixed(1)}k`;
   }
-  return tokens.toString()
+  return tokens.toString();
 }
 
 function formatDuration(ms: number): string {
   if (ms < 1000) {
-    return `${ms}ms`
+    return `${ms}ms`;
   }
-  const seconds = ms / 1000
+  const seconds = ms / 1000;
   if (seconds < 60) {
-    return `${seconds.toFixed(1)}s`
+    return `${seconds.toFixed(1)}s`;
   }
-  const minutes = Math.floor(seconds / 60)
-  const remainingSeconds = Math.round(seconds % 60)
-  return `${minutes}m ${remainingSeconds}s`
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.round(seconds % 60);
+  return `${minutes}m ${remainingSeconds}s`;
 }
 
 export const AgentMessageUsage = memo(function AgentMessageUsage({
@@ -50,7 +50,7 @@ export const AgentMessageUsage = memo(function AgentMessageUsage({
   isStreaming = false,
   isMobile = false,
 }: AgentMessageUsageProps) {
-  if (!metadata || isStreaming) return null
+  if (!metadata || isStreaming) return null;
 
   const {
     inputTokens = 0,
@@ -58,13 +58,13 @@ export const AgentMessageUsage = memo(function AgentMessageUsage({
     totalTokens = 0,
     durationMs,
     resultSubtype,
-  } = metadata
+  } = metadata;
 
-  const hasUsage = inputTokens > 0 || outputTokens > 0
+  const hasUsage = inputTokens > 0 || outputTokens > 0;
 
-  if (!hasUsage) return null
+  if (!hasUsage) return null;
 
-  const displayTokens = totalTokens || inputTokens + outputTokens
+  const displayTokens = totalTokens || inputTokens + outputTokens;
 
   return (
     <HoverCard openDelay={400} closeDelay={100}>
@@ -121,5 +121,5 @@ export const AgentMessageUsage = memo(function AgentMessageUsage({
         </div>
       </HoverCardContent>
     </HoverCard>
-  )
-})
+  );
+});

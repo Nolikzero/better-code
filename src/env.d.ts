@@ -2,8 +2,7 @@
 
 // Extend Vite's ImportMetaEnv with our custom env vars
 declare global {
-  interface ImportMetaEnv {
-  }
+  interface ImportMetaEnv {}
 }
 
-export {}
+export type {};

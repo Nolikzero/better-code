@@ -1,31 +1,32 @@
-"use client"
+"use client";
 
-import { cn } from "../../../lib/utils"
+import { useAtomValue } from "jotai";
 import {
+  AgentIcon,
   GitHubLogo,
   IconSpinner,
   PlanIcon,
-  AgentIcon,
-} from "../../../components/ui/canvas-icons"
-import { useAtomValue } from "jotai"
-import { agentsUnseenChangesAtom, lastChatModesAtom } from "../atoms"
+} from "../../../components/ui/canvas-icons";
+import { cn } from "../../../lib/utils";
+import { agentsUnseenChangesAtom, lastChatModesAtom } from "../atoms";
 
 interface AgentChatCardProps {
   chat: {
-    id: string
-    name: string
-    meta: any
-    sandbox_id: string | null
-    branch?: string | null
-  }
-  isSelected: boolean
-  isLoading: boolean
-  onClick?: () => void
-  variant?: "sidebar" | "quick-switch"
+    id: string;
+    name: string | null;
+    // Legacy web app fields - optional for desktop
+    meta?: unknown;
+    sandbox_id?: string | null;
+    branch?: string | null;
+  };
+  isSelected: boolean;
+  isLoading: boolean;
+  onClick?: () => void;
+  variant?: "sidebar" | "quick-switch";
   // Git info from project (passed from parent)
-  gitOwner?: string | null
-  gitProvider?: string | null
-  repoName?: string | null
+  gitOwner?: string | null;
+  gitProvider?: string | null;
+  repoName?: string | null;
 }
 
 // Chat icon with status badge
@@ -37,12 +38,12 @@ function ChatIconWithBadge({
   gitOwner,
   gitProvider,
 }: {
-  isLoading: boolean
-  hasUnseenChanges: boolean
-  lastMode: "plan" | "agent"
-  isSelected?: boolean
-  gitOwner?: string | null
-  gitProvider?: string | null
+  isLoading: boolean;
+  hasUnseenChanges: boolean;
+  lastMode: "plan" | "agent";
+  isSelected?: boolean;
+  gitOwner?: string | null;
+  gitProvider?: string | null;
 }) {
   // Show GitHub avatar if available, otherwise blank project icon
   const renderMainIcon = () => {
@@ -53,13 +54,13 @@ function ChatIconWithBadge({
           alt={gitOwner}
           className="h-4 w-4 rounded-sm flex-shrink-0"
         />
-      )
+      );
     }
 
     return (
       <GitHubLogo className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-    )
-  }
+    );
+  };
 
   return (
     <div className="relative flex-shrink-0 h-4 w-4">
@@ -97,7 +98,7 @@ function ChatIconWithBadge({
         )}
       </div>
     </div>
-  )
+  );
 }
 
 export function AgentChatCard({
@@ -111,21 +112,21 @@ export function AgentChatCard({
   repoName,
 }: AgentChatCardProps) {
   // Get status atoms
-  const unseenChanges = useAtomValue(agentsUnseenChangesAtom)
-  const lastChatModes = useAtomValue(lastChatModesAtom)
+  const unseenChanges = useAtomValue(agentsUnseenChangesAtom);
+  const lastChatModes = useAtomValue(lastChatModesAtom);
 
-  const hasUnseenChanges = unseenChanges.has(chat.id)
-  const lastMode = lastChatModes.get(chat.id) || "agent"
+  const hasUnseenChanges = unseenChanges.has(chat.id);
+  const lastMode = lastChatModes.get(chat.id) || "agent";
   // isLoading is already derived from loadingSubChatsAtom (local tracking)
-  const actualIsLoading = isLoading
+  const actualIsLoading = isLoading;
 
   if (variant === "quick-switch") {
     // Desktop: use branch from chat and repo name from project
-    const branch = chat.branch
-    const displayRepoName = repoName || "Local project"
+    const branch = chat.branch;
+    const displayRepoName = repoName || "Local project";
     const displayText = branch
       ? `${displayRepoName} • ${branch}`
-      : displayRepoName
+      : displayRepoName;
 
     return (
       <div
@@ -170,7 +171,7 @@ export function AgentChatCard({
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   // Sidebar variant (default)
@@ -203,5 +204,5 @@ export function AgentChatCard({
         </div>
       </div>
     </div>
-  )
+  );
 }

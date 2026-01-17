@@ -1,27 +1,27 @@
-import Database from "better-sqlite3"
-import { drizzle } from "drizzle-orm/better-sqlite3"
-import { migrate } from "drizzle-orm/better-sqlite3/migrator"
-import { app } from "electron"
-import { join } from "path"
-import { existsSync, mkdirSync } from "fs"
-import * as schema from "./schema"
+import { existsSync, mkdirSync } from "fs";
+import { join } from "path";
+import Database from "better-sqlite3";
+import { drizzle } from "drizzle-orm/better-sqlite3";
+import { migrate } from "drizzle-orm/better-sqlite3/migrator";
+import { app } from "electron";
+import * as schema from "./schema";
 
-let db: ReturnType<typeof drizzle<typeof schema>> | null = null
-let sqlite: Database.Database | null = null
+let db: ReturnType<typeof drizzle<typeof schema>> | null = null;
+let sqlite: Database.Database | null = null;
 
 /**
  * Get the database path in the app's user data directory
  */
 function getDatabasePath(): string {
-  const userDataPath = app.getPath("userData")
-  const dataDir = join(userDataPath, "data")
+  const userDataPath = app.getPath("userData");
+  const dataDir = join(userDataPath, "data");
 
   // Ensure data directory exists
   if (!existsSync(dataDir)) {
-    mkdirSync(dataDir, { recursive: true })
+    mkdirSync(dataDir, { recursive: true });
   }
 
-  return join(dataDir, "agents.db")
+  return join(dataDir, "agents.db");
 }
 
 /**
@@ -31,10 +31,10 @@ function getDatabasePath(): string {
 function getMigrationsPath(): string {
   if (app.isPackaged) {
     // Production: migrations bundled in resources
-    return join(process.resourcesPath, "migrations")
+    return join(process.resourcesPath, "migrations");
   }
   // Development: from out/main -> apps/desktop/drizzle
-  return join(__dirname, "../../drizzle")
+  return join(__dirname, "../../drizzle");
 }
 
 /**
@@ -42,33 +42,33 @@ function getMigrationsPath(): string {
  */
 export function initDatabase() {
   if (db) {
-    return db
+    return db;
   }
 
-  const dbPath = getDatabasePath()
-  console.log(`[DB] Initializing database at: ${dbPath}`)
+  const dbPath = getDatabasePath();
+  console.log(`[DB] Initializing database at: ${dbPath}`);
 
   // Create SQLite connection
-  sqlite = new Database(dbPath)
-  sqlite.pragma("journal_mode = WAL")
-  sqlite.pragma("foreign_keys = ON")
+  sqlite = new Database(dbPath);
+  sqlite.pragma("journal_mode = WAL");
+  sqlite.pragma("foreign_keys = ON");
 
   // Create Drizzle instance
-  db = drizzle(sqlite, { schema })
+  db = drizzle(sqlite, { schema });
 
   // Run migrations
-  const migrationsPath = getMigrationsPath()
-  console.log(`[DB] Running migrations from: ${migrationsPath}`)
+  const migrationsPath = getMigrationsPath();
+  console.log(`[DB] Running migrations from: ${migrationsPath}`);
 
   try {
-    migrate(db, { migrationsFolder: migrationsPath })
-    console.log("[DB] Migrations completed")
+    migrate(db, { migrationsFolder: migrationsPath });
+    console.log("[DB] Migrations completed");
   } catch (error) {
-    console.error("[DB] Migration error:", error)
-    throw error
+    console.error("[DB] Migration error:", error);
+    throw error;
   }
 
-  return db
+  return db;
 }
 
 /**
@@ -76,9 +76,9 @@ export function initDatabase() {
  */
 export function getDatabase() {
   if (!db) {
-    return initDatabase()
+    return initDatabase();
   }
-  return db
+  return db;
 }
 
 /**
@@ -86,12 +86,12 @@ export function getDatabase() {
  */
 export function closeDatabase(): void {
   if (sqlite) {
-    sqlite.close()
-    sqlite = null
-    db = null
-    console.log("[DB] Database connection closed")
+    sqlite.close();
+    sqlite = null;
+    db = null;
+    console.log("[DB] Database connection closed");
   }
 }
 
 // Re-export schema for convenience
-export * from "./schema"
+export * from "./schema";

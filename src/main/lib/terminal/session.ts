@@ -1,99 +1,99 @@
-import os from "node:os"
-import * as pty from "node-pty"
-import { buildTerminalEnv, FALLBACK_SHELL, getDefaultShell } from "./env"
-import type { InternalCreateSessionParams, TerminalSession } from "./types"
+import os from "node:os";
+import * as pty from "node-pty";
+import { FALLBACK_SHELL, buildTerminalEnv, getDefaultShell } from "./env";
+import type { InternalCreateSessionParams, TerminalSession } from "./types";
 
-const DEFAULT_COLS = 80
-const DEFAULT_ROWS = 24
+const DEFAULT_COLS = 80;
+const DEFAULT_ROWS = 24;
 
 function getShellArgs(shell: string): string[] {
-	if (shell.includes("zsh")) {
-		return ["-l"]
-	}
-	if (shell.includes("bash")) {
-		return []
-	}
-	return []
+  if (shell.includes("zsh")) {
+    return ["-l"];
+  }
+  if (shell.includes("bash")) {
+    return [];
+  }
+  return [];
 }
 
 function spawnPty(params: {
-	shell: string
-	cols: number
-	rows: number
-	cwd: string
-	env: Record<string, string>
+  shell: string;
+  cols: number;
+  rows: number;
+  cwd: string;
+  env: Record<string, string>;
 }): pty.IPty {
-	const { shell, cols, rows, cwd, env } = params
-	const shellArgs = getShellArgs(shell)
+  const { shell, cols, rows, cwd, env } = params;
+  const shellArgs = getShellArgs(shell);
 
-	return pty.spawn(shell, shellArgs, {
-		name: "xterm-256color",
-		cols,
-		rows,
-		cwd,
-		env,
-	})
+  return pty.spawn(shell, shellArgs, {
+    name: "xterm-256color",
+    cols,
+    rows,
+    cwd,
+    env,
+  });
 }
 
 export async function createSession(
-	params: InternalCreateSessionParams,
-	onData: (paneId: string, data: string) => void,
+  params: InternalCreateSessionParams,
+  onData: (paneId: string, data: string) => void,
 ): Promise<TerminalSession> {
-	const {
-		paneId,
-		tabId,
-		workspaceId,
-		workspaceName,
-		workspacePath,
-		rootPath,
-		cwd,
-		cols,
-		rows,
-		useFallbackShell = false,
-	} = params
+  const {
+    paneId,
+    tabId,
+    workspaceId,
+    workspaceName,
+    workspacePath,
+    rootPath,
+    cwd,
+    cols,
+    rows,
+    useFallbackShell = false,
+  } = params;
 
-	const shell = useFallbackShell ? FALLBACK_SHELL : getDefaultShell()
-	const workingDir = cwd || os.homedir()
-	const terminalCols = cols || DEFAULT_COLS
-	const terminalRows = rows || DEFAULT_ROWS
+  const shell = useFallbackShell ? FALLBACK_SHELL : getDefaultShell();
+  const workingDir = cwd || os.homedir();
+  const terminalCols = cols || DEFAULT_COLS;
+  const terminalRows = rows || DEFAULT_ROWS;
 
-	const env = buildTerminalEnv({
-		shell,
-		paneId,
-		tabId,
-		workspaceId,
-		workspaceName,
-		workspacePath,
-		rootPath,
-	})
+  const env = buildTerminalEnv({
+    shell,
+    paneId,
+    tabId,
+    workspaceId,
+    workspaceName,
+    workspacePath,
+    rootPath,
+  });
 
-	const ptyProcess = spawnPty({
-		shell,
-		cols: terminalCols,
-		rows: terminalRows,
-		cwd: workingDir,
-		env,
-	})
+  const ptyProcess = spawnPty({
+    shell,
+    cols: terminalCols,
+    rows: terminalRows,
+    cwd: workingDir,
+    env,
+  });
 
-	const session: TerminalSession = {
-		pty: ptyProcess,
-		paneId,
-		workspaceId: workspaceId || "",
-		cwd: workingDir,
-		cols: terminalCols,
-		rows: terminalRows,
-		lastActive: Date.now(),
-		isAlive: true,
-		shell,
-		startTime: Date.now(),
-		usedFallback: useFallbackShell,
-	}
+  const session: TerminalSession = {
+    pty: ptyProcess,
+    paneId,
+    workspaceId: workspaceId || "",
+    cwd: workingDir,
+    cols: terminalCols,
+    rows: terminalRows,
+    lastActive: Date.now(),
+    isAlive: true,
+    shell,
+    startTime: Date.now(),
+    usedFallback: useFallbackShell,
+  };
 
-	ptyProcess.onData((data) => {
-		onData(paneId, data)
-	})
+  ptyProcess.onData((data) => {
+    onData(paneId, data);
+  });
 
-	return session
+  return session;
 }
 
 /**
@@ -101,22 +101,22 @@ export async function createSession(
  * Commands are only sent for new sessions (not reattachments).
  */
 export function setupInitialCommands(
-	session: TerminalSession,
-	initialCommands: string[] | undefined,
+  session: TerminalSession,
+  initialCommands: string[] | undefined,
 ): void {
-	if (!initialCommands || initialCommands.length === 0) {
-		return
-	}
+  if (!initialCommands || initialCommands.length === 0) {
+    return;
+  }
 
-	const initialCommandString = `${initialCommands.join(" && ")}\n`
+  const initialCommandString = `${initialCommands.join(" && ")}\n`;
 
-	const dataHandler = session.pty.onData(() => {
-		dataHandler.dispose()
+  const dataHandler = session.pty.onData(() => {
+    dataHandler.dispose();
 
-		setTimeout(() => {
-			if (session.isAlive) {
-				session.pty.write(initialCommandString)
-			}
-		}, 100)
-	})
+    setTimeout(() => {
+      if (session.isAlive) {
+        session.pty.write(initialCommandString);
+      }
+    }, 100);
+  });
 }

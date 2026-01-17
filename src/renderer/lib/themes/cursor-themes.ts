@@ -5,7 +5,7 @@
  * both UI colors and tokenColors for syntax highlighting.
  */
 
-import type { VSCodeFullTheme } from "../atoms"
+import type { VSCodeFullTheme } from "../atoms";
 
 /**
  * Cursor Dark theme colors and syntax highlighting
@@ -586,7 +586,7 @@ export const CURSOR_DARK: VSCodeFullTheme = {
     "support.variable.property": "#AAA0FA",
     "builtinConstant.readonly.builtin:python": "#82d2ce",
   },
-}
+};
 
 /**
  * Cursor Light theme colors and syntax highlighting
@@ -994,7 +994,7 @@ export const CURSOR_LIGHT: VSCodeFullTheme = {
       settings: { foreground: "#6F9BA6" },
     },
   ],
-}
+};
 
 /**
  * Cursor Dark Midnight theme colors and syntax highlighting
@@ -1467,4 +1467,4 @@ export const CURSOR_MIDNIGHT: VSCodeFullTheme = {
       settings: { foreground: "#8FBCBB" },
     },
   ],
-}
+};

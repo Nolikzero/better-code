@@ -5,6 +5,6 @@ export {
   logCodexEnv,
   clearCodexBinaryCache,
   type CodexBinaryResult,
-} from "./env"
+} from "./env";
 
-export { createCodexTransformer } from "./transform"
+export { createCodexTransformer } from "./transform";

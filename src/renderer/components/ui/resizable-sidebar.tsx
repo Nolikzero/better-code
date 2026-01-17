@@ -1,38 +1,38 @@
-"use client"
+"use client";
 
-import { useAtom, type WritableAtom } from "jotai"
-import { AnimatePresence, motion } from "motion/react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { createPortal, flushSync } from "react-dom"
-import { Kbd } from "./kbd"
+import { type WritableAtom, useAtom } from "jotai";
+import { AnimatePresence, motion } from "motion/react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal, flushSync } from "react-dom";
+import { Kbd } from "./kbd";
 
 interface ResizableSidebarProps {
-  isOpen: boolean
-  onClose: () => void
-  widthAtom: WritableAtom<number, [number], void>
-  minWidth?: number
-  maxWidth?: number
-  side: "left" | "right"
-  closeHotkey?: string
-  animationDuration?: number
-  children: React.ReactNode
-  className?: string
-  initialWidth?: number | string
-  exitWidth?: number | string
+  isOpen: boolean;
+  onClose: () => void;
+  widthAtom: WritableAtom<number, [number], void>;
+  minWidth?: number;
+  maxWidth?: number;
+  side: "left" | "right";
+  closeHotkey?: string;
+  animationDuration?: number;
+  children: React.ReactNode;
+  className?: string;
+  initialWidth?: number | string;
+  exitWidth?: number | string;
   /** Data attributes to spread onto the container */
-  dataAttributes?: Record<string, string | boolean>
+  dataAttributes?: Record<string, string | boolean>;
   /** Disable close on click without drag */
-  disableClickToClose?: boolean
+  disableClickToClose?: boolean;
   /** Show resize tooltip (Close/Resize instructions) */
-  showResizeTooltip?: boolean
+  showResizeTooltip?: boolean;
   /** Custom styles for the sidebar container */
-  style?: React.CSSProperties
+  style?: React.CSSProperties;
 }
 
-const DEFAULT_MIN_WIDTH = 200
-const DEFAULT_MAX_WIDTH = 9999 // Effectively no limit - CSS constraints handle max width
-const DEFAULT_ANIMATION_DURATION = 0 // Disabled for performance
-const EXTENDED_HOVER_AREA_WIDTH = 8
+const DEFAULT_MIN_WIDTH = 200;
+const DEFAULT_MAX_WIDTH = 9999; // Effectively no limit - CSS constraints handle max width
+const DEFAULT_ANIMATION_DURATION = 0; // Disabled for performance
+const EXTENDED_HOVER_AREA_WIDTH = 8;
 
 export function ResizableSidebar({
   isOpen,
@@ -52,92 +52,93 @@ export function ResizableSidebar({
   showResizeTooltip = false,
   style,
 }: ResizableSidebarProps) {
-  const [sidebarWidth, setSidebarWidth] = useAtom(widthAtom)
+  const [sidebarWidth, setSidebarWidth] = useAtom(widthAtom);
 
   // Track if this is the first open to avoid initial animation when already open
-  const hasOpenedOnce = useRef(false)
-  const wasOpenRef = useRef(false)
-  const [shouldAnimate, setShouldAnimate] = useState(!isOpen)
+  const hasOpenedOnce = useRef(false);
+  const wasOpenRef = useRef(false);
+  const [shouldAnimate, setShouldAnimate] = useState(!isOpen);
 
   // Resize handle state
-  const [isResizing, setIsResizing] = useState(false)
-  const [isHoveringResizeHandle, setIsHoveringResizeHandle] = useState(false)
-  const [tooltipY, setTooltipY] = useState<number | null>(null)
-  const [isTooltipDismissed, setIsTooltipDismissed] = useState(false)
-  const resizeHandleRef = useRef<HTMLDivElement>(null)
-  const sidebarRef = useRef<HTMLDivElement>(null)
-  const tooltipRef = useRef<HTMLDivElement>(null)
-  const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const [isResizing, setIsResizing] = useState(false);
+  const [isHoveringResizeHandle, setIsHoveringResizeHandle] = useState(false);
+  const [tooltipY, setTooltipY] = useState<number | null>(null);
+  const [isTooltipDismissed, setIsTooltipDismissed] = useState(false);
+  const resizeHandleRef = useRef<HTMLDivElement>(null);
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   // Local width state for smooth resizing (avoids localStorage sync during resize)
-  const [localWidth, setLocalWidth] = useState<number | null>(null)
+  const [localWidth, setLocalWidth] = useState<number | null>(null);
 
   // Use local width during resize, otherwise use persisted width
-  const currentWidth = localWidth ?? sidebarWidth
+  const currentWidth = localWidth ?? sidebarWidth;
 
   // Calculate tooltip position dynamically based on sidebar position
   const tooltipPosition = useMemo(() => {
-    if (!tooltipY || !sidebarRef.current) return null
-    const rect = sidebarRef.current.getBoundingClientRect()
+    if (!tooltipY || !sidebarRef.current) return null;
+    const rect = sidebarRef.current.getBoundingClientRect();
     // For left sidebar, tooltip appears to the right
     // For right sidebar, tooltip appears to the left
-    const x = side === "left" ? rect.right + 8 : rect.left - 8
+    const x = side === "left" ? rect.right + 8 : rect.left - 8;
     return {
       x,
       y: tooltipY,
-    }
-  }, [tooltipY, currentWidth, side])
+    };
+  }, [tooltipY, currentWidth, side]);
 
   useEffect(() => {
     // When sidebar closes, reset hasOpenedOnce so animation plays on next open
     if (!isOpen && wasOpenRef.current) {
-      hasOpenedOnce.current = false
-      setShouldAnimate(true)
+      hasOpenedOnce.current = false;
+      setShouldAnimate(true);
       // Clear local width when sidebar closes
-      setLocalWidth(null)
+      setLocalWidth(null);
     }
     if (isOpen) {
-      setIsTooltipDismissed(false)
+      setIsTooltipDismissed(false);
     }
-    wasOpenRef.current = isOpen
+    wasOpenRef.current = isOpen;
 
     // Mark as opened after animation completes
     if (isOpen && !hasOpenedOnce.current) {
       const timer = setTimeout(
         () => {
-          hasOpenedOnce.current = true
-          setShouldAnimate(false)
+          hasOpenedOnce.current = true;
+          setShouldAnimate(false);
         },
         animationDuration * 1000 + 50,
-      )
-      return () => clearTimeout(timer)
-    } else if (isOpen && hasOpenedOnce.current) {
-      // Already opened before, don't animate
-      setShouldAnimate(false)
+      );
+      return () => clearTimeout(timer);
     }
-  }, [isOpen, animationDuration])
+    if (isOpen && hasOpenedOnce.current) {
+      // Already opened before, don't animate
+      setShouldAnimate(false);
+    }
+  }, [isOpen, animationDuration]);
 
   const handleClose = useCallback(() => {
     // If tooltip is visible, dismiss it first
     if (isHoveringResizeHandle && !isTooltipDismissed) {
       flushSync(() => {
-        setIsTooltipDismissed(true)
-      })
+        setIsTooltipDismissed(true);
+      });
     }
     // Reset resizing state synchronously so exit animation sees the final width
     flushSync(() => {
       if (isResizing) {
-        setIsResizing(false)
+        setIsResizing(false);
       }
       if (localWidth !== null) {
-        setLocalWidth(null)
+        setLocalWidth(null);
       }
-    })
+    });
     // Ensure animation is enabled when closing
-    setShouldAnimate(true)
+    setShouldAnimate(true);
     // Close sidebar - this will trigger exit animation via AnimatePresence
-    onClose()
-    setIsHoveringResizeHandle(false)
-    setTooltipY(null)
+    onClose();
+    setIsHoveringResizeHandle(false);
+    setTooltipY(null);
   }, [
     onClose,
     isOpen,
@@ -146,165 +147,172 @@ export function ResizableSidebar({
     localWidth,
     isHoveringResizeHandle,
     isTooltipDismissed,
-  ])
+  ]);
 
   // Cleanup tooltip timeout on unmount or when sidebar closes
   useEffect(() => {
     if (!isOpen) {
       if (tooltipTimeoutRef.current) {
-        clearTimeout(tooltipTimeoutRef.current)
-        tooltipTimeoutRef.current = null
+        clearTimeout(tooltipTimeoutRef.current);
+        tooltipTimeoutRef.current = null;
       }
-      setIsHoveringResizeHandle(false)
-      setTooltipY(null)
+      setIsHoveringResizeHandle(false);
+      setTooltipY(null);
     }
     return () => {
       if (tooltipTimeoutRef.current) {
-        clearTimeout(tooltipTimeoutRef.current)
-        tooltipTimeoutRef.current = null
+        clearTimeout(tooltipTimeoutRef.current);
+        tooltipTimeoutRef.current = null;
       }
-    }
-  }, [isOpen])
+    };
+  }, [isOpen]);
 
   // Global click handler for tooltip dismissal
   useEffect(() => {
     // Only register handlers when tooltip might be visible
     if (!isOpen || !isHoveringResizeHandle || isTooltipDismissed) {
-      return
+      return;
     }
 
     const handleDocumentClick = (e: MouseEvent) => {
-      const target = e.target as HTMLElement
-      const tooltipElement = target.closest('[data-tooltip="true"]')
+      const target = e.target as HTMLElement;
+      const tooltipElement = target.closest('[data-tooltip="true"]');
       const isClickOnTooltip =
-        tooltipElement ||
-        (tooltipRef.current && tooltipRef.current.contains(target))
+        tooltipElement || tooltipRef.current?.contains(target);
 
       // Check if click is on tooltip
       if (isClickOnTooltip) {
-        e.preventDefault()
-        e.stopPropagation()
+        e.preventDefault();
+        e.stopPropagation();
         flushSync(() => {
-          setIsTooltipDismissed(true)
-        })
-        handleClose()
+          setIsTooltipDismissed(true);
+        });
+        handleClose();
       }
-    }
+    };
 
     // Use capture phase to catch event early
-    document.addEventListener("click", handleDocumentClick, true)
-    document.addEventListener("pointerdown", handleDocumentClick, true)
+    document.addEventListener("click", handleDocumentClick, true);
+    document.addEventListener("pointerdown", handleDocumentClick, true);
 
     return () => {
-      document.removeEventListener("click", handleDocumentClick, true)
-      document.removeEventListener("pointerdown", handleDocumentClick, true)
-    }
-  }, [isOpen, isHoveringResizeHandle, isTooltipDismissed, handleClose])
+      document.removeEventListener("click", handleDocumentClick, true);
+      document.removeEventListener("pointerdown", handleDocumentClick, true);
+    };
+  }, [isOpen, isHoveringResizeHandle, isTooltipDismissed, handleClose]);
 
   // Handle resize interactions (both handle and extended area)
   const handleResizePointerDown = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
       if (event.button !== 0) {
-        return
+        return;
       }
 
-      event.preventDefault()
-      event.stopPropagation()
+      event.preventDefault();
+      event.stopPropagation();
 
-      const startX = event.clientX
-      const startWidth = sidebarWidth
-      const pointerId = event.pointerId
-      let hasMoved = false
-      let currentLocalWidth: number | null = null
+      const startX = event.clientX;
+      const startWidth = sidebarWidth;
+      const pointerId = event.pointerId;
+      let hasMoved = false;
+      let currentLocalWidth: number | null = null;
 
       const handleElement =
-        resizeHandleRef.current ?? (event.currentTarget as HTMLElement)
+        resizeHandleRef.current ?? (event.currentTarget as HTMLElement);
 
       const clampWidth = (width: number) =>
-        Math.max(minWidth, Math.min(maxWidth, width))
+        Math.max(minWidth, Math.min(maxWidth, width));
 
-      handleElement.setPointerCapture?.(pointerId)
+      handleElement.setPointerCapture?.(pointerId);
       // Clear tooltip timeout when starting resize
       if (tooltipTimeoutRef.current) {
-        clearTimeout(tooltipTimeoutRef.current)
-        tooltipTimeoutRef.current = null
+        clearTimeout(tooltipTimeoutRef.current);
+        tooltipTimeoutRef.current = null;
       }
-      setIsResizing(true)
-      setIsHoveringResizeHandle(false)
+      setIsResizing(true);
+      setIsHoveringResizeHandle(false);
 
       const updateWidth = (clientX: number) => {
         // For left sidebar, moving right increases width
         // For right sidebar, moving left increases width
-        const delta = side === "left" ? clientX - startX : startX - clientX
-        const newWidth = clampWidth(startWidth + delta)
-        currentLocalWidth = newWidth
+        const delta = side === "left" ? clientX - startX : startX - clientX;
+        const newWidth = clampWidth(startWidth + delta);
+        currentLocalWidth = newWidth;
         // Use local state for smooth real-time updates during resize
-        setLocalWidth(newWidth)
-      }
+        setLocalWidth(newWidth);
+      };
 
       const handlePointerMove = (pointerEvent: PointerEvent) => {
         const delta = Math.abs(
           side === "left"
             ? pointerEvent.clientX - startX
             : startX - pointerEvent.clientX,
-        )
+        );
         if (!hasMoved && delta >= 3) {
-          hasMoved = true
+          hasMoved = true;
         }
 
         if (hasMoved) {
           // Update width immediately for real-time resize
-          updateWidth(pointerEvent.clientX)
+          updateWidth(pointerEvent.clientX);
         }
-      }
+      };
 
       const finishResize = (pointerEvent?: PointerEvent) => {
         if (handleElement.hasPointerCapture?.(pointerId)) {
-          handleElement.releasePointerCapture(pointerId)
+          handleElement.releasePointerCapture(pointerId);
         }
 
-        document.removeEventListener("pointermove", handlePointerMove)
-        document.removeEventListener("pointerup", handlePointerUp)
-        document.removeEventListener("pointercancel", handlePointerCancel)
-        setIsResizing(false)
+        document.removeEventListener("pointermove", handlePointerMove);
+        document.removeEventListener("pointerup", handlePointerUp);
+        document.removeEventListener("pointercancel", handlePointerCancel);
+        setIsResizing(false);
 
         if (!hasMoved && pointerEvent && !disableClickToClose) {
-          handleClose()
+          handleClose();
         } else if (hasMoved && pointerEvent) {
           const delta =
             side === "left"
               ? pointerEvent.clientX - startX
-              : startX - pointerEvent.clientX
-          const finalWidth = clampWidth(startWidth + delta)
+              : startX - pointerEvent.clientX;
+          const finalWidth = clampWidth(startWidth + delta);
           // Save final width to persisted atom (triggers localStorage sync)
-          setSidebarWidth(finalWidth)
+          setSidebarWidth(finalWidth);
           // Clear local width to use persisted value
-          setLocalWidth(null)
+          setLocalWidth(null);
         } else {
           // If no pointer event but resize was happening, save current local width
           if (currentLocalWidth !== null) {
-            setSidebarWidth(currentLocalWidth)
-            setLocalWidth(null)
+            setSidebarWidth(currentLocalWidth);
+            setLocalWidth(null);
           }
         }
-      }
+      };
 
       const handlePointerUp = (pointerEvent: PointerEvent) => {
-        finishResize(pointerEvent)
-      }
+        finishResize(pointerEvent);
+      };
 
       const handlePointerCancel = () => {
-        finishResize()
-      }
+        finishResize();
+      };
 
-      document.addEventListener("pointermove", handlePointerMove)
-      document.addEventListener("pointerup", handlePointerUp, { once: true })
+      document.addEventListener("pointermove", handlePointerMove);
+      document.addEventListener("pointerup", handlePointerUp, { once: true });
       document.addEventListener("pointercancel", handlePointerCancel, {
         once: true,
-      })
+      });
     },
-    [sidebarWidth, setSidebarWidth, handleClose, minWidth, maxWidth, side, disableClickToClose],
-  )
+    [
+      sidebarWidth,
+      setSidebarWidth,
+      handleClose,
+      minWidth,
+      maxWidth,
+      side,
+      disableClickToClose,
+    ],
+  );
 
   // Determine resize handle position based on side
   const resizeHandleStyle = useMemo(() => {
@@ -315,31 +323,29 @@ export function ResizableSidebar({
         marginRight: "-2px",
         paddingLeft: "2px",
         paddingRight: "2px",
-      }
-    } else {
-      return {
-        left: "0px",
-        width: "4px",
-        marginLeft: "-2px",
-        paddingLeft: "2px",
-        paddingRight: "2px",
-      }
+      };
     }
-  }, [side])
+    return {
+      left: "0px",
+      width: "4px",
+      marginLeft: "-2px",
+      paddingLeft: "2px",
+      paddingRight: "2px",
+    };
+  }, [side]);
 
   const extendedHoverAreaStyle = useMemo(() => {
     if (side === "left") {
       return {
         width: `${EXTENDED_HOVER_AREA_WIDTH}px`,
         right: "0px",
-      }
-    } else {
-      return {
-        width: `${EXTENDED_HOVER_AREA_WIDTH}px`,
-        left: "0px",
-      }
+      };
     }
-  }, [side])
+    return {
+      width: `${EXTENDED_HOVER_AREA_WIDTH}px`,
+      left: "0px",
+    };
+  }, [side]);
 
   return (
     <>
@@ -372,9 +378,14 @@ export function ResizableSidebar({
             }}
             className={`bg-transparent flex flex-col text-xs h-full relative ${className}`}
             style={{ minWidth: minWidth, overflow: "hidden", ...style }}
-            {...(dataAttributes ? Object.fromEntries(
-              Object.entries(dataAttributes).map(([key, value]) => [`data-${key}`, value])
-            ) : {})}
+            {...(dataAttributes
+              ? Object.fromEntries(
+                  Object.entries(dataAttributes).map(([key, value]) => [
+                    `data-${key}`,
+                    value,
+                  ]),
+                )
+              : {})}
           >
             {/* Extended hover area */}
             <div
@@ -388,40 +399,40 @@ export function ResizableSidebar({
               onPointerDown={handleResizePointerDown}
               onMouseEnter={(e) => {
                 if (isResizing) {
-                  return
+                  return;
                 }
                 // Clear any existing timeout
                 if (tooltipTimeoutRef.current) {
-                  clearTimeout(tooltipTimeoutRef.current)
+                  clearTimeout(tooltipTimeoutRef.current);
                 }
                 // Set Y position immediately for positioning
                 if (!tooltipY) {
-                  setTooltipY(e.clientY)
+                  setTooltipY(e.clientY);
                 }
                 // Delay showing tooltip
                 tooltipTimeoutRef.current = setTimeout(() => {
-                  setIsHoveringResizeHandle(true)
-                }, 300)
+                  setIsHoveringResizeHandle(true);
+                }, 300);
               }}
               onMouseLeave={(e) => {
-                if (isResizing) return
+                if (isResizing) return;
                 // Clear timeout if mouse leaves before tooltip appears
                 if (tooltipTimeoutRef.current) {
-                  clearTimeout(tooltipTimeoutRef.current)
-                  tooltipTimeoutRef.current = null
+                  clearTimeout(tooltipTimeoutRef.current);
+                  tooltipTimeoutRef.current = null;
                 }
-                const relatedTarget = e.relatedTarget
+                const relatedTarget = e.relatedTarget;
                 // Check if relatedTarget is a Node (not window or null)
                 if (
                   relatedTarget instanceof Node &&
                   (resizeHandleRef.current?.contains(relatedTarget) ||
                     resizeHandleRef.current === relatedTarget)
                 ) {
-                  return
+                  return;
                 }
-                setIsHoveringResizeHandle(false)
-                setTooltipY(null)
-                setIsTooltipDismissed(false)
+                setIsHoveringResizeHandle(false);
+                setTooltipY(null);
+                setIsTooltipDismissed(false);
               }}
             />
 
@@ -432,36 +443,36 @@ export function ResizableSidebar({
               onMouseEnter={(e) => {
                 // Clear any existing timeout
                 if (tooltipTimeoutRef.current) {
-                  clearTimeout(tooltipTimeoutRef.current)
+                  clearTimeout(tooltipTimeoutRef.current);
                 }
                 // Set Y position immediately for positioning
                 if (!tooltipY) {
-                  setTooltipY(e.clientY)
+                  setTooltipY(e.clientY);
                 }
                 // Delay showing tooltip
                 tooltipTimeoutRef.current = setTimeout(() => {
-                  setIsHoveringResizeHandle(true)
-                }, 300)
+                  setIsHoveringResizeHandle(true);
+                }, 300);
               }}
               onMouseLeave={(e) => {
                 // Clear timeout if mouse leaves before tooltip appears
                 if (tooltipTimeoutRef.current) {
-                  clearTimeout(tooltipTimeoutRef.current)
-                  tooltipTimeoutRef.current = null
+                  clearTimeout(tooltipTimeoutRef.current);
+                  tooltipTimeoutRef.current = null;
                 }
-                const relatedTarget = e.relatedTarget
+                const relatedTarget = e.relatedTarget;
                 // Check if relatedTarget is an Element (not window or null)
                 if (
                   relatedTarget instanceof Element &&
                   relatedTarget.closest("[data-extended-hover-area]")
                 ) {
-                  return
+                  return;
                 }
-                setIsHoveringResizeHandle(false)
-                setTooltipY(null)
-                setIsTooltipDismissed(false)
+                setIsHoveringResizeHandle(false);
+                setTooltipY(null);
+                setIsTooltipDismissed(false);
               }}
-              className={`absolute top-0 bottom-0 cursor-col-resize z-10`}
+              className={"absolute top-0 bottom-0 cursor-col-resize z-10"}
               style={resizeHandleStyle}
             />
 
@@ -500,24 +511,24 @@ export function ResizableSidebar({
                         data-tooltip="true"
                         className="relative rounded-md border border-border bg-popover px-2 py-1 flex flex-col items-start gap-0.5 text-xs text-popover-foreground shadow-lg dark pointer-events-auto"
                         onPointerDown={(e) => {
-                          e.stopPropagation()
+                          e.stopPropagation();
                           if (e.button === 0) {
                             // Left mouse button
                             flushSync(() => {
-                              setIsTooltipDismissed(true)
-                            })
+                              setIsTooltipDismissed(true);
+                            });
                             // Directly call handleClose - same as button
-                            handleClose()
+                            handleClose();
                           }
                         }}
                         onClick={(e) => {
-                          e.stopPropagation()
-                          e.preventDefault()
+                          e.stopPropagation();
+                          e.preventDefault();
                           flushSync(() => {
-                            setIsTooltipDismissed(true)
-                          })
+                            setIsTooltipDismissed(true);
+                          });
                           // Directly call handleClose - same as button
-                          handleClose()
+                          handleClose();
                         }}
                       >
                         {!disableClickToClose && (
@@ -551,5 +562,5 @@ export function ResizableSidebar({
         )}
       </AnimatePresence>
     </>
-  )
+  );
 }

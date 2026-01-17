@@ -1,11 +1,11 @@
-import { cn } from "../lib/utils"
-import { memo, useMemo, useState, useCallback, useEffect } from "react"
-import ReactMarkdown from "react-markdown"
-import remarkGfm from "remark-gfm"
-import remarkBreaks from "remark-breaks"
-import { Copy, Check } from "lucide-react"
-import { useCodeTheme } from "../lib/hooks/use-code-theme"
-import { highlightCode } from "../lib/themes/shiki-theme-loader"
+import { Check, Copy } from "lucide-react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkBreaks from "remark-breaks";
+import remarkGfm from "remark-gfm";
+import { useCodeTheme } from "../lib/hooks/use-code-theme";
+import { highlightCode } from "../lib/themes/shiki-theme-loader";
+import { cn } from "../lib/utils";
 
 // Removed react-syntax-highlighter themes - now using Shiki with VS Code themes
 
@@ -18,13 +18,13 @@ export function stripEmojis(text: string): string {
     .replace(/[\u{1F1E0}-\u{1F1FF}]/gu, "") // Flags
     .replace(/[\u{1F900}-\u{1F9FF}]/gu, "") // Supplemental Symbols
     .replace(/[\u{1FA00}-\u{1FAFF}]/gu, "") // Extended-A
-    .replace(/[\u{2700}-\u{27BF}]/gu, "") // Dingbats
+    .replace(/[\u{2700}-\u{27BF}]/gu, ""); // Dingbats
 }
 
 // Function to fix numbered list items that have line breaks after the number
 // Converts "1.\n\nText" or "1.\n  \nText" to "1. Text"
 function fixNumberedListBreaks(text: string): string {
-  return text.replace(/^(\d+)\.\s*\n+\s*\n*/gm, "$1. ")
+  return text.replace(/^(\d+)\.\s*\n+\s*\n*/gm, "$1. ");
 }
 
 // Function to fix malformed bold/italic markdown where there's a space after opening markers
@@ -33,10 +33,10 @@ function fixMalformedEmphasis(text: string): string {
   // Fix bold: "** text**" -> "**text**"
   // Use " +" (spaces only) not "\s+" to avoid matching newlines
   // Also require text to start with non-space to ensure we're at the START of bold content
-  let fixed = text.replace(/\*\* +([^\n*]+?)\*\*/g, "**$1**")
+  let fixed = text.replace(/\*\* +([^\n*]+?)\*\*/g, "**$1**");
   // Fix italic: "* text*" -> "*text*" (but not inside bold)
-  fixed = fixed.replace(/(?<!\*)\* +([^\n*]+?)\*(?!\*)/g, "*$1*")
-  return fixed
+  fixed = fixed.replace(/(?<!\*)\* +([^\n*]+?)\*(?!\*)/g, "*$1*");
+  return fixed;
 }
 
 // Escape HTML special characters for safe rendering
@@ -44,15 +44,15 @@ function escapeHtml(text: string): string {
   return text
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
+    .replace(/>/g, "&gt;");
 }
 
 // Code block text sizes matching paragraph text sizes
 const codeBlockTextSize = {
-  sm: "text-sm",  // 14px - matches p text
-  md: "text-sm",  // 14px - matches p text
-  lg: "text-sm",  // 14px - matches p text
-}
+  sm: "text-sm", // 14px - matches p text
+  md: "text-sm", // 14px - matches p text
+  lg: "text-sm", // 14px - matches p text
+};
 
 // Code block with copy button using Shiki
 function CodeBlock({
@@ -61,51 +61,52 @@ function CodeBlock({
   themeId,
   size = "md",
 }: {
-  language?: string
-  children: string
-  themeId: string
-  size?: "sm" | "md" | "lg"
+  language?: string;
+  children: string;
+  themeId: string;
+  size?: "sm" | "md" | "lg";
 }) {
-  const [copied, setCopied] = useState(false)
-  const [highlightedHtml, setHighlightedHtml] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false);
+  const [highlightedHtml, setHighlightedHtml] = useState<string | null>(null);
 
   const handleCopy = useCallback(() => {
-    navigator.clipboard.writeText(children)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }, [children])
+    navigator.clipboard.writeText(children);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [children]);
 
   // Only use Shiki for known programming languages, not for plaintext/ASCII art
-  const shouldHighlight = language && language !== "plaintext" && language !== "text"
+  const shouldHighlight =
+    language && language !== "plaintext" && language !== "text";
 
   useEffect(() => {
-    if (!shouldHighlight) return
+    if (!shouldHighlight) return;
 
-    let cancelled = false
+    let cancelled = false;
 
     const highlight = async () => {
       try {
-        const html = await highlightCode(children, language, themeId)
+        const html = await highlightCode(children, language, themeId);
         if (!cancelled) {
-          setHighlightedHtml(html)
+          setHighlightedHtml(html);
         }
       } catch (error) {
-        console.error("Failed to highlight code:", error)
+        console.error("Failed to highlight code:", error);
       }
-    }
+    };
 
-    highlight()
+    highlight();
 
     return () => {
-      cancelled = true
-    }
-  }, [children, language, themeId, shouldHighlight])
+      cancelled = true;
+    };
+  }, [children, language, themeId, shouldHighlight]);
 
   // For plaintext/ASCII art, just escape and render directly (no Shiki)
   // For code with syntax highlighting, use Shiki output when available
   const htmlContent = shouldHighlight
-    ? (highlightedHtml ?? escapeHtml(children))
-    : escapeHtml(children)
+    ? highlightedHtml ?? escapeHtml(children)
+    : escapeHtml(children);
 
   return (
     <div className="relative mt-2 mb-4 rounded-sm bg-muted/50 overflow-hidden">
@@ -152,19 +153,19 @@ function CodeBlock({
         <code dangerouslySetInnerHTML={{ __html: htmlContent }} />
       </pre>
     </div>
-  )
+  );
 }
 
-type MarkdownSize = "sm" | "md" | "lg"
+type MarkdownSize = "sm" | "md" | "lg";
 
 interface ChatMarkdownRendererProps {
-  content: string
+  content: string;
   /** Size variant: sm for compact views, md for normal, lg for fullscreen */
-  size?: MarkdownSize
+  size?: MarkdownSize;
   /** Additional className for the wrapper */
-  className?: string
+  className?: string;
   /** Whether to enable syntax highlighting (default: true) */
-  syntaxHighlight?: boolean
+  syntaxHighlight?: boolean;
 }
 
 // Size-based styles inspired by Notion's spacing
@@ -175,25 +176,25 @@ interface ChatMarkdownRendererProps {
 const sizeStyles: Record<
   MarkdownSize,
   {
-    h1: string
-    h2: string
-    h3: string
-    h4: string
-    h5: string
-    h6: string
-    p: string
-    ul: string
-    ol: string
-    li: string
-    inlineCode: string
-    blockquote: string
-    hr: string
-    table: string
-    thead: string
-    tbody: string
-    tr: string
-    th: string
-    td: string
+    h1: string;
+    h2: string;
+    h3: string;
+    h4: string;
+    h5: string;
+    h6: string;
+    p: string;
+    ul: string;
+    ol: string;
+    li: string;
+    inlineCode: string;
+    blockquote: string;
+    hr: string;
+    table: string;
+    thead: string;
+    tbody: string;
+    tr: string;
+    th: string;
+    td: string;
   }
 > = {
   sm: {
@@ -234,8 +235,7 @@ const sizeStyles: Record<
     li: "text-sm text-foreground/80 py-[3px]",
     inlineCode:
       "bg-foreground/[0.06] dark:bg-foreground/[0.1] font-mono text-[85%] rounded px-[0.4em] py-[0.2em] break-all",
-    blockquote:
-      "border-l-2 border-foreground/20 pl-4 text-foreground/70 mb-px",
+    blockquote: "border-l-2 border-foreground/20 pl-4 text-foreground/70 mb-px",
     hr: "mt-8 mb-4 border-t border-border",
     table: "w-full text-sm",
     thead: "border-b border-border",
@@ -258,8 +258,7 @@ const sizeStyles: Record<
     li: "text-sm text-foreground/80 py-[3px]",
     inlineCode:
       "bg-foreground/[0.06] dark:bg-foreground/[0.1] font-mono text-[85%] rounded px-[0.4em] py-[0.2em] break-all",
-    blockquote:
-      "border-l-2 border-foreground/20 pl-4 text-foreground/70 mb-px",
+    blockquote: "border-l-2 border-foreground/20 pl-4 text-foreground/70 mb-px",
     hr: "mt-8 mb-4 border-t border-border",
     table: "w-full text-sm",
     thead: "border-b border-border",
@@ -268,7 +267,7 @@ const sizeStyles: Record<
     th: "text-left text-sm font-medium text-foreground px-3 py-2 bg-muted/50 border-r border-border last:border-r-0",
     td: "text-sm text-foreground/80 px-3 py-2 border-r border-border last:border-r-0",
   },
-}
+};
 
 export const ChatMarkdownRenderer = memo(function ChatMarkdownRenderer({
   content,
@@ -276,8 +275,8 @@ export const ChatMarkdownRenderer = memo(function ChatMarkdownRenderer({
   className,
   syntaxHighlight = true,
 }: ChatMarkdownRendererProps) {
-  const codeTheme = useCodeTheme()
-  const styles = sizeStyles[size]
+  const codeTheme = useCodeTheme();
+  const styles = sizeStyles[size];
 
   const components = useMemo(
     () => ({
@@ -335,9 +334,9 @@ export const ChatMarkdownRenderer = memo(function ChatMarkdownRenderer({
         <a
           href={href}
           onClick={(e) => {
-            e.preventDefault()
+            e.preventDefault();
             if (href) {
-              window.desktopApi.openExternal(href)
+              window.desktopApi.openExternal(href);
             }
           }}
           className="text-blue-600 dark:text-blue-400 no-underline hover:underline hover:decoration-current underline-offset-2 decoration-1 transition-all duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500/30 focus-visible:rounded-sm"
@@ -396,36 +395,36 @@ export const ChatMarkdownRenderer = memo(function ChatMarkdownRenderer({
       ),
       pre: ({ children }: any) => <>{children}</>,
       code: ({ inline, className, children, ...props }: any) => {
-        const match = /language-(\w+)/.exec(className || "")
-        const language = match ? match[1] : undefined
-        const codeContent = String(children)
+        const match = /language-(\w+)/.exec(className || "");
+        const language = match ? match[1] : undefined;
+        const codeContent = String(children);
 
         // Determine if code should be inline:
         // 1. If markdown explicitly marks it as inline
         // 2. If it's short code without line breaks (likely from single backticks)
         const shouldBeInline =
           inline ||
-          (!language && codeContent.length < 100 && !codeContent.includes("\n"))
+          (!language &&
+            codeContent.length < 100 &&
+            !codeContent.includes("\n"));
 
         if (shouldBeInline) {
-          return <span className={styles.inlineCode}>{children}</span>
+          return <span className={styles.inlineCode}>{children}</span>;
         }
 
         return (
-          <CodeBlock
-            language={language}
-            themeId={codeTheme}
-            size={size}
-          >
+          <CodeBlock language={language} themeId={codeTheme} size={size}>
             {String(children).replace(/\n$/, "")}
           </CodeBlock>
-        )
+        );
       },
     }),
     [styles, codeTheme, syntaxHighlight, size],
-  )
+  );
 
-  const processedContent = fixMalformedEmphasis(fixNumberedListBreaks(stripEmojis(content)))
+  const processedContent = fixMalformedEmphasis(
+    fixNumberedListBreaks(stripEmojis(content)),
+  );
 
   return (
     <div
@@ -453,12 +452,15 @@ export const ChatMarkdownRenderer = memo(function ChatMarkdownRenderer({
         className,
       )}
     >
-      <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} components={components}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm, remarkBreaks]}
+        components={components}
+      >
         {processedContent}
       </ReactMarkdown>
     </div>
-  )
-})
+  );
+});
 
 // Convenience exports for specific use cases
 export const CompactMarkdownRenderer = memo(function CompactMarkdownRenderer({
@@ -466,9 +468,9 @@ export const CompactMarkdownRenderer = memo(function CompactMarkdownRenderer({
   className,
   syntaxHighlight = false,
 }: {
-  content: string
-  className?: string
-  syntaxHighlight?: boolean
+  content: string;
+  className?: string;
+  syntaxHighlight?: boolean;
 }) {
   return (
     <ChatMarkdownRenderer
@@ -477,16 +479,16 @@ export const CompactMarkdownRenderer = memo(function CompactMarkdownRenderer({
       syntaxHighlight={syntaxHighlight}
       className={className}
     />
-  )
-})
+  );
+});
 
 export const FullscreenMarkdownRenderer = memo(
   function FullscreenMarkdownRenderer({
     content,
     className,
   }: {
-    content: string
-    className?: string
+    content: string;
+    className?: string;
   }) {
     return (
       <ChatMarkdownRenderer
@@ -495,6 +497,6 @@ export const FullscreenMarkdownRenderer = memo(
         syntaxHighlight={true}
         className={className}
       />
-    )
+    );
   },
-)
+);

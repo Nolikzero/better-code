@@ -1,56 +1,56 @@
-import {
-  memo,
-  useRef,
-  useCallback,
-  useEffect,
-  useState,
-  forwardRef,
-} from "react"
-import { X } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { PlusIcon, CustomTerminalIcon } from "@/components/ui/icons"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
+import { Button } from "@/components/ui/button";
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
   ContextMenuTrigger,
-} from "@/components/ui/context-menu"
-import type { TerminalInstance } from "./types"
+} from "@/components/ui/context-menu";
+import { CustomTerminalIcon, PlusIcon } from "@/components/ui/icons";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+import { X } from "lucide-react";
+import {
+  forwardRef,
+  memo,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import type { TerminalInstance } from "./types";
 
 /**
  * Get the shortened path (last folder name) from a full path
  */
 function getShortPath(fullPath: string | undefined): string | null {
-  if (!fullPath) return null
-  const parts = fullPath.split("/").filter(Boolean)
-  return parts[parts.length - 1] || null
+  if (!fullPath) return null;
+  const parts = fullPath.split("/").filter(Boolean);
+  return parts[parts.length - 1] || null;
 }
 
 interface TerminalTabProps {
-  terminal: TerminalInstance
-  isActive: boolean
-  isOnly: boolean
-  isTruncated: boolean
-  cwd: string | undefined
-  initialCwd: string
-  isEditing: boolean
-  hasTabsToRight: boolean
-  canCloseOthers: boolean
-  onSelect: (id: string) => void
-  onClose: (id: string) => void
-  onCloseOthers: () => void
-  onCloseToRight: () => void
-  onRename: (id: string, name: string) => void
-  onEditingChange: (isEditing: boolean) => void
-  onStartRename: () => void
-  textRef: (el: HTMLSpanElement | null) => void
+  terminal: TerminalInstance;
+  isActive: boolean;
+  isOnly: boolean;
+  isTruncated: boolean;
+  cwd: string | undefined;
+  initialCwd: string;
+  isEditing: boolean;
+  hasTabsToRight: boolean;
+  canCloseOthers: boolean;
+  onSelect: (id: string) => void;
+  onClose: (id: string) => void;
+  onCloseOthers: () => void;
+  onCloseToRight: () => void;
+  onRename: (id: string, name: string) => void;
+  onEditingChange: (isEditing: boolean) => void;
+  onStartRename: () => void;
+  textRef: (el: HTMLSpanElement | null) => void;
 }
 
 const TerminalTab = memo(
@@ -77,74 +77,74 @@ const TerminalTab = memo(
     ref,
   ) {
     // Only show path if it's different from initial cwd
-    const isDifferentFromInitial = cwd && cwd !== initialCwd
-    const shortPath = isDifferentFromInitial ? getShortPath(cwd) : null
+    const isDifferentFromInitial = cwd && cwd !== initialCwd;
+    const shortPath = isDifferentFromInitial ? getShortPath(cwd) : null;
 
-    const [editValue, setEditValue] = useState(terminal.name)
-    const inputRef = useRef<HTMLInputElement>(null)
+    const [editValue, setEditValue] = useState(terminal.name);
+    const inputRef = useRef<HTMLInputElement>(null);
 
     const handleClick = useCallback(() => {
       if (!isEditing) {
-        onSelect(terminal.id)
+        onSelect(terminal.id);
       }
-    }, [onSelect, terminal.id, isEditing])
+    }, [onSelect, terminal.id, isEditing]);
 
     const handleDoubleClick = useCallback(
       (e: React.MouseEvent) => {
-        e.stopPropagation()
-        e.preventDefault()
-        onStartRename()
+        e.stopPropagation();
+        e.preventDefault();
+        onStartRename();
       },
       [onStartRename],
-    )
+    );
 
     const handleCloseClick = useCallback(
       (e: React.MouseEvent) => {
-        e.stopPropagation()
-        onClose(terminal.id)
+        e.stopPropagation();
+        onClose(terminal.id);
       },
       [onClose, terminal.id],
-    )
+    );
 
     const handleSave = useCallback(() => {
-      const trimmed = editValue.trim()
+      const trimmed = editValue.trim();
       if (trimmed && trimmed !== terminal.name) {
-        onRename(terminal.id, trimmed)
+        onRename(terminal.id, trimmed);
       }
-      onEditingChange(false)
-    }, [editValue, terminal.id, terminal.name, onRename, onEditingChange])
+      onEditingChange(false);
+    }, [editValue, terminal.id, terminal.name, onRename, onEditingChange]);
 
     const handleKeyDown = useCallback(
       (e: React.KeyboardEvent) => {
         if (e.key === "Enter") {
-          e.preventDefault()
-          handleSave()
+          e.preventDefault();
+          handleSave();
         } else if (e.key === "Escape") {
-          e.preventDefault()
-          setEditValue(terminal.name)
-          onEditingChange(false)
+          e.preventDefault();
+          setEditValue(terminal.name);
+          onEditingChange(false);
         }
       },
       [handleSave, terminal.name, onEditingChange],
-    )
+    );
 
     const handleBlur = useCallback(() => {
-      handleSave()
-    }, [handleSave])
+      handleSave();
+    }, [handleSave]);
 
     // Focus input when editing starts
     useEffect(() => {
       if (isEditing && inputRef.current) {
-        setEditValue(terminal.name)
+        setEditValue(terminal.name);
         // Use requestAnimationFrame to ensure DOM is ready
         requestAnimationFrame(() => {
           if (inputRef.current) {
-            inputRef.current.focus()
-            inputRef.current.select()
+            inputRef.current.focus();
+            inputRef.current.select();
           }
-        })
+        });
       }
-    }, [isEditing, terminal.name])
+    }, [isEditing, terminal.name]);
 
     return (
       <ContextMenu>
@@ -246,23 +246,23 @@ const TerminalTab = memo(
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
-    )
+    );
   }),
-)
+);
 
 interface TerminalTabsProps {
-  terminals: TerminalInstance[]
-  activeTerminalId: string | null
-  cwds: Record<string, string>
-  initialCwd: string
+  terminals: TerminalInstance[];
+  activeTerminalId: string | null;
+  cwds: Record<string, string>;
+  initialCwd: string;
   /** Background color for gradients - should match terminal background */
-  terminalBg?: string
-  onSelectTerminal: (id: string) => void
-  onCloseTerminal: (id: string) => void
-  onCloseOtherTerminals: (id: string) => void
-  onCloseTerminalsToRight: (id: string) => void
-  onCreateTerminal: () => void
-  onRenameTerminal: (id: string, name: string) => void
+  terminalBg?: string;
+  onSelectTerminal: (id: string) => void;
+  onCloseTerminal: (id: string) => void;
+  onCloseOtherTerminals: (id: string) => void;
+  onCloseTerminalsToRight: (id: string) => void;
+  onCreateTerminal: () => void;
+  onRenameTerminal: (id: string, name: string) => void;
 }
 
 export const TerminalTabs = memo(function TerminalTabs({
@@ -278,129 +278,131 @@ export const TerminalTabs = memo(function TerminalTabs({
   onCreateTerminal,
   onRenameTerminal,
 }: TerminalTabsProps) {
-  const tabsContainerRef = useRef<HTMLDivElement>(null)
-  const tabRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
-  const textRefs = useRef<Map<string, HTMLSpanElement>>(new Map())
-  const [truncatedTabs, setTruncatedTabs] = useState<Set<string>>(new Set())
-  const [showLeftGradient, setShowLeftGradient] = useState(false)
-  const [showRightGradient, setShowRightGradient] = useState(false)
+  const tabsContainerRef = useRef<HTMLDivElement>(null);
+  const tabRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const textRefs = useRef<Map<string, HTMLSpanElement>>(new Map());
+  const [truncatedTabs, setTruncatedTabs] = useState<Set<string>>(new Set());
+  const [showLeftGradient, setShowLeftGradient] = useState(false);
+  const [showRightGradient, setShowRightGradient] = useState(false);
   const [editingTerminalId, setEditingTerminalId] = useState<string | null>(
     null,
-  )
+  );
 
-  const isOnly = terminals.length === 1
+  const isOnly = terminals.length === 1;
 
   const handleStartRename = useCallback((terminalId: string) => {
-    setEditingTerminalId(terminalId)
-  }, [])
+    setEditingTerminalId(terminalId);
+  }, []);
 
   const handleEditingChange = useCallback(
     (terminalId: string, isEditing: boolean) => {
-      setEditingTerminalId(isEditing ? terminalId : null)
+      setEditingTerminalId(isEditing ? terminalId : null);
     },
     [],
-  )
+  );
 
   // Check scroll position for gradients
   const checkScrollPosition = useCallback(() => {
-    const container = tabsContainerRef.current
-    if (!container) return
+    const container = tabsContainerRef.current;
+    if (!container) return;
 
-    const { scrollLeft, scrollWidth, clientWidth } = container
-    const isScrollable = scrollWidth > clientWidth
+    const { scrollLeft, scrollWidth, clientWidth } = container;
+    const isScrollable = scrollWidth > clientWidth;
 
-    setShowLeftGradient(isScrollable && scrollLeft > 0)
+    setShowLeftGradient(isScrollable && scrollLeft > 0);
     setShowRightGradient(
       isScrollable && scrollLeft < scrollWidth - clientWidth - 1,
-    )
-  }, [])
+    );
+  }, []);
 
   // Update gradients on scroll
   useEffect(() => {
-    const container = tabsContainerRef.current
-    if (!container) return
+    const container = tabsContainerRef.current;
+    if (!container) return;
 
-    checkScrollPosition()
+    checkScrollPosition();
 
-    container.addEventListener("scroll", checkScrollPosition, { passive: true })
-    return () => container.removeEventListener("scroll", checkScrollPosition)
-  }, [checkScrollPosition])
+    container.addEventListener("scroll", checkScrollPosition, {
+      passive: true,
+    });
+    return () => container.removeEventListener("scroll", checkScrollPosition);
+  }, [checkScrollPosition]);
 
   // Update gradients when tabs change
   useEffect(() => {
-    checkScrollPosition()
-  }, [terminals, checkScrollPosition])
+    checkScrollPosition();
+  }, [terminals, checkScrollPosition]);
 
   // Update gradients on window resize
   useEffect(() => {
-    const handleResize = () => checkScrollPosition()
-    window.addEventListener("resize", handleResize)
-    return () => window.removeEventListener("resize", handleResize)
-  }, [checkScrollPosition])
+    const handleResize = () => checkScrollPosition();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [checkScrollPosition]);
 
   // Scroll to active tab when it changes
   useEffect(() => {
-    if (!activeTerminalId || !tabsContainerRef.current) return
+    if (!activeTerminalId || !tabsContainerRef.current) return;
 
-    const container = tabsContainerRef.current
-    const activeTabElement = tabRefs.current.get(activeTerminalId)
+    const container = tabsContainerRef.current;
+    const activeTabElement = tabRefs.current.get(activeTerminalId);
 
     if (activeTabElement) {
       setTimeout(() => {
-        const containerRect = container.getBoundingClientRect()
-        const tabRect = activeTabElement.getBoundingClientRect()
+        const containerRect = container.getBoundingClientRect();
+        const tabRect = activeTabElement.getBoundingClientRect();
 
-        const isTabLeftOfView = tabRect.left < containerRect.left
-        const isTabRightOfView = tabRect.right > containerRect.right
+        const isTabLeftOfView = tabRect.left < containerRect.left;
+        const isTabRightOfView = tabRect.right > containerRect.right;
 
         if (isTabLeftOfView || isTabRightOfView) {
           const tabCenter =
-            activeTabElement.offsetLeft + activeTabElement.offsetWidth / 2
-          const containerCenter = container.offsetWidth / 2
-          const targetScroll = tabCenter - containerCenter
-          const maxScroll = container.scrollWidth - container.offsetWidth
-          const clampedScroll = Math.max(0, Math.min(targetScroll, maxScroll))
+            activeTabElement.offsetLeft + activeTabElement.offsetWidth / 2;
+          const containerCenter = container.offsetWidth / 2;
+          const targetScroll = tabCenter - containerCenter;
+          const maxScroll = container.scrollWidth - container.offsetWidth;
+          const clampedScroll = Math.max(0, Math.min(targetScroll, maxScroll));
 
           container.scrollTo({
             left: clampedScroll,
             behavior: "smooth",
-          })
+          });
         }
-      }, 0)
+      }, 0);
     }
-  }, [activeTerminalId, terminals])
+  }, [activeTerminalId, terminals]);
 
   // Check if text is truncated for each tab
   useEffect(() => {
     const checkTruncation = () => {
-      const newTruncated = new Set<string>()
+      const newTruncated = new Set<string>();
       textRefs.current.forEach((el, terminalId) => {
         if (el && el.scrollWidth > el.clientWidth) {
-          newTruncated.add(terminalId)
+          newTruncated.add(terminalId);
         }
-      })
-      setTruncatedTabs(newTruncated)
-    }
+      });
+      setTruncatedTabs(newTruncated);
+    };
 
-    checkTruncation()
+    checkTruncation();
 
-    const resizeObserver = new ResizeObserver(() => checkTruncation())
-    textRefs.current.forEach((el) => el && resizeObserver.observe(el))
+    const resizeObserver = new ResizeObserver(() => checkTruncation());
+    textRefs.current.forEach((el) => el && resizeObserver.observe(el));
 
-    return () => resizeObserver.disconnect()
-  }, [terminals, activeTerminalId])
+    return () => resizeObserver.disconnect();
+  }, [terminals, activeTerminalId]);
 
   // Cleanup refs for closed tabs to prevent memory leaks
   useEffect(() => {
-    const openIds = new Set(terminals.map((t) => t.id))
+    const openIds = new Set(terminals.map((t) => t.id));
 
     tabRefs.current.forEach((_, id) => {
       if (!openIds.has(id)) {
-        tabRefs.current.delete(id)
-        textRefs.current.delete(id)
+        tabRefs.current.delete(id);
+        textRefs.current.delete(id);
       }
-    })
-  }, [terminals])
+    });
+  }, [terminals]);
 
   return (
     <div className="relative flex-1 min-w-0 flex items-center h-7">
@@ -426,17 +428,17 @@ export const TerminalTabs = memo(function TerminalTabs({
         }}
       >
         {terminals.map((terminal, index) => {
-          const hasTabsToRight = index < terminals.length - 1
-          const canCloseOthers = terminals.length > 1
+          const hasTabsToRight = index < terminals.length - 1;
+          const canCloseOthers = terminals.length > 1;
 
           return (
             <TerminalTab
               key={terminal.id}
               ref={(el) => {
                 if (el) {
-                  tabRefs.current.set(terminal.id, el)
+                  tabRefs.current.set(terminal.id, el);
                 } else {
-                  tabRefs.current.delete(terminal.id)
+                  tabRefs.current.delete(terminal.id);
                 }
               }}
               terminal={terminal}
@@ -459,13 +461,13 @@ export const TerminalTabs = memo(function TerminalTabs({
               onStartRename={() => handleStartRename(terminal.id)}
               textRef={(el) => {
                 if (el) {
-                  textRefs.current.set(terminal.id, el)
+                  textRefs.current.set(terminal.id, el);
                 } else {
-                  textRefs.current.delete(terminal.id)
+                  textRefs.current.delete(terminal.id);
                 }
               }}
             />
-          )
+          );
         })}
       </div>
 
@@ -507,5 +509,5 @@ export const TerminalTabs = memo(function TerminalTabs({
         </div>
       </div>
     </div>
-  )
-})
+  );
+});

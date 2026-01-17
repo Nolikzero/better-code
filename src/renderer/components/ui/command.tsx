@@ -1,116 +1,130 @@
-import * as React from "react"
-import { cn } from "../../lib/utils"
-import { SearchIcon } from "./icons"
-import {
-  overlayItem,
-  overlaySeparator,
-} from "../../lib/overlay-styles"
+import * as React from "react";
+import { overlayItem, overlaySeparator } from "../../lib/overlay-styles";
+import { cn } from "../../lib/utils";
+import { SearchIcon } from "./icons";
 
 // Context for keyboard navigation
 interface CommandContextValue {
-  selectedValue: string | null
-  setSelectedValue: (value: string | null) => void
-  onSelect: (value: string) => void
-  registerItem: (value: string, element: HTMLDivElement | null) => void
-  getItems: () => Map<string, HTMLDivElement>
+  selectedValue: string | null;
+  setSelectedValue: (value: string | null) => void;
+  onSelect: (value: string) => void;
+  registerItem: (value: string, element: HTMLDivElement | null) => void;
+  getItems: () => Map<string, HTMLDivElement>;
 }
 
-const CommandContext = React.createContext<CommandContextValue | null>(null)
+const CommandContext = React.createContext<CommandContextValue | null>(null);
 
 interface CommandProps extends React.HTMLAttributes<HTMLDivElement> {
-  shouldFilter?: boolean
-  value?: string
-  onValueChange?: (value: string) => void
+  shouldFilter?: boolean;
+  value?: string;
+  onValueChange?: (value: string) => void;
 }
 
 const Command = React.forwardRef<HTMLDivElement, CommandProps>(
-  ({ className, shouldFilter, value, onValueChange, children, ...props }, ref) => {
-    const [selectedValue, setSelectedValue] = React.useState<string | null>(null)
-    const itemsRef = React.useRef<Map<string, HTMLDivElement>>(new Map())
-    const orderedKeysRef = React.useRef<string[]>([])
+  (
+    { className, shouldFilter, value, onValueChange, children, ...props },
+    ref,
+  ) => {
+    const [selectedValue, setSelectedValue] = React.useState<string | null>(
+      null,
+    );
+    const itemsRef = React.useRef<Map<string, HTMLDivElement>>(new Map());
+    const orderedKeysRef = React.useRef<string[]>([]);
 
     const registerItem = React.useCallback(
       (value: string, element: HTMLDivElement | null) => {
         if (element) {
-          itemsRef.current.set(value, element)
+          itemsRef.current.set(value, element);
           // Keep track of order based on registration
           if (!orderedKeysRef.current.includes(value)) {
-            orderedKeysRef.current.push(value)
+            orderedKeysRef.current.push(value);
           }
         } else {
-          itemsRef.current.delete(value)
-          orderedKeysRef.current = orderedKeysRef.current.filter(k => k !== value)
+          itemsRef.current.delete(value);
+          orderedKeysRef.current = orderedKeysRef.current.filter(
+            (k) => k !== value,
+          );
         }
       },
       [],
-    )
+    );
 
-    const getItems = React.useCallback(() => itemsRef.current, [])
+    const getItems = React.useCallback(() => itemsRef.current, []);
 
     const onSelect = React.useCallback((value: string) => {
-      const element = itemsRef.current.get(value)
+      const element = itemsRef.current.get(value);
       if (element) {
-        element.click()
+        element.click();
       }
-    }, [])
+    }, []);
 
     // Reset selection when items change
     React.useEffect(() => {
-      const keys = orderedKeysRef.current
+      const keys = orderedKeysRef.current;
       if (keys.length > 0 && !keys.includes(selectedValue || "")) {
-        setSelectedValue(keys[0] || null)
+        setSelectedValue(keys[0] || null);
       }
-    })
+    });
 
     const handleKeyDown = React.useCallback(
       (e: React.KeyboardEvent) => {
-        const keys = orderedKeysRef.current
-        const currentIndex = selectedValue ? keys.indexOf(selectedValue) : -1
+        const keys = orderedKeysRef.current;
+        const currentIndex = selectedValue ? keys.indexOf(selectedValue) : -1;
 
         switch (e.key) {
           case "ArrowDown":
-            e.preventDefault()
+            e.preventDefault();
             if (keys.length > 0) {
-              const nextIndex = currentIndex + 1 >= keys.length ? 0 : currentIndex + 1
-              const nextKey = keys[nextIndex]
-              setSelectedValue(nextKey!)
-              itemsRef.current.get(nextKey!)?.scrollIntoView({ block: "nearest" })
+              const nextIndex =
+                currentIndex + 1 >= keys.length ? 0 : currentIndex + 1;
+              const nextKey = keys[nextIndex];
+              setSelectedValue(nextKey!);
+              itemsRef.current
+                .get(nextKey!)
+                ?.scrollIntoView({ block: "nearest" });
             }
-            break
+            break;
           case "ArrowUp":
-            e.preventDefault()
+            e.preventDefault();
             if (keys.length > 0) {
-              const prevIndex = currentIndex - 1 < 0 ? keys.length - 1 : currentIndex - 1
-              const prevKey = keys[prevIndex]
-              setSelectedValue(prevKey!)
-              itemsRef.current.get(prevKey!)?.scrollIntoView({ block: "nearest" })
+              const prevIndex =
+                currentIndex - 1 < 0 ? keys.length - 1 : currentIndex - 1;
+              const prevKey = keys[prevIndex];
+              setSelectedValue(prevKey!);
+              itemsRef.current
+                .get(prevKey!)
+                ?.scrollIntoView({ block: "nearest" });
             }
-            break
+            break;
           case "Enter":
-            e.preventDefault()
+            e.preventDefault();
             if (selectedValue) {
-              onSelect(selectedValue)
+              onSelect(selectedValue);
             }
-            break
+            break;
           case "Home":
-            e.preventDefault()
+            e.preventDefault();
             if (keys.length > 0) {
-              setSelectedValue(keys[0]!)
-              itemsRef.current.get(keys[0]!)?.scrollIntoView({ block: "nearest" })
+              setSelectedValue(keys[0]!);
+              itemsRef.current
+                .get(keys[0]!)
+                ?.scrollIntoView({ block: "nearest" });
             }
-            break
+            break;
           case "End":
-            e.preventDefault()
+            e.preventDefault();
             if (keys.length > 0) {
-              const lastKey = keys[keys.length - 1]
-              setSelectedValue(lastKey!)
-              itemsRef.current.get(lastKey!)?.scrollIntoView({ block: "nearest" })
+              const lastKey = keys[keys.length - 1];
+              setSelectedValue(lastKey!);
+              itemsRef.current
+                .get(lastKey!)
+                ?.scrollIntoView({ block: "nearest" });
             }
-            break
+            break;
         }
       },
       [selectedValue, onSelect],
-    )
+    );
 
     const contextValue = React.useMemo(
       () => ({
@@ -121,7 +135,7 @@ const Command = React.forwardRef<HTMLDivElement, CommandProps>(
         getItems,
       }),
       [selectedValue, onSelect, registerItem, getItems],
-    )
+    );
 
     return (
       <CommandContext.Provider value={contextValue}>
@@ -137,30 +151,30 @@ const Command = React.forwardRef<HTMLDivElement, CommandProps>(
           {children}
         </div>
       </CommandContext.Provider>
-    )
+    );
   },
-)
-Command.displayName = "Command"
+);
+Command.displayName = "Command";
 
 interface CommandInputProps
   extends React.InputHTMLAttributes<HTMLInputElement> {
-  onValueChange?: (value: string) => void
-  wrapperClassName?: string
+  onValueChange?: (value: string) => void;
+  wrapperClassName?: string;
 }
 
 const CommandInput = React.forwardRef<HTMLInputElement, CommandInputProps>(
   ({ className, onValueChange, wrapperClassName, onChange, ...props }, ref) => {
-    const localRef = React.useRef<HTMLInputElement>(null)
-    const inputRef = (ref as React.RefObject<HTMLInputElement>) || localRef
+    const localRef = React.useRef<HTMLInputElement>(null);
+    const inputRef = (ref as React.RefObject<HTMLInputElement>) || localRef;
 
     // Auto-focus input when mounted
     React.useEffect(() => {
       // Small delay to ensure popover is rendered
       const timer = setTimeout(() => {
-        inputRef.current?.focus()
-      }, 0)
-      return () => clearTimeout(timer)
-    }, [])
+        inputRef.current?.focus();
+      }, 0);
+      return () => clearTimeout(timer);
+    }, []);
 
     return (
       <div
@@ -178,16 +192,16 @@ const CommandInput = React.forwardRef<HTMLInputElement, CommandInputProps>(
             className,
           )}
           onChange={(e) => {
-            onChange?.(e)
-            onValueChange?.(e.target.value)
+            onChange?.(e);
+            onValueChange?.(e.target.value);
           }}
           {...props}
         />
       </div>
-    )
+    );
   },
-)
-CommandInput.displayName = "CommandInput"
+);
+CommandInput.displayName = "CommandInput";
 
 const CommandList = React.forwardRef<
   HTMLDivElement,
@@ -195,11 +209,14 @@ const CommandList = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("max-h-[300px] overflow-y-auto overflow-x-hidden py-1", className)}
+    className={cn(
+      "max-h-[300px] overflow-y-auto overflow-x-hidden py-1",
+      className,
+    )}
     {...props}
   />
-))
-CommandList.displayName = "CommandList"
+));
+CommandList.displayName = "CommandList";
 
 const CommandEmpty = React.forwardRef<
   HTMLDivElement,
@@ -210,11 +227,11 @@ const CommandEmpty = React.forwardRef<
     className={cn("py-6 text-center text-sm text-muted-foreground", className)}
     {...props}
   />
-))
-CommandEmpty.displayName = "CommandEmpty"
+));
+CommandEmpty.displayName = "CommandEmpty";
 
 interface CommandGroupProps extends React.HTMLAttributes<HTMLDivElement> {
-  heading?: string
+  heading?: string;
 }
 
 const CommandGroup = React.forwardRef<HTMLDivElement, CommandGroupProps>(
@@ -232,37 +249,37 @@ const CommandGroup = React.forwardRef<HTMLDivElement, CommandGroupProps>(
       {children}
     </div>
   ),
-)
-CommandGroup.displayName = "CommandGroup"
+);
+CommandGroup.displayName = "CommandGroup";
 
 interface CommandItemProps extends React.HTMLAttributes<HTMLDivElement> {
-  value?: string
-  onSelect?: () => void
+  value?: string;
+  onSelect?: () => void;
 }
 
 const CommandItem = React.forwardRef<HTMLDivElement, CommandItemProps>(
   ({ className, onSelect, value, onMouseEnter, ...props }, ref) => {
-    const context = React.useContext(CommandContext)
-    const itemRef = React.useRef<HTMLDivElement>(null)
-    
+    const context = React.useContext(CommandContext);
+    const itemRef = React.useRef<HTMLDivElement>(null);
+
     // Generate a stable value if not provided
-    const itemValue = value || React.useId()
+    const itemValue = value || React.useId();
 
     // Register this item with the Command
     React.useEffect(() => {
-      const element = itemRef.current
-      context?.registerItem(itemValue, element)
+      const element = itemRef.current;
+      context?.registerItem(itemValue, element);
       return () => {
-        context?.registerItem(itemValue, null)
-      }
-    }, [context, itemValue])
+        context?.registerItem(itemValue, null);
+      };
+    }, [context, itemValue]);
 
-    const isSelected = context?.selectedValue === itemValue
+    const isSelected = context?.selectedValue === itemValue;
 
     const handleMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
-      context?.setSelectedValue(itemValue)
-      onMouseEnter?.(e)
-    }
+      context?.setSelectedValue(itemValue);
+      onMouseEnter?.(e);
+    };
 
     return (
       <div
@@ -278,18 +295,18 @@ const CommandItem = React.forwardRef<HTMLDivElement, CommandItemProps>(
         onMouseEnter={handleMouseEnter}
         {...props}
       />
-    )
+    );
   },
-)
-CommandItem.displayName = "CommandItem"
+);
+CommandItem.displayName = "CommandItem";
 
 const CommandSeparator = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
   <div ref={ref} className={cn(overlaySeparator, className)} {...props} />
-))
-CommandSeparator.displayName = "CommandSeparator"
+));
+CommandSeparator.displayName = "CommandSeparator";
 
 export {
   Command,
@@ -299,4 +316,4 @@ export {
   CommandGroup,
   CommandItem,
   CommandSeparator,
-}
+};

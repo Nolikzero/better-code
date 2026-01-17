@@ -1,5 +1,14 @@
-import type { IBufferLine, ILink, ILinkProvider, Terminal as XTerm } from "xterm"
-import { isModifierPressed, showLinkPopup, removeLinkPopup } from "./link-popup"
+import type {
+  IBufferLine,
+  ILink,
+  ILinkProvider,
+  Terminal as XTerm,
+} from "xterm";
+import {
+  isModifierPressed,
+  removeLinkPopup,
+  showLinkPopup,
+} from "./link-popup";
 
 /**
  * URL link provider for xterm.js.
@@ -8,51 +17,50 @@ import { isModifierPressed, showLinkPopup, removeLinkPopup } from "./link-popup"
  */
 
 // URL pattern that matches http, https, and file URLs
-const URL_PATTERN =
-  /https?:\/\/[^\s<>"\])}]+|file:\/\/[^\s<>"\])}]+/gi
+const URL_PATTERN = /https?:\/\/[^\s<>"\])}]+|file:\/\/[^\s<>"\])}]+/gi;
 
 /**
  * Get the text content of a buffer line.
  */
 function getLineText(line: IBufferLine): string {
-  let text = ""
+  let text = "";
   for (let i = 0; i < line.length; i++) {
-    text += line.getCell(i)?.getChars() || " "
+    text += line.getCell(i)?.getChars() || " ";
   }
-  return text
+  return text;
 }
 
 export class UrlLinkProvider implements ILinkProvider {
   constructor(
     private xterm: XTerm,
-    private onClick: (event: MouseEvent, uri: string) => void
+    private onClick: (event: MouseEvent, uri: string) => void,
   ) {}
 
   provideLinks(
     bufferLineNumber: number,
-    callback: (links: ILink[] | undefined) => void
+    callback: (links: ILink[] | undefined) => void,
   ): void {
-    const buffer = this.xterm.buffer.active
-    const line = buffer.getLine(bufferLineNumber)
+    const buffer = this.xterm.buffer.active;
+    const line = buffer.getLine(bufferLineNumber);
 
     if (!line) {
-      callback(undefined)
-      return
+      callback(undefined);
+      return;
     }
 
-    const lineText = getLineText(line)
-    const links: ILink[] = []
+    const lineText = getLineText(line);
+    const links: ILink[] = [];
 
-    let match: RegExpExecArray | null
-    URL_PATTERN.lastIndex = 0
+    let match: RegExpExecArray | null;
+    URL_PATTERN.lastIndex = 0;
 
     while ((match = URL_PATTERN.exec(lineText)) !== null) {
-      const startX = match.index
-      const url = match[0]
+      const startX = match.index;
+      const url = match[0];
 
       // Clean up trailing punctuation that's likely not part of the URL
-      const cleanUrl = url.replace(/[.,;:!?)]+$/, "")
-      const endX = startX + cleanUrl.length
+      const cleanUrl = url.replace(/[.,;:!?)]+$/, "");
+      const endX = startX + cleanUrl.length;
 
       links.push({
         range: {
@@ -67,18 +75,18 @@ export class UrlLinkProvider implements ILinkProvider {
         activate: (event: MouseEvent, text: string) => {
           // Require Cmd+Click (Mac) or Ctrl+Click (Windows/Linux)
           if (isModifierPressed(event)) {
-            this.onClick(event, text)
+            this.onClick(event, text);
           }
         },
         hover: (event: MouseEvent, text: string) => {
-          showLinkPopup(event, text)
+          showLinkPopup(event, text);
         },
         leave: () => {
-          removeLinkPopup()
+          removeLinkPopup();
         },
-      })
+      });
     }
 
-    callback(links.length > 0 ? links : undefined)
+    callback(links.length > 0 ? links : undefined);
   }
 }

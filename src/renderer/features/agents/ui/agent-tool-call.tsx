@@ -1,21 +1,21 @@
-"use client"
+"use client";
 
-import { memo } from "react"
-import { TextShimmer } from "../../../components/ui/text-shimmer"
+import { memo } from "react";
+import { TextShimmer } from "../../../components/ui/text-shimmer";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "../../../components/ui/tooltip"
+} from "../../../components/ui/tooltip";
 
 interface AgentToolCallProps {
-  icon: React.ComponentType<{ className?: string }>
-  title: string
-  subtitle?: string
-  tooltipContent?: string
-  isPending: boolean
-  isError: boolean
-  isNested?: boolean
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  subtitle?: string;
+  tooltipContent?: string;
+  isPending: boolean;
+  isError: boolean;
+  isNested?: boolean;
 }
 
 export const AgentToolCall = memo(
@@ -29,8 +29,8 @@ export const AgentToolCall = memo(
     isNested,
   }: AgentToolCallProps) {
     // Ensure title and subtitle are strings (copied from canvas)
-    const titleStr = String(title)
-    const subtitleStr = subtitle ? String(subtitle) : undefined
+    const titleStr = String(title);
+    const subtitleStr = subtitle ? String(subtitle) : undefined;
 
     // Render subtitle with optional tooltip
     const subtitleElement = subtitleStr ? (
@@ -57,7 +57,7 @@ export const AgentToolCall = memo(
           dangerouslySetInnerHTML={{ __html: subtitleStr }}
         />
       )
-    ) : null
+    ) : null;
 
     return (
       <div
@@ -90,7 +90,7 @@ export const AgentToolCall = memo(
           </div>
         </div>
       </div>
-    )
+    );
   },
   (prevProps, nextProps) => {
     // Custom comparison for memoization (copied from canvas)
@@ -101,6 +101,6 @@ export const AgentToolCall = memo(
       prevProps.isPending === nextProps.isPending &&
       prevProps.isError === nextProps.isError &&
       prevProps.isNested === nextProps.isNested
-    )
+    );
   },
-)
+);

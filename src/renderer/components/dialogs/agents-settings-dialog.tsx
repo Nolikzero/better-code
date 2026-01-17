@@ -1,48 +1,55 @@
-import { useAtom } from "jotai"
-import { useEffect, useState } from "react"
-import { createPortal } from "react-dom"
-import { AnimatePresence, motion } from "motion/react"
-import { X, Bug, ChevronLeft, ChevronRight, Cpu } from "lucide-react"
-import { cn } from "../../lib/utils"
-import { agentsSettingsDialogActiveTabAtom, type SettingsTab } from "../../lib/atoms"
+import { useAtom } from "jotai";
+import { Bug, ChevronLeft, ChevronRight, Cpu, X } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import {
-  ProfileIconFilled,
   EyeOpenFilledIcon,
+  ProfileIconFilled,
   SlidersFilledIcon,
-} from "../../icons"
-import { SkillIconFilled, CustomAgentIconFilled, OriginalMCPIcon } from "../ui/icons"
-import { AgentsAppearanceTab } from "./settings-tabs/agents-appearance-tab"
-import { AgentsProfileTab } from "./settings-tabs/agents-profile-tab"
-import { AgentsPreferencesTab } from "./settings-tabs/agents-preferences-tab"
-import { AgentsProviderTab } from "./settings-tabs/agents-provider-tab"
-import { AgentsDebugTab } from "./settings-tabs/agents-debug-tab"
-import { AgentsSkillsTab } from "./settings-tabs/agents-skills-tab"
-import { AgentsCustomAgentsTab } from "./settings-tabs/agents-custom-agents-tab"
-import { AgentsMcpTab } from "./settings-tabs/agents-mcp-tab"
+} from "../../icons";
+import {
+  type SettingsTab,
+  agentsSettingsDialogActiveTabAtom,
+} from "../../lib/atoms";
+import { cn } from "../../lib/utils";
+import {
+  CustomAgentIconFilled,
+  OriginalMCPIcon,
+  SkillIconFilled,
+} from "../ui/icons";
+import { AgentsAppearanceTab } from "./settings-tabs/agents-appearance-tab";
+import { AgentsCustomAgentsTab } from "./settings-tabs/agents-custom-agents-tab";
+import { AgentsDebugTab } from "./settings-tabs/agents-debug-tab";
+import { AgentsMcpTab } from "./settings-tabs/agents-mcp-tab";
+import { AgentsPreferencesTab } from "./settings-tabs/agents-preferences-tab";
+import { AgentsProfileTab } from "./settings-tabs/agents-profile-tab";
+import { AgentsProviderTab } from "./settings-tabs/agents-provider-tab";
+import { AgentsSkillsTab } from "./settings-tabs/agents-skills-tab";
 
 // Hook to detect narrow screen
 function useIsNarrowScreen(): boolean {
-  const [isNarrow, setIsNarrow] = useState(false)
+  const [isNarrow, setIsNarrow] = useState(false);
 
   useEffect(() => {
     const checkWidth = () => {
-      setIsNarrow(window.innerWidth <= 768)
-    }
+      setIsNarrow(window.innerWidth <= 768);
+    };
 
-    checkWidth()
-    window.addEventListener("resize", checkWidth)
-    return () => window.removeEventListener("resize", checkWidth)
-  }, [])
+    checkWidth();
+    window.addEventListener("resize", checkWidth);
+    return () => window.removeEventListener("resize", checkWidth);
+  }, []);
 
-  return isNarrow
+  return isNarrow;
 }
 
 // Check if we're in development mode
-const isDevelopment = process.env.NODE_ENV === "development"
+const isDevelopment = process.env.NODE_ENV === "development";
 
 interface AgentsSettingsDialogProps {
-  isOpen: boolean
-  onClose: () => void
+  isOpen: boolean;
+  onClose: () => void;
 }
 
 const ALL_TABS = [
@@ -101,18 +108,18 @@ const ALL_TABS = [
         },
       ]
     : []),
-]
+];
 
 interface TabButtonProps {
-  tab: (typeof ALL_TABS)[number]
-  isActive: boolean
-  onClick: () => void
-  isNarrow?: boolean
+  tab: (typeof ALL_TABS)[number];
+  isActive: boolean;
+  onClick: () => void;
+  isNarrow?: boolean;
 }
 
 function TabButton({ tab, isActive, onClick, isNarrow }: TabButtonProps) {
-  const Icon = tab.icon
-  const isBeta = "beta" in tab && tab.beta
+  const Icon = tab.icon;
+  const isBeta = "beta" in tab && tab.beta;
   return (
     <button
       onClick={onClick}
@@ -140,93 +147,91 @@ function TabButton({ tab, isActive, onClick, isNarrow }: TabButtonProps) {
           Beta
         </span>
       )}
-      {isNarrow && (
-        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-      )}
+      {isNarrow && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
     </button>
-  )
+  );
 }
 
 // Helper to get tab label from tab id
 function getTabLabel(tabId: SettingsTab): string {
-  return ALL_TABS.find((t) => t.id === tabId)?.label ?? "Settings"
+  return ALL_TABS.find((t) => t.id === tabId)?.label ?? "Settings";
 }
 
 export function AgentsSettingsDialog({
   isOpen,
   onClose,
 }: AgentsSettingsDialogProps) {
-  const [activeTab, setActiveTab] = useAtom(agentsSettingsDialogActiveTabAtom)
-  const [mounted, setMounted] = useState(false)
-  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null)
-  const isNarrowScreen = useIsNarrowScreen()
+  const [activeTab, setActiveTab] = useAtom(agentsSettingsDialogActiveTabAtom);
+  const [mounted, setMounted] = useState(false);
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+  const isNarrowScreen = useIsNarrowScreen();
 
   // Narrow screen: track whether we're showing tab list or content
-  const [showContent, setShowContent] = useState(false)
+  const [showContent, setShowContent] = useState(false);
 
   // Reset content view when dialog closes
   useEffect(() => {
     if (!isOpen) {
-      setShowContent(false)
+      setShowContent(false);
     }
-  }, [isOpen])
+  }, [isOpen]);
 
   // Handle keyboard navigation
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        event.preventDefault()
+        event.preventDefault();
         if (isNarrowScreen && showContent) {
-          setShowContent(false)
+          setShowContent(false);
         } else {
-          onClose()
+          onClose();
         }
       }
-    }
+    };
 
-    document.addEventListener("keydown", handleKeyDown)
-    return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [isOpen, onClose, isNarrowScreen, showContent])
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose, isNarrowScreen, showContent]);
 
   // Ensure portal target only accessed on client
   useEffect(() => {
-    setMounted(true)
+    setMounted(true);
     if (typeof document !== "undefined") {
-      setPortalTarget(document.body)
+      setPortalTarget(document.body);
     }
-  }, [])
+  }, []);
 
   const handleTabClick = (tabId: SettingsTab) => {
-    setActiveTab(tabId)
+    setActiveTab(tabId);
     if (isNarrowScreen) {
-      setShowContent(true)
+      setShowContent(true);
     }
-  }
+  };
 
   const renderTabContent = () => {
     switch (activeTab) {
       case "profile":
-        return <AgentsProfileTab />
+        return <AgentsProfileTab />;
       case "appearance":
-        return <AgentsAppearanceTab />
+        return <AgentsAppearanceTab />;
       case "preferences":
-        return <AgentsPreferencesTab />
+        return <AgentsPreferencesTab />;
       case "provider":
-        return <AgentsProviderTab />
+        return <AgentsProviderTab />;
       case "skills":
-        return <AgentsSkillsTab />
+        return <AgentsSkillsTab />;
       case "agents":
-        return <AgentsCustomAgentsTab />
+        return <AgentsCustomAgentsTab />;
       case "mcp":
-        return <AgentsMcpTab />
+        return <AgentsMcpTab />;
       case "debug":
-        return isDevelopment ? <AgentsDebugTab /> : null
+        return isDevelopment ? <AgentsDebugTab /> : null;
       default:
-        return null
+        return null;
     }
-  }
+  };
 
   const renderTabList = () => (
     <div className="space-y-1.5 px-1">
@@ -240,13 +245,13 @@ export function AgentsSettingsDialog({
         />
       ))}
     </div>
-  )
+  );
 
-  if (!mounted || !portalTarget) return null
+  if (!mounted || !portalTarget) return null;
 
   // Narrow screen: Full-screen overlay with two-screen navigation
   if (isNarrowScreen) {
-    if (!isOpen) return null
+    if (!isOpen) return null;
 
     return createPortal(
       <>
@@ -293,15 +298,13 @@ export function AgentsSettingsDialog({
                 {renderTabContent()}
               </div>
             ) : (
-              <div className="p-4">
-                {renderTabList()}
-              </div>
+              <div className="p-4">{renderTabList()}</div>
             )}
           </div>
         </div>
       </>,
       portalTarget,
-    )
+    );
   }
 
   // Wide screen: Centered modal with sidebar
@@ -383,5 +386,5 @@ export function AgentsSettingsDialog({
       )}
     </AnimatePresence>,
     portalTarget,
-  )
+  );
 }

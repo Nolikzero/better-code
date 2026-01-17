@@ -9,23 +9,23 @@
  */
 
 export {
-	gitCheckoutFile,
-	gitStageAll,
-	gitStageFile,
-	gitSwitchBranch,
-	gitUnstageAll,
-	gitUnstageFile,
+  gitCheckoutFile,
+  gitStageAll,
+  gitStageFile,
+  gitSwitchBranch,
+  gitUnstageAll,
+  gitUnstageFile,
 } from "./git-commands";
 
 export {
-	assertRegisteredWorktree,
-	assertValidGitPath,
-	getRegisteredChat,
-	PathValidationError,
-	type PathValidationErrorCode,
-	resolvePathInWorktree,
-	type ValidatePathOptions,
-	validateRelativePath,
+  assertRegisteredWorktree,
+  assertValidGitPath,
+  getRegisteredChat,
+  PathValidationError,
+  type PathValidationErrorCode,
+  resolvePathInWorktree,
+  type ValidatePathOptions,
+  validateRelativePath,
 } from "./path-validation";
 
 export { secureFs } from "./secure-fs";

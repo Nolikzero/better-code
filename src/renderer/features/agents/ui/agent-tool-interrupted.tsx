@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import { memo } from "react"
+import { memo } from "react";
 
 interface AgentToolInterruptedProps {
-  toolName: string
-  subtitle?: string
+  toolName: string;
+  subtitle?: string;
 }
 
 export const AgentToolInterrupted = memo(function AgentToolInterrupted({
@@ -22,5 +22,5 @@ export const AgentToolInterrupted = memo(function AgentToolInterrupted({
         </span>
       )}
     </div>
-  )
-})
+  );
+});

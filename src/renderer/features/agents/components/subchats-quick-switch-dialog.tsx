@@ -1,24 +1,24 @@
-"use client"
+"use client";
 
-import { useMemo } from "react"
-import { AnimatePresence } from "motion/react"
-import { createPortal } from "react-dom"
-import { useAtomValue } from "jotai"
-import { cn } from "../../../lib/utils"
+import { useAtomValue } from "jotai";
+import { AnimatePresence } from "motion/react";
+import { useMemo } from "react";
+import { createPortal } from "react-dom";
+import { AgentIcon, IconSpinner, PlanIcon } from "../../../components/ui/icons";
+import { cn } from "../../../lib/utils";
 import {
-  loadingSubChatsAtom,
-  agentsSubChatUnseenChangesAtom,
-  subChatFilesAtom,
   type SubChatFileChange,
-} from "../atoms"
-import { IconSpinner, PlanIcon, AgentIcon } from "../../../components/ui/icons"
-import type { SubChatMeta } from "../stores/sub-chat-store"
-import { formatTimeAgo } from "../utils/format-time-ago"
+  agentsSubChatUnseenChangesAtom,
+  loadingSubChatsAtom,
+  subChatFilesAtom,
+} from "../atoms";
+import type { SubChatMeta } from "../stores/sub-chat-store";
+import { formatTimeAgo } from "../utils/format-time-ago";
 
 interface SubChatsQuickSwitchDialogProps {
-  isOpen: boolean
-  subChats: SubChatMeta[]
-  selectedIndex: number
+  isOpen: boolean;
+  subChats: SubChatMeta[];
+  selectedIndex: number;
 }
 
 // Sub-chat card for quick switch
@@ -29,26 +29,26 @@ function SubChatCard({
   hasUnseenChanges,
   fileChanges,
 }: {
-  subChat: SubChatMeta
-  isSelected: boolean
-  isLoading: boolean
-  hasUnseenChanges: boolean
-  fileChanges: SubChatFileChange[]
+  subChat: SubChatMeta;
+  isSelected: boolean;
+  isLoading: boolean;
+  hasUnseenChanges: boolean;
+  fileChanges: SubChatFileChange[];
 }) {
-  const mode = subChat.mode || "agent"
-  const timeAgo = formatTimeAgo(subChat.updated_at || subChat.created_at)
+  const mode = subChat.mode || "agent";
+  const timeAgo = formatTimeAgo(subChat.updated_at || subChat.created_at);
 
   // Calculate totals from file changes
   const stats = useMemo(() => {
-    if (!fileChanges || fileChanges.length === 0) return null
-    let additions = 0
-    let deletions = 0
+    if (!fileChanges || fileChanges.length === 0) return null;
+    let additions = 0;
+    let deletions = 0;
     for (const file of fileChanges) {
-      additions += file.additions
-      deletions += file.deletions
+      additions += file.additions;
+      deletions += file.deletions;
     }
-    return { fileCount: fileChanges.length, additions, deletions }
-  }, [fileChanges])
+    return { fileCount: fileChanges.length, additions, deletions };
+  }, [fileChanges]);
 
   return (
     <div
@@ -171,7 +171,7 @@ function SubChatCard({
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 export function SubChatsQuickSwitchDialog({
@@ -179,20 +179,20 @@ export function SubChatsQuickSwitchDialog({
   subChats,
   selectedIndex,
 }: SubChatsQuickSwitchDialogProps) {
-  if (typeof window === "undefined") return null
+  if (typeof window === "undefined") return null;
 
   // Derive loading sub-chat IDs
-  const loadingSubChats = useAtomValue(loadingSubChatsAtom)
+  const loadingSubChats = useAtomValue(loadingSubChatsAtom);
   const loadingSubChatIds = useMemo(
     () => new Set([...loadingSubChats.keys()]),
     [loadingSubChats],
-  )
+  );
 
   // Unseen changes
-  const unseenChanges = useAtomValue(agentsSubChatUnseenChangesAtom)
+  const unseenChanges = useAtomValue(agentsSubChatUnseenChangesAtom);
 
   // File changes per sub-chat
-  const subChatFiles = useAtomValue(subChatFilesAtom)
+  const subChatFiles = useAtomValue(subChatFilesAtom);
 
   return createPortal(
     <AnimatePresence>
@@ -221,10 +221,10 @@ export function SubChatsQuickSwitchDialog({
                     }}
                   >
                     {subChats.map((subChat, index) => {
-                      const isSelected = index === selectedIndex
-                      const isLoading = loadingSubChatIds.has(subChat.id)
-                      const hasUnseenChanges = unseenChanges.has(subChat.id)
-                      const fileChanges = subChatFiles.get(subChat.id) || []
+                      const isSelected = index === selectedIndex;
+                      const isLoading = loadingSubChatIds.has(subChat.id);
+                      const hasUnseenChanges = unseenChanges.has(subChat.id);
+                      const fileChanges = subChatFiles.get(subChat.id) || [];
 
                       return (
                         <SubChatCard
@@ -235,7 +235,7 @@ export function SubChatsQuickSwitchDialog({
                           hasUnseenChanges={hasUnseenChanges}
                           fileChanges={fileChanges}
                         />
-                      )
+                      );
                     })}
                   </div>
                 )}
@@ -246,5 +246,5 @@ export function SubChatsQuickSwitchDialog({
       )}
     </AnimatePresence>,
     document.body,
-  )
+  );
 }

@@ -1,6 +1,6 @@
-import { z } from "zod"
-import { shell } from "electron"
-import { router, publicProcedure } from "../index"
+import { shell } from "electron";
+import { z } from "zod";
+import { publicProcedure, router } from "../index";
 
 /**
  * Claude Code router for desktop
@@ -15,18 +15,20 @@ export const claudeCodeRouter = router({
     return {
       isConnected: true,
       source: "cli" as const,
-    }
+    };
   }),
 
   /**
    * Disconnect is a no-op - users should run `claude logout` in terminal
    */
   disconnect: publicProcedure.mutation(() => {
-    console.log("[ClaudeCode] Disconnect requested - users should run 'claude logout' in terminal")
+    console.log(
+      "[ClaudeCode] Disconnect requested - users should run 'claude logout' in terminal",
+    );
     return {
       success: true,
       message: "Run 'claude logout' in your terminal to sign out",
-    }
+    };
   }),
 
   /**
@@ -35,7 +37,40 @@ export const claudeCodeRouter = router({
   openOAuthUrl: publicProcedure
     .input(z.string())
     .mutation(async ({ input: url }) => {
-      await shell.openExternal(url)
-      return { success: true }
+      await shell.openExternal(url);
+      return { success: true };
     }),
-})
+
+  /**
+   * Stub: Start authentication flow
+   * Desktop uses CLI auth - this is a stub for compatibility
+   */
+  startAuth: publicProcedure.mutation(() => {
+    return {
+      sandboxId: "desktop",
+      sandboxUrl: "",
+      sessionId: "desktop",
+    };
+  }),
+
+  /**
+   * Stub: Poll authentication status
+   * Desktop uses CLI auth - this is a stub for compatibility
+   */
+  pollStatus: publicProcedure.query(() => {
+    return {
+      state: "connected",
+      oauthUrl: null as string | null,
+    };
+  }),
+
+  /**
+   * Stub: Submit authentication code
+   * Desktop uses CLI auth - this is a stub for compatibility
+   */
+  submitCode: publicProcedure
+    .input(z.object({ code: z.string() }))
+    .mutation(() => {
+      return { success: true };
+    }),
+});

@@ -1,56 +1,56 @@
-import { memo, useState, useMemo, useEffect } from "react"
-import { useAtom } from "jotai"
-import { TextShimmer } from "../../components/ui/text-shimmer"
+import { useAtom } from "jotai";
+import { Circle } from "lucide-react";
+import { memo, useEffect, useMemo, useState } from "react";
+import { TextShimmer } from "../../components/ui/text-shimmer";
 import {
-  IconSpinner,
-  ExpandIcon,
-  CollapseIcon,
   CheckIcon,
-  PlanIcon,
-  IconDoubleChevronRight,
+  CollapseIcon,
+  ExpandIcon,
   IconArrowRight,
-} from "../../icons"
-import { getToolStatus } from "./agent-tool-registry"
-import { cn } from "../../lib/utils"
-import { Circle } from "lucide-react"
-import { AgentToolCall } from "./agent-tool-call"
-import { currentTodosAtomFamily } from "../../lib/atoms"
+  IconDoubleChevronRight,
+  IconSpinner,
+  PlanIcon,
+} from "../../icons";
+import { currentTodosAtomFamily } from "../../lib/atoms";
+import { cn } from "../../lib/utils";
+import { AgentToolCall } from "./agent-tool-call";
+import { getToolStatus } from "./agent-tool-registry";
 
 interface TodoItem {
-  content: string
-  status: "pending" | "in_progress" | "completed"
-  activeForm?: string
+  content: string;
+  status: "pending" | "in_progress" | "completed";
+  activeForm?: string;
 }
 
 interface AgentTodoToolProps {
   part: {
-    type: string
-    toolCallId: string
-    state?: string
+    type: string;
+    toolCallId: string;
+    state?: string;
     input?: {
-      todos?: TodoItem[]
-    }
+      todos?: TodoItem[];
+    };
     output?: {
-      oldTodos?: TodoItem[]
-      newTodos?: TodoItem[]
-    }
-  }
-  chatStatus?: string
-  subChatId?: string // Required for syncing todos across tool calls
+      oldTodos?: TodoItem[];
+      newTodos?: TodoItem[];
+    };
+  };
+  chatStatus?: string;
+  subChatId?: string; // Required for syncing todos across tool calls
 }
 
 interface TodoChange {
-  todo: TodoItem
-  oldStatus?: TodoItem["status"]
-  newStatus: TodoItem["status"]
-  index: number
+  todo: TodoItem;
+  oldStatus?: TodoItem["status"];
+  newStatus: TodoItem["status"];
+  index: number;
 }
 
-type ChangeType = "creation" | "single" | "multiple"
+type ChangeType = "creation" | "single" | "multiple";
 
 interface DetectedChanges {
-  type: ChangeType
-  items: TodoChange[]
+  type: ChangeType;
+  items: TodoChange[];
 }
 
 // Detect what changed between old and new todos
@@ -67,44 +67,44 @@ function detectChanges(
         newStatus: todo.status,
         index,
       })),
-    }
+    };
   }
 
   // Find what changed
-  const changes: TodoChange[] = []
+  const changes: TodoChange[] = [];
   newTodos.forEach((newTodo, index) => {
-    const oldTodo = oldTodos[index]
+    const oldTodo = oldTodos[index];
     if (!oldTodo || oldTodo.status !== newTodo.status) {
       changes.push({
         todo: newTodo,
         oldStatus: oldTodo?.status,
         newStatus: newTodo.status,
         index,
-      })
+      });
     }
-  })
+  });
 
   // Single change - show compact mode
   if (changes.length === 1) {
-    return { type: "single", items: changes }
+    return { type: "single", items: changes };
   }
 
   // Multiple changes - also show compact mode (not full list)
   // User can always expand the creation tool to see full plan
-  return { type: "multiple", items: changes }
+  return { type: "multiple", items: changes };
 }
 
 // Get status verb for compact display
 function getStatusVerb(status: TodoItem["status"], content: string): string {
   switch (status) {
     case "in_progress":
-      return `Started: ${content}`
+      return `Started: ${content}`;
     case "completed":
-      return `Finished: ${content}`
+      return `Finished: ${content}`;
     case "pending":
-      return `Created: ${content}`
+      return `Created: ${content}`;
     default:
-      return content
+      return content;
   }
 }
 
@@ -112,11 +112,11 @@ function getStatusVerb(status: TodoItem["status"], content: string): string {
 function getStatusIconComponent(status: TodoItem["status"]) {
   switch (status) {
     case "completed":
-      return CheckIcon
+      return CheckIcon;
     case "in_progress":
-      return IconSpinner
+      return IconSpinner;
     default:
-      return Circle
+      return Circle;
   }
 }
 
@@ -124,8 +124,8 @@ const TodoStatusIcon = ({
   status,
   isPending,
 }: {
-  status: TodoItem["status"]
-  isPending?: boolean
+  status: TodoItem["status"];
+  isPending?: boolean;
 }) => {
   // During loading, show arrow for in_progress items with foreground background
   if (isPending && status === "in_progress") {
@@ -133,7 +133,7 @@ const TodoStatusIcon = ({
       <div className="w-3.5 h-3.5 rounded-full bg-foreground flex items-center justify-center flex-shrink-0">
         <IconArrowRight className="w-2 h-2 text-background" />
       </div>
-    )
+    );
   }
 
   switch (status) {
@@ -145,22 +145,22 @@ const TodoStatusIcon = ({
         >
           <CheckIcon className="w-2 h-2 text-muted-foreground" />
         </div>
-      )
+      );
     case "in_progress":
       return (
         <div className="w-3.5 h-3.5 rounded-full bg-foreground flex items-center justify-center flex-shrink-0">
           <IconArrowRight className="w-2 h-2 text-background" />
         </div>
-      )
+      );
     default:
       return (
         <div
           className="w-3.5 h-3.5 rounded-full flex items-center justify-center flex-shrink-0"
           style={{ border: "0.5px solid hsl(var(--muted-foreground) / 0.3)" }}
         />
-      )
+      );
   }
-}
+};
 
 export const AgentTodoTool = memo(function AgentTodoTool({
   part,
@@ -172,37 +172,40 @@ export const AgentTodoTool = memo(function AgentTodoTool({
   const todosAtom = useMemo(
     () => currentTodosAtomFamily(subChatId || "default"),
     [subChatId],
-  )
-  const [syncedTodos, setSyncedTodos] = useAtom(todosAtom)
+  );
+  const [syncedTodos, setSyncedTodos] = useAtom(todosAtom);
 
   // Get todos from input or output.newTodos
-  const oldTodos = part.output?.oldTodos || []
-  const newTodos = part.input?.todos || part.output?.newTodos || []
+  const oldTodos = part.output?.oldTodos || [];
+  const newTodos = part.input?.todos || part.output?.newTodos || [];
 
   // Detect what changed - memoize to avoid recalculation
   const changes = useMemo(
     () => detectChanges(oldTodos, newTodos),
     [oldTodos, newTodos],
-  )
+  );
 
   // State for expanded/collapsed
-  const [isExpanded, setIsExpanded] = useState(false)
-  const { isPending } = getToolStatus(part, chatStatus)
+  const [isExpanded, setIsExpanded] = useState(false);
+  const { isPending } = getToolStatus(part, chatStatus);
 
   // Update synced todos whenever newTodos change
   // This keeps the creation tool in sync with all updates
   useEffect(() => {
     if (newTodos.length > 0) {
-      setSyncedTodos(newTodos)
+      setSyncedTodos({
+        todos: newTodos,
+        creationToolCallId: syncedTodos.creationToolCallId || part.toolCallId,
+      });
     }
-  }, [newTodos, setSyncedTodos])
+  }, [newTodos, setSyncedTodos, syncedTodos.creationToolCallId, part.toolCallId]);
 
   // Auto-expand on creation
   useEffect(() => {
     if (changes.type === "creation") {
-      setIsExpanded(true)
+      setIsExpanded(true);
     }
-  }, [changes.type])
+  }, [changes.type]);
 
   // Early streaming state - show "Updating to-do list..." with shimmer
   // Only show shimmer when actively streaming (isPending), otherwise show static text
@@ -230,13 +233,13 @@ export const AgentTodoTool = memo(function AgentTodoTool({
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   // COMPACT MODE: Single update - render as simple tool call
   if (changes.type === "single") {
-    const change = changes.items[0]
-    const IconComponent = getStatusIconComponent(change.newStatus)
+    const change = changes.items[0];
+    const IconComponent = getStatusIconComponent(change.newStatus);
 
     return (
       <AgentToolCall
@@ -250,32 +253,32 @@ export const AgentTodoTool = memo(function AgentTodoTool({
         isPending={isPending}
         isError={false}
       />
-    )
+    );
   }
 
   // COMPACT MODE: Multiple updates - render as custom component with icons
   if (changes.type === "multiple") {
     const completedChanges = changes.items.filter(
       (c) => c.newStatus === "completed",
-    ).length
+    ).length;
     const startedChanges = changes.items.filter(
       (c) => c.newStatus === "in_progress",
-    ).length
+    ).length;
 
     // Build summary title
-    let summaryTitle = "Updated todos"
+    let summaryTitle = "Updated todos";
     if (completedChanges > 0 && startedChanges === 0) {
-      summaryTitle = `Finished ${completedChanges} ${completedChanges === 1 ? "task" : "tasks"}`
+      summaryTitle = `Finished ${completedChanges} ${completedChanges === 1 ? "task" : "tasks"}`;
     } else if (startedChanges > 0 && completedChanges === 0) {
-      summaryTitle = `Started ${startedChanges} ${startedChanges === 1 ? "task" : "tasks"}`
+      summaryTitle = `Started ${startedChanges} ${startedChanges === 1 ? "task" : "tasks"}`;
     } else if (completedChanges > 0 && startedChanges > 0) {
-      summaryTitle = `Updated ${changes.items.length} ${changes.items.length === 1 ? "task" : "tasks"}`
+      summaryTitle = `Updated ${changes.items.length} ${changes.items.length === 1 ? "task" : "tasks"}`;
     }
 
     // Limit displayed items to avoid overflow
-    const MAX_VISIBLE_ITEMS = 3
-    const visibleItems = changes.items.slice(0, MAX_VISIBLE_ITEMS)
-    const remainingCount = changes.items.length - MAX_VISIBLE_ITEMS
+    const MAX_VISIBLE_ITEMS = 3;
+    const visibleItems = changes.items.slice(0, MAX_VISIBLE_ITEMS);
+    const remainingCount = changes.items.length - MAX_VISIBLE_ITEMS;
 
     return (
       <div className="flex items-start gap-1.5 py-0.5 rounded-md px-2">
@@ -302,7 +305,7 @@ export const AgentTodoTool = memo(function AgentTodoTool({
                     ? CheckIcon
                     : c.newStatus === "in_progress"
                       ? IconDoubleChevronRight
-                      : Circle
+                      : Circle;
 
                 return (
                   <div
@@ -315,7 +318,7 @@ export const AgentTodoTool = memo(function AgentTodoTool({
                       <span className="mx-0.5">,</span>
                     )}
                   </div>
-                )
+                );
               })}
               {remainingCount > 0 && (
                 <span className="text-muted-foreground/60 whitespace-nowrap flex-shrink-0">
@@ -326,21 +329,22 @@ export const AgentTodoTool = memo(function AgentTodoTool({
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   // FULL MODE: Creation - render as expandable list
-  // Use syncedTodos to show the current state (synced with all updates)
-  const displayTodos = syncedTodos.length > 0 ? syncedTodos : newTodos
+  // Use syncedTodos.todos to show the current state (synced with all updates)
+  const displayTodos =
+    syncedTodos.todos.length > 0 ? syncedTodos.todos : newTodos;
   const completedCount = displayTodos.filter(
-    (t) => t.status === "completed",
-  ).length
-  const totalTodos = displayTodos.length
+    (t: TodoItem) => t.status === "completed",
+  ).length;
+  const totalTodos = displayTodos.length;
 
   // Header title
   const getHeaderTitle = () => {
     if (isPending) {
-      return <span>Updating todos...</span>
+      return <span>Updating todos...</span>;
     }
     return (
       <span>
@@ -349,8 +353,8 @@ export const AgentTodoTool = memo(function AgentTodoTool({
           {completedCount}/{totalTodos}
         </span>
       </span>
-    )
-  }
+    );
+  };
 
   return (
     <div className="rounded-lg border border-border bg-muted/30 overflow-hidden mx-2">
@@ -364,8 +368,8 @@ export const AgentTodoTool = memo(function AgentTodoTool({
         tabIndex={0}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault()
-            setIsExpanded(!isExpanded)
+            e.preventDefault();
+            setIsExpanded(!isExpanded);
           }
         }}
       >
@@ -413,7 +417,7 @@ export const AgentTodoTool = memo(function AgentTodoTool({
       {/* Expanded content - todo list */}
       {isExpanded && (
         <div className="border-t border-border max-h-[300px] overflow-y-auto">
-          {displayTodos.map((todo, idx) => (
+          {displayTodos.map((todo: TodoItem, idx: number) => (
             <div
               key={idx}
               className={cn(
@@ -437,5 +441,5 @@ export const AgentTodoTool = memo(function AgentTodoTool({
         </div>
       )}
     </div>
-  )
-})
+  );
+});

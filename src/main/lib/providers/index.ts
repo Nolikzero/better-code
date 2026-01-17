@@ -15,11 +15,11 @@ export type {
   AuthStatus,
   ProviderStatus,
   AIProvider,
-} from "./types"
+} from "./types";
 
 // Registry
-export { ProviderRegistry, providerRegistry } from "./registry"
+export { ProviderRegistry, providerRegistry } from "./registry";
 
 // Providers
-export { ClaudeProvider, type ClaudeSessionOptions } from "./claude-provider"
-export { CodexProvider, type CodexSessionOptions } from "./codex-provider"
+export { ClaudeProvider, type ClaudeSessionOptions } from "./claude-provider";
+export { CodexProvider, type CodexSessionOptions } from "./codex-provider";

@@ -1,56 +1,58 @@
-import { useState, useEffect } from "react"
-import { ChevronRight } from "lucide-react"
-import { motion, AnimatePresence } from "motion/react"
-import { trpc } from "../../../lib/trpc"
-import { cn } from "../../../lib/utils"
-import { AgentIcon } from "../../ui/icons"
+import { ChevronRight } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { useEffect, useState } from "react";
+import { trpc } from "../../../lib/trpc";
+import { cn } from "../../../lib/utils";
+import { AgentIcon } from "../../ui/icons";
 
 // Hook to detect narrow screen
 function useIsNarrowScreen(): boolean {
-  const [isNarrow, setIsNarrow] = useState(false)
+  const [isNarrow, setIsNarrow] = useState(false);
 
   useEffect(() => {
     const checkWidth = () => {
-      setIsNarrow(window.innerWidth <= 768)
-    }
+      setIsNarrow(window.innerWidth <= 768);
+    };
 
-    checkWidth()
-    window.addEventListener("resize", checkWidth)
-    return () => window.removeEventListener("resize", checkWidth)
-  }, [])
+    checkWidth();
+    window.addEventListener("resize", checkWidth);
+    return () => window.removeEventListener("resize", checkWidth);
+  }, []);
 
-  return isNarrow
+  return isNarrow;
 }
 
 interface FileAgent {
-  name: string
-  description: string
-  prompt: string
-  tools?: string[]
-  disallowedTools?: string[]
-  model?: "sonnet" | "opus" | "haiku" | "inherit"
-  source: "user" | "project"
-  path: string
+  name: string;
+  description: string;
+  prompt: string;
+  tools?: string[];
+  disallowedTools?: string[];
+  model?: "sonnet" | "opus" | "haiku" | "inherit";
+  source: "user" | "project";
+  path: string;
 }
 
 export function AgentsCustomAgentsTab() {
-  const isNarrowScreen = useIsNarrowScreen()
-  const [expandedAgentName, setExpandedAgentName] = useState<string | null>(null)
+  const isNarrowScreen = useIsNarrowScreen();
+  const [expandedAgentName, setExpandedAgentName] = useState<string | null>(
+    null,
+  );
 
-  const { data: agents = [], isLoading } = trpc.agents.list.useQuery(undefined)
+  const { data: agents = [], isLoading } = trpc.agents.list.useQuery(undefined);
 
-  const openInFinderMutation = trpc.external.openInFinder.useMutation()
+  const openInFinderMutation = trpc.external.openInFinder.useMutation();
 
-  const userAgents = agents.filter((a) => a.source === "user")
-  const projectAgents = agents.filter((a) => a.source === "project")
+  const userAgents = agents.filter((a) => a.source === "user");
+  const projectAgents = agents.filter((a) => a.source === "project");
 
   const handleExpandAgent = (agentName: string) => {
-    setExpandedAgentName(expandedAgentName === agentName ? null : agentName)
-  }
+    setExpandedAgentName(expandedAgentName === agentName ? null : agentName);
+  };
 
   const handleOpenInFinder = (path: string) => {
-    openInFinderMutation.mutate(path)
-  }
+    openInFinderMutation.mutate(path);
+  };
 
   return (
     <div className="p-6 space-y-6 overflow-y-auto max-h-[70vh]">
@@ -58,7 +60,9 @@ export function AgentsCustomAgentsTab() {
       {!isNarrowScreen && (
         <div className="flex flex-col space-y-1.5 text-center sm:text-left">
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold text-foreground">Custom Agents</h3>
+            <h3 className="text-sm font-semibold text-foreground">
+              Custom Agents
+            </h3>
             <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-muted text-muted-foreground">
               Beta
             </span>
@@ -87,7 +91,10 @@ export function AgentsCustomAgentsTab() {
               No custom agents found
             </p>
             <p className="text-xs text-muted-foreground">
-              Add .md files to <code className="px-1 py-0.5 bg-muted rounded">~/.claude/agents/</code>
+              Add .md files to{" "}
+              <code className="px-1 py-0.5 bg-muted rounded">
+                ~/.claude/agents/
+              </code>
             </p>
           </div>
         ) : (
@@ -146,7 +153,9 @@ export function AgentsCustomAgentsTab() {
             How Custom Agents Work
           </h4>
           <p className="text-xs text-muted-foreground">
-            Agents are specialized sub-agents that Claude can invoke via the Task tool. They have their own system prompt, tools, and model settings.
+            Agents are specialized sub-agents that Claude can invoke via the
+            Task tool. They have their own system prompt, tools, and model
+            settings.
           </p>
         </div>
         <div>
@@ -154,7 +163,8 @@ export function AgentsCustomAgentsTab() {
             Using Agents
           </h4>
           <p className="text-xs text-muted-foreground">
-            Ask Claude to use an agent directly (e.g., "use the code-reviewer agent") or Claude will automatically invoke them when appropriate.
+            Ask Claude to use an agent directly (e.g., "use the code-reviewer
+            agent") or Claude will automatically invoke them when appropriate.
           </p>
         </div>
         <div>
@@ -162,13 +172,17 @@ export function AgentsCustomAgentsTab() {
             File Format
           </h4>
           <p className="text-xs text-muted-foreground">
-            Agents are Markdown files with YAML frontmatter containing <code className="px-1 py-0.5 bg-muted rounded">name</code>, <code className="px-1 py-0.5 bg-muted rounded">description</code>, <code className="px-1 py-0.5 bg-muted rounded">tools</code>, and <code className="px-1 py-0.5 bg-muted rounded">model</code>. The body is the system prompt.
+            Agents are Markdown files with YAML frontmatter containing{" "}
+            <code className="px-1 py-0.5 bg-muted rounded">name</code>,{" "}
+            <code className="px-1 py-0.5 bg-muted rounded">description</code>,{" "}
+            <code className="px-1 py-0.5 bg-muted rounded">tools</code>, and{" "}
+            <code className="px-1 py-0.5 bg-muted rounded">model</code>. The
+            body is the system prompt.
           </p>
         </div>
       </div>
-
     </div>
-  )
+  );
 }
 
 function AgentRow({
@@ -177,10 +191,10 @@ function AgentRow({
   onToggle,
   onOpenInFinder,
 }: {
-  agent: FileAgent
-  isExpanded: boolean
-  onToggle: () => void
-  onOpenInFinder: () => void
+  agent: FileAgent;
+  isExpanded: boolean;
+  onToggle: () => void;
+  onOpenInFinder: () => void;
 }) {
   return (
     <div>
@@ -227,11 +241,13 @@ function AgentRow({
               <div className="pt-3 space-y-3">
                 {/* Path - clickable to open in Finder */}
                 <div>
-                  <span className="text-xs font-medium text-foreground">Path</span>
+                  <span className="text-xs font-medium text-foreground">
+                    Path
+                  </span>
                   <button
                     onClick={(e) => {
-                      e.stopPropagation()
-                      onOpenInFinder()
+                      e.stopPropagation();
+                      onOpenInFinder();
                     }}
                     className="block text-xs text-muted-foreground font-mono mt-0.5 break-all text-left hover:text-foreground hover:underline transition-colors cursor-pointer"
                   >
@@ -242,7 +258,9 @@ function AgentRow({
                 {/* Tools */}
                 {agent.tools && agent.tools.length > 0 && (
                   <div>
-                    <span className="text-xs font-medium text-foreground">Allowed Tools</span>
+                    <span className="text-xs font-medium text-foreground">
+                      Allowed Tools
+                    </span>
                     <div className="flex flex-wrap gap-1 mt-1">
                       {agent.tools.map((tool) => (
                         <span
@@ -259,7 +277,9 @@ function AgentRow({
                 {/* Disallowed Tools */}
                 {agent.disallowedTools && agent.disallowedTools.length > 0 && (
                   <div>
-                    <span className="text-xs font-medium text-foreground">Disallowed Tools</span>
+                    <span className="text-xs font-medium text-foreground">
+                      Disallowed Tools
+                    </span>
                     <div className="flex flex-wrap gap-1 mt-1">
                       {agent.disallowedTools.map((tool) => (
                         <span
@@ -278,5 +298,5 @@ function AgentRow({
         )}
       </AnimatePresence>
     </div>
-  )
+  );
 }

@@ -1,4 +1,4 @@
-import type { Terminal as XTerm } from "xterm"
+import type { Terminal as XTerm } from "xterm";
 
 /**
  * Suppress terminal query responses that can echo garbage characters.
@@ -26,14 +26,14 @@ export function suppressQueryResponses(xterm: XTerm): () => void {
     /^\x1b\[\d+;\d+R$/,
     // DECRQSS (Request Selection or Setting) responses
     /^\x1bP[\d\$r].*\x1b\\$/,
-  ]
+  ];
 
   /**
    * Check if data looks like a query response that should be suppressed.
    */
   const isQueryResponse = (data: string): boolean => {
-    return queryResponsePatterns.some((pattern) => pattern.test(data))
-  }
+    return queryResponsePatterns.some((pattern) => pattern.test(data));
+  };
 
   // Store the original onData handler
   const dataHandler = xterm.onData((data) => {
@@ -41,11 +41,11 @@ export function suppressQueryResponses(xterm: XTerm): () => void {
     // The PTY should consume it, but if it echoes back, suppress it
     if (isQueryResponse(data)) {
       // Already handled by xterm internally
-      return
+      return;
     }
-  })
+  });
 
   return () => {
-    dataHandler.dispose()
-  }
+    dataHandler.dispose();
+  };
 }

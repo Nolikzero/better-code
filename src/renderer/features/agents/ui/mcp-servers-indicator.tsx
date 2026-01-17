@@ -1,26 +1,26 @@
-"use client"
+"use client";
 
-import { useAtom } from "jotai"
-import { ChevronRight, Loader2 } from "lucide-react"
-import { memo, useEffect, useMemo, useRef, useState } from "react"
-import { Button } from "../../../components/ui/button"
+import { useAtom } from "jotai";
+import { ChevronRight, Loader2 } from "lucide-react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { Button } from "../../../components/ui/button";
+import { OriginalMCPIcon } from "../../../components/ui/icons";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "../../../components/ui/popover"
+} from "../../../components/ui/popover";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "../../../components/ui/tooltip"
-import { OriginalMCPIcon } from "../../../components/ui/icons"
-import { sessionInfoAtom, type MCPServerStatus } from "../../../lib/atoms"
-import { cn } from "../../../lib/utils"
-import { trpc } from "../../../lib/trpc"
+} from "../../../components/ui/tooltip";
+import { type MCPServerStatus, sessionInfoAtom } from "../../../lib/atoms";
+import { trpc } from "../../../lib/trpc";
+import { cn } from "../../../lib/utils";
 
 interface McpServersIndicatorProps {
-  projectPath?: string
+  projectPath?: string;
 }
 
 /**
@@ -35,7 +35,7 @@ interface McpServersIndicatorProps {
 export const McpServersIndicator = memo(function McpServersIndicator({
   projectPath,
 }: McpServersIndicatorProps) {
-  const [sessionInfo, setSessionInfo] = useAtom(sessionInfoAtom)
+  const [sessionInfo, setSessionInfo] = useAtom(sessionInfoAtom);
 
   // Fetch MCP config on mount if we have projectPath and no session info yet
   const { data: mcpConfig } = trpc.claude.getMcpConfig.useQuery(
@@ -44,7 +44,7 @@ export const McpServersIndicator = memo(function McpServersIndicator({
       enabled: !!projectPath && !sessionInfo?.mcpServers?.length,
       staleTime: 5 * 60 * 1000, // 5 minutes
     },
-  )
+  );
 
   // Update sessionInfo with MCP config if we don't have it yet
   useEffect(() => {
@@ -57,63 +57,66 @@ export const McpServersIndicator = memo(function McpServersIndicator({
         })),
         plugins: prev?.plugins || [],
         skills: prev?.skills || [],
-      }))
+      }));
     }
-  }, [mcpConfig, sessionInfo?.mcpServers?.length, setSessionInfo])
-  const [isOpen, setIsOpen] = useState(false)
-  const [expandedServers, setExpandedServers] = useState<Set<string>>(new Set())
-  const [focusedIndex, setFocusedIndex] = useState(-1)
-  const serverButtonsRef = useRef<(HTMLButtonElement | null)[]>([])
+  }, [mcpConfig, sessionInfo?.mcpServers?.length, setSessionInfo]);
+  const [isOpen, setIsOpen] = useState(false);
+  const [expandedServers, setExpandedServers] = useState<Set<string>>(
+    new Set(),
+  );
+  const [focusedIndex, setFocusedIndex] = useState(-1);
+  const serverButtonsRef = useRef<(HTMLButtonElement | null)[]>([]);
 
   // Count connected servers
   const connectedCount = useMemo(() => {
-    if (!sessionInfo?.mcpServers) return 0
-    return sessionInfo.mcpServers.filter((s) => s.status === "connected").length
-  }, [sessionInfo?.mcpServers])
+    if (!sessionInfo?.mcpServers) return 0;
+    return sessionInfo.mcpServers.filter((s) => s.status === "connected")
+      .length;
+  }, [sessionInfo?.mcpServers]);
 
   // Get tools grouped by MCP server
   const toolsByServer = useMemo(() => {
-    if (!sessionInfo?.tools || !sessionInfo?.mcpServers) return new Map()
+    if (!sessionInfo?.tools || !sessionInfo?.mcpServers) return new Map();
 
-    const map = new Map<string, string[]>()
+    const map = new Map<string, string[]>();
 
     // Initialize map with all servers
     for (const server of sessionInfo.mcpServers) {
-      map.set(server.name, [])
+      map.set(server.name, []);
     }
 
     // Group tools by server (format: mcp__servername__toolname)
     for (const tool of sessionInfo.tools) {
-      if (!tool.startsWith("mcp__")) continue
-      const parts = tool.split("__")
-      if (parts.length < 3) continue
-      const serverName = parts[1]
-      const toolName = parts.slice(2).join("__") // Handle tools with __ in name
+      if (!tool.startsWith("mcp__")) continue;
+      const parts = tool.split("__");
+      if (parts.length < 3) continue;
+      const serverName = parts[1];
+      const toolName = parts.slice(2).join("__"); // Handle tools with __ in name
 
-      const serverTools = map.get(serverName) || []
-      serverTools.push(toolName)
-      map.set(serverName, serverTools)
+      const serverTools = map.get(serverName) || [];
+      serverTools.push(toolName);
+      map.set(serverName, serverTools);
     }
 
-    return map
-  }, [sessionInfo?.tools, sessionInfo?.mcpServers])
+    return map;
+  }, [sessionInfo?.tools, sessionInfo?.mcpServers]);
 
   // Don't show if no session info or no MCP servers
   if (!sessionInfo?.mcpServers || sessionInfo.mcpServers.length === 0) {
-    return null
+    return null;
   }
 
   const toggleServer = (serverName: string) => {
     setExpandedServers((prev) => {
-      const next = new Set(prev)
+      const next = new Set(prev);
       if (next.has(serverName)) {
-        next.delete(serverName)
+        next.delete(serverName);
       } else {
-        next.add(serverName)
+        next.add(serverName);
       }
-      return next
-    })
-  }
+      return next;
+    });
+  };
 
   const getStatusIcon = (status: MCPServerStatus) => {
     switch (status) {
@@ -123,90 +126,90 @@ export const McpServersIndicator = memo(function McpServersIndicator({
             className="w-2 h-2 rounded-full bg-green-500"
             aria-label="Connected"
           />
-        )
+        );
       case "failed":
         return (
           <span
             className="w-2 h-2 rounded-full bg-red-500"
             aria-label="Connection failed"
           />
-        )
+        );
       case "needs-auth":
         return (
           <span
             className="w-2 h-2 rounded-full bg-yellow-500"
             aria-label="Needs authentication"
           />
-        )
+        );
       case "pending":
         return (
           <Loader2
             className="w-3 h-3 text-muted-foreground animate-spin"
             aria-label="Connecting"
           />
-        )
+        );
       default:
         return (
           <span
             className="w-2 h-2 rounded-full bg-muted-foreground/50"
             aria-label="Unknown status"
           />
-        )
+        );
     }
-  }
+  };
 
   const getStatusText = (status: MCPServerStatus) => {
     switch (status) {
       case "connected":
-        return "Connected"
+        return "Connected";
       case "failed":
-        return "Connection failed"
+        return "Connection failed";
       case "needs-auth":
-        return "Needs authentication"
+        return "Needs authentication";
       case "pending":
-        return "Connecting..."
+        return "Connecting...";
       default:
-        return status
+        return status;
     }
-  }
+  };
 
   // Keyboard navigation handler
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    const serverCount = sessionInfo.mcpServers.length
+    const serverCount = sessionInfo.mcpServers.length;
 
     switch (e.key) {
       case "ArrowDown":
-        e.preventDefault()
+        e.preventDefault();
         setFocusedIndex((prev) => {
-          const next = prev < serverCount - 1 ? prev + 1 : 0
-          serverButtonsRef.current[next]?.focus()
-          return next
-        })
-        break
+          const next = prev < serverCount - 1 ? prev + 1 : 0;
+          serverButtonsRef.current[next]?.focus();
+          return next;
+        });
+        break;
       case "ArrowUp":
-        e.preventDefault()
+        e.preventDefault();
         setFocusedIndex((prev) => {
-          const next = prev > 0 ? prev - 1 : serverCount - 1
-          serverButtonsRef.current[next]?.focus()
-          return next
-        })
-        break
+          const next = prev > 0 ? prev - 1 : serverCount - 1;
+          serverButtonsRef.current[next]?.focus();
+          return next;
+        });
+        break;
       case "Enter":
       case " ":
         if (focusedIndex >= 0 && focusedIndex < serverCount) {
-          const server = sessionInfo.mcpServers[focusedIndex]
-          const hasTools = (toolsByServer.get(server.name) || []).length > 0
+          const server = sessionInfo.mcpServers[focusedIndex];
+          const hasTools = (toolsByServer.get(server.name) || []).length > 0;
           if (hasTools) {
-            e.preventDefault()
-            toggleServer(server.name)
+            e.preventDefault();
+            toggleServer(server.name);
           }
         }
-        break
+        break;
       case "Escape":
-        setIsOpen(false)
-        break
+        setIsOpen(false);
+        break;
     }
-  }
+  };
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -254,16 +257,16 @@ export const McpServersIndicator = memo(function McpServersIndicator({
           aria-labelledby="mcp-servers-title"
         >
           {sessionInfo.mcpServers.map((server, index) => {
-            const tools = toolsByServer.get(server.name) || []
-            const isExpanded = expandedServers.has(server.name)
-            const hasTools = tools.length > 0
+            const tools = toolsByServer.get(server.name) || [];
+            const isExpanded = expandedServers.has(server.name);
+            const hasTools = tools.length > 0;
 
             return (
               <div key={server.name} role="listitem">
                 {/* Server row */}
                 <button
                   ref={(el) => {
-                    serverButtonsRef.current[index] = el
+                    serverButtonsRef.current[index] = el;
                   }}
                   onClick={() => hasTools && toggleServer(server.name)}
                   onFocus={() => setFocusedIndex(index)}
@@ -312,7 +315,10 @@ export const McpServersIndicator = memo(function McpServersIndicator({
 
                 {/* Error message */}
                 {server.error && (
-                  <div className="pl-10 pr-3 pb-1 text-[10px] text-red-500/80 truncate" title={server.error}>
+                  <div
+                    className="pl-10 pr-3 pb-1 text-[10px] text-red-500/80 truncate"
+                    title={server.error}
+                  >
                     {server.error}
                   </div>
                 )}
@@ -338,7 +344,7 @@ export const McpServersIndicator = memo(function McpServersIndicator({
                   </div>
                 )}
               </div>
-            )
+            );
           })}
         </div>
 
@@ -376,5 +382,5 @@ export const McpServersIndicator = memo(function McpServersIndicator({
         </div>
       </PopoverContent>
     </Popover>
-  )
-})
+  );
+});

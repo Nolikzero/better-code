@@ -1,18 +1,18 @@
-"use client"
+"use client";
 
-import { memo, useState, useMemo } from "react"
-import { ChevronRight } from "lucide-react"
-import { ExternalLinkIcon } from "../../../components/ui/icons"
-import { cn } from "../../../lib/utils"
+import { ChevronRight } from "lucide-react";
+import { memo, useMemo, useState } from "react";
+import { ExternalLinkIcon } from "../../../components/ui/icons";
+import { cn } from "../../../lib/utils";
 
 interface SearchResult {
-  title: string
-  url: string
+  title: string;
+  url: string;
 }
 
 interface AgentWebSearchCollapsibleProps {
-  part: any
-  chatStatus?: string
+  part: any;
+  chatStatus?: string;
 }
 
 export const AgentWebSearchCollapsible = memo(
@@ -20,38 +20,38 @@ export const AgentWebSearchCollapsible = memo(
     part,
     chatStatus,
   }: AgentWebSearchCollapsibleProps) {
-    const [isExpanded, setIsExpanded] = useState(false)
+    const [isExpanded, setIsExpanded] = useState(false);
 
     const isPending =
-      part.state !== "output-available" && part.state !== "output-error"
-    const isStreaming = isPending && chatStatus === "streaming"
+      part.state !== "output-available" && part.state !== "output-error";
+    const isStreaming = isPending && chatStatus === "streaming";
 
-    const query = part.input?.query || ""
+    const query = part.input?.query || "";
 
     // Parse results from output
     const results = useMemo(() => {
-      if (!part.output?.results) return []
+      if (!part.output?.results) return [];
 
-      const rawResults = part.output.results
-      const allResults: SearchResult[] = []
+      const rawResults = part.output.results;
+      const allResults: SearchResult[] = [];
 
       for (const result of rawResults) {
         if (result.content && Array.isArray(result.content)) {
           for (const item of result.content) {
             if (item.title && item.url) {
-              allResults.push({ title: item.title, url: item.url })
+              allResults.push({ title: item.title, url: item.url });
             }
           }
         } else if (result.title && result.url) {
-          allResults.push({ title: result.title, url: result.url })
+          allResults.push({ title: result.title, url: result.url });
         }
       }
 
-      return allResults
-    }, [part.output?.results])
+      return allResults;
+    }, [part.output?.results]);
 
-    const resultCount = results.length
-    const hasResults = resultCount > 0
+    const resultCount = results.length;
+    const hasResults = resultCount > 0;
 
     return (
       <div>
@@ -70,7 +70,7 @@ export const AgentWebSearchCollapsible = memo(
               </span>
               {/* Query preview when collapsed */}
               <span className="text-muted-foreground/60 truncate">
-                {query.length > 40 ? query.slice(0, 37) + "..." : query}
+                {query.length > 40 ? `${query.slice(0, 37)}...` : query}
               </span>
               {/* Result count */}
               {!isStreaming && hasResults && (
@@ -119,6 +119,6 @@ export const AgentWebSearchCollapsible = memo(
           </div>
         )}
       </div>
-    )
+    );
   },
-)
+);

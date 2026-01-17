@@ -11,7 +11,9 @@ out/
 .idea/
 *.swp
 *.swo
-.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 
 # System files
 .DS_Store

@@ -1,55 +1,55 @@
-"use client"
+"use client";
 
-import { useCallback, useMemo, useState } from "react"
-import { useAtomValue } from "jotai"
-import { loadingSubChatsAtom } from "../atoms"
-import { Plus, ChevronDown, Play, AlignJustify } from "lucide-react"
+import { useAtomValue } from "jotai";
+import { AlignJustify, ChevronDown, Play, Plus } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
+import { Button } from "../../../components/ui/button";
 import {
-  IconSpinner,
-  PlanIcon,
   AgentIcon,
-  DiffIcon,
-  CustomTerminalIcon,
-  IconTextUndo,
   ClaudeCodeIcon,
   CodexIcon,
-} from "../../../components/ui/icons"
-import { Button } from "../../../components/ui/button"
-import { cn } from "../../../lib/utils"
+  CustomTerminalIcon,
+  DiffIcon,
+  IconSpinner,
+  IconTextUndo,
+  PlanIcon,
+} from "../../../components/ui/icons";
+import { PopoverTrigger } from "../../../components/ui/popover";
+import { SearchCombobox } from "../../../components/ui/search-combobox";
 import {
-  useAgentSubChatStore,
-  type SubChatMeta,
-} from "../stores/sub-chat-store"
-import { PopoverTrigger } from "../../../components/ui/popover"
-import { SearchCombobox } from "../../../components/ui/search-combobox"
-import { formatTimeAgo } from "../utils/format-time-ago"
-import {
-  defaultProviderIdAtom,
-  chatProviderOverridesAtom,
   type ProviderId,
-} from "../../../lib/atoms"
+  chatProviderOverridesAtom,
+  defaultProviderIdAtom,
+} from "../../../lib/atoms";
+import { cn } from "../../../lib/utils";
+import { loadingSubChatsAtom } from "../atoms";
+import {
+  type SubChatMeta,
+  useAgentSubChatStore,
+} from "../stores/sub-chat-store";
+import { formatTimeAgo } from "../utils/format-time-ago";
 
 interface DiffStats {
-  fileCount: number
-  additions: number
-  deletions: number
-  isLoading: boolean
-  hasChanges: boolean
+  fileCount: number;
+  additions: number;
+  deletions: number;
+  isLoading: boolean;
+  hasChanges: boolean;
 }
 
 interface MobileChatHeaderProps {
-  chatId?: string
-  onCreateNew: () => void
-  onBackToChats?: () => void
-  onOpenPreview?: () => void
-  canOpenPreview?: boolean
-  onOpenDiff?: () => void
-  canOpenDiff?: boolean
-  diffStats?: DiffStats
-  onOpenTerminal?: () => void
-  canOpenTerminal?: boolean
-  isArchived?: boolean
-  onRestore?: () => void
+  chatId?: string;
+  onCreateNew: () => void;
+  onBackToChats?: () => void;
+  onOpenPreview?: () => void;
+  canOpenPreview?: boolean;
+  onOpenDiff?: () => void;
+  canOpenDiff?: boolean;
+  diffStats?: DiffStats;
+  onOpenTerminal?: () => void;
+  canOpenTerminal?: boolean;
+  isArchived?: boolean;
+  onRestore?: () => void;
 }
 
 export function MobileChatHeader({
@@ -66,58 +66,61 @@ export function MobileChatHeader({
   isArchived = false,
   onRestore,
 }: MobileChatHeaderProps) {
-  const activeSubChatId = useAgentSubChatStore((state) => state.activeSubChatId)
-  const allSubChats = useAgentSubChatStore((state) => state.allSubChats)
-  const loadingSubChatsAtomValue = useAtomValue(loadingSubChatsAtom)
-  const defaultProvider = useAtomValue(defaultProviderIdAtom)
-  const chatOverrides = useAtomValue(chatProviderOverridesAtom)
+  const activeSubChatId = useAgentSubChatStore(
+    (state) => state.activeSubChatId,
+  );
+  const allSubChats = useAgentSubChatStore((state) => state.allSubChats);
+  const loadingSubChatsAtomValue = useAtomValue(loadingSubChatsAtom);
+  const defaultProvider = useAtomValue(defaultProviderIdAtom);
+  const chatOverrides = useAtomValue(chatProviderOverridesAtom);
 
   // Determine effective provider
   const effectiveProvider: ProviderId = chatId
-    ? (chatOverrides[chatId] || defaultProvider)
-    : defaultProvider
-  const ProviderIcon = effectiveProvider === "codex" ? CodexIcon : ClaudeCodeIcon
+    ? chatOverrides[chatId] || defaultProvider
+    : defaultProvider;
+  const ProviderIcon =
+    effectiveProvider === "codex" ? CodexIcon : ClaudeCodeIcon;
 
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false)
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   // Find active sub-chat metadata
   const activeSubChat = useMemo(() => {
-    return allSubChats.find((sc) => sc.id === activeSubChatId)
-  }, [allSubChats, activeSubChatId])
+    return allSubChats.find((sc) => sc.id === activeSubChatId);
+  }, [allSubChats, activeSubChatId]);
 
   const isLoading = activeSubChatId
     ? loadingSubChatsAtomValue.has(activeSubChatId)
-    : false
-  const mode = activeSubChat?.mode || "agent"
+    : false;
+  const mode = activeSubChat?.mode || "agent";
 
   // Sort sub-chats by most recent first for history
   const sortedSubChats = useMemo(
     () =>
       [...allSubChats].sort((a, b) => {
-        const aT = new Date(a.updated_at || a.created_at || "0").getTime()
-        const bT = new Date(b.updated_at || b.created_at || "0").getTime()
-        return bT - aT
+        const aT = new Date(a.updated_at || a.created_at || "0").getTime();
+        const bT = new Date(b.updated_at || b.created_at || "0").getTime();
+        return bT - aT;
       }),
     [allSubChats],
-  )
+  );
 
   const onSwitchFromHistory = useCallback((subChatId: string) => {
-    const state = useAgentSubChatStore.getState()
-    const isAlreadyOpen = state.openSubChatIds.includes(subChatId)
+    const state = useAgentSubChatStore.getState();
+    const isAlreadyOpen = state.openSubChatIds.includes(subChatId);
 
     if (!isAlreadyOpen) {
-      state.addToOpenSubChats(subChatId)
+      state.addToOpenSubChats(subChatId);
     }
-    state.setActiveSubChat(subChatId)
-  }, [])
+    state.setActiveSubChat(subChatId);
+  }, []);
 
   const handleSelectFromHistory = useCallback(
     (subChat: SubChatMeta) => {
-      onSwitchFromHistory(subChat.id)
-      setIsHistoryOpen(false)
+      onSwitchFromHistory(subChat.id);
+      setIsHistoryOpen(false);
     },
     [onSwitchFromHistory],
-  )
+  );
 
   return (
     <div
@@ -161,8 +164,8 @@ export function MobileChatHeader({
         renderItem={(subChat) => {
           const timeAgo = formatTimeAgo(
             subChat.updated_at || subChat.created_at,
-          )
-          const isActive = subChat.id === activeSubChatId
+          );
+          const isActive = subChat.id === activeSubChatId;
           return (
             <div
               className={cn(
@@ -177,7 +180,7 @@ export function MobileChatHeader({
                 {timeAgo}
               </span>
             </div>
-          )
+          );
         }}
         trigger={
           <PopoverTrigger asChild>
@@ -299,5 +302,5 @@ export function MobileChatHeader({
         )}
       </div>
     </div>
-  )
+  );
 }

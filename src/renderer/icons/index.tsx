@@ -1,13 +1,15 @@
-import { LucideProps } from "lucide-react"
-import * as React from "react"
+import type { LucideProps } from "lucide-react";
+import type * as React from "react";
 
-type IconProps = React.SVGProps<SVGSVGElement> & { className?: string }
+type IconProps = React.SVGProps<SVGSVGElement> & { className?: string };
 
 // Spinner icon with animation
 // size: "default" (strokeWidth 3) or "nano" (strokeWidth 4, for small displays)
-export function IconSpinner(props: IconProps & { color?: string; size?: "default" | "nano" }) {
-  const { className, style, color, size = "default", ...rest } = props
-  const strokeWidth = size === "nano" ? 4 : 3
+export function IconSpinner(
+  props: IconProps & { color?: string; size?: "default" | "nano" },
+) {
+  const { className, style, color, size = "default", ...rest } = props;
+  const strokeWidth = size === "nano" ? 4 : 3;
   return (
     <>
       <style>{`
@@ -47,7 +49,7 @@ export function IconSpinner(props: IconProps & { color?: string; size?: "default
         />
       </svg>
     </>
-  )
+  );
 }
 
 // Loading indicator that transitions from spinner to dot
@@ -55,11 +57,11 @@ export function IconSpinner(props: IconProps & { color?: string; size?: "default
 export function LoadingDot({
   isLoading,
   className,
-  dotClassName = "bg-[#307BD0]"
+  dotClassName = "bg-[#307BD0]",
 }: {
-  isLoading: boolean
-  className?: string
-  dotClassName?: string
+  isLoading: boolean;
+  className?: string;
+  dotClassName?: string;
 }) {
   return (
     <div className={`relative ${className || ""}`}>
@@ -77,7 +79,7 @@ export function LoadingDot({
           isLoading ? "opacity-100 scale-100" : "opacity-0 scale-50"
         }`}
         style={{
-          animation: isLoading ? 'spin 1s linear infinite' : undefined,
+          animation: isLoading ? "spin 1s linear infinite" : undefined,
         }}
       >
         <circle
@@ -105,7 +107,7 @@ export function LoadingDot({
         }`}
       />
     </div>
-  )
+  );
 }
 
 // Edit file icon
@@ -127,7 +129,7 @@ export function IconEditFile(props: IconProps) {
         strokeLinejoin="round"
       />
     </svg>
-  )
+  );
 }
 
 // Globe icon
@@ -164,7 +166,7 @@ export const GlobeIcon = (props: LucideProps) => (
       />
     </g>
   </svg>
-)
+);
 
 // Sparkles icon
 export const SparklesIcon = (props: IconProps) => {
@@ -194,8 +196,8 @@ export const SparklesIcon = (props: IconProps) => {
         />
       </g>
     </svg>
-  )
-}
+  );
+};
 
 // Terminal icon
 export const CustomTerminalIcon = (props: LucideProps) => (
@@ -215,7 +217,7 @@ export const CustomTerminalIcon = (props: LucideProps) => (
       strokeLinejoin="round"
     />
   </svg>
-)
+);
 
 // Write file icon
 export const WriteFileIcon = (props: LucideProps) => (
@@ -242,7 +244,7 @@ export const WriteFileIcon = (props: LucideProps) => (
       strokeLinejoin="round"
     />
   </svg>
-)
+);
 
 // Planning icon
 export const PlanningIcon = (props: LucideProps) => (
@@ -262,7 +264,7 @@ export const PlanningIcon = (props: LucideProps) => (
       strokeLinejoin="round"
     />
   </svg>
-)
+);
 
 // Eye icon
 export const EyeIcon = (props: LucideProps) => (
@@ -291,7 +293,7 @@ export const EyeIcon = (props: LucideProps) => (
       />
     </g>
   </svg>
-)
+);
 
 // Search icon
 export const SearchIcon = (props: LucideProps) => (
@@ -313,7 +315,7 @@ export const SearchIcon = (props: LucideProps) => (
       />
     </g>
   </svg>
-)
+);
 
 // Expand icon
 export function ExpandIcon(props: IconProps) {
@@ -332,7 +334,7 @@ export function ExpandIcon(props: IconProps) {
         strokeLinejoin="round"
       />
     </svg>
-  )
+  );
 }
 
 // Collapse icon
@@ -352,7 +354,7 @@ export function CollapseIcon(props: IconProps) {
         strokeLinejoin="round"
       />
     </svg>
-  )
+  );
 }
 
 // Double chevron icons
@@ -368,18 +370,12 @@ export function IconDoubleChevronRight(props: IconProps) {
       <path d="m5.492 4.158 5.4 5.4a.625.625 0 0 1 0 .884l-5.4 5.4a.625.625 0 1 1-.884-.884L9.566 10 4.608 5.042a.625.625 0 1 1 .884-.884" />
       <path d="m16.392 10.442-5.4 5.4a.625.625 0 0 1-.884-.884L15.066 10l-4.958-4.958a.625.625 0 0 1 .884-.884l5.4 5.4a.625.625 0 0 1 0 .884" />
     </svg>
-  )
+  );
 }
 
 export function IconArrowRight(props: IconProps) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      width="24"
-      height="24"
-      {...props}
-    >
+    <svg viewBox="0 0 24 24" fill="none" width="24" height="24" {...props}>
       <path
         d="M14 6L20 12L14 18"
         stroke="currentColor"
@@ -395,7 +391,7 @@ export function IconArrowRight(props: IconProps) {
         strokeLinejoin="round"
       />
     </svg>
-  )
+  );
 }
 
 export function IconDoubleChevronLeft(props: IconProps) {
@@ -411,7 +407,7 @@ export function IconDoubleChevronLeft(props: IconProps) {
       <path d="m5.492 4.158 5.4 5.4a.625.625 0 0 1 0 .884l-5.4 5.4a.625.625 0 1 1-.884-.884L9.566 10 4.608 5.042a.625.625 0 1 1 .884-.884" />
       <path d="m16.392 10.442-5.4 5.4a.625.625 0 0 1-.884-.884L15.066 10l-4.958-4.958a.625.625 0 0 1 .884-.884l5.4 5.4a.625.625 0 0 1 0 .884" />
     </svg>
-  )
+  );
 }
 
 // Check icon
@@ -431,7 +427,7 @@ export const CheckIcon = (props: IconProps) => (
       fill="currentColor"
     />
   </svg>
-)
+);
 
 // Plan icon (list style)
 export function PlanIcon(props: IconProps) {
@@ -455,7 +451,7 @@ export function PlanIcon(props: IconProps) {
       <line x1="3" y1="12" x2="3.01" y2="12" />
       <line x1="3" y1="18" x2="3.01" y2="18" />
     </svg>
-  )
+  );
 }
 
 // External link icon
@@ -477,7 +473,7 @@ export function ExternalLinkIcon(props: IconProps) {
       <polyline points="15 3 21 3 21 9" />
       <line x1="10" y1="14" x2="21" y2="3" />
     </svg>
-  )
+  );
 }
 
 // File icon
@@ -498,7 +494,7 @@ export function FileIcon(props: IconProps) {
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
       <polyline points="14 2 14 8 20 8" />
     </svg>
-  )
+  );
 }
 
 // Folder icon
@@ -518,7 +514,7 @@ export function FolderIcon(props: IconProps) {
     >
       <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
     </svg>
-  )
+  );
 }
 
 // Discord icon
@@ -531,7 +527,7 @@ export const DiscordIcon = (props: LucideProps) => (
   >
     <path d="M19.73 4.87a18.2 18.2 0 0 0-4.6-1.44c-.21.4-.4.8-.58 1.21-1.69-.25-3.4-.25-5.1 0-.18-.41-.37-.82-.59-1.2-1.6.27-3.14.75-4.6 1.43A19.04 19.04 0 0 0 .96 17.7a18.43 18.43 0 0 0 5.63 2.87c.46-.62.86-1.28 1.2-1.98-.65-.25-1.29-.55-1.9-.92.17-.12.32-.24.47-.37 3.58 1.7 7.7 1.7 11.28 0l.46.37c-.6.36-1.25.67-1.9.92.35.7.75 1.35 1.2 1.98 2.03-.63 3.94-1.6 5.64-2.87.47-4.87-.78-9.09-3.3-12.83ZM8.3 15.12c-1.1 0-2-1.02-2-2.27 0-1.24.88-2.26 2-2.26s2.02 1.02 2 2.26c0 1.25-.89 2.27-2 2.27Zm7.4 0c-1.1 0-2-1.02-2-2.27 0-1.24.88-2.26 2-2.26s2.02 1.02 2 2.26c0 1.25-.88 2.27-2 2.27Z" />
   </svg>
-)
+);
 
 // Keyboard icon
 export function KeyboardIcon(props: IconProps) {
@@ -558,7 +554,7 @@ export function KeyboardIcon(props: IconProps) {
       <path d="M16 12h.001" />
       <path d="M7 16h10" />
     </svg>
-  )
+  );
 }
 
 // Settings icon
@@ -579,7 +575,7 @@ export function SettingsIcon(props: IconProps) {
       <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
       <circle cx="12" cy="12" r="3" />
     </svg>
-  )
+  );
 }
 
 // User icon
@@ -600,7 +596,7 @@ export function UserIcon(props: IconProps) {
       <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
       <circle cx="12" cy="7" r="4" />
     </svg>
-  )
+  );
 }
 
 // Palette icon
@@ -624,7 +620,7 @@ export function PaletteIcon(props: IconProps) {
       <circle cx="6.5" cy="12.5" r=".5" fill="currentColor" />
       <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.555C21.965 6.012 17.461 2 12 2z" />
     </svg>
-  )
+  );
 }
 
 // Users icon
@@ -647,7 +643,7 @@ export function UsersIcon(props: IconProps) {
       <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
       <path d="M16 3.13a4 4 0 0 1 0 7.75" />
     </svg>
-  )
+  );
 }
 
 // Credit card icon
@@ -668,7 +664,7 @@ export function CreditCardIcon(props: IconProps) {
       <rect width="20" height="14" x="2" y="5" rx="2" />
       <line x1="2" x2="22" y1="10" y2="10" />
     </svg>
-  )
+  );
 }
 
 // Bug icon for debug
@@ -698,7 +694,7 @@ export function BugIcon(props: IconProps) {
       <path d="M22 13h-4" />
       <path d="M17.2 17c2.1.1 3.8 1.9 3.8 4" />
     </svg>
-  )
+  );
 }
 
 // Cmd icon (⌘)
@@ -718,7 +714,7 @@ export function CmdIcon(props: IconProps) {
     >
       <path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z" />
     </svg>
-  )
+  );
 }
 
 // GitHub icon
@@ -729,7 +725,7 @@ export const GitHubIcon = (props: LucideProps) => (
       d="M409.132 114.573c-19.608-33.596-46.205-60.194-79.798-79.8-33.598-19.607-70.277-29.408-110.063-29.408-39.781 0-76.472 9.804-110.063 29.408-33.596 19.605-60.192 46.204-79.8 79.8C9.803 148.168 0 184.854 0 224.63c0 47.78 13.94 90.745 41.827 128.906 27.884 38.164 63.906 64.572 108.063 79.227 5.14.954 8.945.283 11.419-1.996 2.475-2.282 3.711-5.14 3.711-8.562 0-.571-.049-5.708-.144-15.417a2549.81 2549.81 0 01-.144-25.406l-6.567 1.136c-4.187.767-9.469 1.092-15.846 1-6.374-.089-12.991-.757-19.842-1.999-6.854-1.231-13.229-4.086-19.13-8.559-5.898-4.473-10.085-10.328-12.56-17.556l-2.855-6.57c-1.903-4.374-4.899-9.233-8.992-14.559-4.093-5.331-8.232-8.945-12.419-10.848l-1.999-1.431c-1.332-.951-2.568-2.098-3.711-3.429-1.142-1.331-1.997-2.663-2.568-3.997-.572-1.335-.098-2.43 1.427-3.289 1.525-.859 4.281-1.276 8.28-1.276l5.708.853c3.807.763 8.516 3.042 14.133 6.851 5.614 3.806 10.229 8.754 13.846 14.9 4.38 7.806 9.657 13.754 15.846 17.847 6.184 4.093 12.419 6.136 18.699 6.136 6.28 0 11.704-.476 16.274-1.423 4.565-.952 8.848-2.383 12.847-4.285 1.713-12.758 6.377-22.559 13.988-29.41-10.848-1.14-20.601-2.857-29.264-5.14-8.658-2.286-17.605-5.996-26.835-11.14-9.235-5.137-16.896-11.516-22.985-19.126-6.09-7.614-11.088-17.61-14.987-29.979-3.901-12.374-5.852-26.648-5.852-42.826 0-23.035 7.52-42.637 22.557-58.817-7.044-17.318-6.379-36.732 1.997-58.24 5.52-1.715 13.706-.428 24.554 3.853 10.85 4.283 18.794 7.952 23.84 10.994 5.046 3.041 9.089 5.618 12.135 7.708 17.705-4.947 35.976-7.421 54.818-7.421s37.117 2.474 54.823 7.421l10.849-6.849c7.419-4.57 16.18-8.758 26.262-12.565 10.088-3.805 17.802-4.853 23.134-3.138 8.562 21.509 9.325 40.922 2.279 58.24 15.036 16.18 22.559 35.787 22.559 58.817 0 16.178-1.958 30.497-5.853 42.966-3.9 12.471-8.941 22.457-15.125 29.979-6.191 7.521-13.901 13.85-23.131 18.986-9.232 5.14-18.182 8.85-26.84 11.136-8.662 2.286-18.415 4.004-29.263 5.146 9.894 8.562 14.842 22.077 14.842 40.539v60.237c0 3.422 1.19 6.279 3.572 8.562 2.379 2.279 6.136 2.95 11.276 1.995 44.163-14.653 80.185-41.062 108.068-79.226 27.88-38.161 41.825-81.126 41.825-128.906-.01-39.771-9.818-76.454-29.414-110.049z"
     />
   </svg>
-)
+);
 
 // Profile icon (filled)
 export const ProfileIconFilled = (props: IconProps) => (
@@ -750,7 +746,7 @@ export const ProfileIconFilled = (props: IconProps) => (
       />
     </g>
   </svg>
-)
+);
 
 // Eye open icon (filled)
 export const EyeOpenFilledIcon = (props: IconProps) => (
@@ -769,7 +765,7 @@ export const EyeOpenFilledIcon = (props: IconProps) => (
       fill="currentColor"
     />
   </svg>
-)
+);
 
 // Sliders/Preferences icon (filled) - horizontal sliders
 export const SlidersFilledIcon = (props: IconProps) => (
@@ -784,7 +780,7 @@ export const SlidersFilledIcon = (props: IconProps) => (
     <path d="M9 13C10.8645 13 12.4302 14.2744 12.874 16H20C20.5523 16 21 16.4477 21 17C21 17.5523 20.5523 18 20 18H12.874C12.4302 19.7256 10.8645 21 9 21C7.13554 21 5.56982 19.7256 5.12598 18H4C3.44772 18 3 17.5523 3 17C3 16.4477 3.44772 16 4 16H5.12598C5.56982 14.2744 7.13554 13 9 13Z" />
     <path d="M15 3C16.8645 3 18.4302 4.27443 18.874 6H20C20.5523 6 21 6.44772 21 7C21 7.55228 20.5523 8 20 8H18.874C18.4302 9.72557 16.8645 11 15 11C13.1355 11 11.5698 9.72557 11.126 8H4C3.44772 8 3 7.55228 3 7C3 6.44772 3.44772 6 4 6H11.126C11.5698 4.27443 13.1355 3 15 3Z" />
   </svg>
-)
+);
 
 // Team/Workspace icon
 export const TeamIcon = (props: IconProps) => (
@@ -801,7 +797,7 @@ export const TeamIcon = (props: IconProps) => (
       fill="currentColor"
     />
   </svg>
-)
+);
 
 // Sandbox icon
 export const SandboxIcon = (props: IconProps) => (
@@ -820,7 +816,7 @@ export const SandboxIcon = (props: IconProps) => (
       fill="currentColor"
     />
   </svg>
-)
+);
 
 // Plus icon
 export const PlusIcon = (props: IconProps) => {
@@ -840,8 +836,8 @@ export const PlusIcon = (props: IconProps) => {
         strokeLinecap="round"
       />
     </svg>
-  )
-}
+  );
+};
 
 // Profile icon
 export const ProfileIcon = ({
@@ -866,7 +862,7 @@ export const ProfileIcon = ({
       <path d="M15 10C15 11.6569 13.6569 13 12 13C10.3431 13 9 11.6569 9 10C9 8.34315 10.3431 7 12 7C13.6569 7 15 8.34315 15 10Z" />
     </g>
   </svg>
-)
+);
 
 // GitHub logo
 export const GitHubLogo = (props: IconProps) => (
@@ -878,7 +874,7 @@ export const GitHubLogo = (props: IconProps) => (
   >
     <path d="M12 2A10 10 0 0 0 2 12a10 10 0 0 0 6.838 9.488c.5.087.687-.213.687-.476 0-.237-.013-1.024-.013-1.862-2.512.463-3.162-.612-3.362-1.175-.113-.288-.6-1.175-1.025-1.413-.35-.187-.85-.65-.013-.662.788-.013 1.35.725 1.538 1.025.9 1.512 2.338 1.087 2.912.825.088-.65.35-1.087.638-1.337-2.225-.25-4.55-1.113-4.55-4.938 0-1.088.387-1.987 1.025-2.688-.1-.25-.45-1.275.1-2.65 0 0 .837-.262 2.75 1.026a9.28 9.28 0 0 1 2.5-.338c.85 0 1.7.112 2.5.337 1.912-1.3 2.75-1.025 2.75-1.025.55 1.375.2 2.4.1 2.65.637.7 1.025 1.587 1.025 2.687 0 3.838-2.337 4.688-4.562 4.938.362.312.675.912.675 1.85 0 1.337-.013 2.412-.013 2.75 0 .262.188.574.688.474A10.016 10.016 0 0 0 22 12 10 10 0 0 0 12 2Z" />
   </svg>
-)
+);
 
 // Blank project icon
 export const BlankProjectIcon = ({
@@ -907,7 +903,7 @@ export const BlankProjectIcon = ({
       strokeLinejoin="round"
     />
   </svg>
-)
+);
 
 // Archive icon
 export function ArchiveIcon({ className }: { className?: string }) {
@@ -942,7 +938,7 @@ export function ArchiveIcon({ className }: { className?: string }) {
         />
       </g>
     </svg>
-  )
+  );
 }
 
 // Question circle icon
@@ -980,7 +976,7 @@ export function QuestionCircleIcon(props: IconProps) {
         />
       </g>
     </svg>
-  )
+  );
 }
 
 // Ticket icon
@@ -1002,7 +998,7 @@ export const TicketIcon = ({ className }: { className?: string }) => (
     <path d="M15 17l0 2" />
     <path d="M5 5h14a2 2 0 0 1 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-3a2 2 0 0 0 0 -4v-3a2 2 0 0 1 2 -2" />
   </svg>
-)
+);
 
 // Roadmap icon
 export function RoadmapIcon(props: IconProps) {
@@ -1021,7 +1017,7 @@ export function RoadmapIcon(props: IconProps) {
         strokeLinejoin="round"
       />
     </svg>
-  )
+  );
 }
 
 // Publisher studio icon
@@ -1049,4 +1045,4 @@ export const PublisherStudioIcon = (props: IconProps) => (
       strokeLinejoin="round"
     />
   </svg>
-)
+);

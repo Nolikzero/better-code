@@ -1,11 +1,11 @@
-import { useState, useCallback, useEffect, useRef } from "react"
-import type { SearchAddon } from "@xterm/addon-search"
-import { X, ChevronUp, ChevronDown } from "lucide-react"
+import type { SearchAddon } from "@xterm/addon-search";
+import { ChevronDown, ChevronUp, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface TerminalSearchProps {
-  searchAddon: SearchAddon | null
-  isOpen: boolean
-  onClose: () => void
+  searchAddon: SearchAddon | null;
+  isOpen: boolean;
+  onClose: () => void;
 }
 
 export function TerminalSearch({
@@ -13,68 +13,68 @@ export function TerminalSearch({
   isOpen,
   onClose,
 }: TerminalSearchProps) {
-  const [query, setQuery] = useState("")
-  const [matchCount, setMatchCount] = useState<number | null>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const [query, setQuery] = useState("");
+  const [matchCount, setMatchCount] = useState<number | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Focus input when opened
   useEffect(() => {
     if (isOpen && inputRef.current) {
-      inputRef.current.focus()
-      inputRef.current.select()
+      inputRef.current.focus();
+      inputRef.current.select();
     }
-  }, [isOpen])
+  }, [isOpen]);
 
   // Handle search
   const handleSearch = useCallback(
     (direction: "next" | "prev") => {
-      if (!searchAddon || !query) return
+      if (!searchAddon || !query) return;
 
       if (direction === "next") {
-        searchAddon.findNext(query, { caseSensitive: false, regex: false })
+        searchAddon.findNext(query, { caseSensitive: false, regex: false });
       } else {
-        searchAddon.findPrevious(query, { caseSensitive: false, regex: false })
+        searchAddon.findPrevious(query, { caseSensitive: false, regex: false });
       }
     },
-    [searchAddon, query]
-  )
+    [searchAddon, query],
+  );
 
   // Search on query change
   useEffect(() => {
     if (!searchAddon || !query) {
-      setMatchCount(null)
-      return
+      setMatchCount(null);
+      return;
     }
 
     // Trigger search
-    searchAddon.findNext(query, { caseSensitive: false, regex: false })
-  }, [searchAddon, query])
+    searchAddon.findNext(query, { caseSensitive: false, regex: false });
+  }, [searchAddon, query]);
 
   // Handle keyboard shortcuts
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === "Escape") {
-        onClose()
+        onClose();
       } else if (e.key === "Enter") {
-        e.preventDefault()
+        e.preventDefault();
         if (e.shiftKey) {
-          handleSearch("prev")
+          handleSearch("prev");
         } else {
-          handleSearch("next")
+          handleSearch("next");
         }
       }
     },
-    [onClose, handleSearch]
-  )
+    [onClose, handleSearch],
+  );
 
   // Clear search when closed
   useEffect(() => {
     if (!isOpen && searchAddon) {
-      searchAddon.clearDecorations()
+      searchAddon.clearDecorations();
     }
-  }, [isOpen, searchAddon])
+  }, [isOpen, searchAddon]);
 
-  if (!isOpen) return null
+  if (!isOpen) return null;
 
   return (
     <div className="absolute top-2 right-2 z-10 flex items-center gap-1 rounded-md border border-border bg-background p-1.5 shadow-lg">
@@ -114,5 +114,5 @@ export function TerminalSearch({
         <X className="h-4 w-4 text-muted-foreground" />
       </button>
     </div>
-  )
+  );
 }

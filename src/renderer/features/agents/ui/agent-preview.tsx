@@ -1,38 +1,39 @@
-"use client"
+"use client";
 
-import { useState, useRef, useCallback, useEffect, useMemo } from "react"
-import { useAtom } from "jotai"
-import { Button } from "../../../components/ui/button"
-import { RotateCw } from "lucide-react"
+import { useAtom } from "jotai";
+import { RotateCw } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Button } from "../../../components/ui/button";
 import {
   ExternalLinkIcon,
-  IconDoubleChevronRight,
   IconChatBubble,
-} from "../../../components/ui/icons"
-import { PreviewUrlInput } from "./preview-url-input"
+  IconDoubleChevronRight,
+} from "../../../components/ui/icons";
+import { cn } from "../../../lib/utils";
 import {
-  previewPathAtomFamily,
-  viewportModeAtomFamily,
-  previewScaleAtomFamily,
   mobileDeviceAtomFamily,
-} from "../atoms"
-import { cn } from "../../../lib/utils"
-import { ViewportToggle } from "./viewport-toggle"
-import { ScaleControl } from "./scale-control"
-import { DevicePresetsBar } from "./device-presets-bar"
-import { ResizeHandle } from "./resize-handle"
-import { MobileCopyLinkButton } from "./mobile-copy-link-button"
-import { DEVICE_PRESETS, AGENTS_PREVIEW_CONSTANTS } from "../constants"
+  previewPathAtomFamily,
+  previewScaleAtomFamily,
+  viewportModeAtomFamily,
+} from "../atoms";
+import { AGENTS_PREVIEW_CONSTANTS, DEVICE_PRESETS } from "../constants";
+import { DevicePresetsBar } from "./device-presets-bar";
+import { MobileCopyLinkButton } from "./mobile-copy-link-button";
+import { PreviewUrlInput } from "./preview-url-input";
+import { ResizeHandle } from "./resize-handle";
+import { ScaleControl } from "./scale-control";
+import { ViewportToggle } from "./viewport-toggle";
 // import { getSandboxPreviewUrl } from "@/app/(alpha)/canvas/{components}/settings-tabs/repositories/preview-url"
-const getSandboxPreviewUrl = (sandboxId: string, port: number, _type: string) => `https://${sandboxId}-${port}.csb.app` // Desktop mock
+const getSandboxPreviewUrl = (sandboxId: string, port: number, _type: string) =>
+  `https://${sandboxId}-${port}.csb.app`; // Desktop mock
 interface AgentPreviewProps {
-  chatId: string
-  sandboxId: string
-  port: number
-  repository?: string
-  hideHeader?: boolean
-  onClose?: () => void
-  isMobile?: boolean
+  chatId: string;
+  sandboxId: string;
+  port: number;
+  repository?: string;
+  hideHeader?: boolean;
+  onClose?: () => void;
+  isMobile?: boolean;
 }
 
 export function AgentPreview({
@@ -44,77 +45,77 @@ export function AgentPreview({
   onClose,
   isMobile = false,
 }: AgentPreviewProps) {
-  const [isLoaded, setIsLoaded] = useState(false)
-  const [reloadKey, setReloadKey] = useState(0)
-  const [isRefreshing, setIsRefreshing] = useState(false)
-  const iframeRef = useRef<HTMLIFrameElement>(null)
-  const frameRef = useRef<HTMLDivElement>(null)
-  const resizeCleanupRef = useRef<(() => void) | null>(null)
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const frameRef = useRef<HTMLDivElement>(null);
+  const resizeCleanupRef = useRef<(() => void) | null>(null);
 
   // Persisted state from Jotai atoms (per chatId)
   const [persistedPath, setPersistedPath] = useAtom(
     previewPathAtomFamily(chatId),
-  )
+  );
   const [viewportMode, setViewportMode] = useAtom(
     viewportModeAtomFamily(chatId),
-  )
-  const [scale, setScale] = useAtom(previewScaleAtomFamily(chatId))
-  const [device, setDevice] = useAtom(mobileDeviceAtomFamily(chatId))
+  );
+  const [scale, setScale] = useAtom(previewScaleAtomFamily(chatId));
+  const [device, setDevice] = useAtom(mobileDeviceAtomFamily(chatId));
 
   // Local state for resizing
-  const [isResizing, setIsResizing] = useState(false)
+  const [isResizing, setIsResizing] = useState(false);
   const [maxWidth, setMaxWidth] = useState<number>(
     AGENTS_PREVIEW_CONSTANTS.MAX_WIDTH,
-  )
+  );
 
   // Dual state architecture:
   // - loadedPath: Controls iframe src (stable, only changes on manual navigation)
   // - currentPath: Display path (updates immediately on internal navigation)
-  const [loadedPath, setLoadedPath] = useState(persistedPath)
-  const [currentPath, setCurrentPath] = useState(persistedPath)
+  const [loadedPath, setLoadedPath] = useState(persistedPath);
+  const [currentPath, setCurrentPath] = useState(persistedPath);
 
   // Listen for reload events from external header
   useEffect(() => {
     const handleReload = (e: CustomEvent) => {
       if (e.detail?.chatId === chatId) {
-        setReloadKey((prev) => prev + 1)
-        setIsRefreshing(true)
-        setTimeout(() => setIsRefreshing(false), 400)
+        setReloadKey((prev) => prev + 1);
+        setIsRefreshing(true);
+        setTimeout(() => setIsRefreshing(false), 400);
       }
-    }
+    };
 
     window.addEventListener(
       "agent-preview-reload",
       handleReload as EventListener,
-    )
+    );
     return () =>
       window.removeEventListener(
         "agent-preview-reload",
         handleReload as EventListener,
-      )
-  }, [chatId])
+      );
+  }, [chatId]);
 
   // Listen for navigation events from external header
   useEffect(() => {
     const handleNavigate = (e: CustomEvent) => {
       if (e.detail?.chatId === chatId && e.detail?.path) {
-        setLoadedPath(e.detail.path)
-        setCurrentPath(e.detail.path)
-        setPersistedPath(e.detail.path)
-        setIsLoaded(false)
+        setLoadedPath(e.detail.path);
+        setCurrentPath(e.detail.path);
+        setPersistedPath(e.detail.path);
+        setIsLoaded(false);
       }
-    }
+    };
 
     window.addEventListener(
       "agent-preview-navigate",
       handleNavigate as EventListener,
-    )
+    );
     return () =>
       window.removeEventListener(
         "agent-preview-navigate",
         handleNavigate as EventListener,
-      )
-  }, [chatId, setPersistedPath])
+      );
+  }, [chatId, setPersistedPath]);
 
   // Dispatch path updates to header
   useEffect(() => {
@@ -122,38 +123,38 @@ export function AgentPreview({
       new CustomEvent("agent-preview-path-update", {
         detail: { chatId, path: currentPath },
       }),
-    )
-  }, [chatId, currentPath])
+    );
+  }, [chatId, currentPath]);
 
   // Sync loadedPath when persistedPath changes (e.g., on mount with stored value)
   useEffect(() => {
-    setLoadedPath(persistedPath)
-    setCurrentPath(persistedPath)
-  }, [persistedPath])
+    setLoadedPath(persistedPath);
+    setCurrentPath(persistedPath);
+  }, [persistedPath]);
 
   // Compute base host and preview URL
   const previewBaseUrl = useMemo(
     () => getSandboxPreviewUrl(sandboxId, port, "agents"),
     [sandboxId, port],
-  )
+  );
   const baseHost = useMemo(() => {
-    return new URL(previewBaseUrl).host
-  }, [previewBaseUrl])
+    return new URL(previewBaseUrl).host;
+  }, [previewBaseUrl]);
 
   const previewUrl = useMemo(() => {
-    return `${previewBaseUrl}${loadedPath}`
-  }, [previewBaseUrl, loadedPath])
+    return `${previewBaseUrl}${loadedPath}`;
+  }, [previewBaseUrl, loadedPath]);
 
   // Handle path selection from URL bar
   const handlePathSelect = useCallback(
     (path: string) => {
-      setLoadedPath(path) // Triggers iframe reload via src change
-      setCurrentPath(path) // Updates URL bar display
-      setPersistedPath(path) // Persist to localStorage
-      setIsLoaded(false) // Show loading state
+      setLoadedPath(path); // Triggers iframe reload via src change
+      setCurrentPath(path); // Updates URL bar display
+      setPersistedPath(path); // Persist to localStorage
+      setIsLoaded(false); // Show loading state
     },
     [setPersistedPath],
-  )
+  );
 
   // Listen for SET_URL messages from iframe for bi-directional sync
   useEffect(() => {
@@ -163,69 +164,69 @@ export function AgentPreview({
         !iframeRef.current ||
         event.source !== iframeRef.current.contentWindow
       ) {
-        return
+        return;
       }
 
       // Handle SET_URL messages from preview script
       if (event.data?.type === "SET_URL") {
-        const newPath = event.data.url || "/"
+        const newPath = event.data.url || "/";
 
         // Skip srcdoc paths (edge case from iframe)
         if (newPath.includes("srcdoc")) {
-          return
+          return;
         }
 
         // Update ONLY currentPath for immediate display update
         // Do NOT update loadedPath - that would cause iframe remount
-        setCurrentPath(newPath)
-        setPersistedPath(newPath) // Persist to localStorage
+        setCurrentPath(newPath);
+        setPersistedPath(newPath); // Persist to localStorage
       }
-    }
+    };
 
-    window.addEventListener("message", handleMessage)
-    return () => window.removeEventListener("message", handleMessage)
-  }, [setPersistedPath])
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [setPersistedPath]);
 
   // Calculate max width on mount and window resize
   useEffect(() => {
     const updateMaxWidth = () => {
-      const availableWidth = window.innerWidth - 64 // Account for padding/margins
-      setMaxWidth(Math.max(AGENTS_PREVIEW_CONSTANTS.MIN_WIDTH, availableWidth))
-    }
+      const availableWidth = window.innerWidth - 64; // Account for padding/margins
+      setMaxWidth(Math.max(AGENTS_PREVIEW_CONSTANTS.MIN_WIDTH, availableWidth));
+    };
 
-    updateMaxWidth()
-    window.addEventListener("resize", updateMaxWidth)
-    return () => window.removeEventListener("resize", updateMaxWidth)
-  }, [])
+    updateMaxWidth();
+    window.addEventListener("resize", updateMaxWidth);
+    return () => window.removeEventListener("resize", updateMaxWidth);
+  }, []);
 
   // Cleanup resize handlers on unmount
   useEffect(() => {
     return () => {
-      resizeCleanupRef.current?.()
-    }
-  }, [])
+      resizeCleanupRef.current?.();
+    };
+  }, []);
 
   const handleReload = useCallback(() => {
-    if (isRefreshing) return
-    setIsRefreshing(true)
-    setIsLoaded(false)
-    setReloadKey((prev) => prev + 1)
-    setTimeout(() => setIsRefreshing(false), 400)
-  }, [isRefreshing])
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    setIsLoaded(false);
+    setReloadKey((prev) => prev + 1);
+    setTimeout(() => setIsRefreshing(false), 400);
+  }, [isRefreshing]);
 
   const handlePresetChange = useCallback(
     (presetName: string) => {
-      const preset = DEVICE_PRESETS.find((p) => p.name === presetName)
+      const preset = DEVICE_PRESETS.find((p) => p.name === presetName);
       if (preset) {
         setDevice({
           width: preset.width,
           height: preset.height,
           preset: preset.name,
-        })
+        });
       }
     },
     [setDevice],
-  )
+  );
 
   const handleWidthChange = useCallback(
     (width: number) => {
@@ -233,80 +234,80 @@ export function AgentPreview({
         ...device,
         width,
         preset: "Custom",
-      })
+      });
     },
     [device, setDevice],
-  )
+  );
 
   const handleResizeStart = useCallback(
     (e: React.PointerEvent) => {
-      e.preventDefault()
-      e.stopPropagation()
+      e.preventDefault();
+      e.stopPropagation();
 
-      const handle = e.currentTarget as HTMLElement
-      const pointerId = e.pointerId
-      const isLeftHandle = handle.getAttribute("data-side") === "left"
-      const startX = e.clientX
-      const startWidth = device.width
-      const frame = frameRef.current
+      const handle = e.currentTarget as HTMLElement;
+      const pointerId = e.pointerId;
+      const isLeftHandle = handle.getAttribute("data-side") === "left";
+      const startX = e.clientX;
+      const startWidth = device.width;
+      const frame = frameRef.current;
 
-      if (!frame) return
+      if (!frame) return;
 
-      handle.setPointerCapture(pointerId)
-      setIsResizing(true)
+      handle.setPointerCapture(pointerId);
+      setIsResizing(true);
 
       const handlePointerMove = (e: PointerEvent) => {
-        let delta = e.clientX - startX
+        let delta = e.clientX - startX;
         if (isLeftHandle) {
-          delta = -delta
+          delta = -delta;
         }
         const newWidth = Math.round(
           Math.max(
             AGENTS_PREVIEW_CONSTANTS.MIN_WIDTH,
             Math.min(maxWidth, startWidth + delta * 2),
           ),
-        )
-        frame.style.width = `${newWidth}px`
+        );
+        frame.style.width = `${newWidth}px`;
         setDevice({
           ...device,
           width: newWidth,
           preset: "Custom",
-        })
-      }
+        });
+      };
 
       const handlePointerUp = () => {
         if (handle.hasPointerCapture(pointerId)) {
-          handle.releasePointerCapture(pointerId)
+          handle.releasePointerCapture(pointerId);
         }
-        setIsResizing(false)
-        cleanup()
-      }
+        setIsResizing(false);
+        cleanup();
+      };
 
       const handlePointerCancel = () => {
         if (handle.hasPointerCapture(pointerId)) {
-          handle.releasePointerCapture(pointerId)
+          handle.releasePointerCapture(pointerId);
         }
-        cleanup()
-      }
+        cleanup();
+      };
 
       const cleanup = () => {
-        handle.removeEventListener("pointermove", handlePointerMove as any)
-        handle.removeEventListener("pointerup", handlePointerUp as any)
-        handle.removeEventListener("pointercancel", handlePointerCancel as any)
-        document.body.style.userSelect = ""
-        document.body.style.cursor = ""
-        resizeCleanupRef.current = null
-      }
+        handle.removeEventListener("pointermove", handlePointerMove as any);
+        handle.removeEventListener("pointerup", handlePointerUp as any);
+        handle.removeEventListener("pointercancel", handlePointerCancel as any);
+        document.body.style.userSelect = "";
+        document.body.style.cursor = "";
+        resizeCleanupRef.current = null;
+      };
 
-      document.body.style.userSelect = "none"
-      document.body.style.cursor = "ew-resize"
-      handle.addEventListener("pointermove", handlePointerMove as any)
-      handle.addEventListener("pointerup", handlePointerUp as any)
-      handle.addEventListener("pointercancel", handlePointerCancel as any)
-      resizeCleanupRef.current = cleanup
+      document.body.style.userSelect = "none";
+      document.body.style.cursor = "ew-resize";
+      handle.addEventListener("pointermove", handlePointerMove as any);
+      handle.addEventListener("pointerup", handlePointerUp as any);
+      handle.addEventListener("pointercancel", handlePointerCancel as any);
+      resizeCleanupRef.current = cleanup;
     },
     [device, maxWidth, setDevice],
-  )
+  );
 
   return (
     <div
@@ -609,5 +610,5 @@ export function AgentPreview({
         )}
       </div>
     </div>
-  )
+  );
 }

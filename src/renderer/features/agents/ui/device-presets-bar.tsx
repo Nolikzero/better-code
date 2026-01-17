@@ -1,25 +1,25 @@
-"use client"
+"use client";
 
-import { motion } from "motion/react"
-import { useState, useEffect } from "react"
+import { motion } from "motion/react";
+import { useEffect, useState } from "react";
+import { Input } from "../../../components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../../../components/ui/select"
-import { Input } from "../../../components/ui/input"
-import { DEVICE_PRESETS, AGENTS_PREVIEW_CONSTANTS } from "../constants"
+} from "../../../components/ui/select";
+import { AGENTS_PREVIEW_CONSTANTS, DEVICE_PRESETS } from "../constants";
 
 interface DevicePresetsBarProps {
-  selectedPreset: string
-  width: number
-  height: number
-  onPresetChange: (preset: string) => void
-  onWidthChange: (width: number) => void
-  maxWidth: number
-  className?: string
+  selectedPreset: string;
+  width: number;
+  height: number;
+  onPresetChange: (preset: string) => void;
+  onWidthChange: (width: number) => void;
+  maxWidth: number;
+  className?: string;
 }
 
 export function DevicePresetsBar({
@@ -31,33 +31,33 @@ export function DevicePresetsBar({
   maxWidth,
   className,
 }: DevicePresetsBarProps) {
-  const [widthInputValue, setWidthInputValue] = useState(String(width))
+  const [widthInputValue, setWidthInputValue] = useState(String(width));
 
   // Sync input value when width prop changes
   useEffect(() => {
-    setWidthInputValue(String(width))
-  }, [width])
+    setWidthInputValue(String(width));
+  }, [width]);
 
   const handleWidthInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setWidthInputValue(e.target.value)
-  }
+    setWidthInputValue(e.target.value);
+  };
 
   const handleWidthBlur = () => {
-    const value = parseInt(widthInputValue)
+    const value = Number.parseInt(widthInputValue);
 
     // Apply any valid positive number, clamp to reasonable bounds
-    if (!isNaN(value) && value > 0) {
+    if (!Number.isNaN(value) && value > 0) {
       const clampedValue = Math.max(
         AGENTS_PREVIEW_CONSTANTS.MIN_WIDTH,
         Math.min(maxWidth, value),
-      )
-      setWidthInputValue(String(clampedValue))
-      onWidthChange(clampedValue)
+      );
+      setWidthInputValue(String(clampedValue));
+      onWidthChange(clampedValue);
     } else {
       // Invalid input - reset to current width
-      setWidthInputValue(String(width))
+      setWidthInputValue(String(width));
     }
-  }
+  };
 
   return (
     <motion.div
@@ -104,7 +104,7 @@ export function DevicePresetsBar({
             onBlur={handleWidthBlur}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
-                e.currentTarget.blur()
+                e.currentTarget.blur();
               }
             }}
             className="h-7 w-auto min-w-9 text-xs px-1.5 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
@@ -132,6 +132,5 @@ export function DevicePresetsBar({
         </div>
       </div>
     </motion.div>
-  )
+  );
 }
-

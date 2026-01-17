@@ -8,6 +8,7 @@ export function useDesktopNotifications() {
     notifyAgentComplete: (_chatName: string) => {
       // Agent complete notification - TODO: implement real notifications
     },
-    requestPermission: () => Promise.resolve('granted' as NotificationPermission),
-  }
+    requestPermission: () =>
+      Promise.resolve("granted" as NotificationPermission),
+  };
 }

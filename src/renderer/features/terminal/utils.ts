@@ -15,11 +15,11 @@ export function shellEscapePaths(paths: string[]): string {
       // If path contains spaces, special chars, or is empty, quote it
       if (!p || /[\s'"\\$`!]/.test(p)) {
         // Escape any existing double quotes and wrap in double quotes
-        return `"${p.replace(/"/g, '\\"')}"`
+        return `"${p.replace(/"/g, '\\"')}"`;
       }
-      return p
+      return p;
     })
-    .join(" ")
+    .join(" ");
 }
 
 /**
@@ -31,26 +31,26 @@ export function shellEscapePaths(paths: string[]): string {
  */
 export function debounce<T extends (...args: unknown[]) => void>(
   fn: T,
-  delay: number
+  delay: number,
 ): T & { cancel: () => void } {
-  let timeoutId: ReturnType<typeof setTimeout> | null = null
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
   const debounced = ((...args: Parameters<T>) => {
     if (timeoutId) {
-      clearTimeout(timeoutId)
+      clearTimeout(timeoutId);
     }
     timeoutId = setTimeout(() => {
-      fn(...args)
-      timeoutId = null
-    }, delay)
-  }) as T & { cancel: () => void }
+      fn(...args);
+      timeoutId = null;
+    }, delay);
+  }) as T & { cancel: () => void };
 
   debounced.cancel = () => {
     if (timeoutId) {
-      clearTimeout(timeoutId)
-      timeoutId = null
+      clearTimeout(timeoutId);
+      timeoutId = null;
     }
-  }
+  };
 
-  return debounced
+  return debounced;
 }

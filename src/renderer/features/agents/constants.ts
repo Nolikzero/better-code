@@ -3,10 +3,10 @@
  */
 
 export type DevicePreset = {
-  name: string
-  width: number
-  height: number
-}
+  name: string;
+  width: number;
+  height: number;
+};
 
 export const DEVICE_PRESETS: DevicePreset[] = [
   { name: "Custom", width: 397, height: 852 },
@@ -20,10 +20,10 @@ export const DEVICE_PRESETS: DevicePreset[] = [
   { name: "iPad Pro", width: 1024, height: 1366 },
   { name: "Android Compact", width: 360, height: 640 },
   { name: "Android Medium", width: 412, height: 915 },
-] as const
+] as const;
 
 // Scale presets for preview
-export const SCALE_PRESETS = [50, 75, 100, 125, 150] as const
+export const SCALE_PRESETS = [50, 75, 100, 125, 150] as const;
 
 export const AGENTS_PREVIEW_CONSTANTS = {
   DEVICE_PRESETS,
@@ -36,7 +36,6 @@ export const AGENTS_PREVIEW_CONSTANTS = {
   MAX_HEIGHT: 2000,
   MIN_SCALE: 25,
   MAX_SCALE: 200,
-} as const
+} as const;
 
-export type AgentsPreviewConstants = typeof AGENTS_PREVIEW_CONSTANTS
-
+export type AgentsPreviewConstants = typeof AGENTS_PREVIEW_CONSTANTS;

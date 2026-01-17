@@ -1,36 +1,36 @@
-import type { ChatTransport, UIMessage } from "ai"
-import { toast } from "sonner"
+import type { ChatTransport, UIMessage } from "ai";
+import { toast } from "sonner";
 import {
+  type ProviderId,
   agentsLoginModalOpenAtom,
-  extendedThinkingEnabledAtom,
-  sessionInfoAtom,
-  defaultProviderIdAtom,
   chatProviderOverridesAtom,
-  lastSelectedModelByProviderAtom,
-  codexSandboxModeAtom,
   codexApprovalPolicyAtom,
   codexReasoningEffortAtom,
-  type ProviderId,
-} from "../../../lib/atoms"
-import { appStore } from "../../../lib/jotai-store"
-import { trpcClient } from "../../../lib/trpc"
+  codexSandboxModeAtom,
+  defaultProviderIdAtom,
+  extendedThinkingEnabledAtom,
+  lastSelectedModelByProviderAtom,
+  sessionInfoAtom,
+} from "../../../lib/atoms";
+import { appStore } from "../../../lib/jotai-store";
+import { trpcClient } from "../../../lib/trpc";
 import {
+  MODEL_ID_MAP,
   askUserQuestionResultsAtom,
   compactingSubChatsAtom,
   lastSelectedModelIdAtom,
-  MODEL_ID_MAP,
   pendingAuthRetryMessageAtom,
   pendingUserQuestionsAtom,
-} from "../atoms"
-import { useAgentSubChatStore } from "../stores/sub-chat-store"
+} from "../atoms";
+import { useAgentSubChatStore } from "../stores/sub-chat-store";
 
 // Error categories and their user-friendly messages
 const ERROR_TOAST_CONFIG: Record<
   string,
   {
-    title: string
-    description: string
-    action?: { label: string; onClick: () => void }
+    title: string;
+    description: string;
+    action?: { label: string; onClick: () => void };
   }
 > = {
   AUTH_FAILED_SDK: {
@@ -89,90 +89,106 @@ const ERROR_TOAST_CONFIG: Record<
     title: "Authentication failed",
     description: "Your session may have expired. Try logging in again.",
   },
-}
+};
 
-type UIMessageChunk = any // Inferred from subscription
+type UIMessageChunk = any; // Inferred from subscription
 
 type IPCChatTransportConfig = {
-  chatId: string
-  subChatId: string
-  cwd: string
-  projectPath?: string // Original project path for MCP config lookup (when using worktrees)
-  mode: "plan" | "agent"
-  model?: string
-  providerId?: ProviderId // AI provider selection (claude or codex)
-}
+  chatId: string;
+  subChatId: string;
+  cwd: string;
+  projectPath?: string; // Original project path for MCP config lookup (when using worktrees)
+  mode: "plan" | "agent";
+  model?: string;
+  providerId?: ProviderId; // AI provider selection (claude or codex)
+};
 
 // Image attachment type matching the tRPC schema
 type ImageAttachment = {
-  base64Data: string
-  mediaType: string
-  filename?: string
-}
+  base64Data: string;
+  mediaType: string;
+  filename?: string;
+};
 
 export class IPCChatTransport implements ChatTransport<UIMessage> {
   constructor(private config: IPCChatTransportConfig) {}
 
   async sendMessages(options: {
-    messages: UIMessage[]
-    abortSignal?: AbortSignal
+    messages: UIMessage[];
+    abortSignal?: AbortSignal;
   }): Promise<ReadableStream<UIMessageChunk>> {
     // Extract prompt and images from last user message
     const lastUser = [...options.messages]
       .reverse()
-      .find((m) => m.role === "user")
-    const prompt = this.extractText(lastUser)
-    const images = this.extractImages(lastUser)
+      .find((m) => m.role === "user");
+    const prompt = this.extractText(lastUser);
+    const images = this.extractImages(lastUser);
 
     // Get sessionId for resume
     const lastAssistant = [...options.messages]
       .reverse()
-      .find((m) => m.role === "assistant")
-    const sessionId = (lastAssistant as any)?.metadata?.sessionId
+      .find((m) => m.role === "assistant");
+    const sessionId = (lastAssistant as any)?.metadata?.sessionId;
 
     // Read extended thinking setting dynamically (so toggle applies to existing chats)
     // Note: claude-opus-4-5-20251101 has a max output of 64000 tokens, so we use 60000 to stay within limits
-    const thinkingEnabled = appStore.get(extendedThinkingEnabledAtom)
-    const maxThinkingTokens = thinkingEnabled ? 60_000 : undefined
+    const thinkingEnabled = appStore.get(extendedThinkingEnabledAtom);
+    const maxThinkingTokens = thinkingEnabled ? 60_000 : undefined;
 
     // Determine effective provider (config override -> per-chat override -> global default)
-    const defaultProvider = appStore.get(defaultProviderIdAtom)
-    const chatOverrides = appStore.get(chatProviderOverridesAtom)
+    const defaultProvider = appStore.get(defaultProviderIdAtom);
+    const chatOverrides = appStore.get(chatProviderOverridesAtom);
     const effectiveProvider =
       this.config.providerId ||
       chatOverrides[this.config.chatId] ||
-      defaultProvider
+      defaultProvider;
 
     // Read model selection for the effective provider
-    const modelsByProvider = appStore.get(lastSelectedModelByProviderAtom)
-    const modelString = modelsByProvider[effectiveProvider] || (effectiveProvider === "claude" ? "sonnet" : "gpt-5.2-codex")
+    const modelsByProvider = appStore.get(lastSelectedModelByProviderAtom);
+    const modelString =
+      modelsByProvider[effectiveProvider] ||
+      (effectiveProvider === "claude" ? "sonnet" : "gpt-5.2-codex");
 
     // Legacy: still read from lastSelectedModelIdAtom for backwards compatibility with Claude
-    const selectedModelId = appStore.get(lastSelectedModelIdAtom)
-    const legacyModelString = MODEL_ID_MAP[selectedModelId]
-    const finalModelString = effectiveProvider === "claude" ? (legacyModelString || modelString) : modelString
+    const selectedModelId = appStore.get(lastSelectedModelIdAtom);
+    const legacyModelString = MODEL_ID_MAP[selectedModelId];
+    const finalModelString =
+      effectiveProvider === "claude"
+        ? legacyModelString || modelString
+        : modelString;
 
     const currentMode =
       useAgentSubChatStore
         .getState()
         .allSubChats.find((subChat) => subChat.id === this.config.subChatId)
-        ?.mode || this.config.mode
+        ?.mode || this.config.mode;
 
     // Read Codex-specific settings (only used when provider is codex)
-    const sandboxMode = effectiveProvider === "codex" ? appStore.get(codexSandboxModeAtom) : undefined
-    const approvalPolicy = effectiveProvider === "codex" ? appStore.get(codexApprovalPolicyAtom) : undefined
-    const reasoningEffort = effectiveProvider === "codex" ? appStore.get(codexReasoningEffortAtom) : undefined
+    const sandboxMode =
+      effectiveProvider === "codex"
+        ? appStore.get(codexSandboxModeAtom)
+        : undefined;
+    const approvalPolicy =
+      effectiveProvider === "codex"
+        ? appStore.get(codexApprovalPolicyAtom)
+        : undefined;
+    const reasoningEffort =
+      effectiveProvider === "codex"
+        ? appStore.get(codexReasoningEffortAtom)
+        : undefined;
 
     // Stream debug logging
-    const subId = this.config.subChatId.slice(-8)
-    let chunkCount = 0
-    let lastChunkType = ""
-    console.log(`[SD] R:START sub=${subId} cwd=${this.config.cwd} projectPath=${this.config.projectPath || "(not set)"} provider=${effectiveProvider}`)
+    const subId = this.config.subChatId.slice(-8);
+    let chunkCount = 0;
+    let lastChunkType = "";
+    console.log(
+      `[SD] R:START sub=${subId} cwd=${this.config.cwd} projectPath=${this.config.projectPath || "(not set)"} provider=${effectiveProvider}`,
+    );
 
     return new ReadableStream({
       start: (controller) => {
         // Track stream state to prevent operations on closed stream
-        let streamClosed = false
+        let streamClosed = false;
 
         const sub = trpcClient.claude.chat.subscribe(
           {
@@ -194,8 +210,8 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
           },
           {
             onData: (chunk: UIMessageChunk) => {
-              chunkCount++
-              lastChunkType = chunk.type
+              chunkCount++;
+              lastChunkType = chunk.type;
 
               // Handle AskUserQuestion - show question UI
               if (chunk.type === "ask-user-question") {
@@ -203,37 +219,37 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
                   subChatId: this.config.subChatId,
                   toolUseId: chunk.toolUseId,
                   questions: chunk.questions,
-                })
+                });
               }
 
               // Handle AskUserQuestion timeout - clear pending question immediately
               if (chunk.type === "ask-user-question-timeout") {
-                const pending = appStore.get(pendingUserQuestionsAtom)
+                const pending = appStore.get(pendingUserQuestionsAtom);
                 if (pending && pending.toolUseId === chunk.toolUseId) {
-                  appStore.set(pendingUserQuestionsAtom, null)
+                  appStore.set(pendingUserQuestionsAtom, null);
                 }
               }
 
               // Handle AskUserQuestion result - store for real-time updates
               if (chunk.type === "ask-user-question-result") {
-                const currentResults = appStore.get(askUserQuestionResultsAtom)
-                const newResults = new Map(currentResults)
-                newResults.set(chunk.toolUseId, chunk.result)
-                appStore.set(askUserQuestionResultsAtom, newResults)
+                const currentResults = appStore.get(askUserQuestionResultsAtom);
+                const newResults = new Map(currentResults);
+                newResults.set(chunk.toolUseId, chunk.result);
+                appStore.set(askUserQuestionResultsAtom, newResults);
               }
 
               // Handle compacting status - track in atom for UI display
               if (chunk.type === "system-Compact") {
-                const compacting = appStore.get(compactingSubChatsAtom)
-                const newCompacting = new Set(compacting)
+                const compacting = appStore.get(compactingSubChatsAtom);
+                const newCompacting = new Set(compacting);
                 if (chunk.state === "input-streaming") {
                   // Compacting started
-                  newCompacting.add(this.config.subChatId)
+                  newCompacting.add(this.config.subChatId);
                 } else {
                   // Compacting finished (output-available)
-                  newCompacting.delete(this.config.subChatId)
+                  newCompacting.delete(this.config.subChatId);
                 }
-                appStore.set(compactingSubChatsAtom, newCompacting)
+                appStore.set(compactingSubChatsAtom, newCompacting);
               }
 
               // Handle session init - store MCP servers, plugins, tools info
@@ -245,13 +261,13 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
                   skills: chunk.skills?.length,
                   // Debug: show all tools to check for MCP tools (format: mcp__servername__toolname)
                   allTools: chunk.tools,
-                })
+                });
                 appStore.set(sessionInfoAtom, {
                   tools: chunk.tools,
                   mcpServers: chunk.mcpServers,
                   plugins: chunk.plugins,
                   skills: chunk.skills,
-                })
+                });
               }
 
               // Clear pending questions ONLY when agent has moved on
@@ -263,12 +279,12 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
                 chunk.type !== "ask-user-question-result" &&
                 !chunk.type.startsWith("tool-input") && // Don't clear while input is being built
                 chunk.type !== "start" &&
-                chunk.type !== "start-step"
+                chunk.type !== "start-step";
 
               if (shouldClearOnChunk) {
-                const pending = appStore.get(pendingUserQuestionsAtom)
+                const pending = appStore.get(pendingUserQuestionsAtom);
                 if (pending && pending.subChatId === this.config.subChatId) {
-                  appStore.set(pendingUserQuestionsAtom, null)
+                  appStore.set(pendingUserQuestionsAtom, null);
                 }
               }
 
@@ -281,22 +297,22 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
                   prompt,
                   ...(images.length > 0 && { images }),
                   readyToRetry: false,
-                })
+                });
                 // Show the Claude Code login modal
-                appStore.set(agentsLoginModalOpenAtom, true)
+                appStore.set(agentsLoginModalOpenAtom, true);
                 // Use controller.error() instead of controller.close() so that
                 // the SDK Chat properly resets status from "streaming" to "ready"
                 // This allows user to retry sending messages after failed auth
-                streamClosed = true
-                controller.error(new Error("Authentication required"))
-                return
+                streamClosed = true;
+                controller.error(new Error("Authentication required"));
+                return;
               }
 
               // Handle errors - show toast to user FIRST before anything else
               if (chunk.type === "error") {
                 // Show toast based on error category
-                const category = chunk.debugInfo?.category || "UNKNOWN"
-                const config = ERROR_TOAST_CONFIG[category]
+                const category = chunk.debugInfo?.category || "UNKNOWN";
+                const config = ERROR_TOAST_CONFIG[category];
 
                 if (config) {
                   toast.error(config.title, {
@@ -308,93 +324,101 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
                           onClick: config.action.onClick,
                         }
                       : undefined,
-                  })
+                  });
                 } else {
                   toast.error("Something went wrong", {
                     description:
                       chunk.errorText || "An unexpected error occurred",
                     duration: 8000,
-                  })
+                  });
                 }
               }
 
               // Skip enqueue if stream is already closed
               if (streamClosed) {
-                return
+                return;
               }
 
               // Try to enqueue, but don't crash if stream is already closed
               try {
-                controller.enqueue(chunk)
+                controller.enqueue(chunk);
               } catch (e) {
                 // Stream was closed externally, mark it as such
-                streamClosed = true
-                console.log(`[SD] R:ENQUEUE_ERR sub=${subId} type=${chunk.type} n=${chunkCount} err=${e}`)
-                return
+                streamClosed = true;
+                console.log(
+                  `[SD] R:ENQUEUE_ERR sub=${subId} type=${chunk.type} n=${chunkCount} err=${e}`,
+                );
+                return;
               }
 
               if (chunk.type === "finish") {
-                console.log(`[SD] R:FINISH sub=${subId} n=${chunkCount}`)
-                streamClosed = true
+                console.log(`[SD] R:FINISH sub=${subId} n=${chunkCount}`);
+                streamClosed = true;
                 try {
-                  controller.close()
+                  controller.close();
                 } catch {
                   // Already closed
                 }
               }
             },
             onError: (err: Error) => {
-              console.log(`[SD] R:ERROR sub=${subId} n=${chunkCount} last=${lastChunkType} err=${err.message}`)
-              if (streamClosed) return
-              streamClosed = true
-              controller.error(err)
+              console.log(
+                `[SD] R:ERROR sub=${subId} n=${chunkCount} last=${lastChunkType} err=${err.message}`,
+              );
+              if (streamClosed) return;
+              streamClosed = true;
+              controller.error(err);
             },
             onComplete: () => {
-              console.log(`[SD] R:COMPLETE sub=${subId} n=${chunkCount} last=${lastChunkType}`)
+              console.log(
+                `[SD] R:COMPLETE sub=${subId} n=${chunkCount} last=${lastChunkType}`,
+              );
               // Note: Don't clear pending questions here - let active-chat.tsx handle it
               // via the stream stop detection effect. Clearing here causes race conditions
               // where sync effect immediately restores from messages.
-              if (streamClosed) return
-              streamClosed = true
+              if (streamClosed) return;
+              streamClosed = true;
               try {
-                controller.close()
+                controller.close();
               } catch {
                 // Already closed
               }
             },
           },
-        )
+        );
 
         // Handle abort
         options.abortSignal?.addEventListener("abort", () => {
-          console.log(`[SD] R:ABORT sub=${subId} n=${chunkCount} last=${lastChunkType}`)
-          sub.unsubscribe()
-          trpcClient.claude.cancel.mutate({ subChatId: this.config.subChatId })
-          if (streamClosed) return
-          streamClosed = true
+          console.log(
+            `[SD] R:ABORT sub=${subId} n=${chunkCount} last=${lastChunkType}`,
+          );
+          sub.unsubscribe();
+          trpcClient.claude.cancel.mutate({ subChatId: this.config.subChatId });
+          if (streamClosed) return;
+          streamClosed = true;
           try {
-            controller.close()
+            controller.close();
           } catch {
             // Already closed
           }
-        })
+        });
       },
-    })
+    });
   }
 
   async reconnectToStream(): Promise<ReadableStream<UIMessageChunk> | null> {
-    return null // Not needed for local app
+    return null; // Not needed for local app
   }
 
   private extractText(msg: UIMessage | undefined): string {
-    if (!msg) return ""
+    if (!msg) return "";
     if (msg.parts) {
       return msg.parts
         .filter((p): p is { type: "text"; text: string } => p.type === "text")
         .map((p) => p.text)
-        .join("\n")
+        .join("\n");
     }
-    return ""
+    return "";
   }
 
   /**
@@ -402,24 +426,24 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
    * Looks for parts with type "data-image" that have base64Data
    */
   private extractImages(msg: UIMessage | undefined): ImageAttachment[] {
-    if (!msg || !msg.parts) return []
+    if (!msg || !msg.parts) return [];
 
-    const images: ImageAttachment[] = []
+    const images: ImageAttachment[] = [];
 
     for (const part of msg.parts) {
       // Check for data-image parts with base64 data
       if (part.type === "data-image" && (part as any).data) {
-        const data = (part as any).data
+        const data = (part as any).data;
         if (data.base64Data && data.mediaType) {
           images.push({
             base64Data: data.base64Data,
             mediaType: data.mediaType,
             filename: data.filename,
-          })
+          });
         }
       }
     }
 
-    return images
+    return images;
   }
 }

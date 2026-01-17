@@ -5,51 +5,51 @@
  * Falls back gracefully on older macOS versions and other platforms.
  */
 
-import type { BrowserWindow } from "electron"
+import type { BrowserWindow } from "electron";
 
 // Types for electron-liquid-glass
 interface GlassOptions {
-  cornerRadius?: number
-  tintColor?: string // RGBA hex (e.g., '#44000010')
-  opaque?: boolean
+  cornerRadius?: number;
+  tintColor?: string; // RGBA hex (e.g., '#44000010')
+  opaque?: boolean;
 }
 
 interface LiquidGlassModule {
-  addView: (windowHandle: Buffer, options?: GlassOptions) => number
-  removeView: (glassId: number) => void
-  unstable_setVariant?: (glassId: number, variant: number) => void
-  unstable_setScrim?: (glassId: number, scrim: number) => void
-  unstable_setSubdued?: (glassId: number, subdued: number) => void
+  addView: (windowHandle: Buffer, options?: GlassOptions) => number;
+  removeView: (glassId: number) => void;
+  unstable_setVariant?: (glassId: number, variant: number) => void;
+  unstable_setScrim?: (glassId: number, scrim: number) => void;
+  unstable_setSubdued?: (glassId: number, subdued: number) => void;
 }
 
 // State
-let liquidGlassModule: LiquidGlassModule | null = null
-let currentGlassId: number | null = null
-let isInitialized = false
-let initializationError: string | null = null
+let liquidGlassModule: LiquidGlassModule | null = null;
+let currentGlassId: number | null = null;
+let isInitialized = false;
+let initializationError: string | null = null;
 
 /**
  * Initialize the liquid glass module
  * Should be called once at app startup
  */
 export function initLiquidGlass(): boolean {
-  if (isInitialized) return liquidGlassModule !== null
+  if (isInitialized) return liquidGlassModule !== null;
 
   try {
     // Dynamic import to handle platforms where the module isn't available
-    liquidGlassModule = require("electron-liquid-glass")
-    isInitialized = true
-    console.log("[LiquidGlass] Module loaded successfully")
-    return true
+    liquidGlassModule = require("electron-liquid-glass");
+    isInitialized = true;
+    console.log("[LiquidGlass] Module loaded successfully");
+    return true;
   } catch (error) {
-    isInitialized = true
+    isInitialized = true;
     initializationError =
-      error instanceof Error ? error.message : "Unknown error"
+      error instanceof Error ? error.message : "Unknown error";
     console.log(
       "[LiquidGlass] Module not available (expected on non-macOS 26+):",
-      initializationError
-    )
-    return false
+      initializationError,
+    );
+    return false;
   }
 }
 
@@ -58,16 +58,16 @@ export function initLiquidGlass(): boolean {
  */
 export function isLiquidGlassSupported(): boolean {
   if (!isInitialized) {
-    initLiquidGlass()
+    initLiquidGlass();
   }
-  return liquidGlassModule !== null
+  return liquidGlassModule !== null;
 }
 
 /**
  * Get initialization error if any
  */
 export function getLiquidGlassError(): string | null {
-  return initializationError
+  return initializationError;
 }
 
 /**
@@ -78,26 +78,26 @@ export function getLiquidGlassError(): string | null {
  */
 export function enableLiquidGlass(
   window: BrowserWindow,
-  options?: GlassOptions
+  options?: GlassOptions,
 ): number | null {
   if (!liquidGlassModule) {
-    console.log("[LiquidGlass] Cannot enable - module not available")
-    return null
+    console.log("[LiquidGlass] Cannot enable - module not available");
+    return null;
   }
 
   // Remove existing glass view if any
   if (currentGlassId !== null) {
-    disableLiquidGlass()
+    disableLiquidGlass();
   }
 
   try {
-    const handle = window.getNativeWindowHandle()
-    currentGlassId = liquidGlassModule.addView(handle, options)
-    console.log("[LiquidGlass] Enabled with ID:", currentGlassId)
-    return currentGlassId
+    const handle = window.getNativeWindowHandle();
+    currentGlassId = liquidGlassModule.addView(handle, options);
+    console.log("[LiquidGlass] Enabled with ID:", currentGlassId);
+    return currentGlassId;
   } catch (error) {
-    console.error("[LiquidGlass] Failed to enable:", error)
-    return null
+    console.error("[LiquidGlass] Failed to enable:", error);
+    return null;
   }
 }
 
@@ -106,15 +106,15 @@ export function enableLiquidGlass(
  */
 export function disableLiquidGlass(): void {
   if (!liquidGlassModule || currentGlassId === null) {
-    return
+    return;
   }
 
   try {
-    liquidGlassModule.removeView(currentGlassId)
-    console.log("[LiquidGlass] Disabled (was ID:", currentGlassId, ")")
-    currentGlassId = null
+    liquidGlassModule.removeView(currentGlassId);
+    console.log("[LiquidGlass] Disabled (was ID:", currentGlassId, ")");
+    currentGlassId = null;
   } catch (error) {
-    console.error("[LiquidGlass] Failed to disable:", error)
+    console.error("[LiquidGlass] Failed to disable:", error);
   }
 }
 
@@ -122,17 +122,17 @@ export function disableLiquidGlass(): void {
  * Get current liquid glass state
  */
 export function getLiquidGlassState(): {
-  supported: boolean
-  enabled: boolean
-  glassId: number | null
-  error: string | null
+  supported: boolean;
+  enabled: boolean;
+  glassId: number | null;
+  error: string | null;
 } {
   return {
     supported: isLiquidGlassSupported(),
     enabled: currentGlassId !== null,
     glassId: currentGlassId,
     error: initializationError,
-  }
+  };
 }
 
 /**
@@ -141,13 +141,13 @@ export function getLiquidGlassState(): {
  */
 export function updateLiquidGlass(
   window: BrowserWindow,
-  options?: GlassOptions
+  options?: GlassOptions,
 ): boolean {
   if (!liquidGlassModule || currentGlassId === null) {
-    return false
+    return false;
   }
 
   // Remove existing and create new with updated options
-  disableLiquidGlass()
-  return enableLiquidGlass(window, options) !== null
+  disableLiquidGlass();
+  return enableLiquidGlass(window, options) !== null;
 }

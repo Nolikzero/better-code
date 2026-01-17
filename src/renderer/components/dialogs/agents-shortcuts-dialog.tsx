@@ -1,21 +1,21 @@
-import { useEffect, useMemo } from "react"
-import { AnimatePresence, motion } from "motion/react"
-import { createPortal } from "react-dom"
-import { useAtomValue } from "jotai"
-import { CmdIcon } from "../../icons"
-import { ctrlTabTargetAtom } from "../../lib/atoms"
+import { useAtomValue } from "jotai";
+import { AnimatePresence, motion } from "motion/react";
+import { useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
+import { CmdIcon } from "../../icons";
+import { ctrlTabTargetAtom } from "../../lib/atoms";
 
 interface AgentsShortcutsDialogProps {
-  isOpen: boolean
-  onClose: () => void
+  isOpen: boolean;
+  onClose: () => void;
 }
 
-const EASING_CURVE = [0.55, 0.055, 0.675, 0.19] as const
+const EASING_CURVE = [0.55, 0.055, 0.675, 0.19] as const;
 
 interface Shortcut {
-  label: string
-  keys: Array<string>
-  altKeys?: Array<string>
+  label: string;
+  keys: Array<string>;
+  altKeys?: Array<string>;
 }
 
 function ShortcutKey({ keyName }: { keyName: string }) {
@@ -24,7 +24,7 @@ function ShortcutKey({ keyName }: { keyName: string }) {
       <kbd className="inline-flex h-5 min-w-5 min-h-5 max-h-full items-center justify-center rounded border border-muted bg-secondary px-1 font-[inherit] text-[11px] font-normal text-secondary-foreground">
         <CmdIcon className="h-2.5 w-2.5" />
       </kbd>
-    )
+    );
   }
 
   return (
@@ -37,7 +37,7 @@ function ShortcutKey({ keyName }: { keyName: string }) {
             ? "⌃"
             : keyName}
     </kbd>
-  )
+  );
 }
 
 function ShortcutRow({ shortcut }: { shortcut: Shortcut }) {
@@ -58,7 +58,7 @@ function ShortcutRow({ shortcut }: { shortcut: Shortcut }) {
         )}
       </div>
     </div>
-  )
+  );
 }
 
 // Desktop app shortcuts (simplified)
@@ -67,7 +67,7 @@ const GENERAL_SHORTCUTS: Shortcut[] = [
   { label: "Settings", keys: ["cmd", ","] },
   { label: "Toggle sidebar", keys: ["cmd", "\\"] },
   { label: "Undo archive", keys: ["cmd", "Z"] },
-]
+];
 
 // Dynamic shortcuts based on ctrlTabTarget preference
 function getWorkspaceShortcuts(
@@ -80,14 +80,14 @@ function getWorkspaceShortcuts(
     {
       label: "Quick switch workspaces",
       keys:
-        ctrlTabTarget === "workspaces" ? ["ctrl", "Tab"] : ["opt", "ctrl", "Tab"],
+        ctrlTabTarget === "workspaces"
+          ? ["ctrl", "Tab"]
+          : ["opt", "ctrl", "Tab"],
     },
-  ]
+  ];
 }
 
-function getAgentShortcuts(
-  ctrlTabTarget: "workspaces" | "agents",
-): Shortcut[] {
+function getAgentShortcuts(ctrlTabTarget: "workspaces" | "agents"): Shortcut[] {
   return [
     // Creation & Management (mirrors Workspaces order)
     { label: "Create new agent", keys: ["cmd", "T"] },
@@ -97,7 +97,9 @@ function getAgentShortcuts(
     {
       label: "Quick switch agents",
       keys:
-        ctrlTabTarget === "workspaces" ? ["opt", "ctrl", "Tab"] : ["ctrl", "Tab"],
+        ctrlTabTarget === "workspaces"
+          ? ["opt", "ctrl", "Tab"]
+          : ["ctrl", "Tab"],
     },
     {
       label: "Previous / Next agent",
@@ -113,42 +115,42 @@ function getAgentShortcuts(
     { label: "Toggle terminal", keys: ["cmd", "J"] },
     { label: "Open diff", keys: ["cmd", "D"] },
     { label: "Create PR", keys: ["cmd", "P"] },
-  ]
+  ];
 }
 
 export function AgentsShortcutsDialog({
   isOpen,
   onClose,
 }: AgentsShortcutsDialogProps) {
-  const ctrlTabTarget = useAtomValue(ctrlTabTargetAtom)
+  const ctrlTabTarget = useAtomValue(ctrlTabTargetAtom);
 
   // Memoize shortcuts based on preference
   const workspaceShortcuts = useMemo(
     () => getWorkspaceShortcuts(ctrlTabTarget),
     [ctrlTabTarget],
-  )
+  );
   const agentShortcuts = useMemo(
     () => getAgentShortcuts(ctrlTabTarget),
     [ctrlTabTarget],
-  )
+  );
 
   // Handle ESC key to close dialog
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        e.preventDefault()
-        onClose()
+        e.preventDefault();
+        onClose();
       }
-    }
+    };
 
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [isOpen, onClose])
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
 
-  const portalTarget = typeof document !== "undefined" ? document.body : null
-  if (!portalTarget) return null
+  const portalTarget = typeof document !== "undefined" ? document.body : null;
+  if (!portalTarget) return null;
 
   return createPortal(
     <AnimatePresence mode="wait" initial={false}>
@@ -182,7 +184,10 @@ export function AgentsShortcutsDialog({
               className="w-[90vw] max-w-[420px] lg:max-w-[720px] pointer-events-auto"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="bg-background rounded-sm border shadow-2xl overflow-hidden" data-canvas-dialog>
+              <div
+                className="bg-background rounded-sm border shadow-2xl overflow-hidden"
+                data-canvas-dialog
+              >
                 <div className="p-6">
                   <h2 className="text-xl font-semibold mb-5 text-center">
                     Keyboard Shortcuts
@@ -237,5 +242,5 @@ export function AgentsShortcutsDialog({
       )}
     </AnimatePresence>,
     portalTarget,
-  )
+  );
 }

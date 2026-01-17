@@ -1,23 +1,23 @@
-import { execSync } from "node:child_process"
-import fs from "node:fs"
-import path from "node:path"
-import os from "node:os"
-import { app } from "electron"
-import { stripVTControlCharacters } from "node:util"
+import { execSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { stripVTControlCharacters } from "node:util";
+import { app } from "electron";
 
 // Cache the shell environment
-let cachedShellEnv: Record<string, string> | null = null
+let cachedShellEnv: Record<string, string> | null = null;
 
 // Cache for resolved binary path
-let cachedBinaryResult: ClaudeBinaryResult | null | undefined = undefined // undefined = not checked yet
+let cachedBinaryResult: ClaudeBinaryResult | null | undefined = undefined; // undefined = not checked yet
 
 export interface ClaudeBinaryResult {
-  path: string
-  source: "bundled" | "system-path" | "system-install"
+  path: string;
+  source: "bundled" | "system-path" | "system-install";
 }
 
 // Delimiter for parsing env output
-const DELIMITER = "_CLAUDE_ENV_DELIMITER_"
+const DELIMITER = "_CLAUDE_ENV_DELIMITER_";
 
 // Keys to strip (prevent auth interference)
 const STRIPPED_ENV_KEYS = [
@@ -25,54 +25,56 @@ const STRIPPED_ENV_KEYS = [
   "OPENAI_API_KEY",
   "CLAUDE_CODE_USE_BEDROCK",
   "CLAUDE_CODE_USE_VERTEX",
-]
+];
 
 /**
  * Get path to the bundled Claude binary.
  * Returns the path to the native Claude executable bundled with the app.
  */
 export function getBundledClaudeBinaryPath(): string {
-  const isDev = !app.isPackaged
-  const platform = process.platform
-  const arch = process.arch
+  const isDev = !app.isPackaged;
+  const platform = process.platform;
+  const arch = process.arch;
 
-  console.log("[claude-binary] ========== BUNDLED BINARY PATH ==========")
-  console.log("[claude-binary] isDev:", isDev)
-  console.log("[claude-binary] platform:", platform)
-  console.log("[claude-binary] arch:", arch)
-  console.log("[claude-binary] appPath:", app.getAppPath())
+  console.log("[claude-binary] ========== BUNDLED BINARY PATH ==========");
+  console.log("[claude-binary] isDev:", isDev);
+  console.log("[claude-binary] platform:", platform);
+  console.log("[claude-binary] arch:", arch);
+  console.log("[claude-binary] appPath:", app.getAppPath());
 
   // In dev: apps/desktop/resources/bin/{platform}-{arch}/claude
   // In production: {resourcesPath}/bin/claude
   const resourcesPath = isDev
     ? path.join(app.getAppPath(), "resources/bin", `${platform}-${arch}`)
-    : path.join(process.resourcesPath, "bin")
+    : path.join(process.resourcesPath, "bin");
 
-  console.log("[claude-binary] resourcesPath:", resourcesPath)
+  console.log("[claude-binary] resourcesPath:", resourcesPath);
 
-  const binaryName = platform === "win32" ? "claude.exe" : "claude"
-  const binaryPath = path.join(resourcesPath, binaryName)
+  const binaryName = platform === "win32" ? "claude.exe" : "claude";
+  const binaryPath = path.join(resourcesPath, binaryName);
 
-  console.log("[claude-binary] binaryPath:", binaryPath)
+  console.log("[claude-binary] binaryPath:", binaryPath);
 
   // Check if binary exists
-  const exists = fs.existsSync(binaryPath)
-  console.log("[claude-binary] exists:", exists)
+  const exists = fs.existsSync(binaryPath);
+  console.log("[claude-binary] exists:", exists);
 
   if (exists) {
-    const stats = fs.statSync(binaryPath)
-    const sizeMB = (stats.size / 1024 / 1024).toFixed(1)
-    const isExecutable = (stats.mode & fs.constants.X_OK) !== 0
-    console.log("[claude-binary] size:", sizeMB, "MB")
-    console.log("[claude-binary] isExecutable:", isExecutable)
+    const stats = fs.statSync(binaryPath);
+    const sizeMB = (stats.size / 1024 / 1024).toFixed(1);
+    const isExecutable = (stats.mode & fs.constants.X_OK) !== 0;
+    console.log("[claude-binary] size:", sizeMB, "MB");
+    console.log("[claude-binary] isExecutable:", isExecutable);
   } else {
-    console.error("[claude-binary] WARNING: Binary not found at path!")
-    console.error("[claude-binary] Run 'bun run claude:download' to download it")
+    console.error("[claude-binary] WARNING: Binary not found at path!");
+    console.error(
+      "[claude-binary] Run 'bun run claude:download' to download it",
+    );
   }
 
-  console.log("[claude-binary] ===========================================")
+  console.log("[claude-binary] ===========================================");
 
-  return binaryPath
+  return binaryPath;
 }
 
 /**
@@ -80,10 +82,10 @@ export function getBundledClaudeBinaryPath(): string {
  */
 function isExecutable(filePath: string): boolean {
   try {
-    fs.accessSync(filePath, fs.constants.X_OK)
-    return true
+    fs.accessSync(filePath, fs.constants.X_OK);
+    return true;
   } catch {
-    return false
+    return false;
   }
 }
 
@@ -91,9 +93,9 @@ function isExecutable(filePath: string): boolean {
  * Get platform-specific system installation paths to check
  */
 function getSystemPaths(): string[] {
-  const platform = process.platform
-  const home = os.homedir()
-  const binaryName = platform === "win32" ? "claude.exe" : "claude"
+  const platform = process.platform;
+  const home = os.homedir();
+  const binaryName = platform === "win32" ? "claude.exe" : "claude";
 
   if (platform === "darwin") {
     return [
@@ -101,7 +103,7 @@ function getSystemPaths(): string[] {
       path.join(home, ".local", "bin", binaryName),
       "/opt/homebrew/bin/claude",
       "/usr/local/bin/claude",
-    ]
+    ];
   }
 
   if (platform === "linux") {
@@ -110,42 +112,42 @@ function getSystemPaths(): string[] {
       path.join(home, ".local", "bin", binaryName),
       "/usr/local/bin/claude",
       "/snap/bin/claude",
-    ]
+    ];
   }
 
   if (platform === "win32") {
-    const userProfile = process.env.USERPROFILE || home
+    const userProfile = process.env.USERPROFILE || home;
     return [
       path.join(userProfile, ".local", "bin", binaryName),
       path.join(userProfile, ".claude", "bin", binaryName),
-    ]
+    ];
   }
 
-  return []
+  return [];
 }
 
 /**
  * Find Claude binary in common system installation paths
  */
 function findInSystemPaths(): string | null {
-  const paths = getSystemPaths()
+  const paths = getSystemPaths();
 
   for (const p of paths) {
-    console.log(`[claude-binary] Checking system path: ${p}`)
+    console.log(`[claude-binary] Checking system path: ${p}`);
     if (isExecutable(p)) {
-      return p
+      return p;
     }
   }
 
-  return null
+  return null;
 }
 
 /**
  * Find Claude binary using PATH lookup (which/where)
  */
 function findInPath(): string | null {
-  const platform = process.platform
-  const binaryName = platform === "win32" ? "claude.exe" : "claude"
+  const platform = process.platform;
+  const binaryName = platform === "win32" ? "claude.exe" : "claude";
 
   try {
     if (platform === "win32") {
@@ -153,28 +155,28 @@ function findInPath(): string | null {
         encoding: "utf8",
         timeout: 5000,
         windowsHide: true,
-      })
-      const firstMatch = result.trim().split("\n")[0]
+      });
+      const firstMatch = result.trim().split("\n")[0];
       if (firstMatch && isExecutable(firstMatch)) {
-        return firstMatch
+        return firstMatch;
       }
     } else {
-      const shellEnv = getClaudeShellEnvironment()
+      const shellEnv = getClaudeShellEnvironment();
       const result = execSync(`which ${binaryName}`, {
         encoding: "utf8",
         timeout: 5000,
         env: shellEnv,
-      })
-      const foundPath = result.trim()
+      });
+      const foundPath = result.trim();
       if (foundPath && isExecutable(foundPath)) {
-        return foundPath
+        return foundPath;
       }
     }
   } catch {
     // Command failed or binary not found
   }
 
-  return null
+  return null;
 }
 
 /**
@@ -191,71 +193,71 @@ function findInPath(): string | null {
  */
 export function getClaudeBinaryPath(): ClaudeBinaryResult | null {
   if (cachedBinaryResult !== undefined) {
-    return cachedBinaryResult
+    return cachedBinaryResult;
   }
 
   // 1. Try bundled binary first
-  const bundledPath = getBundledClaudeBinaryPath()
+  const bundledPath = getBundledClaudeBinaryPath();
   if (isExecutable(bundledPath)) {
-    console.log("[claude-binary] Using bundled binary:", bundledPath)
-    cachedBinaryResult = { path: bundledPath, source: "bundled" }
-    return cachedBinaryResult
+    console.log("[claude-binary] Using bundled binary:", bundledPath);
+    cachedBinaryResult = { path: bundledPath, source: "bundled" };
+    return cachedBinaryResult;
   }
 
   console.log(
     "[claude-binary] Bundled binary not found, checking system paths...",
-  )
+  );
 
   // 2. Try common installation paths
-  const systemPath = findInSystemPaths()
+  const systemPath = findInSystemPaths();
   if (systemPath) {
-    console.log("[claude-binary] Found in system path:", systemPath)
-    cachedBinaryResult = { path: systemPath, source: "system-install" }
-    return cachedBinaryResult
+    console.log("[claude-binary] Found in system path:", systemPath);
+    cachedBinaryResult = { path: systemPath, source: "system-install" };
+    return cachedBinaryResult;
   }
 
   // 3. Try PATH lookup as last resort
-  const pathLookup = findInPath()
+  const pathLookup = findInPath();
   if (pathLookup) {
-    console.log("[claude-binary] Found in PATH:", pathLookup)
-    cachedBinaryResult = { path: pathLookup, source: "system-path" }
-    return cachedBinaryResult
+    console.log("[claude-binary] Found in PATH:", pathLookup);
+    cachedBinaryResult = { path: pathLookup, source: "system-path" };
+    return cachedBinaryResult;
   }
 
-  console.error("[claude-binary] Claude Code binary not found anywhere!")
+  console.error("[claude-binary] Claude Code binary not found anywhere!");
   console.error(
     "[claude-binary] Install via https://claude.ai/install.sh or run 'bun run claude:download'",
-  )
-  cachedBinaryResult = null
-  return null
+  );
+  cachedBinaryResult = null;
+  return null;
 }
 
 /**
  * Clear cached binary path (useful for testing)
  */
 export function clearClaudeBinaryCache(): void {
-  cachedBinaryResult = undefined
+  cachedBinaryResult = undefined;
 }
 
 /**
  * Parse environment variables from shell output
  */
 function parseEnvOutput(output: string): Record<string, string> {
-  const envSection = output.split(DELIMITER)[1]
-  if (!envSection) return {}
+  const envSection = output.split(DELIMITER)[1];
+  if (!envSection) return {};
 
-  const env: Record<string, string> = {}
+  const env: Record<string, string> = {};
   for (const line of stripVTControlCharacters(envSection)
     .split("\n")
     .filter(Boolean)) {
-    const separatorIndex = line.indexOf("=")
+    const separatorIndex = line.indexOf("=");
     if (separatorIndex > 0) {
-      const key = line.substring(0, separatorIndex)
-      const value = line.substring(separatorIndex + 1)
-      env[key] = value
+      const key = line.substring(0, separatorIndex);
+      const value = line.substring(separatorIndex + 1);
+      env[key] = value;
     }
   }
-  return env
+  return env;
 }
 
 /**
@@ -265,11 +267,11 @@ function parseEnvOutput(output: string): Record<string, string> {
  */
 export function getClaudeShellEnvironment(): Record<string, string> {
   if (cachedShellEnv !== null) {
-    return { ...cachedShellEnv }
+    return { ...cachedShellEnv };
   }
 
-  const shell = process.env.SHELL || "/bin/zsh"
-  const command = `echo -n "${DELIMITER}"; env; echo -n "${DELIMITER}"; exit`
+  const shell = process.env.SHELL || "/bin/zsh";
+  const command = `echo -n "${DELIMITER}"; env; echo -n "${DELIMITER}"; exit`;
 
   try {
     const output = execSync(`${shell} -ilc '${command}'`, {
@@ -283,28 +285,28 @@ export function getClaudeShellEnvironment(): Record<string, string> {
         USER: os.userInfo().username,
         SHELL: shell,
       },
-    })
+    });
 
-    const env = parseEnvOutput(output)
+    const env = parseEnvOutput(output);
 
     // Strip keys that could interfere with Claude's auth resolution
     for (const key of STRIPPED_ENV_KEYS) {
       if (key in env) {
-        console.log(`[claude-env] Stripped ${key} from shell environment`)
-        delete env[key]
+        console.log(`[claude-env] Stripped ${key} from shell environment`);
+        delete env[key];
       }
     }
 
     console.log(
       `[claude-env] Loaded ${Object.keys(env).length} environment variables from shell`,
-    )
-    cachedShellEnv = env
-    return { ...env }
+    );
+    cachedShellEnv = env;
+    return { ...env };
   } catch (error) {
-    console.error("[claude-env] Failed to load shell environment:", error)
+    console.error("[claude-env] Failed to load shell environment:", error);
 
     // Fallback: return minimal required env
-    const home = os.homedir()
+    const home = os.homedir();
     const fallbackPath = [
       `${home}/.local/bin`,
       "/opt/homebrew/bin",
@@ -313,7 +315,7 @@ export function getClaudeShellEnvironment(): Record<string, string> {
       "/bin",
       "/usr/sbin",
       "/sbin",
-    ].join(":")
+    ].join(":");
 
     const fallback: Record<string, string> = {
       HOME: home,
@@ -321,11 +323,11 @@ export function getClaudeShellEnvironment(): Record<string, string> {
       PATH: fallbackPath,
       SHELL: process.env.SHELL || "/bin/zsh",
       TERM: "xterm-256color",
-    }
+    };
 
-    console.log("[claude-env] Using fallback environment")
-    cachedShellEnv = fallback
-    return { ...fallback }
+    console.log("[claude-env] Using fallback environment");
+    cachedShellEnv = fallback;
+    return { ...fallback };
   }
 }
 
@@ -334,80 +336,77 @@ export function getClaudeShellEnvironment(): Record<string, string> {
  * Merges shell environment, process.env, and custom overrides.
  */
 export function buildClaudeEnv(options?: {
-  ghToken?: string
-  customEnv?: Record<string, string>
+  ghToken?: string;
+  customEnv?: Record<string, string>;
 }): Record<string, string> {
-  const env: Record<string, string> = {}
+  const env: Record<string, string> = {};
 
   // 1. Start with shell environment (has HOME, full PATH, etc.)
   try {
-    Object.assign(env, getClaudeShellEnvironment())
+    Object.assign(env, getClaudeShellEnvironment());
   } catch (error) {
-    console.error("[claude-env] Shell env failed, using process.env")
+    console.error("[claude-env] Shell env failed, using process.env");
   }
 
   // 2. Overlay current process.env (preserves Electron-set vars)
   // BUT: Don't overwrite PATH from shell env - Electron's PATH is minimal when launched from Finder
-  const shellPath = env.PATH
+  const shellPath = env.PATH;
   for (const [key, value] of Object.entries(process.env)) {
     if (value !== undefined) {
-      env[key] = value
+      env[key] = value;
     }
   }
   // Restore shell PATH if we had one (it contains nvm, homebrew, etc.)
   if (shellPath) {
-    env.PATH = shellPath
+    env.PATH = shellPath;
   }
 
   // 3. Ensure critical vars are present
-  if (!env.HOME) env.HOME = os.homedir()
-  if (!env.USER) env.USER = os.userInfo().username
-  if (!env.SHELL) env.SHELL = "/bin/zsh"
-  if (!env.TERM) env.TERM = "xterm-256color"
+  if (!env.HOME) env.HOME = os.homedir();
+  if (!env.USER) env.USER = os.userInfo().username;
+  if (!env.SHELL) env.SHELL = "/bin/zsh";
+  if (!env.TERM) env.TERM = "xterm-256color";
 
   // 4. Add custom overrides
   if (options?.ghToken) {
-    env.GH_TOKEN = options.ghToken
+    env.GH_TOKEN = options.ghToken;
   }
   if (options?.customEnv) {
     for (const [key, value] of Object.entries(options.customEnv)) {
       if (value === "") {
-        delete env[key]
+        delete env[key];
       } else {
-        env[key] = value
+        env[key] = value;
       }
     }
   }
 
   // 5. Mark as SDK entry
-  env.CLAUDE_CODE_ENTRYPOINT = "sdk-ts"
+  env.CLAUDE_CODE_ENTRYPOINT = "sdk-ts";
 
-  return env
+  return env;
 }
 
 /**
  * Clear cached shell environment (useful for testing)
  */
 export function clearClaudeEnvCache(): void {
-  cachedShellEnv = null
+  cachedShellEnv = null;
 }
 
 /**
  * Debug: Log key environment variables
  */
-export function logClaudeEnv(
-  env: Record<string, string>,
-  prefix: string = "",
-): void {
-  console.log(`${prefix}[claude-env] HOME: ${env.HOME}`)
-  console.log(`${prefix}[claude-env] USER: ${env.USER}`)
+export function logClaudeEnv(env: Record<string, string>, prefix = ""): void {
+  console.log(`${prefix}[claude-env] HOME: ${env.HOME}`);
+  console.log(`${prefix}[claude-env] USER: ${env.USER}`);
   console.log(
     `${prefix}[claude-env] PATH includes homebrew: ${env.PATH?.includes("/opt/homebrew")}`,
-  )
+  );
   console.log(
     `${prefix}[claude-env] PATH includes /usr/local/bin: ${env.PATH?.includes("/usr/local/bin")}`,
-  )
+  );
   console.log(
     `${prefix}[claude-env] ANTHROPIC_AUTH_TOKEN: ${env.ANTHROPIC_AUTH_TOKEN ? "set" : "not set"}`,
-  )
+  );
 }

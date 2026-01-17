@@ -1,79 +1,83 @@
-import { execSync } from "node:child_process"
-import os from "node:os"
+import { execSync } from "node:child_process";
+import os from "node:os";
 
-export const FALLBACK_SHELL = os.platform() === "win32" ? "cmd.exe" : "/bin/sh"
-export const SHELL_CRASH_THRESHOLD_MS = 1000
+export const FALLBACK_SHELL = os.platform() === "win32" ? "cmd.exe" : "/bin/sh";
+export const SHELL_CRASH_THRESHOLD_MS = 1000;
 
 export function getDefaultShell(): string {
-  const platform = os.platform()
+  const platform = os.platform();
 
   if (platform === "win32") {
-    return process.env.COMSPEC || "powershell.exe"
+    return process.env.COMSPEC || "powershell.exe";
   }
 
   // Use SHELL env var (most reliable on Unix)
   if (process.env.SHELL) {
-    return process.env.SHELL
+    return process.env.SHELL;
   }
 
   // Fallback: try to detect from /etc/passwd on macOS/Linux
   try {
-    const uid = process.getuid?.()
+    const uid = process.getuid?.();
     if (uid !== undefined) {
-      const passwd = execSync(`getent passwd ${uid} 2>/dev/null || dscl . -read /Users/$(whoami) UserShell 2>/dev/null`, {
-        encoding: "utf-8",
-        timeout: 1000,
-      })
+      const passwd = execSync(
+        `getent passwd ${uid} 2>/dev/null || dscl . -read /Users/$(whoami) UserShell 2>/dev/null`,
+        {
+          encoding: "utf-8",
+          timeout: 1000,
+        },
+      );
       // getent format: user:x:uid:gid:name:home:shell
       // dscl format: UserShell: /bin/zsh
-      const match = passwd.match(/UserShell:\s*(.+)/) || passwd.match(/:([^:]+)$/)
+      const match =
+        passwd.match(/UserShell:\s*(.+)/) || passwd.match(/:([^:]+)$/);
       if (match?.[1]) {
-        return match[1].trim()
+        return match[1].trim();
       }
     }
   } catch {
     // Ignore
   }
 
-  return "/bin/zsh"
+  return "/bin/zsh";
 }
 
 export function getLocale(baseEnv: Record<string, string>): string {
   if (baseEnv.LANG?.includes("UTF-8")) {
-    return baseEnv.LANG
+    return baseEnv.LANG;
   }
 
   if (baseEnv.LC_ALL?.includes("UTF-8")) {
-    return baseEnv.LC_ALL
+    return baseEnv.LC_ALL;
   }
 
   try {
     const result = execSync("locale 2>/dev/null | grep LANG= | cut -d= -f2", {
       encoding: "utf-8",
       timeout: 1000,
-    }).trim()
+    }).trim();
     if (result?.includes("UTF-8")) {
-      return result
+      return result;
     }
   } catch {
     // Ignore - will use fallback
   }
 
-  return "en_US.UTF-8"
+  return "en_US.UTF-8";
 }
 
 export function sanitizeEnv(
-  env: NodeJS.ProcessEnv
+  env: NodeJS.ProcessEnv,
 ): Record<string, string> | undefined {
-  const sanitized: Record<string, string> = {}
+  const sanitized: Record<string, string> = {};
 
   for (const [key, value] of Object.entries(env)) {
     if (typeof value === "string") {
-      sanitized[key] = value
+      sanitized[key] = value;
     }
   }
 
-  return Object.keys(sanitized).length > 0 ? sanitized : undefined
+  return Object.keys(sanitized).length > 0 ? sanitized : undefined;
 }
 
 /**
@@ -229,7 +233,7 @@ const ALLOWED_ENV_VARS = new Set([
   "ANDROID_SDK_ROOT",
   "FLUTTER_ROOT",
   "DOTNET_ROOT",
-])
+]);
 
 /**
  * Prefixes for environment variables that are safe to pass through.
@@ -237,24 +241,24 @@ const ALLOWED_ENV_VARS = new Set([
 const ALLOWED_PREFIXES = [
   "AGENTS_", // Our own metadata vars
   "LC_", // Locale settings
-]
+];
 
 /**
  * Check if a key is in the allowlist, handling Windows case-insensitivity.
  */
 function isAllowedVar(key: string, isWindows: boolean): boolean {
   if (isWindows) {
-    return ALLOWED_ENV_VARS.has(key.toUpperCase())
+    return ALLOWED_ENV_VARS.has(key.toUpperCase());
   }
-  return ALLOWED_ENV_VARS.has(key)
+  return ALLOWED_ENV_VARS.has(key);
 }
 
 /**
  * Check if a key matches an allowed prefix.
  */
 function hasAllowedPrefix(key: string, isWindows: boolean): boolean {
-  const keyToCheck = isWindows ? key.toUpperCase() : key
-  return ALLOWED_PREFIXES.some((prefix) => keyToCheck.startsWith(prefix))
+  const keyToCheck = isWindows ? key.toUpperCase() : key;
+  return ALLOWED_PREFIXES.some((prefix) => keyToCheck.startsWith(prefix));
 }
 
 /**
@@ -263,34 +267,34 @@ function hasAllowedPrefix(key: string, isWindows: boolean): boolean {
  */
 export function buildSafeEnv(
   env: Record<string, string>,
-  options?: { platform?: NodeJS.Platform }
+  options?: { platform?: NodeJS.Platform },
 ): Record<string, string> {
-  const platform = options?.platform ?? os.platform()
-  const isWindows = platform === "win32"
-  const safe: Record<string, string> = {}
+  const platform = options?.platform ?? os.platform();
+  const isWindows = platform === "win32";
+  const safe: Record<string, string> = {};
 
   for (const [key, value] of Object.entries(env)) {
     if (isAllowedVar(key, isWindows)) {
-      safe[key] = value
-      continue
+      safe[key] = value;
+      continue;
     }
 
     if (hasAllowedPrefix(key, isWindows)) {
-      safe[key] = value
+      safe[key] = value;
     }
   }
 
-  return safe
+  return safe;
 }
 
 export function buildTerminalEnv(params: {
-  shell: string
-  paneId: string
-  tabId?: string
-  workspaceId?: string
-  workspaceName?: string
-  workspacePath?: string
-  rootPath?: string
+  shell: string;
+  paneId: string;
+  tabId?: string;
+  workspaceId?: string;
+  workspaceName?: string;
+  workspacePath?: string;
+  rootPath?: string;
 }): Record<string, string> {
   const {
     shell,
@@ -300,12 +304,12 @@ export function buildTerminalEnv(params: {
     workspaceName,
     workspacePath,
     rootPath,
-  } = params
+  } = params;
 
   // Get Electron's process.env and filter to only allowlisted safe vars
-  const rawBaseEnv = sanitizeEnv(process.env) || {}
-  const baseEnv = buildSafeEnv(rawBaseEnv)
-  const locale = getLocale(rawBaseEnv)
+  const rawBaseEnv = sanitizeEnv(process.env) || {};
+  const baseEnv = buildSafeEnv(rawBaseEnv);
+  const locale = getLocale(rawBaseEnv);
 
   const env: Record<string, string> = {
     ...baseEnv,
@@ -321,7 +325,7 @@ export function buildTerminalEnv(params: {
     AGENTS_WORKSPACE_NAME: workspaceName || "",
     AGENTS_WORKSPACE_PATH: workspacePath || "",
     AGENTS_ROOT_PATH: rootPath || "",
-  }
+  };
 
-  return env
+  return env;
 }

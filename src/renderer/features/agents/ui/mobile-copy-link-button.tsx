@@ -1,32 +1,29 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "../../../components/ui/button"
-import {
-  LinkIcon,
-  CheckIcon,
-} from "../../../components/ui/icons"
-import { cn } from "../../../lib/utils"
-import { useHaptic } from "../hooks/use-haptic"
+import { useState } from "react";
+import { Button } from "../../../components/ui/button";
+import { CheckIcon, LinkIcon } from "../../../components/ui/icons";
+import { cn } from "../../../lib/utils";
+import { useHaptic } from "../hooks/use-haptic";
 
 interface MobileCopyLinkButtonProps {
-  url: string
+  url: string;
 }
 
 export function MobileCopyLinkButton({ url }: MobileCopyLinkButtonProps) {
-  const [copied, setCopied] = useState(false)
-  const { trigger: triggerHaptic } = useHaptic()
+  const [copied, setCopied] = useState(false);
+  const { trigger: triggerHaptic } = useHaptic();
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(url)
-      triggerHaptic("medium")
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      await navigator.clipboard.writeText(url);
+      triggerHaptic("medium");
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     } catch (error) {
-      console.error("Failed to copy:", error)
+      console.error("Failed to copy:", error);
     }
-  }
+  };
 
   return (
     <Button
@@ -51,5 +48,5 @@ export function MobileCopyLinkButton({ url }: MobileCopyLinkButtonProps) {
       </div>
       <span className="sr-only">{copied ? "Copied!" : "Copy link"}</span>
     </Button>
-  )
+  );
 }

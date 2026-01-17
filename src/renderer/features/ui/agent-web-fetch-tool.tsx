@@ -1,48 +1,43 @@
-import { memo, useState } from "react"
-import {
-  GlobeIcon,
-  IconSpinner,
-  ExpandIcon,
-  CollapseIcon,
-} from "../../icons"
-import { TextShimmer } from "../../components/ui/text-shimmer"
-import { getToolStatus } from "./agent-tool-registry"
-import { cn } from "../../lib/utils"
+import { memo, useState } from "react";
+import { TextShimmer } from "../../components/ui/text-shimmer";
+import { CollapseIcon, ExpandIcon, GlobeIcon, IconSpinner } from "../../icons";
+import { cn } from "../../lib/utils";
+import { getToolStatus } from "./agent-tool-registry";
 
 interface AgentWebFetchToolProps {
-  part: any
-  chatStatus?: string
+  part: any;
+  chatStatus?: string;
 }
 
 export const AgentWebFetchTool = memo(function AgentWebFetchTool({
   part,
   chatStatus,
 }: AgentWebFetchToolProps) {
-  const [isExpanded, setIsExpanded] = useState(false)
-  const { isPending, isError } = getToolStatus(part, chatStatus)
+  const [isExpanded, setIsExpanded] = useState(false);
+  const { isPending, isError } = getToolStatus(part, chatStatus);
 
-  const url = part.input?.url || ""
-  const result = part.output?.result || ""
-  const bytes = part.output?.bytes || 0
-  const statusCode = part.output?.code
-  const isSuccess = statusCode === 200
+  const url = part.input?.url || "";
+  const result = part.output?.result || "";
+  const bytes = part.output?.bytes || 0;
+  const statusCode = part.output?.code;
+  const isSuccess = statusCode === 200;
 
   // Extract hostname for display
-  let hostname = ""
+  let hostname = "";
   try {
-    hostname = new URL(url).hostname.replace("www.", "")
+    hostname = new URL(url).hostname.replace("www.", "");
   } catch {
-    hostname = url.slice(0, 30)
+    hostname = url.slice(0, 30);
   }
 
   // Format bytes
   const formatBytes = (bytes: number) => {
-    if (bytes < 1024) return `${bytes} B`
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-  }
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
 
-  const hasContent = result.length > 0
+  const hasContent = result.length > 0;
 
   return (
     <div className="rounded-lg border border-border bg-muted/30 overflow-hidden mx-2">
@@ -51,7 +46,9 @@ export const AgentWebFetchTool = memo(function AgentWebFetchTool({
         onClick={() => hasContent && !isPending && setIsExpanded(!isExpanded)}
         className={cn(
           "flex items-center justify-between px-2.5 h-7",
-          hasContent && !isPending && "cursor-pointer hover:bg-muted/50 transition-colors duration-150",
+          hasContent &&
+            !isPending &&
+            "cursor-pointer hover:bg-muted/50 transition-colors duration-150",
         )}
       >
         <div className="flex items-center gap-1.5 text-xs truncate flex-1 min-w-0">
@@ -117,5 +114,5 @@ export const AgentWebFetchTool = memo(function AgentWebFetchTool({
         </div>
       )}
     </div>
-  )
-})
+  );
+});

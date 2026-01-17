@@ -1,16 +1,16 @@
 // Helper to sleep for a given duration
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 interface AutoRenameParams {
-  subChatId: string
-  parentChatId: string
-  userMessage: string
-  isFirstSubChat: boolean
-  generateName: (userMessage: string) => Promise<{ name: string }>
-  renameSubChat: (input: { subChatId: string; name: string }) => Promise<void>
-  renameChat: (input: { chatId: string; name: string }) => Promise<void>
-  updateSubChatName: (subChatId: string, name: string) => void
-  updateChatName: (chatId: string, name: string) => void
+  subChatId: string;
+  parentChatId: string;
+  userMessage: string;
+  isFirstSubChat: boolean;
+  generateName: (userMessage: string) => Promise<{ name: string }>;
+  renameSubChat: (input: { subChatId: string; name: string }) => Promise<void>;
+  renameChat: (input: { chatId: string; name: string }) => Promise<void>;
+  updateSubChatName: (subChatId: string, name: string) => void;
+  updateChatName: (chatId: string, name: string) => void;
 }
 
 /**
@@ -29,49 +29,54 @@ export async function autoRenameAgentChat({
   updateSubChatName,
   updateChatName,
 }: AutoRenameParams) {
-  console.log("[auto-rename] Called with:", { subChatId, parentChatId, userMessage: userMessage.slice(0, 50), isFirstSubChat })
+  console.log("[auto-rename] Called with:", {
+    subChatId,
+    parentChatId,
+    userMessage: userMessage.slice(0, 50),
+    isFirstSubChat,
+  });
 
   try {
     // 1. Generate name from LLM via tRPC
-    console.log("[auto-rename] Calling generateName...")
-    const { name } = await generateName(userMessage)
-    console.log("[auto-rename] Generated name:", name)
+    console.log("[auto-rename] Calling generateName...");
+    const { name } = await generateName(userMessage);
+    console.log("[auto-rename] Generated name:", name);
 
     if (!name || name === "New Chat") {
-      console.log("[auto-rename] Skipping - generic name")
-      return // Don't rename if we got a generic name
+      console.log("[auto-rename] Skipping - generic name");
+      return; // Don't rename if we got a generic name
     }
 
     // 2. Retry loop with delays [0, 3000, 5000, 5000]ms
-    const delays = [0, 3_000, 5_000, 5_000]
+    const delays = [0, 3_000, 5_000, 5_000];
 
     for (let attempt = 0; attempt < delays.length; attempt++) {
       if (attempt > 0) {
-        await sleep(delays[attempt])
+        await sleep(delays[attempt]);
       }
 
       try {
         // Rename sub-chat
-        await renameSubChat({ subChatId, name })
-        updateSubChatName(subChatId, name)
+        await renameSubChat({ subChatId, name });
+        updateSubChatName(subChatId, name);
 
         // Also rename parent chat if this is the first sub-chat
         if (isFirstSubChat) {
-          await renameChat({ chatId: parentChatId, name })
-          updateChatName(parentChatId, name)
+          await renameChat({ chatId: parentChatId, name });
+          updateChatName(parentChatId, name);
         }
 
-        return // Success!
+        return; // Success!
       } catch {
         // NOT_FOUND or other error - retry
         if (attempt === delays.length - 1) {
           console.error(
             `[auto-rename] Failed to rename after ${delays.length} attempts`,
-          )
+          );
         }
       }
     }
   } catch (error) {
-    console.error("[auto-rename] Auto-rename failed:", error)
+    console.error("[auto-rename] Auto-rename failed:", error);
   }
 }

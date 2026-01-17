@@ -1,21 +1,21 @@
-"use client"
+"use client";
 
-import { useState } from "react"
+import { useSetAtom } from "jotai";
+import { useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "../../../components/ui/dropdown-menu"
-import { KeyboardIcon } from "../../../components/ui/icons"
-import { useSetAtom } from "jotai"
-import { agentsShortcutsDialogOpenAtom } from "../../../lib/atoms"
+} from "../../../components/ui/dropdown-menu";
+import { KeyboardIcon } from "../../../components/ui/icons";
+import { agentsShortcutsDialogOpenAtom } from "../../../lib/atoms";
 
 interface AgentsHelpPopoverProps {
-  children: React.ReactNode
-  open?: boolean
-  onOpenChange?: (open: boolean) => void
-  isMobile?: boolean
+  children: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  isMobile?: boolean;
 }
 
 export function AgentsHelpPopover({
@@ -24,17 +24,17 @@ export function AgentsHelpPopover({
   onOpenChange: controlledOnOpenChange,
   isMobile = false,
 }: AgentsHelpPopoverProps) {
-  const [internalOpen, setInternalOpen] = useState(false)
-  const setShortcutsDialogOpen = useSetAtom(agentsShortcutsDialogOpenAtom)
+  const [internalOpen, setInternalOpen] = useState(false);
+  const setShortcutsDialogOpen = useSetAtom(agentsShortcutsDialogOpenAtom);
 
   // Use controlled state if provided, otherwise use internal state
-  const open = controlledOpen ?? internalOpen
-  const setOpen = controlledOnOpenChange ?? setInternalOpen
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = controlledOnOpenChange ?? setInternalOpen;
 
   const handleKeyboardShortcutsClick = () => {
-    setOpen(false)
-    setShortcutsDialogOpen(true)
-  }
+    setOpen(false);
+    setShortcutsDialogOpen(true);
+  };
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -51,5 +51,5 @@ export function AgentsHelpPopover({
         )}
       </DropdownMenuContent>
     </DropdownMenu>
-  )
+  );
 }

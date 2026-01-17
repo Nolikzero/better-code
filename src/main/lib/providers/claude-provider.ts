@@ -1,95 +1,95 @@
-import type {
-  AIProvider,
-  AuthStatus,
-  ChatSessionOptions,
-  ProviderConfig,
-} from "./types"
-import type { UIMessageChunk } from "../claude/types"
+import { execSync } from "child_process";
+import os from "os";
+import path from "path";
+import { app } from "electron";
+import * as fs from "fs/promises";
 import {
   buildClaudeEnv,
   createTransformer,
   getClaudeBinaryPath,
   logClaudeEnv,
   logRawClaudeMessage,
-} from "../claude"
-import { execSync } from "child_process"
-import path from "path"
-import os from "os"
-import * as fs from "fs/promises"
-import { app } from "electron"
+} from "../claude";
+import type { UIMessageChunk } from "../claude/types";
+import type {
+  AIProvider,
+  AuthStatus,
+  ChatSessionOptions,
+  ProviderConfig,
+} from "./types";
 
 /**
  * Read Claude Code CLI OAuth token from macOS Keychain
  */
 function getCliOAuthToken(): string | null {
   if (process.platform !== "darwin") {
-    return null
+    return null;
   }
 
   try {
     const output = execSync(
       'security find-generic-password -s "Claude Code-credentials" -w',
-      { encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] }
-    ).trim()
+      { encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] },
+    ).trim();
 
-    if (!output) return null
+    if (!output) return null;
 
-    const credentials = JSON.parse(output)
-    const accessToken = credentials?.claudeAiOauth?.accessToken
+    const credentials = JSON.parse(output);
+    const accessToken = credentials?.claudeAiOauth?.accessToken;
 
-    if (accessToken && accessToken.startsWith("sk-ant-oat01-")) {
-      return accessToken
+    if (accessToken?.startsWith("sk-ant-oat01-")) {
+      return accessToken;
     }
 
-    return null
+    return null;
   } catch {
-    return null
+    return null;
   }
 }
 
 // Dynamic import for ESM module
 const getClaudeQuery = async () => {
-  const sdk = await import("@anthropic-ai/claude-agent-sdk")
-  return sdk.query
-}
+  const sdk = await import("@anthropic-ai/claude-agent-sdk");
+  return sdk.query;
+};
 
 // Active sessions for cancellation
-const activeSessions = new Map<string, AbortController>()
+const activeSessions = new Map<string, AbortController>();
 
 // Pending tool approvals
 const pendingToolApprovals = new Map<
   string,
   {
-    subChatId: string
+    subChatId: string;
     resolve: (decision: {
-      approved: boolean
-      message?: string
-      updatedInput?: unknown
-    }) => void
+      approved: boolean;
+      message?: string;
+      updatedInput?: unknown;
+    }) => void;
   }
->()
+>();
 
 /**
  * Extended options for Claude provider (includes Claude-specific params)
  */
 export interface ClaudeSessionOptions extends ChatSessionOptions {
   /** MCP servers config for the project */
-  mcpServers?: Record<string, unknown>
+  mcpServers?: Record<string, unknown>;
   /** Agents to register with SDK */
-  agents?: Record<string, unknown>
+  agents?: Record<string, unknown>;
   /** Callback when tool asks for user input */
   onAskUserQuestion?: (
     toolUseId: string,
-    questions: unknown[]
-  ) => Promise<{ approved: boolean; message?: string; updatedInput?: unknown }>
+    questions: unknown[],
+  ) => Promise<{ approved: boolean; message?: string; updatedInput?: unknown }>;
   /** Callback to emit stderr from Claude process */
-  onStderr?: (data: string) => void
+  onStderr?: (data: string) => void;
   /** Callback when file is changed (for Edit/Write tools) */
-  onFileChanged?: (filePath: string, toolType: string) => void
+  onFileChanged?: (filePath: string, toolType: string) => void;
 }
 
 export class ClaudeProvider implements AIProvider {
-  readonly id = "claude" as const
+  readonly id = "claude" as const;
   readonly config: ProviderConfig = {
     id: "claude",
     name: "Claude Code",
@@ -109,54 +109,54 @@ export class ClaudeProvider implements AIProvider {
     ],
     authType: "oauth",
     binaryName: "claude",
-  }
+  };
 
   async isAvailable(): Promise<boolean> {
-    const result = getClaudeBinaryPath()
-    return result !== null
+    const result = getClaudeBinaryPath();
+    return result !== null;
   }
 
   async getAuthStatus(): Promise<AuthStatus> {
     // Check for API key in environment
     if (process.env.ANTHROPIC_API_KEY) {
-      return { authenticated: true, method: "api-key" }
+      return { authenticated: true, method: "api-key" };
     }
 
     // Check for OAuth token in keychain
-    const oauthToken = getCliOAuthToken()
+    const oauthToken = getCliOAuthToken();
     if (oauthToken) {
-      return { authenticated: true, method: "oauth" }
+      return { authenticated: true, method: "oauth" };
     }
 
-    return { authenticated: false }
+    return { authenticated: false };
   }
 
   async *chat(
-    options: ClaudeSessionOptions
+    options: ClaudeSessionOptions,
   ): AsyncGenerator<UIMessageChunk, void, unknown> {
-    const abortController = options.abortController
-    activeSessions.set(options.subChatId, abortController)
+    const abortController = options.abortController;
+    activeSessions.set(options.subChatId, abortController);
 
     try {
       // Get Claude SDK
-      const claudeQuery = await getClaudeQuery()
-      const transform = createTransformer()
+      const claudeQuery = await getClaudeQuery();
+      const transform = createTransformer();
 
       // Build environment
-      const claudeEnv = buildClaudeEnv()
+      const claudeEnv = buildClaudeEnv();
 
       // Create isolated config directory per subChat
       const isolatedConfigDir = path.join(
         app.getPath("userData"),
         "claude-sessions",
-        options.subChatId
-      )
+        options.subChatId,
+      );
 
       // Ensure isolated config dir exists and symlink skills/agents
-      await this.setupConfigDir(isolatedConfigDir)
+      await this.setupConfigDir(isolatedConfigDir);
 
       // Get CLI OAuth token
-      const cliOAuthToken = getCliOAuthToken()
+      const cliOAuthToken = getCliOAuthToken();
 
       // Build final env
       const finalEnv = {
@@ -165,23 +165,23 @@ export class ClaudeProvider implements AIProvider {
         ...(cliOAuthToken && {
           CLAUDE_CODE_OAUTH_TOKEN: cliOAuthToken,
         }),
-      }
+      };
 
       // Log in dev mode
       if (process.env.NODE_ENV !== "production") {
-        logClaudeEnv(finalEnv, `[${options.subChatId}] `)
+        logClaudeEnv(finalEnv, `[${options.subChatId}] `);
       }
 
       // Get binary path
-      const binaryResult = getClaudeBinaryPath()
+      const binaryResult = getClaudeBinaryPath();
       if (!binaryResult) {
         yield {
           type: "error",
           errorText:
             "Claude Code binary not found. Install via https://claude.ai/install.sh",
-        }
-        yield { type: "finish" }
-        return
+        };
+        yield { type: "finish" };
+        return;
       }
 
       // Build query options
@@ -214,28 +214,28 @@ export class ClaudeProvider implements AIProvider {
           canUseTool: async (
             toolName: string,
             toolInput: Record<string, unknown>,
-            opts: { toolUseID: string }
+            opts: { toolUseID: string },
           ) => {
             if (toolName === "AskUserQuestion" && options.onAskUserQuestion) {
               const response = await options.onAskUserQuestion(
                 opts.toolUseID,
-                (toolInput as any).questions
-              )
+                (toolInput as any).questions,
+              );
               if (!response.approved) {
                 return {
                   behavior: "deny" as const,
                   message: response.message || "Skipped",
-                }
+                };
               }
               return {
                 behavior: "allow" as const,
                 updatedInput: response.updatedInput,
-              }
+              };
             }
-            return { behavior: "allow" as const, updatedInput: toolInput }
+            return { behavior: "allow" as const, updatedInput: toolInput };
           },
           stderr: (data: string) => {
-            options.onStderr?.(data)
+            options.onStderr?.(data);
           },
           pathToClaudeCodeExecutable: binaryResult.path,
           ...(options.sessionId && {
@@ -247,24 +247,24 @@ export class ClaudeProvider implements AIProvider {
             maxThinkingTokens: options.maxThinkingTokens,
           }),
         },
-      }
+      };
 
       // Run SDK query
       // Cast to any to bypass strict SDK typing - the options are correct at runtime
-      const stream = claudeQuery(queryOptions as any)
+      const stream = claudeQuery(queryOptions as any);
 
       // Stream and transform
       for await (const msg of stream) {
-        if (abortController.signal.aborted) break
+        if (abortController.signal.aborted) break;
 
         // Log raw message
-        logRawClaudeMessage(options.chatId, msg)
+        logRawClaudeMessage(options.chatId, msg);
 
         // Check for error messages
-        const msgAny = msg as any
+        const msgAny = msg as any;
         if (msgAny.type === "error" || msgAny.error) {
           const sdkError =
-            msgAny.error || msgAny.message || "Unknown SDK error"
+            msgAny.error || msgAny.message || "Unknown SDK error";
 
           if (
             sdkError === "authentication_failed" ||
@@ -274,63 +274,60 @@ export class ClaudeProvider implements AIProvider {
               type: "auth-error",
               errorText:
                 "Authentication failed - not logged into Claude Code CLI",
-            }
+            };
           } else {
             yield {
               type: "error",
               errorText: sdkError,
-            }
+            };
           }
-          yield { type: "finish" }
-          return
+          yield { type: "finish" };
+          return;
         }
 
         // Transform and yield chunks
         for (const chunk of transform(msg)) {
-          yield chunk
+          yield chunk;
 
           // Notify about file changes
-          if (
-            chunk.type === "tool-output-available" &&
-            options.onFileChanged
-          ) {
+          if (chunk.type === "tool-output-available" && options.onFileChanged) {
             // Check if this was a file operation
             // The tool name is not in output chunk, we'd need to track it
           }
         }
       }
     } catch (error) {
-      const err = error as Error
+      const err = error as Error;
       yield {
         type: "error",
         errorText: `Claude error: ${err.message}`,
-      }
-      yield { type: "finish" }
+      };
+      yield { type: "finish" };
     } finally {
-      activeSessions.delete(options.subChatId)
+      activeSessions.delete(options.subChatId);
     }
   }
 
   cancel(subChatId: string): void {
-    const controller = activeSessions.get(subChatId)
+    const controller = activeSessions.get(subChatId);
     if (controller) {
-      controller.abort()
-      activeSessions.delete(subChatId)
+      controller.abort();
+      activeSessions.delete(subChatId);
     }
   }
 
   isActive(subChatId: string): boolean {
-    return activeSessions.has(subChatId)
+    return activeSessions.has(subChatId);
   }
 
   respondToolApproval(
     toolUseId: string,
-    decision: { approved: boolean; message?: string; updatedInput?: unknown }
+    decision: { approved: boolean; message?: string; updatedInput?: unknown },
   ): void {
-    const pending = pendingToolApprovals.get(toolUseId)
+    const pending = pendingToolApprovals.get(toolUseId);
     if (pending) {
-      pending.resolve(decision)
-      pendingToolApprovals.delete(toolUseId)
+      pending.resolve(decision);
+      pendingToolApprovals.delete(toolUseId);
     }
   }
 
@@ -339,26 +336,26 @@ export class ClaudeProvider implements AIProvider {
    */
   private async setupConfigDir(configDir: string): Promise<void> {
     try {
-      await fs.mkdir(configDir, { recursive: true })
+      await fs.mkdir(configDir, { recursive: true });
 
-      const homeClaudeDir = path.join(os.homedir(), ".claude")
-      const skillsSource = path.join(homeClaudeDir, "skills")
-      const skillsTarget = path.join(configDir, "skills")
-      const agentsSource = path.join(homeClaudeDir, "agents")
-      const agentsTarget = path.join(configDir, "agents")
+      const homeClaudeDir = path.join(os.homedir(), ".claude");
+      const skillsSource = path.join(homeClaudeDir, "skills");
+      const skillsTarget = path.join(configDir, "skills");
+      const agentsSource = path.join(homeClaudeDir, "agents");
+      const agentsTarget = path.join(configDir, "agents");
 
       // Symlink skills
       try {
         const skillsSourceExists = await fs
           .stat(skillsSource)
           .then(() => true)
-          .catch(() => false)
+          .catch(() => false);
         const skillsTargetExists = await fs
           .lstat(skillsTarget)
           .then(() => true)
-          .catch(() => false)
+          .catch(() => false);
         if (skillsSourceExists && !skillsTargetExists) {
-          await fs.symlink(skillsSource, skillsTarget, "dir")
+          await fs.symlink(skillsSource, skillsTarget, "dir");
         }
       } catch {
         // Ignore symlink errors
@@ -369,13 +366,13 @@ export class ClaudeProvider implements AIProvider {
         const agentsSourceExists = await fs
           .stat(agentsSource)
           .then(() => true)
-          .catch(() => false)
+          .catch(() => false);
         const agentsTargetExists = await fs
           .lstat(agentsTarget)
           .then(() => true)
-          .catch(() => false)
+          .catch(() => false);
         if (agentsSourceExists && !agentsTargetExists) {
-          await fs.symlink(agentsSource, agentsTarget, "dir")
+          await fs.symlink(agentsSource, agentsTarget, "dir");
         }
       } catch {
         // Ignore symlink errors

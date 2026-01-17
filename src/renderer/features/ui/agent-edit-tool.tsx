@@ -1,33 +1,32 @@
-import { memo, useState, useEffect, useMemo, useCallback } from "react"
-import { useSetAtom } from "jotai"
-import { useCodeTheme } from "../../lib/hooks/use-code-theme"
-import { highlightCode } from "../../lib/themes/shiki-theme-loader"
-import {
-  IconSpinner,
-  ExpandIcon,
-  CollapseIcon,
-} from "../../icons"
-import { TextShimmer } from "../../components/ui/text-shimmer"
+import { useSetAtom } from "jotai";
+import { FileCode2 } from "lucide-react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { TextShimmer } from "../../components/ui/text-shimmer";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "../../components/ui/tooltip"
-import { getToolStatus } from "./agent-tool-registry"
-import { agentsDiffSidebarOpenAtom, agentsFocusedDiffFileAtom } from "../../lib/atoms"
-import { cn } from "../../lib/utils"
-import { FileCode2 } from "lucide-react"
+} from "../../components/ui/tooltip";
+import { CollapseIcon, ExpandIcon, IconSpinner } from "../../icons";
+import {
+  agentsDiffSidebarOpenAtom,
+  agentsFocusedDiffFileAtom,
+} from "../../lib/atoms";
+import { useCodeTheme } from "../../lib/hooks/use-code-theme";
+import { highlightCode } from "../../lib/themes/shiki-theme-loader";
+import { cn } from "../../lib/utils";
+import { getToolStatus } from "./agent-tool-registry";
 
 interface AgentEditToolProps {
-  part: any
-  chatStatus?: string
+  part: any;
+  chatStatus?: string;
 }
 
 // Removed local highlighter - using centralized loader from lib/themes/shiki-theme-loader
 
 // Get language from filename
 function getLanguageFromFilename(filename: string): string {
-  const ext = filename.split(".").pop()?.toLowerCase() || ""
+  const ext = filename.split(".").pop()?.toLowerCase() || "";
   const langMap: Record<string, string> = {
     ts: "typescript",
     tsx: "tsx",
@@ -42,52 +41,52 @@ function getLanguageFromFilename(filename: string): string {
     md: "markdown",
     sh: "bash",
     bash: "bash",
-  }
-  return langMap[ext] || "plaintext"
+  };
+  return langMap[ext] || "plaintext";
 }
 
 // Calculate diff stats from structuredPatch
 function calculateDiffStatsFromPatch(
   patches: Array<{ lines?: string[] }>,
 ): { addedLines: number; removedLines: number } | null {
-  if (!patches || patches.length === 0) return null
+  if (!patches || patches.length === 0) return null;
 
-  let addedLines = 0
-  let removedLines = 0
+  let addedLines = 0;
+  let removedLines = 0;
 
   for (const patch of patches) {
     // Skip patches without lines array
-    if (!patch.lines) continue
+    if (!patch.lines) continue;
     for (const line of patch.lines) {
-      if (line.startsWith("+")) addedLines++
-      else if (line.startsWith("-")) removedLines++
+      if (line.startsWith("+")) addedLines++;
+      else if (line.startsWith("-")) removedLines++;
     }
   }
 
-  return { addedLines, removedLines }
+  return { addedLines, removedLines };
 }
 
-type DiffLine = { type: "added" | "removed" | "context"; content: string }
+type DiffLine = { type: "added" | "removed" | "context"; content: string };
 
 // Get all diff lines from structuredPatch
 function getDiffLines(patches: Array<{ lines: string[] }>): DiffLine[] {
-  const result: DiffLine[] = []
+  const result: DiffLine[] = [];
 
-  if (!patches) return result
+  if (!patches) return result;
 
   for (const patch of patches) {
     for (const line of patch.lines) {
       if (line.startsWith("+")) {
-        result.push({ type: "added", content: line.slice(1) })
+        result.push({ type: "added", content: line.slice(1) });
       } else if (line.startsWith("-")) {
-        result.push({ type: "removed", content: line.slice(1) })
+        result.push({ type: "removed", content: line.slice(1) });
       } else if (line.startsWith(" ")) {
-        result.push({ type: "context", content: line.slice(1) })
+        result.push({ type: "context", content: line.slice(1) });
       }
     }
   }
 
-  return result
+  return result;
 }
 
 // Hook to batch-highlight all diff lines at once
@@ -98,54 +97,54 @@ function useBatchHighlight(
 ): Map<number, string> {
   const [highlightedMap, setHighlightedMap] = useState<Map<number, string>>(
     () => new Map(),
-  )
+  );
 
   // Create stable key from lines content to detect changes
   const linesKey = useMemo(
     () => lines.map((l) => l.content).join("\n"),
     [lines],
-  )
+  );
 
   useEffect(() => {
     if (lines.length === 0) {
-      setHighlightedMap(new Map())
-      return
+      setHighlightedMap(new Map());
+      return;
     }
 
-    let cancelled = false
+    let cancelled = false;
 
     const highlightAll = async () => {
       try {
-        const results = new Map<number, string>()
+        const results = new Map<number, string>();
 
         // Highlight all lines in one batch using centralized loader
         for (let i = 0; i < lines.length; i++) {
-          const content = lines[i].content || " "
-          const highlighted = await highlightCode(content, language, themeId)
-          results.set(i, highlighted)
+          const content = lines[i].content || " ";
+          const highlighted = await highlightCode(content, language, themeId);
+          results.set(i, highlighted);
         }
 
         if (!cancelled) {
-          setHighlightedMap(results)
+          setHighlightedMap(results);
         }
       } catch (error) {
-        console.error("Failed to highlight code:", error)
+        console.error("Failed to highlight code:", error);
         // On error, leave map empty (fallback to plain text)
         if (!cancelled) {
-          setHighlightedMap(new Map())
+          setHighlightedMap(new Map());
         }
       }
-    }
+    };
 
     // Debounce highlighting during streaming to reduce CPU load
-    const timer = setTimeout(highlightAll, 50)
+    const timer = setTimeout(highlightAll, 50);
     return () => {
-      cancelled = true
-      clearTimeout(timer)
-    }
-  }, [linesKey, language, themeId, lines.length])
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [linesKey, language, themeId, lines.length]);
 
-  return highlightedMap
+  return highlightedMap;
 }
 
 // Memoized component for rendering a single diff line
@@ -153,8 +152,8 @@ const DiffLineRow = memo(function DiffLineRow({
   line,
   highlightedHtml,
 }: {
-  line: DiffLine
-  highlightedHtml: string | undefined
+  line: DiffLine;
+  highlightedHtml: string | undefined;
 }) {
   return (
     <div
@@ -185,171 +184,172 @@ const DiffLineRow = memo(function DiffLineRow({
         </span>
       )}
     </div>
-  )
-})
+  );
+});
 
 export const AgentEditTool = memo(function AgentEditTool({
   part,
   chatStatus,
 }: AgentEditToolProps) {
-  const [isOutputExpanded, setIsOutputExpanded] = useState(false)
-  const { isPending } = getToolStatus(part, chatStatus)
-  const codeTheme = useCodeTheme()
+  const [isOutputExpanded, setIsOutputExpanded] = useState(false);
+  const { isPending } = getToolStatus(part, chatStatus);
+  const codeTheme = useCodeTheme();
 
   // Atoms for opening diff sidebar and focusing on file
-  const setDiffSidebarOpen = useSetAtom(agentsDiffSidebarOpenAtom)
-  const setFocusedDiffFile = useSetAtom(agentsFocusedDiffFileAtom)
+  const setDiffSidebarOpen = useSetAtom(agentsDiffSidebarOpenAtom);
+  const setFocusedDiffFile = useSetAtom(agentsFocusedDiffFileAtom);
 
   // Determine mode: Write (create new file) vs Edit (modify existing)
-  const isWriteMode = part.type === "tool-Write"
+  const isWriteMode = part.type === "tool-Write";
   // Only consider streaming if chat is actively streaming (prevents spinner hang on stop)
-  const isInputStreaming = part.state === "input-streaming" && chatStatus === "streaming"
+  const isInputStreaming =
+    part.state === "input-streaming" && chatStatus === "streaming";
 
-  const filePath = part.input?.file_path || ""
-  const oldString = part.input?.old_string || ""
-  const newString = part.input?.new_string || ""
+  const filePath = part.input?.file_path || "";
+  const oldString = part.input?.old_string || "";
+  const newString = part.input?.new_string || "";
   // For Write mode, content is in input.content
-  const writeContent = part.input?.content || ""
+  const writeContent = part.input?.content || "";
 
   // Get structuredPatch from output (only available when complete)
-  const structuredPatch = part.output?.structuredPatch
+  const structuredPatch = part.output?.structuredPatch;
 
   // Extract filename from path
-  const filename = filePath ? filePath.split("/").pop() || "file" : ""
+  const filename = filePath ? filePath.split("/").pop() || "file" : "";
 
   // Get clean display path (remove sandbox prefix to show project-relative path)
   const displayPath = useMemo(() => {
-    if (!filePath) return ""
+    if (!filePath) return "";
     // Remove common sandbox prefixes
     const prefixes = [
       "/project/sandbox/repo/",
       "/project/sandbox/",
       "/project/",
-    ]
+    ];
     for (const prefix of prefixes) {
       if (filePath.startsWith(prefix)) {
-        return filePath.slice(prefix.length)
+        return filePath.slice(prefix.length);
       }
     }
     // If path starts with /, try to find a reasonable root
     if (filePath.startsWith("/")) {
       // Look for common project roots
-      const parts = filePath.split("/")
-      const rootIndicators = ["apps", "packages", "src", "lib", "components"]
+      const parts = filePath.split("/");
+      const rootIndicators = ["apps", "packages", "src", "lib", "components"];
       const rootIndex = parts.findIndex((p: string) =>
         rootIndicators.includes(p),
-      )
+      );
       if (rootIndex > 0) {
-        return parts.slice(rootIndex).join("/")
+        return parts.slice(rootIndex).join("/");
       }
     }
-    return filePath
-  }, [filePath])
+    return filePath;
+  }, [filePath]);
 
   // Handler to open diff sidebar and focus on this file
   const handleOpenInDiff = useCallback(() => {
-    if (!displayPath) return
-    setDiffSidebarOpen(true)
-    setFocusedDiffFile(displayPath)
-  }, [displayPath, setDiffSidebarOpen, setFocusedDiffFile])
+    if (!displayPath) return;
+    setDiffSidebarOpen(true);
+    setFocusedDiffFile(displayPath);
+  }, [displayPath, setDiffSidebarOpen, setFocusedDiffFile]);
 
   // Get language
-  const language = filename ? getLanguageFromFilename(filename) : "plaintext"
+  const language = filename ? getLanguageFromFilename(filename) : "plaintext";
 
   // Calculate diff stats - prefer from patch, fallback to simple count
   // For Write mode, count all lines as added
   // For Edit mode without structuredPatch, count new_string lines as preview
   const diffStats = useMemo(() => {
     if (isWriteMode) {
-      const content = writeContent || part.output?.content || ""
-      const addedLines = content ? content.split("\n").length : 0
-      return { addedLines, removedLines: 0 }
+      const content = writeContent || part.output?.content || "";
+      const addedLines = content ? content.split("\n").length : 0;
+      return { addedLines, removedLines: 0 };
     }
     if (structuredPatch) {
-      return calculateDiffStatsFromPatch(structuredPatch)
+      return calculateDiffStatsFromPatch(structuredPatch);
     }
     // Fallback: count new_string lines as preview (for input-available state)
     if (newString) {
-      return { addedLines: newString.split("\n").length, removedLines: 0 }
+      return { addedLines: newString.split("\n").length, removedLines: 0 };
     }
-    return null
+    return null;
   }, [
     structuredPatch,
     isWriteMode,
     writeContent,
     part.output?.content,
     newString,
-  ])
+  ]);
 
   // Get diff lines for display (memoized)
   // For Write mode, treat all lines as added
   // For Edit mode without structuredPatch, show new_string as preview
   const diffLines = useMemo(() => {
     if (isWriteMode) {
-      const content = writeContent || part.output?.content || ""
-      if (!content) return []
+      const content = writeContent || part.output?.content || "";
+      if (!content) return [];
       return content.split("\n").map((line: string) => ({
         type: "added" as const,
         content: line,
-      }))
+      }));
     }
     // If we have structuredPatch, use it for proper diff display
     if (structuredPatch) {
-      return getDiffLines(structuredPatch)
+      return getDiffLines(structuredPatch);
     }
     // Fallback: show new_string as preview (for input-available state before execution)
     if (newString) {
       return newString.split("\n").map((line: string) => ({
         type: "added" as const,
         content: line,
-      }))
+      }));
     }
-    return []
+    return [];
   }, [
     structuredPatch,
     isWriteMode,
     writeContent,
     part.output?.content,
     newString,
-  ])
+  ]);
 
   // For streaming state, get content being streamed
   const streamingContent = useMemo(() => {
-    if (!isInputStreaming) return null
+    if (!isInputStreaming) return null;
     if (isWriteMode) {
-      return writeContent
+      return writeContent;
     }
-    return newString
-  }, [isInputStreaming, isWriteMode, writeContent, newString])
+    return newString;
+  }, [isInputStreaming, isWriteMode, writeContent, newString]);
 
   // Convert streaming content to diff lines
   // Up to 3 lines: show from top; more than 3 lines: show last N lines for autoscroll effect
   const { streamingLines, shouldAlignBottom } = useMemo(() => {
     if (!streamingContent)
-      return { streamingLines: [], shouldAlignBottom: false }
-    const lines = streamingContent.split("\n")
-    const totalLines = lines.length
+      return { streamingLines: [], shouldAlignBottom: false };
+    const lines = streamingContent.split("\n");
+    const totalLines = lines.length;
     // If 3 or fewer lines, show all from top
     // If more than 3, show last 15 lines for autoscroll effect
-    const displayedLines = totalLines <= 3 ? lines : lines.slice(-15)
+    const displayedLines = totalLines <= 3 ? lines : lines.slice(-15);
     return {
       streamingLines: displayedLines.map((line: string) => ({
         type: "added" as const,
         content: line,
       })),
       shouldAlignBottom: totalLines > 3,
-    }
-  }, [streamingContent])
+    };
+  }, [streamingContent]);
 
   // Use streaming lines when streaming, otherwise use diff lines
   const activeLines =
-    isInputStreaming && streamingLines.length > 0 ? streamingLines : diffLines
+    isInputStreaming && streamingLines.length > 0 ? streamingLines : diffLines;
 
   // Find index of first added line (to focus on when collapsed)
   const firstAddedIndex = useMemo(
     () => activeLines.findIndex((line: DiffLine) => line.type === "added"),
     [activeLines],
-  )
+  );
 
   // Reorder lines for collapsed view: show from first added line (memoized)
   const displayLines = useMemo(
@@ -361,28 +361,24 @@ export const AgentEditTool = memo(function AgentEditTool({
           ]
         : activeLines,
     [activeLines, isOutputExpanded, firstAddedIndex],
-  )
+  );
 
   // Batch highlight all lines at once (instead of N×useEffect)
-  const highlightedMap = useBatchHighlight(
-    displayLines,
-    language,
-    codeTheme,
-  )
+  const highlightedMap = useBatchHighlight(displayLines, language, codeTheme);
 
   // Check if we have VISIBLE content to show
   // For streaming, only show content area if we have some content to display
   const hasVisibleContent =
     displayLines.length > 0 ||
-    (isInputStreaming && (streamingContent || newString || writeContent))
+    (isInputStreaming && (streamingContent || newString || writeContent));
 
   // Header title based on mode and state (only used in minimal view)
   const headerAction = useMemo(() => {
     if (isWriteMode) {
-      return isInputStreaming ? "Creating" : "Created"
+      return isInputStreaming ? "Creating" : "Created";
     }
-    return isInputStreaming ? "Editing" : "Edited"
-  }, [isWriteMode, isInputStreaming])
+    return isInputStreaming ? "Editing" : "Edited";
+  }, [isWriteMode, isInputStreaming]);
 
   // Show minimal view (no background, just text) until we have the full file path
   if (!filePath) {
@@ -406,7 +402,7 @@ export const AgentEditTool = memo(function AgentEditTool({
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -544,5 +540,5 @@ export const AgentEditTool = memo(function AgentEditTool({
         </div>
       )}
     </div>
-  )
-})
+  );
+});

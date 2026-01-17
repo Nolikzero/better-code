@@ -1,20 +1,20 @@
-"use client"
+"use client";
 
-import { memo, useState, useEffect, useRef } from "react"
-import { ChevronRight } from "lucide-react"
-import { AgentToolRegistry, getToolStatus } from "./agent-tool-registry"
-import { AgentToolCall } from "./agent-tool-call"
-import { cn } from "../../../lib/utils"
+import { ChevronRight } from "lucide-react";
+import { memo, useEffect, useRef, useState } from "react";
+import { cn } from "../../../lib/utils";
+import { AgentToolCall } from "./agent-tool-call";
+import { AgentToolRegistry, getToolStatus } from "./agent-tool-registry";
 
 interface AgentExploringGroupProps {
-  parts: any[]
-  chatStatus?: string
-  isStreaming: boolean
+  parts: any[];
+  chatStatus?: string;
+  isStreaming: boolean;
 }
 
 // Constants for rendering
-const MAX_VISIBLE_TOOLS = 5
-const TOOL_HEIGHT_PX = 24
+const MAX_VISIBLE_TOOLS = 5;
+const TOOL_HEIGHT_PX = 24;
 
 export const AgentExploringGroup = memo(function AgentExploringGroup({
   parts,
@@ -22,44 +22,44 @@ export const AgentExploringGroup = memo(function AgentExploringGroup({
   isStreaming,
 }: AgentExploringGroupProps) {
   // Default: expanded while streaming, collapsed when done
-  const [isExpanded, setIsExpanded] = useState(isStreaming)
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const wasStreamingRef = useRef(isStreaming)
+  const [isExpanded, setIsExpanded] = useState(isStreaming);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const wasStreamingRef = useRef(isStreaming);
 
   // Auto-collapse when streaming ends (transition from true -> false)
   useEffect(() => {
     if (wasStreamingRef.current && !isStreaming) {
-      setIsExpanded(false)
+      setIsExpanded(false);
     }
-    wasStreamingRef.current = isStreaming
-  }, [isStreaming])
+    wasStreamingRef.current = isStreaming;
+  }, [isStreaming]);
 
   // Auto-scroll to bottom when streaming and new parts added
   useEffect(() => {
     if (isStreaming && isExpanded && scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [parts.length, isStreaming, isExpanded])
+  }, [parts.length, isStreaming, isExpanded]);
 
   // Count files (Read, Grep, Glob) and searches (WebSearch, WebFetch)
   const fileCount = parts.filter((p) =>
     ["tool-Read", "tool-Grep", "tool-Glob"].includes(p.type),
-  ).length
+  ).length;
   const searchCount = parts.filter((p) =>
     ["tool-WebSearch", "tool-WebFetch"].includes(p.type),
-  ).length
+  ).length;
 
   // Build subtitle parts
-  const subtitleParts: string[] = []
+  const subtitleParts: string[] = [];
   if (fileCount > 0) {
-    subtitleParts.push(`${fileCount} ${fileCount === 1 ? "file" : "files"}`)
+    subtitleParts.push(`${fileCount} ${fileCount === 1 ? "file" : "files"}`);
   }
   if (searchCount > 0) {
     subtitleParts.push(
       `${searchCount} ${searchCount === 1 ? "search" : "searches"}`,
-    )
+    );
   }
-  const subtitle = subtitleParts.join(" ")
+  const subtitle = subtitleParts.join(" ");
 
   return (
     <div>
@@ -116,7 +116,7 @@ export const AgentExploringGroup = memo(function AgentExploringGroup({
             }
           >
             {parts.map((part, idx) => {
-              const meta = AgentToolRegistry[part.type]
+              const meta = AgentToolRegistry[part.type];
               if (!meta) {
                 return (
                   <div
@@ -125,9 +125,9 @@ export const AgentExploringGroup = memo(function AgentExploringGroup({
                   >
                     {part.type?.replace("tool-", "")}
                   </div>
-                )
+                );
               }
-              const { isPending, isError } = getToolStatus(part, chatStatus)
+              const { isPending, isError } = getToolStatus(part, chatStatus);
               return (
                 <AgentToolCall
                   key={idx}
@@ -138,11 +138,11 @@ export const AgentExploringGroup = memo(function AgentExploringGroup({
                   isPending={isPending}
                   isError={isError}
                 />
-              )
+              );
             })}
           </div>
         </div>
       )}
     </div>
-  )
-})
+  );
+});

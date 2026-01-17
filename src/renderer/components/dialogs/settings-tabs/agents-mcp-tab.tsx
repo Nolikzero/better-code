@@ -1,28 +1,28 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { ChevronRight } from "lucide-react"
-import { motion, AnimatePresence } from "motion/react"
-import { useAtomValue } from "jotai"
-import { sessionInfoAtom } from "../../../lib/atoms"
-import { cn } from "../../../lib/utils"
-import { OriginalMCPIcon } from "../../ui/icons"
+import { useAtomValue } from "jotai";
+import { ChevronRight } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { useEffect, useState } from "react";
+import { sessionInfoAtom } from "../../../lib/atoms";
+import { cn } from "../../../lib/utils";
+import { OriginalMCPIcon } from "../../ui/icons";
 
 // Hook to detect narrow screen
 function useIsNarrowScreen(): boolean {
-  const [isNarrow, setIsNarrow] = useState(false)
+  const [isNarrow, setIsNarrow] = useState(false);
 
   useEffect(() => {
     const checkWidth = () => {
-      setIsNarrow(window.innerWidth <= 768)
-    }
+      setIsNarrow(window.innerWidth <= 768);
+    };
 
-    checkWidth()
-    window.addEventListener("resize", checkWidth)
-    return () => window.removeEventListener("resize", checkWidth)
-  }, [])
+    checkWidth();
+    window.addEventListener("resize", checkWidth);
+    return () => window.removeEventListener("resize", checkWidth);
+  }, []);
 
-  return isNarrow
+  return isNarrow;
 }
 
 // Status indicator dot
@@ -36,39 +36,39 @@ function StatusDot({ status }: { status: string }) {
         status === "pending" && "animate-pulse",
       )}
     />
-  )
+  );
 }
 
 // Get status text
 function getStatusText(status: string): string {
   switch (status) {
     case "connected":
-      return "Connected"
+      return "Connected";
     case "failed":
-      return "Failed"
+      return "Failed";
     case "needs-auth":
-      return "Needs auth"
+      return "Needs auth";
     case "pending":
-      return "Connecting..."
+      return "Connecting...";
     default:
-      return status
+      return status;
   }
 }
 
 interface ServerRowProps {
   server: {
-    name: string
-    status: string
-    serverInfo?: { name: string; version: string }
-    error?: string
-  }
-  tools: string[]
-  isExpanded: boolean
-  onToggle: () => void
+    name: string;
+    status: string;
+    serverInfo?: { name: string; version: string };
+    error?: string;
+  };
+  tools: string[];
+  isExpanded: boolean;
+  onToggle: () => void;
 }
 
 function ServerRow({ server, tools, isExpanded, onToggle }: ServerRowProps) {
-  const hasTools = tools.length > 0
+  const hasTools = tools.length > 0;
 
   return (
     <div>
@@ -143,32 +143,32 @@ function ServerRow({ server, tools, isExpanded, onToggle }: ServerRowProps) {
         )}
       </AnimatePresence>
     </div>
-  )
+  );
 }
 
 export function AgentsMcpTab() {
-  const isNarrowScreen = useIsNarrowScreen()
-  const [expandedServer, setExpandedServer] = useState<string | null>(null)
+  const isNarrowScreen = useIsNarrowScreen();
+  const [expandedServer, setExpandedServer] = useState<string | null>(null);
 
-  const sessionInfo = useAtomValue(sessionInfoAtom)
-  const mcpServers = sessionInfo?.mcpServers || []
-  const tools = sessionInfo?.tools || []
+  const sessionInfo = useAtomValue(sessionInfoAtom);
+  const mcpServers = sessionInfo?.mcpServers || [];
+  const tools = sessionInfo?.tools || [];
 
   // Group tools by server
   const toolsByServer = mcpServers.reduce(
     (acc, server) => {
       const serverTools = tools
         .filter((tool) => tool.startsWith(`mcp__${server.name}__`))
-        .map((tool) => tool.split("__").slice(2).join("__"))
-      acc[server.name] = serverTools
-      return acc
+        .map((tool) => tool.split("__").slice(2).join("__"));
+      acc[server.name] = serverTools;
+      return acc;
     },
     {} as Record<string, string[]>,
-  )
+  );
 
   const handleToggleServer = (serverName: string) => {
-    setExpandedServer(expandedServer === serverName ? null : serverName)
-  }
+    setExpandedServer(expandedServer === serverName ? null : serverName);
+  };
 
   return (
     <div className="p-6 space-y-6 overflow-y-auto max-h-[70vh]">
@@ -197,7 +197,9 @@ export function AgentsMcpTab() {
             </p>
             <p className="text-xs text-muted-foreground">
               Add servers to{" "}
-              <code className="px-1 py-0.5 bg-muted rounded">~/.claude.json</code>
+              <code className="px-1 py-0.5 bg-muted rounded">
+                ~/.claude.json
+              </code>
             </p>
           </div>
         ) : (
@@ -241,5 +243,5 @@ export function AgentsMcpTab() {
         </div>
       </div>
     </div>
-  )
+  );
 }

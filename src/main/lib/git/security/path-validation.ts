@@ -1,6 +1,6 @@
 import { isAbsolute, normalize, resolve, sep } from "node:path";
 import { eq } from "drizzle-orm";
-import { getDatabase, projects, chats } from "../../db";
+import { chats, getDatabase, projects } from "../../db";
 
 /**
  * Security model for desktop app filesystem access:
@@ -29,24 +29,24 @@ import { getDatabase, projects, chats } from "../../db";
  * Security error codes for path validation failures.
  */
 export type PathValidationErrorCode =
-	| "ABSOLUTE_PATH"
-	| "PATH_TRAVERSAL"
-	| "UNREGISTERED_WORKTREE"
-	| "INVALID_TARGET"
-	| "SYMLINK_ESCAPE";
+  | "ABSOLUTE_PATH"
+  | "PATH_TRAVERSAL"
+  | "UNREGISTERED_WORKTREE"
+  | "INVALID_TARGET"
+  | "SYMLINK_ESCAPE";
 
 /**
  * Error thrown when path validation fails.
  * Includes a code for programmatic handling.
  */
 export class PathValidationError extends Error {
-	constructor(
-		message: string,
-		public readonly code: PathValidationErrorCode,
-	) {
-		super(message);
-		this.name = "PathValidationError";
-	}
+  constructor(
+    message: string,
+    public readonly code: PathValidationErrorCode,
+  ) {
+    super(message);
+    this.name = "PathValidationError";
+  }
 }
 
 /**
@@ -60,34 +60,34 @@ export class PathValidationError extends Error {
  * @throws PathValidationError if path is not registered
  */
 export function assertRegisteredWorktree(workspacePath: string): void {
-	const db = getDatabase();
+  const db = getDatabase();
 
-	// Check chats.worktreePath first (most common case)
-	const chatExists = db
-		.select()
-		.from(chats)
-		.where(eq(chats.worktreePath, workspacePath))
-		.get();
+  // Check chats.worktreePath first (most common case)
+  const chatExists = db
+    .select()
+    .from(chats)
+    .where(eq(chats.worktreePath, workspacePath))
+    .get();
 
-	if (chatExists) {
-		return;
-	}
+  if (chatExists) {
+    return;
+  }
 
-	// Check projects.path for direct project access
-	const projectExists = db
-		.select()
-		.from(projects)
-		.where(eq(projects.path, workspacePath))
-		.get();
+  // Check projects.path for direct project access
+  const projectExists = db
+    .select()
+    .from(projects)
+    .where(eq(projects.path, workspacePath))
+    .get();
 
-	if (projectExists) {
-		return;
-	}
+  if (projectExists) {
+    return;
+  }
 
-	throw new PathValidationError(
-		"Workspace path not registered in database",
-		"UNREGISTERED_WORKTREE",
-	);
+  throw new PathValidationError(
+    "Workspace path not registered in database",
+    "UNREGISTERED_WORKTREE",
+  );
 }
 
 /**
@@ -96,34 +96,34 @@ export function assertRegisteredWorktree(workspacePath: string): void {
  * @throws PathValidationError if chat is not registered
  */
 export function getRegisteredChat(
-	worktreePath: string,
+  worktreePath: string,
 ): typeof chats.$inferSelect {
-	const db = getDatabase();
-	const chat = db
-		.select()
-		.from(chats)
-		.where(eq(chats.worktreePath, worktreePath))
-		.get();
+  const db = getDatabase();
+  const chat = db
+    .select()
+    .from(chats)
+    .where(eq(chats.worktreePath, worktreePath))
+    .get();
 
-	if (!chat) {
-		throw new PathValidationError(
-			"Chat not registered in database",
-			"UNREGISTERED_WORKTREE",
-		);
-	}
+  if (!chat) {
+    throw new PathValidationError(
+      "Chat not registered in database",
+      "UNREGISTERED_WORKTREE",
+    );
+  }
 
-	return chat;
+  return chat;
 }
 
 /**
  * Options for path validation.
  */
 export interface ValidatePathOptions {
-	/**
-	 * Allow empty/root path (resolves to worktree itself).
-	 * Default: false (prevents accidental worktree deletion)
-	 */
-	allowRoot?: boolean;
+  /**
+   * Allow empty/root path (resolves to worktree itself).
+   * Default: false (prevents accidental worktree deletion)
+   */
+  allowRoot?: boolean;
 }
 
 /**
@@ -133,37 +133,37 @@ export interface ValidatePathOptions {
  * @throws PathValidationError if path is invalid
  */
 export function validateRelativePath(
-	filePath: string,
-	options: ValidatePathOptions = {},
+  filePath: string,
+  options: ValidatePathOptions = {},
 ): void {
-	const { allowRoot = false } = options;
+  const { allowRoot = false } = options;
 
-	// Reject absolute paths
-	if (isAbsolute(filePath)) {
-		throw new PathValidationError(
-			"Absolute paths are not allowed",
-			"ABSOLUTE_PATH",
-		);
-	}
+  // Reject absolute paths
+  if (isAbsolute(filePath)) {
+    throw new PathValidationError(
+      "Absolute paths are not allowed",
+      "ABSOLUTE_PATH",
+    );
+  }
 
-	const normalized = normalize(filePath);
-	const segments = normalized.split(sep);
+  const normalized = normalize(filePath);
+  const segments = normalized.split(sep);
 
-	// Reject ".." as a path segment (allows "..foo" directories)
-	if (segments.includes("..")) {
-		throw new PathValidationError(
-			"Path traversal not allowed",
-			"PATH_TRAVERSAL",
-		);
-	}
+  // Reject ".." as a path segment (allows "..foo" directories)
+  if (segments.includes("..")) {
+    throw new PathValidationError(
+      "Path traversal not allowed",
+      "PATH_TRAVERSAL",
+    );
+  }
 
-	// Reject root path unless explicitly allowed
-	if (!allowRoot && (normalized === "" || normalized === ".")) {
-		throw new PathValidationError(
-			"Cannot target worktree root",
-			"INVALID_TARGET",
-		);
-	}
+  // Reject root path unless explicitly allowed
+  if (!allowRoot && (normalized === "" || normalized === ".")) {
+    throw new PathValidationError(
+      "Cannot target worktree root",
+      "INVALID_TARGET",
+    );
+  }
 }
 
 /**
@@ -176,13 +176,13 @@ export function validateRelativePath(
  * @throws PathValidationError if path is invalid
  */
 export function resolvePathInWorktree(
-	worktreePath: string,
-	filePath: string,
-	options: ValidatePathOptions = {},
+  worktreePath: string,
+  filePath: string,
+  options: ValidatePathOptions = {},
 ): string {
-	validateRelativePath(filePath, options);
-	// Use resolve to handle any worktreePath (relative or absolute)
-	return resolve(worktreePath, normalize(filePath));
+  validateRelativePath(filePath, options);
+  // Use resolve to handle any worktreePath (relative or absolute)
+  return resolve(worktreePath, normalize(filePath));
 }
 
 /**
@@ -191,5 +191,5 @@ export function resolvePathInWorktree(
  * @throws PathValidationError if path is invalid
  */
 export function assertValidGitPath(filePath: string): void {
-	validateRelativePath(filePath, { allowRoot: true });
+  validateRelativePath(filePath, { allowRoot: true });
 }

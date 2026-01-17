@@ -1,13 +1,13 @@
-import { memo } from "react"
-import { TextShimmer } from "../../components/ui/text-shimmer"
+import { memo } from "react";
+import { TextShimmer } from "../../components/ui/text-shimmer";
 
 interface AgentToolCallProps {
-  icon: React.ComponentType<{ className?: string }>
-  title: string
-  subtitle?: string
-  isPending: boolean
-  isError: boolean
-  isNested?: boolean
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  subtitle?: string;
+  isPending: boolean;
+  isError: boolean;
+  isNested?: boolean;
 }
 
 export const AgentToolCall = memo(
@@ -20,8 +20,8 @@ export const AgentToolCall = memo(
     isNested,
   }: AgentToolCallProps) {
     // Ensure title and subtitle are strings (copied from canvas)
-    const titleStr = String(title)
-    const subtitleStr = subtitle ? String(subtitle) : undefined
+    const titleStr = String(title);
+    const subtitleStr = subtitle ? String(subtitle) : undefined;
 
     return (
       <div
@@ -59,7 +59,7 @@ export const AgentToolCall = memo(
           </div>
         </div>
       </div>
-    )
+    );
   },
   (prevProps, nextProps) => {
     // Custom comparison for memoization (copied from canvas)
@@ -69,6 +69,6 @@ export const AgentToolCall = memo(
       prevProps.isPending === nextProps.isPending &&
       prevProps.isError === nextProps.isError &&
       prevProps.isNested === nextProps.isNested
-    )
+    );
   },
-)
+);

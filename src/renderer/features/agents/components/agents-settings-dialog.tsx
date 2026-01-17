@@ -1,32 +1,32 @@
-"use client"
+"use client";
 
-import { atom } from "jotai"
-import { type SettingsTab } from "../../../lib/atoms"
+import { atom } from "jotai";
+import type { SettingsTab } from "../../../lib/atoms";
 
-const agentsSettingsDialogActiveTabAtom = atom<SettingsTab | null>(null)
-import { cn } from "../../../lib/utils"
-import { useAtom } from "jotai"
-import { X } from "lucide-react"
-import { AnimatePresence, motion } from "motion/react"
-import { useEffect, useState } from "react"
-import { createPortal } from "react-dom"
+const agentsSettingsDialogActiveTabAtom = atom<SettingsTab | null>(null);
+import { useAtom } from "jotai";
+import { X } from "lucide-react";
+import { Bug } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { AgentsDebugTab } from "../../../components/dialogs/settings-tabs/agents-debug-tab";
+import { AgentsMcpTab } from "../../../components/dialogs/settings-tabs/agents-mcp-tab";
 import {
   EyeOpenFilledIcon,
-  ProfileIconFilled,
   OriginalMCPIcon,
-} from "../../../components/ui/icons"
-import { AgentsAppearanceTab } from "./settings-tabs/agents-appearance-tab"
-import { AgentsProfileTab } from "./settings-tabs/agents-profile-tab"
-import { AgentsMcpTab } from "../../../components/dialogs/settings-tabs/agents-mcp-tab"
-import { AgentsDebugTab } from "../../../components/dialogs/settings-tabs/agents-debug-tab"
-import { Bug } from "lucide-react"
+  ProfileIconFilled,
+} from "../../../components/ui/icons";
+import { cn } from "../../../lib/utils";
+import { AgentsAppearanceTab } from "./settings-tabs/agents-appearance-tab";
+import { AgentsProfileTab } from "./settings-tabs/agents-profile-tab";
 
 // Check if we're in development mode
-const isDevelopment = process.env.NODE_ENV === "development"
+const isDevelopment = process.env.NODE_ENV === "development";
 
 interface AgentsSettingsDialogProps {
-  isOpen: boolean
-  onClose: () => void
+  isOpen: boolean;
+  onClose: () => void;
 }
 
 const ALL_TABS = [
@@ -59,16 +59,16 @@ const ALL_TABS = [
         },
       ]
     : []),
-]
+];
 
 interface TabButtonProps {
-  tab: (typeof ALL_TABS)[number]
-  isActive: boolean
-  onClick: () => void
+  tab: (typeof ALL_TABS)[number];
+  isActive: boolean;
+  onClick: () => void;
 }
 
 function TabButton({ tab, isActive, onClick }: TabButtonProps) {
-  const Icon = tab.icon
+  const Icon = tab.icon;
   return (
     <button
       onClick={onClick}
@@ -84,7 +84,7 @@ function TabButton({ tab, isActive, onClick }: TabButtonProps) {
       />
       {tab.label}
     </button>
-  )
+  );
 }
 
 // Dialog dimensions constants for reference
@@ -94,56 +94,56 @@ export function AgentsSettingsDialog({
   isOpen,
   onClose,
 }: AgentsSettingsDialogProps) {
-  const [activeTab, setActiveTab] = useAtom(agentsSettingsDialogActiveTabAtom)
-  const [mounted, setMounted] = useState(false)
-  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null)
+  const [activeTab, setActiveTab] = useAtom(agentsSettingsDialogActiveTabAtom);
+  const [mounted, setMounted] = useState(false);
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
 
   // Set default tab when dialog opens
   useEffect(() => {
     if (isOpen && !activeTab) {
-      setActiveTab(ALL_TABS[0].id)
+      setActiveTab(ALL_TABS[0].id);
     }
-  }, [isOpen, activeTab, setActiveTab])
+  }, [isOpen, activeTab, setActiveTab]);
 
   // Handle keyboard navigation
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        event.preventDefault()
-        onClose()
+        event.preventDefault();
+        onClose();
       }
-    }
+    };
 
-    document.addEventListener("keydown", handleKeyDown)
-    return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [isOpen, onClose])
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
 
   // Ensure portal target only accessed on client
   useEffect(() => {
-    setMounted(true)
+    setMounted(true);
     if (typeof document !== "undefined") {
-      setPortalTarget(document.body)
+      setPortalTarget(document.body);
     }
-  }, [])
+  }, []);
 
   const renderTabContent = () => {
     switch (activeTab) {
       case "profile":
-        return <AgentsProfileTab />
+        return <AgentsProfileTab />;
       case "appearance":
-        return <AgentsAppearanceTab />
+        return <AgentsAppearanceTab />;
       case "mcp":
-        return <AgentsMcpTab />
+        return <AgentsMcpTab />;
       case "debug":
-        return isDevelopment ? <AgentsDebugTab /> : null
+        return isDevelopment ? <AgentsDebugTab /> : null;
       default:
-        return null
+        return null;
     }
-  }
+  };
 
-  if (!mounted || !portalTarget) return null
+  if (!mounted || !portalTarget) return null;
 
   return createPortal(
     <AnimatePresence mode="wait">
@@ -222,5 +222,5 @@ export function AgentsSettingsDialog({
       )}
     </AnimatePresence>,
     portalTarget,
-  )
+  );
 }

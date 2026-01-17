@@ -3,37 +3,37 @@
  * Wraps real tRPC calls and provides stubs for web-only features
  */
 
-import { useMemo } from "react"
-import { trpc, trpcClient } from "./trpc"
+import { useMemo } from "react";
+import { trpc } from "./trpc";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnyFn = (...args: any[]) => any
+type AnyFn = (...args: any[]) => any;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnyObj = Record<string, any>
+type AnyObj = Record<string, any>;
 
 export const api = {
   agents: {
     getAgentChats: {
       useQuery: (_args?: AnyObj, _opts?: AnyObj) => {
         // Use real tRPC
-        const result = trpc.chats.list.useQuery({})
+        const result = trpc.chats.list.useQuery({});
         return {
           data: result.data ?? [],
           isLoading: result.isLoading,
-        }
+        };
       },
     },
     getAgentChat: {
       useQuery: (args?: { chatId: string }, opts?: AnyObj) => {
-        const chatId = args?.chatId
+        const chatId = args?.chatId;
         const result = trpc.chats.get.useQuery(
           { id: chatId! },
           { enabled: !!chatId && opts?.enabled !== false },
-        )
+        );
 
         // Memoize transformation to prevent infinite re-renders
         const transformedData = useMemo(() => {
-          if (!result.data) return null
+          if (!result.data) return null;
           return {
             ...result.data,
             // Desktop uses worktrees, not sandboxes
@@ -41,12 +41,12 @@ export const api = {
             meta: null,
             // Map subChats to expected format
             subChats: result.data.subChats?.map((sc: AnyObj) => {
-              let parsedMessages = []
+              let parsedMessages = [];
               try {
-                parsedMessages = sc.messages ? JSON.parse(sc.messages) : []
+                parsedMessages = sc.messages ? JSON.parse(sc.messages) : [];
                 // Transform old tool-invocation parts to new tool-{toolName} format
                 parsedMessages = parsedMessages.map((msg: AnyObj) => {
-                  if (!msg.parts) return msg
+                  if (!msg.parts) return msg;
                   return {
                     ...msg,
                     parts: msg.parts.map((part: AnyObj) => {
@@ -57,36 +57,36 @@ export const api = {
                           type: `tool-${part.toolName}`,
                           toolCallId: part.toolCallId || part.toolInvocationId,
                           input: part.input || part.args,
-                        }
+                        };
                       }
                       // Normalize state field from DB format to AI SDK format
                       // DB stores: "result", "call" -> AI SDK expects: "output-available", "call"
                       if (part.type?.startsWith("tool-") && part.state) {
-                        let normalizedState = part.state
+                        let normalizedState = part.state;
                         if (part.state === "result") {
                           // Check if it was an error result
                           normalizedState =
                             part.result?.success === false
                               ? "output-error"
-                              : "output-available"
+                              : "output-available";
                         }
                         // Also add output field from result if present (for diff display)
                         return {
                           ...part,
                           state: normalizedState,
                           output: part.output || part.result,
-                        }
+                        };
                       }
-                      return part
+                      return part;
                     }),
-                  }
-                })
+                  };
+                });
               } catch {
                 console.warn(
                   "[mock-api] Failed to parse messages for subChat:",
                   sc.id,
-                )
-                parsedMessages = []
+                );
+                parsedMessages = [];
               }
               return {
                 ...sc,
@@ -94,68 +94,68 @@ export const api = {
                 updated_at: sc.updatedAt,
                 messages: parsedMessages,
                 stream_id: null,
-              }
+              };
             }),
-          }
-        }, [result.data])
+          };
+        }, [result.data]);
 
         return {
           data: transformedData,
           isLoading: result.isLoading,
-        }
+        };
       },
     },
     getArchivedChats: {
       useQuery: (_args?: AnyObj, _opts?: AnyObj) => {
-        const result = trpc.chats.listArchived.useQuery({})
+        const result = trpc.chats.listArchived.useQuery({});
         return {
           data: result.data ?? [],
           isLoading: result.isLoading,
-        }
+        };
       },
     },
     archiveChat: {
       useMutation: (opts?: {
-        onMutate?: AnyFn
-        onError?: AnyFn
-        onSettled?: AnyFn
+        onMutate?: AnyFn;
+        onError?: AnyFn;
+        onSettled?: AnyFn;
       }) => {
         const mutation = trpc.chats.archive.useMutation({
           onSuccess: () => opts?.onSettled?.(),
           onError: (err) => opts?.onError?.(err),
-        })
+        });
         return {
           mutate: async (args?: { chatId: string }) => {
-            const context = await opts?.onMutate?.(args)
+            const context = await opts?.onMutate?.(args);
             if (args?.chatId) {
-              mutation.mutate({ id: args.chatId })
+              mutation.mutate({ id: args.chatId });
             }
-            return context
+            return context;
           },
           isPending: mutation.isPending,
-        }
+        };
       },
     },
     restoreChat: {
       useMutation: (opts?: {
-        onMutate?: AnyFn
-        onError?: AnyFn
-        onSettled?: AnyFn
+        onMutate?: AnyFn;
+        onError?: AnyFn;
+        onSettled?: AnyFn;
       }) => {
         const mutation = trpc.chats.restore.useMutation({
           onSuccess: () => opts?.onSettled?.(),
           onError: (err) => opts?.onError?.(err),
-        })
+        });
         return {
           mutate: async (args?: { chatId: string }) => {
-            const context = await opts?.onMutate?.(args)
+            const context = await opts?.onMutate?.(args);
             if (args?.chatId) {
-              mutation.mutate({ id: args.chatId })
+              mutation.mutate({ id: args.chatId });
             }
-            return context
+            return context;
           },
           isPending: mutation.isPending,
-        }
+        };
       },
     },
     renameChat: {
@@ -163,64 +163,68 @@ export const api = {
         const mutation = trpc.chats.rename.useMutation({
           onSuccess: (data) => opts?.onSuccess?.(data),
           onError: (err) => opts?.onError?.(err),
-        })
+        });
         return {
           mutate: (args?: { chatId: string; name: string }) => {
             if (args?.chatId && args?.name) {
-              mutation.mutate({ id: args.chatId, name: args.name })
+              mutation.mutate({ id: args.chatId, name: args.name });
             }
           },
           mutateAsync: async (args?: { chatId: string; name: string }) => {
             if (args?.chatId && args?.name) {
-              return mutation.mutateAsync({ id: args.chatId, name: args.name })
+              return mutation.mutateAsync({ id: args.chatId, name: args.name });
             }
           },
-        }
+        };
       },
     },
     renameSubChat: {
       useMutation: (opts?: {
-        onSuccess?: AnyFn
-        onError?: AnyFn
-        onMutate?: AnyFn
+        onSuccess?: AnyFn;
+        onError?: AnyFn;
+        onMutate?: AnyFn;
       }) => {
+        // Track the current mutation args for onSuccess callback
+        let currentArgs: { subChatId: string; name: string } | null = null;
         const mutation = trpc.chats.renameSubChat.useMutation({
-          onSuccess: (data) => opts?.onSuccess?.(data),
+          onSuccess: (data) => opts?.onSuccess?.(data, currentArgs),
           onError: (err) => opts?.onError?.(err),
-        })
+        });
         return {
           mutate: (
             args?: { subChatId: string; name: string },
             callbacks?: { onSuccess?: AnyFn },
           ) => {
             if (args?.subChatId && args?.name) {
+              currentArgs = args;
               mutation.mutate(
                 { id: args.subChatId, name: args.name },
                 { onSuccess: callbacks?.onSuccess },
-              )
+              );
             }
           },
           mutateAsync: async (args?: { subChatId: string; name: string }) => {
             if (args?.subChatId && args?.name) {
+              currentArgs = args;
               return mutation.mutateAsync({
                 id: args.subChatId,
                 name: args.name,
-              })
+              });
             }
           },
           isPending: mutation.isPending,
-        }
+        };
       },
     },
     generateSubChatName: {
       useMutation: () => {
-        const mutation = trpc.chats.generateSubChatName.useMutation()
+        const mutation = trpc.chats.generateSubChatName.useMutation();
         return {
           mutateAsync: async (args: { userMessage: string }) => {
-            return mutation.mutateAsync({ userMessage: args.userMessage })
+            return mutation.mutateAsync({ userMessage: args.userMessage });
           },
           isPending: mutation.isPending,
-        }
+        };
       },
     },
     updateSubChatMode: {
@@ -228,15 +232,15 @@ export const api = {
         const mutation = trpc.chats.updateSubChatMode.useMutation({
           onSuccess: (data) => opts?.onSuccess?.(data),
           onError: (err) => opts?.onError?.(err),
-        })
+        });
         return {
           mutate: (args?: { subChatId: string; mode: "plan" | "agent" }) => {
             if (args?.subChatId && args?.mode) {
-              mutation.mutate({ id: args.subChatId, mode: args.mode })
+              mutation.mutate({ id: args.subChatId, mode: args.mode });
             }
           },
           isPending: mutation.isPending,
-        }
+        };
       },
     },
     // Desktop stubs - not needed for local development
@@ -244,10 +248,12 @@ export const api = {
       useMutation: (opts?: { onSuccess?: AnyFn; onError?: AnyFn }) => ({
         mutate: (_args?: AnyObj, callbacks?: { onSuccess?: AnyFn }) => {
           // Desktop: PR creation not implemented yet
-          opts?.onError?.(new Error("PR creation not available in desktop app"))
+          opts?.onError?.(
+            new Error("PR creation not available in desktop app"),
+          );
         },
         mutateAsync: async (_args?: AnyObj) => {
-          throw new Error("PR creation not available in desktop app")
+          throw new Error("PR creation not available in desktop app");
         },
         isPending: false,
       }),
@@ -256,7 +262,7 @@ export const api = {
       useMutation: (opts?: { onSuccess?: AnyFn }) => {
         const mutation = trpc.chats.archiveBatch.useMutation({
           onSuccess: () => opts?.onSuccess?.(),
-        })
+        });
         return {
           mutate: (
             args?: { chatIds: string[] },
@@ -266,11 +272,11 @@ export const api = {
               mutation.mutate(
                 { chatIds: args.chatIds },
                 { onSuccess: callbacks?.onSuccess },
-              )
+              );
             }
           },
           isPending: mutation.isPending,
-        }
+        };
       },
     },
   },
@@ -280,7 +286,7 @@ export const api = {
         // Desktop: no usage limits
         data: {
           usage: 0,
-          limit: Infinity,
+          limit: Number.POSITIVE_INFINITY,
           planType: "desktop" as const,
           next_payment_at: null,
         },
@@ -289,7 +295,7 @@ export const api = {
     },
   },
   useUtils: () => {
-    const utils = trpc.useUtils()
+    const utils = trpc.useUtils();
     return {
       agents: {
         getAgentChats: {
@@ -298,9 +304,9 @@ export const api = {
           setData: (keyOrUpdater?: unknown, updater?: unknown) => {
             // Handle both signatures
             if (typeof keyOrUpdater === "function") {
-              utils.chats.list.setData({}, keyOrUpdater as AnyFn)
+              utils.chats.list.setData({}, keyOrUpdater as AnyFn);
             } else if (updater) {
-              utils.chats.list.setData({}, updater as AnyFn)
+              utils.chats.list.setData({}, updater as AnyFn);
             }
           },
           invalidate: async () => utils.chats.list.invalidate(),
@@ -310,9 +316,9 @@ export const api = {
           getData: () => utils.chats.listArchived.getData({}),
           setData: (keyOrUpdater?: unknown, updater?: unknown) => {
             if (typeof keyOrUpdater === "function") {
-              utils.chats.listArchived.setData({}, keyOrUpdater as AnyFn)
+              utils.chats.listArchived.setData({}, keyOrUpdater as AnyFn);
             } else if (updater) {
-              utils.chats.listArchived.setData({}, updater as AnyFn)
+              utils.chats.listArchived.setData({}, updater as AnyFn);
             }
           },
           invalidate: async () => utils.chats.listArchived.invalidate(),
@@ -320,17 +326,17 @@ export const api = {
         getAgentChat: {
           cancel: async () => {},
           getData: (args?: { chatId: string }) => {
-            if (!args?.chatId) return null
-            return utils.chats.get.getData({ id: args.chatId })
+            if (!args?.chatId) return null;
+            return utils.chats.get.getData({ id: args.chatId });
           },
           setData: (args?: { chatId: string }, updater?: AnyFn) => {
             if (args?.chatId && updater) {
-              utils.chats.get.setData({ id: args.chatId }, updater)
+              utils.chats.get.setData({ id: args.chatId }, updater);
             }
           },
           invalidate: async (args?: { chatId: string }) => {
             if (args?.chatId) {
-              await utils.chats.get.invalidate({ id: args.chatId })
+              await utils.chats.get.invalidate({ id: args.chatId });
             }
           },
         },
@@ -360,12 +366,12 @@ export const api = {
           invalidate: async () => {},
         },
       },
-    }
+    };
   },
   // Stubs for features not needed in desktop
   teams: {
-    getUserTeams: { useQuery: () => ({ data: [], isLoading: false }) },
-    getTeam: { useQuery: () => ({ data: null, isLoading: false }) },
+    getUserTeams: { useQuery: (_args?: AnyObj, _opts?: AnyObj) => ({ data: [], isLoading: false }) },
+    getTeam: { useQuery: (_args?: AnyObj, _opts?: AnyObj) => ({ data: null, isLoading: false }) },
     updateTeam: {
       useMutation: () => ({
         mutate: () => {},
@@ -421,13 +427,13 @@ export const api = {
     searchFiles: {
       useQuery: (
         args?: {
-          teamId?: string
-          repository?: string
-          query?: string
-          limit?: number
-          sandboxId?: string
-          branch?: string
-          projectPath?: string
+          teamId?: string;
+          repository?: string;
+          query?: string;
+          limit?: number;
+          sandboxId?: string;
+          branch?: string;
+          projectPath?: string;
         },
         opts?: AnyObj,
       ) => {
@@ -444,16 +450,29 @@ export const api = {
             refetchOnWindowFocus: opts?.refetchOnWindowFocus ?? false,
             placeholderData: opts?.placeholderData,
           },
-        )
+        );
         return {
           data: result.data ?? [],
           isLoading: result.isLoading,
           isFetching: result.isFetching,
           error: result.error,
-        }
+        };
       },
     },
-    getSlashCommands: { useQuery: () => ({ data: [], isLoading: false }) },
+    getSlashCommands: {
+      useQuery: (_args?: AnyObj, _opts?: AnyObj) => ({
+        data: [] as Array<{
+          id: string;
+          name: string;
+          command: string;
+          description: string;
+          category: "builtin" | "repository";
+          path?: string;
+          repository?: string;
+        }>,
+        isLoading: false,
+      }),
+    },
     getUserInstallations: { useQuery: () => ({ data: [], isLoading: false }) },
     getGithubConnection: {
       useQuery: () => ({ data: { isConnected: false }, isLoading: false }),
@@ -507,4 +526,4 @@ export const api = {
       }),
     },
   },
-}
+};

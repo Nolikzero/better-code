@@ -1,93 +1,96 @@
-import { useState, useEffect } from "react"
-import { Button } from "../../ui/button"
-import { trpc } from "../../../lib/trpc"
-import { toast } from "sonner"
-import { Copy, FolderOpen, RefreshCw, Terminal, Check } from "lucide-react"
+import { Check, Copy, FolderOpen, RefreshCw, Terminal } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { trpc } from "../../../lib/trpc";
+import { Button } from "../../ui/button";
 
 // Hook to detect narrow screen
 function useIsNarrowScreen(): boolean {
-  const [isNarrow, setIsNarrow] = useState(false)
+  const [isNarrow, setIsNarrow] = useState(false);
 
   useEffect(() => {
     const checkWidth = () => {
-      setIsNarrow(window.innerWidth <= 768)
-    }
+      setIsNarrow(window.innerWidth <= 768);
+    };
 
-    checkWidth()
-    window.addEventListener("resize", checkWidth)
-    return () => window.removeEventListener("resize", checkWidth)
-  }, [])
+    checkWidth();
+    window.addEventListener("resize", checkWidth);
+    return () => window.removeEventListener("resize", checkWidth);
+  }, []);
 
-  return isNarrow
+  return isNarrow;
 }
 
 export function AgentsDebugTab() {
-  const [copiedPath, setCopiedPath] = useState(false)
-  const [copiedInfo, setCopiedInfo] = useState(false)
-  const isNarrowScreen = useIsNarrowScreen()
+  const [copiedPath, setCopiedPath] = useState(false);
+  const [copiedInfo, setCopiedInfo] = useState(false);
+  const isNarrowScreen = useIsNarrowScreen();
 
   // Fetch system info
   const { data: systemInfo, isLoading: isLoadingSystem } =
-    trpc.debug.getSystemInfo.useQuery()
+    trpc.debug.getSystemInfo.useQuery();
 
   // Fetch DB stats
-  const { data: dbStats, isLoading: isLoadingDb, refetch: refetchDb } =
-    trpc.debug.getDbStats.useQuery()
+  const {
+    data: dbStats,
+    isLoading: isLoadingDb,
+    refetch: refetchDb,
+  } = trpc.debug.getDbStats.useQuery();
 
   // Mutations
   const clearChatsMutation = trpc.debug.clearChats.useMutation({
     onSuccess: () => {
-      toast.success("All chats cleared")
-      refetchDb()
+      toast.success("All chats cleared");
+      refetchDb();
     },
     onError: (error) => toast.error(error.message),
-  })
+  });
 
   const clearAllDataMutation = trpc.debug.clearAllData.useMutation({
     onSuccess: () => {
-      toast.success("All data cleared. Reloading...")
-      setTimeout(() => window.location.reload(), 500)
+      toast.success("All data cleared. Reloading...");
+      setTimeout(() => window.location.reload(), 500);
     },
     onError: (error) => toast.error(error.message),
-  })
+  });
 
   const logoutMutation = trpc.debug.logout.useMutation({
     onSuccess: () => {
-      toast.success("Logged out. Reloading...")
-      setTimeout(() => window.location.reload(), 500)
+      toast.success("Logged out. Reloading...");
+      setTimeout(() => window.location.reload(), 500);
     },
-    onError: (error) => toast.error(error.message),
-  })
+    onError: (error: { message: string }) => toast.error(error.message),
+  });
 
   const openFolderMutation = trpc.debug.openUserDataFolder.useMutation({
     onError: (error) => toast.error(error.message),
-  })
+  });
 
   const handleCopyPath = async () => {
     if (systemInfo?.userDataPath) {
-      await navigator.clipboard.writeText(systemInfo.userDataPath)
-      setCopiedPath(true)
-      setTimeout(() => setCopiedPath(false), 2000)
+      await navigator.clipboard.writeText(systemInfo.userDataPath);
+      setCopiedPath(true);
+      setTimeout(() => setCopiedPath(false), 2000);
     }
-  }
+  };
 
   const handleCopyDebugInfo = async () => {
     const info = {
       ...systemInfo,
       dbStats,
       timestamp: new Date().toISOString(),
-    }
-    await navigator.clipboard.writeText(JSON.stringify(info, null, 2))
-    setCopiedInfo(true)
-    toast.success("Debug info copied to clipboard")
-    setTimeout(() => setCopiedInfo(false), 2000)
-  }
+    };
+    await navigator.clipboard.writeText(JSON.stringify(info, null, 2));
+    setCopiedInfo(true);
+    toast.success("Debug info copied to clipboard");
+    setTimeout(() => setCopiedInfo(false), 2000);
+  };
 
   const handleOpenDevTools = () => {
-    window.desktopApi?.toggleDevTools()
-  }
+    window.desktopApi?.toggleDevTools();
+  };
 
-  const isLoading = isLoadingSystem || isLoadingDb
+  const isLoading = isLoadingSystem || isLoadingDb;
 
   return (
     <div className="p-6 space-y-6">
@@ -107,10 +110,18 @@ export function AgentsDebugTab() {
           System Info
         </h4>
         <div className="rounded-lg border bg-muted/30 divide-y">
-          <InfoRow label="Version" value={systemInfo?.version} isLoading={isLoading} />
+          <InfoRow
+            label="Version"
+            value={systemInfo?.version}
+            isLoading={isLoading}
+          />
           <InfoRow
             label="Platform"
-            value={systemInfo ? `${systemInfo.platform} (${systemInfo.arch})` : undefined}
+            value={
+              systemInfo
+                ? `${systemInfo.platform} (${systemInfo.arch})`
+                : undefined
+            }
             isLoading={isLoading}
           />
           <InfoRow
@@ -120,7 +131,9 @@ export function AgentsDebugTab() {
           />
           <InfoRow
             label="Protocol"
-            value={systemInfo?.protocolRegistered ? "Registered" : "Not registered"}
+            value={
+              systemInfo?.protocolRegistered ? "Registered" : "Not registered"
+            }
             isLoading={isLoading}
             status={systemInfo?.protocolRegistered ? "success" : "warning"}
           />
@@ -154,9 +167,21 @@ export function AgentsDebugTab() {
           Database
         </h4>
         <div className="rounded-lg border bg-muted/30 divide-y">
-          <InfoRow label="Projects" value={dbStats?.projects?.toString()} isLoading={isLoading} />
-          <InfoRow label="Chats" value={dbStats?.chats?.toString()} isLoading={isLoading} />
-          <InfoRow label="Sub-chats" value={dbStats?.subChats?.toString()} isLoading={isLoading} />
+          <InfoRow
+            label="Projects"
+            value={dbStats?.projects?.toString()}
+            isLoading={isLoading}
+          />
+          <InfoRow
+            label="Chats"
+            value={dbStats?.chats?.toString()}
+            isLoading={isLoading}
+          />
+          <InfoRow
+            label="Sub-chats"
+            value={dbStats?.subChats?.toString()}
+            isLoading={isLoading}
+          />
         </div>
       </div>
 
@@ -227,21 +252,27 @@ export function AgentsDebugTab() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => toast.success("Success!", { description: "Operation completed" })}
+            onClick={() =>
+              toast.success("Success!", { description: "Operation completed" })
+            }
           >
             Success
           </Button>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => toast.error("Error", { description: "Something went wrong" })}
+            onClick={() =>
+              toast.error("Error", { description: "Something went wrong" })
+            }
           >
             Error
           </Button>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => toast("Default toast", { description: "This is a description" })}
+            onClick={() =>
+              toast("Default toast", { description: "This is a description" })
+            }
           >
             Default
           </Button>
@@ -249,8 +280,10 @@ export function AgentsDebugTab() {
             variant="outline"
             size="sm"
             onClick={() => {
-              const id = toast.loading("Loading...", { description: "Please wait" })
-              setTimeout(() => toast.dismiss(id), 3000)
+              const id = toast.loading("Loading...", {
+                description: "Please wait",
+              });
+              setTimeout(() => toast.dismiss(id), 3000);
             }}
           >
             Loading
@@ -259,10 +292,10 @@ export function AgentsDebugTab() {
             variant="outline"
             size="sm"
             onClick={() => {
-              const id = toast.loading("Processing...")
+              const id = toast.loading("Processing...");
               setTimeout(() => {
-                toast.success("Done!", { id })
-              }, 2000)
+                toast.success("Done!", { id });
+              }, 2000);
             }}
           >
             Promise
@@ -281,7 +314,7 @@ export function AgentsDebugTab() {
             size="sm"
             onClick={() => {
               if (confirm("Clear all chats? Projects will be kept.")) {
-                clearChatsMutation.mutate()
+                clearChatsMutation.mutate();
               }
             }}
             disabled={clearChatsMutation.isPending}
@@ -293,7 +326,7 @@ export function AgentsDebugTab() {
             size="sm"
             onClick={() => {
               if (confirm("Logout? You will need to sign in again.")) {
-                logoutMutation.mutate()
+                logoutMutation.mutate();
               }
             }}
             disabled={logoutMutation.isPending}
@@ -309,7 +342,7 @@ export function AgentsDebugTab() {
                   "Reset everything? This will clear all data and log you out.",
                 )
               ) {
-                clearAllDataMutation.mutate()
+                clearAllDataMutation.mutate();
               }
             }}
             disabled={clearAllDataMutation.isPending}
@@ -319,7 +352,7 @@ export function AgentsDebugTab() {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 // Helper component for info rows
@@ -329,10 +362,10 @@ function InfoRow({
   isLoading,
   status,
 }: {
-  label: string
-  value?: string
-  isLoading?: boolean
-  status?: "success" | "warning" | "error"
+  label: string;
+  value?: string;
+  isLoading?: boolean;
+  status?: "success" | "warning" | "error";
 }) {
   return (
     <div className="flex items-center justify-between p-3">
@@ -351,5 +384,5 @@ function InfoRow({
         {isLoading ? "..." : value ?? "-"}
       </span>
     </div>
-  )
+  );
 }

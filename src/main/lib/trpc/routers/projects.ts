@@ -1,18 +1,18 @@
-import { z } from "zod"
-import { router, publicProcedure } from "../index"
-import { getDatabase, projects } from "../../db"
-import { eq, desc } from "drizzle-orm"
-import { dialog, BrowserWindow } from "electron"
-import { basename } from "path"
-import { getGitRemoteInfo } from "../../git"
+import { basename } from "path";
+import { desc, eq } from "drizzle-orm";
+import { BrowserWindow, dialog } from "electron";
+import { z } from "zod";
+import { getDatabase, projects } from "../../db";
+import { getGitRemoteInfo } from "../../git";
+import { publicProcedure, router } from "../index";
 
 export const projectsRouter = router({
   /**
    * List all projects
    */
   list: publicProcedure.query(() => {
-    const db = getDatabase()
-    return db.select().from(projects).orderBy(desc(projects.updatedAt)).all()
+    const db = getDatabase();
+    return db.select().from(projects).orderBy(desc(projects.updatedAt)).all();
   }),
 
   /**
@@ -21,53 +21,53 @@ export const projectsRouter = router({
   get: publicProcedure
     .input(z.object({ id: z.string() }))
     .query(({ input }) => {
-      const db = getDatabase()
-      return db.select().from(projects).where(eq(projects.id, input.id)).get()
+      const db = getDatabase();
+      return db.select().from(projects).where(eq(projects.id, input.id)).get();
     }),
 
   /**
    * Open folder picker and create project
    */
   openFolder: publicProcedure.mutation(async ({ ctx }) => {
-    const window = ctx.getWindow?.() ?? BrowserWindow.getFocusedWindow()
+    const window = ctx.getWindow?.() ?? BrowserWindow.getFocusedWindow();
 
     if (!window) {
-      console.error("[Projects] No window available for folder dialog")
-      return null
+      console.error("[Projects] No window available for folder dialog");
+      return null;
     }
 
     // Ensure window is focused before showing dialog (fixes first-launch timing issue on macOS)
     if (!window.isFocused()) {
-      console.log("[Projects] Window not focused, focusing before dialog...")
-      window.focus()
+      console.log("[Projects] Window not focused, focusing before dialog...");
+      window.focus();
       // Small delay to ensure focus is applied by the OS
-      await new Promise((resolve) => setTimeout(resolve, 100))
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
 
     const result = await dialog.showOpenDialog(window, {
       properties: ["openDirectory", "createDirectory"],
       title: "Select Project Folder",
       buttonLabel: "Open Project",
-    })
+    });
 
     if (result.canceled || result.filePaths.length === 0) {
-      return null
+      return null;
     }
 
-    const folderPath = result.filePaths[0]!
-    const folderName = basename(folderPath)
+    const folderPath = result.filePaths[0]!;
+    const folderName = basename(folderPath);
 
     // Get git remote info
-    const gitInfo = await getGitRemoteInfo(folderPath)
+    const gitInfo = await getGitRemoteInfo(folderPath);
 
-    const db = getDatabase()
+    const db = getDatabase();
 
     // Check if project already exists
     const existing = db
       .select()
       .from(projects)
       .where(eq(projects.path, folderPath))
-      .get()
+      .get();
 
     if (existing) {
       // Update the updatedAt timestamp and git info (in case remote changed)
@@ -82,9 +82,9 @@ export const projectsRouter = router({
         })
         .where(eq(projects.id, existing.id))
         .returning()
-        .get()
+        .get();
 
-      return updatedProject
+      return updatedProject;
     }
 
     // Create new project with git info
@@ -99,7 +99,7 @@ export const projectsRouter = router({
         gitRepo: gitInfo.repo,
       })
       .returning()
-      .get()
+      .get();
   }),
 
   /**
@@ -108,22 +108,22 @@ export const projectsRouter = router({
   create: publicProcedure
     .input(z.object({ path: z.string(), name: z.string().optional() }))
     .mutation(async ({ input }) => {
-      const db = getDatabase()
-      const name = input.name || basename(input.path)
+      const db = getDatabase();
+      const name = input.name || basename(input.path);
 
       // Check if project already exists
       const existing = db
         .select()
         .from(projects)
         .where(eq(projects.path, input.path))
-        .get()
+        .get();
 
       if (existing) {
-        return existing
+        return existing;
       }
 
       // Get git remote info
-      const gitInfo = await getGitRemoteInfo(input.path)
+      const gitInfo = await getGitRemoteInfo(input.path);
 
       return db
         .insert(projects)
@@ -136,7 +136,7 @@ export const projectsRouter = router({
           gitRepo: gitInfo.repo,
         })
         .returning()
-        .get()
+        .get();
     }),
 
   /**
@@ -145,13 +145,13 @@ export const projectsRouter = router({
   rename: publicProcedure
     .input(z.object({ id: z.string(), name: z.string().min(1) }))
     .mutation(({ input }) => {
-      const db = getDatabase()
+      const db = getDatabase();
       return db
         .update(projects)
         .set({ name: input.name, updatedAt: new Date() })
         .where(eq(projects.id, input.id))
         .returning()
-        .get()
+        .get();
     }),
 
   /**
@@ -160,12 +160,12 @@ export const projectsRouter = router({
   delete: publicProcedure
     .input(z.object({ id: z.string() }))
     .mutation(({ input }) => {
-      const db = getDatabase()
+      const db = getDatabase();
       return db
         .delete(projects)
         .where(eq(projects.id, input.id))
         .returning()
-        .get()
+        .get();
     }),
 
   /**
@@ -174,21 +174,21 @@ export const projectsRouter = router({
   refreshGitInfo: publicProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
-      const db = getDatabase()
+      const db = getDatabase();
 
       // Get project
       const project = db
         .select()
         .from(projects)
         .where(eq(projects.id, input.id))
-        .get()
+        .get();
 
       if (!project) {
-        return null
+        return null;
       }
 
       // Get fresh git info
-      const gitInfo = await getGitRemoteInfo(project.path)
+      const gitInfo = await getGitRemoteInfo(project.path);
 
       // Update project
       return db
@@ -202,6 +202,6 @@ export const projectsRouter = router({
         })
         .where(eq(projects.id, input.id))
         .returning()
-        .get()
+        .get();
     }),
-})
+});

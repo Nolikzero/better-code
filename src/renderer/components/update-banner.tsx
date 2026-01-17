@@ -1,13 +1,14 @@
-import { useEffect, useRef, useState } from "react"
-import { flushSync } from "react-dom"
-import { useUpdateChecker } from "../lib/hooks/use-update-checker"
-import { useJustUpdated } from "../lib/hooks/use-just-updated"
-import { Button } from "./ui/button"
-import { IconSpinner } from "../icons"
+import { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
+import { IconSpinner } from "../icons";
+import { useJustUpdated } from "../lib/hooks/use-just-updated";
+import { useUpdateChecker } from "../lib/hooks/use-update-checker";
+import { Button } from "./ui/button";
 
 // For testing: set to "available", "downloading", or "just-updated" to see the UI
 // Change to "none" for production
-const MOCK_STATE: "none" | "available" | "downloading" | "just-updated" = "none"
+const MOCK_STATE: "none" | "available" | "downloading" | "just-updated" =
+  "none";
 
 export function UpdateBanner() {
   const {
@@ -15,26 +16,26 @@ export function UpdateBanner() {
     downloadUpdate,
     installUpdate,
     dismissUpdate,
-  } = useUpdateChecker()
+  } = useUpdateChecker();
 
   const {
     justUpdated: realJustUpdated,
     justUpdatedVersion,
     dismissJustUpdated,
-  } = useJustUpdated()
-  const hasTriggeredInstall = useRef(false)
+  } = useJustUpdated();
+  const hasTriggeredInstall = useRef(false);
 
   // Optimistic loading state - show spinner immediately on click
-  const [isPending, setIsPending] = useState(false)
+  const [isPending, setIsPending] = useState(false);
 
   // Use mock or real state
-  const isMocking = MOCK_STATE !== "none"
+  const isMocking = MOCK_STATE !== "none";
 
   // Mock state for testing UI
   const [mockStatus, setMockStatus] = useState<
     "available" | "downloading" | "dismissed" | "just-updated"
-  >(MOCK_STATE === "none" ? "available" : MOCK_STATE)
-  const [mockProgress, setMockProgress] = useState(0)
+  >(MOCK_STATE === "none" ? "available" : MOCK_STATE);
+  const [mockProgress, setMockProgress] = useState(0);
 
   // Simulate progress when mocking download
   useEffect(() => {
@@ -42,29 +43,29 @@ export function UpdateBanner() {
       const interval = setInterval(() => {
         setMockProgress((prev) => {
           if (prev >= 100) {
-            clearInterval(interval)
-            return 100
+            clearInterval(interval);
+            return 100;
           }
-          return prev + 5
-        })
-      }, 200)
-      return () => clearInterval(interval)
+          return prev + 5;
+        });
+      }, 200);
+      return () => clearInterval(interval);
     }
-  }, [isMocking, mockStatus])
+  }, [isMocking, mockStatus]);
 
   // Just updated state (show "What's New" banner)
   // When mocking "just-updated", we need to show that state regardless of real state
   const justUpdated =
-    isMocking && MOCK_STATE === "just-updated" ? true : realJustUpdated
+    isMocking && MOCK_STATE === "just-updated" ? true : realJustUpdated;
 
   // Get current app version for display
-  const [currentVersion, setCurrentVersion] = useState<string | null>(null)
+  const [currentVersion, setCurrentVersion] = useState<string | null>(null);
   useEffect(() => {
-    window.desktopApi?.getVersion().then(setCurrentVersion)
-  }, [])
+    window.desktopApi?.getVersion().then(setCurrentVersion);
+  }, []);
 
   // Use current version for display (or the just updated version if available)
-  const displayVersion = justUpdatedVersion || currentVersion
+  const displayVersion = justUpdatedVersion || currentVersion;
 
   // For mocking just-updated, force idle state so only the "What's New" banner shows
   const state =
@@ -78,73 +79,71 @@ export function UpdateBanner() {
                 : mockStatus,
             progress: mockProgress,
           }
-        : realState
+        : realState;
 
   // Clear pending state when status changes from "available"
   // This handles: download started, error occurred, or state reset
   useEffect(() => {
     if (realState.status !== "available") {
-      setIsPending(false)
+      setIsPending(false);
     }
-  }, [realState.status])
+  }, [realState.status]);
 
   // Get progress percentage
-  const progress = "progress" in state ? state.progress : undefined
+  const progress = "progress" in state ? state.progress : undefined;
 
   // Auto-install when download completes
   useEffect(() => {
     if (realState.status === "ready" && !hasTriggeredInstall.current) {
-      hasTriggeredInstall.current = true
+      hasTriggeredInstall.current = true;
       // Small delay to ensure UI updates before restart
       setTimeout(() => {
-        installUpdate()
-      }, 500)
+        installUpdate();
+      }, 500);
     }
-  }, [realState.status, installUpdate])
+  }, [realState.status, installUpdate]);
 
   // Reset install trigger when going back to available state
   useEffect(() => {
     if (realState.status === "available") {
-      hasTriggeredInstall.current = false
+      hasTriggeredInstall.current = false;
     }
-  }, [realState.status])
+  }, [realState.status]);
 
   // Mock handlers for testing
   const handleUpdate = () => {
     if (isMocking) {
-      setMockStatus("downloading")
+      setMockStatus("downloading");
     } else {
       // Force synchronous render to show spinner immediately
       flushSync(() => {
-        setIsPending(true)
-      })
-      downloadUpdate()
+        setIsPending(true);
+      });
+      downloadUpdate();
     }
-  }
+  };
 
   const handleDismiss = () => {
     if (isMocking) {
-      setMockStatus("dismissed")
+      setMockStatus("dismissed");
     } else {
-      dismissUpdate()
+      dismissUpdate();
     }
-  }
+  };
 
   const handleDismissWhatsNew = () => {
     if (isMocking) {
-      setMockStatus("dismissed")
+      setMockStatus("dismissed");
     } else {
-      dismissJustUpdated()
+      dismissJustUpdated();
     }
-  }
+  };
 
   // Show "What's New" banner if app was just updated
   if (justUpdated) {
     return (
       <div className="fixed bottom-4 left-4 z-50 flex items-center gap-3 rounded-lg border border-border bg-popover p-2.5 text-sm text-popover-foreground shadow-lg animate-in fade-in-0 slide-in-from-bottom-2">
-        <span className="text-foreground">
-          Updated to v{displayVersion}
-        </span>
+        <span className="text-foreground">Updated to v{displayVersion}</span>
         <button
           onClick={handleDismissWhatsNew}
           className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded hover:bg-muted ml-2"
@@ -167,7 +166,7 @@ export function UpdateBanner() {
           </svg>
         </button>
       </div>
-    )
+    );
   }
 
   // Don't show anything for idle, checking, or error states
@@ -176,12 +175,12 @@ export function UpdateBanner() {
     state.status === "checking" ||
     state.status === "error"
   ) {
-    return null
+    return null;
   }
 
   // Updating state (downloading or ready to install, or pending click)
   const isUpdating =
-    state.status === "downloading" || state.status === "ready" || isPending
+    state.status === "downloading" || state.status === "ready" || isPending;
 
   return (
     <div className="fixed bottom-4 left-4 z-50 flex items-center gap-3 rounded-lg border border-border bg-popover p-2.5 text-sm text-popover-foreground shadow-lg animate-in fade-in-0 slide-in-from-bottom-2">
@@ -218,5 +217,5 @@ export function UpdateBanner() {
         </>
       )}
     </div>
-  )
+  );
 }

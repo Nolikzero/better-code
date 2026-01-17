@@ -1,44 +1,46 @@
-import { useAtom } from "jotai"
-import { useState, useEffect } from "react"
+import { useAtom } from "jotai";
+import { useEffect, useState } from "react";
 import {
+  type CtrlTabTarget,
+  ctrlTabTargetAtom,
   extendedThinkingEnabledAtom,
   soundNotificationsEnabledAtom,
-  ctrlTabTargetAtom,
-  type CtrlTabTarget,
-} from "../../../lib/atoms"
-import { Switch } from "../../ui/switch"
+} from "../../../lib/atoms";
+import { Kbd } from "../../ui/kbd";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-} from "../../ui/select"
-import { Kbd } from "../../ui/kbd"
+} from "../../ui/select";
+import { Switch } from "../../ui/switch";
 
 // Hook to detect narrow screen
 function useIsNarrowScreen(): boolean {
-  const [isNarrow, setIsNarrow] = useState(false)
+  const [isNarrow, setIsNarrow] = useState(false);
 
   useEffect(() => {
     const checkWidth = () => {
-      setIsNarrow(window.innerWidth <= 768)
-    }
+      setIsNarrow(window.innerWidth <= 768);
+    };
 
-    checkWidth()
-    window.addEventListener("resize", checkWidth)
-    return () => window.removeEventListener("resize", checkWidth)
-  }, [])
+    checkWidth();
+    window.addEventListener("resize", checkWidth);
+    return () => window.removeEventListener("resize", checkWidth);
+  }, []);
 
-  return isNarrow
+  return isNarrow;
 }
 
 export function AgentsPreferencesTab() {
   const [thinkingEnabled, setThinkingEnabled] = useAtom(
     extendedThinkingEnabledAtom,
-  )
-  const [soundEnabled, setSoundEnabled] = useAtom(soundNotificationsEnabledAtom)
-  const [ctrlTabTarget, setCtrlTabTarget] = useAtom(ctrlTabTargetAtom)
-  const isNarrowScreen = useIsNarrowScreen()
+  );
+  const [soundEnabled, setSoundEnabled] = useAtom(
+    soundNotificationsEnabledAtom,
+  );
+  const [ctrlTabTarget, setCtrlTabTarget] = useAtom(ctrlTabTargetAtom);
+  const isNarrowScreen = useIsNarrowScreen();
 
   return (
     <div className="p-6 space-y-6">
@@ -64,7 +66,9 @@ export function AgentsPreferencesTab() {
               <span className="text-xs text-muted-foreground">
                 Enable deeper reasoning with more thinking tokens (uses more
                 credits).{" "}
-                <span className="text-foreground/70">Disables response streaming.</span>
+                <span className="text-foreground/70">
+                  Disables response streaming.
+                </span>
               </span>
             </div>
             <Switch
@@ -117,5 +121,5 @@ export function AgentsPreferencesTab() {
         </div>
       </div>
     </div>
-  )
+  );
 }

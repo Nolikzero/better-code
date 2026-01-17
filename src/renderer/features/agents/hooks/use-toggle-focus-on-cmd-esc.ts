@@ -1,4 +1,4 @@
-import { useEffect, type RefObject } from "react"
+import { type RefObject, useEffect } from "react";
 
 /**
  * Hook to toggle focus when Cmd+Esc (or Ctrl+Esc) is pressed.
@@ -20,34 +20,35 @@ export function useToggleFocusOnCmdEsc(
         e.shiftKey ||
         e.altKey
       ) {
-        return
+        return;
       }
 
-      e.preventDefault()
-      e.stopPropagation()
+      e.preventDefault();
+      e.stopPropagation();
 
-      const editor = editorRef.current
-      if (!editor) return
+      const editor = editorRef.current;
+      if (!editor) return;
 
       // Check if any input/contenteditable is currently focused
-      const activeElement = document.activeElement
+      const activeElement = document.activeElement;
       const isInputFocused =
         activeElement instanceof HTMLInputElement ||
         activeElement instanceof HTMLTextAreaElement ||
         activeElement?.getAttribute("contenteditable") === "true" ||
         (activeElement?.hasAttribute("contenteditable") &&
-          activeElement.getAttribute("contenteditable") !== "false")
+          activeElement.getAttribute("contenteditable") !== "false");
 
       if (isInputFocused) {
         // Blur if any input is focused
-        editor.blur()
+        editor.blur();
       } else {
         // Focus if no input is focused
-        editor.focus()
+        editor.focus();
       }
-    }
+    };
 
-    window.addEventListener("keydown", handleKeyDown, { capture: true })
-    return () => window.removeEventListener("keydown", handleKeyDown, { capture: true })
-  }, [editorRef])
+    window.addEventListener("keydown", handleKeyDown, { capture: true });
+    return () =>
+      window.removeEventListener("keydown", handleKeyDown, { capture: true });
+  }, [editorRef]);
 }

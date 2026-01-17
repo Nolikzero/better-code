@@ -1,81 +1,91 @@
-"use client"
+"use client";
 
-import { memo, useState, useMemo } from "react"
-import { Check, X } from "lucide-react"
+import { Check, X } from "lucide-react";
+import { memo, useMemo, useState } from "react";
 import {
-  IconSpinner,
-  ExpandIcon,
   CollapseIcon,
-} from "../../../components/ui/icons"
-import { TextShimmer } from "../../../components/ui/text-shimmer"
-import { getToolStatus } from "./agent-tool-registry"
-import { AgentToolInterrupted } from "./agent-tool-interrupted"
-import { cn } from "../../../lib/utils"
+  ExpandIcon,
+  IconSpinner,
+} from "../../../components/ui/icons";
+import { TextShimmer } from "../../../components/ui/text-shimmer";
+import { cn } from "../../../lib/utils";
+import { AgentToolInterrupted } from "./agent-tool-interrupted";
+import { getToolStatus } from "./agent-tool-registry";
 
 interface AgentBashToolProps {
-  part: any
-  chatStatus?: string
+  part: any;
+  chatStatus?: string;
 }
 
 // Extract command summary - first word of each command in a pipeline
 function extractCommandSummary(command: string): string {
   // First, normalize line continuations (backslash + newline) into single line
-  const normalizedCommand = command.replace(/\\\s*\n\s*/g, " ")
-  const parts = normalizedCommand.split(/\s*(?:&&|\|\||;|\|)\s*/)
-  const firstWords = parts.map((p) => p.trim().split(/\s+/)[0]).filter(Boolean)
+  const normalizedCommand = command.replace(/\\\s*\n\s*/g, " ");
+  const parts = normalizedCommand.split(/\s*(?:&&|\|\||;|\|)\s*/);
+  const firstWords = parts.map((p) => p.trim().split(/\s+/)[0]).filter(Boolean);
   // Limit to first 4 commands to keep it concise
-  const limited = firstWords.slice(0, 4)
+  const limited = firstWords.slice(0, 4);
   if (firstWords.length > 4) {
-    return limited.join(", ") + "..."
+    return `${limited.join(", ")}...`;
   }
-  return limited.join(", ")
+  return limited.join(", ");
 }
 
 // Limit output to first N lines
-function limitLines(text: string, maxLines: number): { text: string; truncated: boolean } {
-  if (!text) return { text: "", truncated: false }
-  const lines = text.split("\n")
+function limitLines(
+  text: string,
+  maxLines: number,
+): { text: string; truncated: boolean } {
+  if (!text) return { text: "", truncated: false };
+  const lines = text.split("\n");
   if (lines.length <= maxLines) {
-    return { text, truncated: false }
+    return { text, truncated: false };
   }
-  return { text: lines.slice(0, maxLines).join("\n"), truncated: true }
+  return { text: lines.slice(0, maxLines).join("\n"), truncated: true };
 }
 
 export const AgentBashTool = memo(function AgentBashTool({
   part,
   chatStatus,
 }: AgentBashToolProps) {
-  const [isOutputExpanded, setIsOutputExpanded] = useState(false)
-  const { isPending } = getToolStatus(part, chatStatus)
+  const [isOutputExpanded, setIsOutputExpanded] = useState(false);
+  const { isPending } = getToolStatus(part, chatStatus);
 
-  const command = part.input?.command || ""
-  const stdout = part.output?.stdout || part.output?.output || ""
-  const stderr = part.output?.stderr || ""
-  const exitCode = part.output?.exitCode ?? part.output?.exit_code
+  const command = part.input?.command || "";
+  const stdout = part.output?.stdout || part.output?.output || "";
+  const stderr = part.output?.stderr || "";
+  const exitCode = part.output?.exitCode ?? part.output?.exit_code;
 
   // For bash tools, success/error is determined by exitCode, not by state
   // exitCode 0 = success, anything else (or undefined if no output yet) = error
-  const isSuccess = exitCode === 0
-  const isError = exitCode !== undefined && exitCode !== 0
+  const isSuccess = exitCode === 0;
+  const isError = exitCode !== undefined && exitCode !== 0;
 
   // Determine if we have any output
-  const hasOutput = stdout || stderr
+  const hasOutput = stdout || stderr;
 
   // Limit output to 3 lines when collapsed
-  const MAX_OUTPUT_LINES = 3
-  const stdoutLimited = useMemo(() => limitLines(stdout, MAX_OUTPUT_LINES), [stdout])
-  const stderrLimited = useMemo(() => limitLines(stderr, MAX_OUTPUT_LINES), [stderr])
-  const hasMoreOutput = stdoutLimited.truncated || stderrLimited.truncated
+  const MAX_OUTPUT_LINES = 3;
+  const stdoutLimited = useMemo(
+    () => limitLines(stdout, MAX_OUTPUT_LINES),
+    [stdout],
+  );
+  const stderrLimited = useMemo(
+    () => limitLines(stderr, MAX_OUTPUT_LINES),
+    [stderr],
+  );
+  const hasMoreOutput = stdoutLimited.truncated || stderrLimited.truncated;
 
   // Memoize command summary to avoid recalculation on every render
   const commandSummary = useMemo(
     () => extractCommandSummary(command),
     [command],
-  )
+  );
 
   // Check if command input is still being streamed
   // Only consider streaming if chat is actively streaming (prevents hang on stop)
-  const isInputStreaming = part.state === "input-streaming" && chatStatus === "streaming"
+  const isInputStreaming =
+    part.state === "input-streaming" && chatStatus === "streaming";
 
   // If command is still being generated (input-streaming state), show loading state
   if (isInputStreaming) {
@@ -95,22 +105,26 @@ export const AgentBashTool = memo(function AgentBashTool({
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   // If no command and not streaming, tool was interrupted
   if (!command) {
-    return <AgentToolInterrupted toolName="Command" />
+    return <AgentToolInterrupted toolName="Command" />;
   }
 
   return (
     <div className="rounded-lg border border-border bg-muted/30 overflow-hidden mx-2">
       {/* Header - clickable to expand, fixed height to prevent layout shift */}
       <div
-        onClick={() => hasMoreOutput && !isPending && setIsOutputExpanded(!isOutputExpanded)}
+        onClick={() =>
+          hasMoreOutput && !isPending && setIsOutputExpanded(!isOutputExpanded)
+        }
         className={cn(
           "flex items-center justify-between pl-2.5 pr-2 h-7",
-          hasMoreOutput && !isPending && "cursor-pointer hover:bg-muted/50 transition-colors duration-150",
+          hasMoreOutput &&
+            !isPending &&
+            "cursor-pointer hover:bg-muted/50 transition-colors duration-150",
         )}
       >
         <span className="text-xs text-muted-foreground truncate flex-1 min-w-0">
@@ -141,8 +155,8 @@ export const AgentBashTool = memo(function AgentBashTool({
           {!isPending && hasOutput && hasMoreOutput && (
             <button
               onClick={(e) => {
-                e.stopPropagation()
-                setIsOutputExpanded(!isOutputExpanded)
+                e.stopPropagation();
+                setIsOutputExpanded(!isOutputExpanded);
               }}
               className="p-1 rounded-md hover:bg-accent transition-[background-color,transform] duration-150 ease-out active:scale-95"
             >
@@ -163,7 +177,9 @@ export const AgentBashTool = memo(function AgentBashTool({
         }
         className={cn(
           "border-t border-border px-2.5 py-1.5 transition-colors duration-150",
-          hasMoreOutput && !isOutputExpanded && "cursor-pointer hover:bg-muted/50",
+          hasMoreOutput &&
+            !isOutputExpanded &&
+            "cursor-pointer hover:bg-muted/50",
         )}
       >
         {/* Command - always show full command */}
@@ -196,8 +212,7 @@ export const AgentBashTool = memo(function AgentBashTool({
             {isOutputExpanded ? stderr : stderrLimited.text}
           </div>
         )}
-
       </div>
     </div>
-  )
-})
+  );
+});

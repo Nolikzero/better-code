@@ -1,28 +1,28 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useSetAtom } from "jotai"
-import { Check, Copy, Terminal } from "lucide-react"
+import { useSetAtom } from "jotai";
+import { Check, Copy, Terminal } from "lucide-react";
+import { useState } from "react";
 
-import { ClaudeCodeIcon } from "../../components/ui/icons"
-import { Logo } from "../../components/ui/logo"
-import { anthropicOnboardingCompletedAtom } from "../../lib/atoms"
+import { ClaudeCodeIcon } from "../../components/ui/icons";
+import { Logo } from "../../components/ui/logo";
+import { anthropicOnboardingCompletedAtom } from "../../lib/atoms";
 
 export function AnthropicOnboardingPage() {
-  const [copied, setCopied] = useState(false)
+  const [copied, setCopied] = useState(false);
   const setAnthropicOnboardingCompleted = useSetAtom(
-    anthropicOnboardingCompletedAtom
-  )
+    anthropicOnboardingCompletedAtom,
+  );
 
   const handleCopyCommand = async () => {
-    await navigator.clipboard.writeText("claude login")
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
+    await navigator.clipboard.writeText("claude login");
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const handleContinue = () => {
-    setAnthropicOnboardingCompleted(true)
-  }
+    setAnthropicOnboardingCompleted(true);
+  };
 
   return (
     <div className="h-screen w-screen flex flex-col items-center justify-center bg-background select-none">
@@ -115,5 +115,5 @@ export function AnthropicOnboardingPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

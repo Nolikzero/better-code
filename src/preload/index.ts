@@ -1,8 +1,8 @@
-import { contextBridge, ipcRenderer } from "electron"
-import { exposeElectronTRPC } from "trpc-electron/main"
+import { contextBridge, ipcRenderer } from "electron";
+import { exposeElectronTRPC } from "trpc-electron/main";
 
 // Expose tRPC IPC bridge for type-safe communication
-exposeElectronTRPC()
+exposeElectronTRPC();
 
 // Expose desktop-specific APIs
 contextBridge.exposeInMainWorld("desktopApi", {
@@ -18,39 +18,60 @@ contextBridge.exposeInMainWorld("desktopApi", {
 
   // Auto-update event listeners
   onUpdateChecking: (callback: () => void) => {
-    const handler = () => callback()
-    ipcRenderer.on("update:checking", handler)
-    return () => ipcRenderer.removeListener("update:checking", handler)
+    const handler = () => callback();
+    ipcRenderer.on("update:checking", handler);
+    return () => ipcRenderer.removeListener("update:checking", handler);
   },
-  onUpdateAvailable: (callback: (info: { version: string; releaseDate?: string }) => void) => {
-    const handler = (_event: unknown, info: { version: string; releaseDate?: string }) => callback(info)
-    ipcRenderer.on("update:available", handler)
-    return () => ipcRenderer.removeListener("update:available", handler)
+  onUpdateAvailable: (
+    callback: (info: { version: string; releaseDate?: string }) => void,
+  ) => {
+    const handler = (
+      _event: unknown,
+      info: { version: string; releaseDate?: string },
+    ) => callback(info);
+    ipcRenderer.on("update:available", handler);
+    return () => ipcRenderer.removeListener("update:available", handler);
   },
   onUpdateNotAvailable: (callback: () => void) => {
-    const handler = () => callback()
-    ipcRenderer.on("update:not-available", handler)
-    return () => ipcRenderer.removeListener("update:not-available", handler)
+    const handler = () => callback();
+    ipcRenderer.on("update:not-available", handler);
+    return () => ipcRenderer.removeListener("update:not-available", handler);
   },
-  onUpdateProgress: (callback: (progress: { percent: number; bytesPerSecond: number; transferred: number; total: number }) => void) => {
-    const handler = (_event: unknown, progress: { percent: number; bytesPerSecond: number; transferred: number; total: number }) => callback(progress)
-    ipcRenderer.on("update:progress", handler)
-    return () => ipcRenderer.removeListener("update:progress", handler)
+  onUpdateProgress: (
+    callback: (progress: {
+      percent: number;
+      bytesPerSecond: number;
+      transferred: number;
+      total: number;
+    }) => void,
+  ) => {
+    const handler = (
+      _event: unknown,
+      progress: {
+        percent: number;
+        bytesPerSecond: number;
+        transferred: number;
+        total: number;
+      },
+    ) => callback(progress);
+    ipcRenderer.on("update:progress", handler);
+    return () => ipcRenderer.removeListener("update:progress", handler);
   },
   onUpdateDownloaded: (callback: (info: { version: string }) => void) => {
-    const handler = (_event: unknown, info: { version: string }) => callback(info)
-    ipcRenderer.on("update:downloaded", handler)
-    return () => ipcRenderer.removeListener("update:downloaded", handler)
+    const handler = (_event: unknown, info: { version: string }) =>
+      callback(info);
+    ipcRenderer.on("update:downloaded", handler);
+    return () => ipcRenderer.removeListener("update:downloaded", handler);
   },
   onUpdateError: (callback: (error: string) => void) => {
-    const handler = (_event: unknown, error: string) => callback(error)
-    ipcRenderer.on("update:error", handler)
-    return () => ipcRenderer.removeListener("update:error", handler)
+    const handler = (_event: unknown, error: string) => callback(error);
+    ipcRenderer.on("update:error", handler);
+    return () => ipcRenderer.removeListener("update:error", handler);
   },
   onUpdateManualCheck: (callback: () => void) => {
-    const handler = () => callback()
-    ipcRenderer.on("update:manual-check", handler)
-    return () => ipcRenderer.removeListener("update:manual-check", handler)
+    const handler = () => callback();
+    ipcRenderer.on("update:manual-check", handler);
+    return () => ipcRenderer.removeListener("update:manual-check", handler);
   },
 
   // Window controls
@@ -65,14 +86,17 @@ contextBridge.exposeInMainWorld("desktopApi", {
 
   // Window events
   onFullscreenChange: (callback: (isFullscreen: boolean) => void) => {
-    const handler = (_event: unknown, isFullscreen: boolean) => callback(isFullscreen)
-    ipcRenderer.on("window:fullscreen-change", handler)
-    return () => ipcRenderer.removeListener("window:fullscreen-change", handler)
+    const handler = (_event: unknown, isFullscreen: boolean) =>
+      callback(isFullscreen);
+    ipcRenderer.on("window:fullscreen-change", handler);
+    return () =>
+      ipcRenderer.removeListener("window:fullscreen-change", handler);
   },
   onFocusChange: (callback: (isFocused: boolean) => void) => {
-    const handler = (_event: unknown, isFocused: boolean) => callback(isFocused)
-    ipcRenderer.on("window:focus-change", handler)
-    return () => ipcRenderer.removeListener("window:focus-change", handler)
+    const handler = (_event: unknown, isFocused: boolean) =>
+      callback(isFocused);
+    ipcRenderer.on("window:focus-change", handler);
+    return () => ipcRenderer.removeListener("window:focus-change", handler);
   },
 
   // Zoom controls
@@ -85,7 +109,8 @@ contextBridge.exposeInMainWorld("desktopApi", {
   toggleDevTools: () => ipcRenderer.invoke("window:toggle-devtools"),
 
   // Native features
-  setBadge: (count: number | null) => ipcRenderer.invoke("app:set-badge", count),
+  setBadge: (count: number | null) =>
+    ipcRenderer.invoke("app:set-badge", count),
   showNotification: (options: { title: string; body: string }) =>
     ipcRenderer.invoke("app:show-notification", options),
   openExternal: (url: string) => ipcRenderer.invoke("shell:open-external", url),
@@ -96,75 +121,107 @@ contextBridge.exposeInMainWorld("desktopApi", {
 
   // Shortcut events (from main process menu accelerators)
   onShortcutNewAgent: (callback: () => void) => {
-    const handler = () => callback()
-    ipcRenderer.on("shortcut:new-agent", handler)
-    return () => ipcRenderer.removeListener("shortcut:new-agent", handler)
+    const handler = () => callback();
+    ipcRenderer.on("shortcut:new-agent", handler);
+    return () => ipcRenderer.removeListener("shortcut:new-agent", handler);
   },
 
   // File change events (from Claude Write/Edit tools)
-  onFileChanged: (callback: (data: { filePath: string; type: string; subChatId: string }) => void) => {
-    const handler = (_event: unknown, data: { filePath: string; type: string; subChatId: string }) => callback(data)
-    ipcRenderer.on("file-changed", handler)
-    return () => ipcRenderer.removeListener("file-changed", handler)
+  onFileChanged: (
+    callback: (data: {
+      filePath: string;
+      type: string;
+      subChatId: string;
+    }) => void,
+  ) => {
+    const handler = (
+      _event: unknown,
+      data: { filePath: string; type: string; subChatId: string },
+    ) => callback(data);
+    ipcRenderer.on("file-changed", handler);
+    return () => ipcRenderer.removeListener("file-changed", handler);
   },
-})
+
+  // Auth stubs (auth is handled by Claude Code CLI)
+  getUser: async () => null,
+  logout: async () => {
+    console.log("[Auth] Logout requested - use 'claude logout' in terminal");
+  },
+});
 
 // Type definitions
 export interface UpdateInfo {
-  version: string
-  releaseDate?: string
+  version: string;
+  releaseDate?: string;
 }
 
 export interface UpdateProgress {
-  percent: number
-  bytesPerSecond: number
-  transferred: number
-  total: number
+  percent: number;
+  bytesPerSecond: number;
+  transferred: number;
+  total: number;
 }
 
 export interface DesktopApi {
-  platform: NodeJS.Platform
-  arch: string
-  getVersion: () => Promise<string>
+  platform: NodeJS.Platform;
+  arch: string;
+  getVersion: () => Promise<string>;
   // Auto-update
-  checkForUpdates: () => Promise<UpdateInfo | null>
-  downloadUpdate: () => Promise<boolean>
-  installUpdate: () => void
-  onUpdateChecking: (callback: () => void) => () => void
-  onUpdateAvailable: (callback: (info: UpdateInfo) => void) => () => void
-  onUpdateNotAvailable: (callback: () => void) => () => void
-  onUpdateProgress: (callback: (progress: UpdateProgress) => void) => () => void
-  onUpdateDownloaded: (callback: (info: UpdateInfo) => void) => () => void
-  onUpdateError: (callback: (error: string) => void) => () => void
-  onUpdateManualCheck: (callback: () => void) => () => void
+  checkForUpdates: () => Promise<UpdateInfo | null>;
+  downloadUpdate: () => Promise<boolean>;
+  installUpdate: () => void;
+  onUpdateChecking: (callback: () => void) => () => void;
+  onUpdateAvailable: (callback: (info: UpdateInfo) => void) => () => void;
+  onUpdateNotAvailable: (callback: () => void) => () => void;
+  onUpdateProgress: (
+    callback: (progress: UpdateProgress) => void,
+  ) => () => void;
+  onUpdateDownloaded: (callback: (info: UpdateInfo) => void) => () => void;
+  onUpdateError: (callback: (error: string) => void) => () => void;
+  onUpdateManualCheck: (callback: () => void) => () => void;
   // Window controls
-  windowMinimize: () => Promise<void>
-  windowMaximize: () => Promise<void>
-  windowClose: () => Promise<void>
-  windowIsMaximized: () => Promise<boolean>
-  windowToggleFullscreen: () => Promise<void>
-  windowIsFullscreen: () => Promise<boolean>
-  setTrafficLightVisibility: (visible: boolean) => Promise<void>
-  onFullscreenChange: (callback: (isFullscreen: boolean) => void) => () => void
-  onFocusChange: (callback: (isFocused: boolean) => void) => () => void
-  zoomIn: () => Promise<void>
-  zoomOut: () => Promise<void>
-  zoomReset: () => Promise<void>
-  getZoom: () => Promise<number>
-  toggleDevTools: () => Promise<void>
-  setBadge: (count: number | null) => Promise<void>
-  showNotification: (options: { title: string; body: string }) => Promise<void>
-  openExternal: (url: string) => Promise<void>
-  clipboardWrite: (text: string) => Promise<void>
-  clipboardRead: () => Promise<string>
+  windowMinimize: () => Promise<void>;
+  windowMaximize: () => Promise<void>;
+  windowClose: () => Promise<void>;
+  windowIsMaximized: () => Promise<boolean>;
+  windowToggleFullscreen: () => Promise<void>;
+  windowIsFullscreen: () => Promise<boolean>;
+  setTrafficLightVisibility: (visible: boolean) => Promise<void>;
+  onFullscreenChange: (callback: (isFullscreen: boolean) => void) => () => void;
+  onFocusChange: (callback: (isFocused: boolean) => void) => () => void;
+  zoomIn: () => Promise<void>;
+  zoomOut: () => Promise<void>;
+  zoomReset: () => Promise<void>;
+  getZoom: () => Promise<number>;
+  toggleDevTools: () => Promise<void>;
+  setBadge: (count: number | null) => Promise<void>;
+  showNotification: (options: { title: string; body: string }) => Promise<void>;
+  openExternal: (url: string) => Promise<void>;
+  clipboardWrite: (text: string) => Promise<void>;
+  clipboardRead: () => Promise<string>;
   // Shortcuts
-  onShortcutNewAgent: (callback: () => void) => () => void
+  onShortcutNewAgent: (callback: () => void) => () => void;
   // File changes
-  onFileChanged: (callback: (data: { filePath: string; type: string; subChatId: string }) => void) => () => void
+  onFileChanged: (
+    callback: (data: {
+      filePath: string;
+      type: string;
+      subChatId: string;
+    }) => void,
+  ) => () => void;
+  // Auth stubs (auth is handled by Claude Code CLI)
+  getUser: () => Promise<{
+    id: string;
+    email: string;
+    name: string | null;
+    imageUrl: string | null;
+    username: string | null;
+  } | null>;
+  logout: () => Promise<void>;
 }
 
 declare global {
   interface Window {
-    desktopApi: DesktopApi
+    desktopApi: DesktopApi;
   }
 }

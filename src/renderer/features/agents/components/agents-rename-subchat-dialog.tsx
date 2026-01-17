@@ -1,21 +1,21 @@
-"use client"
+"use client";
 
-import { AnimatePresence, motion } from "motion/react"
-import { useEffect, useState, useRef } from "react"
-import { createPortal } from "react-dom"
-import { Button } from "../../../components/ui/button"
-import { Input } from "../../../components/ui/input"
+import { AnimatePresence, motion } from "motion/react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { Button } from "../../../components/ui/button";
+import { Input } from "../../../components/ui/input";
 
 interface AgentsRenameSubChatDialogProps {
-  isOpen: boolean
-  onClose: () => void
-  onSave: (name: string) => Promise<void>
-  currentName: string
-  isLoading?: boolean
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (name: string) => Promise<void>;
+  currentName: string;
+  isLoading?: boolean;
 }
 
-const EASING_CURVE = [0.55, 0.055, 0.675, 0.19] as const
-const INTERACTION_DELAY_MS = 250
+const EASING_CURVE = [0.55, 0.055, 0.675, 0.19] as const;
+const INTERACTION_DELAY_MS = 250;
 
 export function AgentsRenameSubChatDialog({
   isOpen,
@@ -24,77 +24,78 @@ export function AgentsRenameSubChatDialog({
   currentName,
   isLoading = false,
 }: AgentsRenameSubChatDialogProps) {
-  const [mounted, setMounted] = useState(false)
-  const [name, setName] = useState(currentName)
-  const [isSaving, setIsSaving] = useState(false)
-  const openAtRef = useRef<number>(0)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const [mounted, setMounted] = useState(false);
+  const [name, setName] = useState(currentName);
+  const [isSaving, setIsSaving] = useState(false);
+  const openAtRef = useRef<number>(0);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setMounted(true)
-  }, [])
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
-      openAtRef.current = performance.now()
-      setName(currentName)
+      openAtRef.current = performance.now();
+      setName(currentName);
     }
-  }, [isOpen, currentName])
+  }, [isOpen, currentName]);
 
   const handleAnimationComplete = () => {
     // Focus and select input after animation completes (only if still open)
     if (isOpen) {
-      inputRef.current?.focus()
-      inputRef.current?.select()
+      inputRef.current?.focus();
+      inputRef.current?.select();
     }
-  }
+  };
 
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        event.preventDefault()
-        handleClose()
+        event.preventDefault();
+        handleClose();
       }
       if (event.key === "Enter" && !event.shiftKey) {
-        event.preventDefault()
-        handleSave()
+        event.preventDefault();
+        handleSave();
       }
-    }
+    };
 
-    document.addEventListener("keydown", handleKeyDown)
-    return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [isOpen, name])
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, name]);
 
   const handleClose = () => {
-    const canInteract = performance.now() - openAtRef.current > INTERACTION_DELAY_MS
-    if (!canInteract || isSaving) return
-    onClose()
-  }
+    const canInteract =
+      performance.now() - openAtRef.current > INTERACTION_DELAY_MS;
+    if (!canInteract || isSaving) return;
+    onClose();
+  };
 
   const handleSave = async () => {
-    const trimmedName = name.trim()
+    const trimmedName = name.trim();
     if (!trimmedName || trimmedName === currentName) {
-      handleClose()
-      return
+      handleClose();
+      return;
     }
-    
-    setIsSaving(true)
+
+    setIsSaving(true);
     try {
-      await onSave(trimmedName)
-      handleClose()
+      await onSave(trimmedName);
+      handleClose();
     } catch {
       // Error is already handled by parent (toast), keep dialog open
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
 
-  if (!mounted) return null
+  if (!mounted) return null;
 
-  const portalTarget = typeof document !== "undefined" ? document.body : null
-  if (!portalTarget) return null
+  const portalTarget = typeof document !== "undefined" ? document.body : null;
+  if (!portalTarget) return null;
 
   return createPortal(
     <AnimatePresence mode="wait" initial={false}>
@@ -129,11 +130,12 @@ export function AgentsRenameSubChatDialog({
               className="w-[90vw] max-w-[400px] pointer-events-auto"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="bg-background rounded-sm border shadow-2xl overflow-hidden" data-canvas-dialog>
+              <div
+                className="bg-background rounded-sm border shadow-2xl overflow-hidden"
+                data-canvas-dialog
+              >
                 <div className="p-6">
-                  <h2 className="text-xl font-semibold mb-4">
-                    Rename agent
-                  </h2>
+                  <h2 className="text-xl font-semibold mb-4">Rename agent</h2>
 
                   {/* Input */}
                   <Input
@@ -159,7 +161,12 @@ export function AgentsRenameSubChatDialog({
                   <Button
                     onClick={handleSave}
                     variant="default"
-                    disabled={!name.trim() || name.trim() === currentName || isSaving || isLoading}
+                    disabled={
+                      !name.trim() ||
+                      name.trim() === currentName ||
+                      isSaving ||
+                      isLoading
+                    }
                     className="rounded-md"
                   >
                     {isSaving || isLoading ? "Saving..." : "Save"}
@@ -172,6 +179,5 @@ export function AgentsRenameSubChatDialog({
       )}
     </AnimatePresence>,
     portalTarget,
-  )
+  );
 }
-

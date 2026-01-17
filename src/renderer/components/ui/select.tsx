@@ -1,30 +1,34 @@
-"use client"
+"use client";
 
-import * as SelectPrimitive from "@radix-ui/react-select"
-import * as React from "react"
+import * as SelectPrimitive from "@radix-ui/react-select";
+import * as React from "react";
 
-import { cn } from "../../lib/utils"
-import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "@radix-ui/react-icons"
 import {
-  overlayContentBase,
-  overlayMaxHeight,
+  CheckIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+} from "@radix-ui/react-icons";
+import {
   overlayAnimation,
-  overlaySlideIn,
+  overlayContentBase,
   overlayItemBase,
-  overlayItemHover,
-  overlayItemFocus,
   overlayItemDisabled,
-  overlayItemTransition,
+  overlayItemFocus,
+  overlayItemHover,
   overlayItemIndicator,
+  overlayItemTransition,
   overlayLabel,
+  overlayMaxHeight,
   overlaySeparator,
-} from "../../lib/overlay-styles"
+  overlaySlideIn,
+} from "../../lib/overlay-styles";
+import { cn } from "../../lib/utils";
 
-const Select = SelectPrimitive.Root
+const Select = SelectPrimitive.Root;
 
-const SelectGroup = SelectPrimitive.Group
+const SelectGroup = SelectPrimitive.Group;
 
-const SelectValue = SelectPrimitive.Value
+const SelectValue = SelectPrimitive.Value;
 
 const SelectTrigger = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Trigger>,
@@ -48,8 +52,8 @@ const SelectTrigger = React.forwardRef<
       />
     </SelectPrimitive.Icon>
   </SelectPrimitive.Trigger>
-))
-SelectTrigger.displayName = SelectPrimitive.Trigger.displayName
+));
+SelectTrigger.displayName = SelectPrimitive.Trigger.displayName;
 
 const SelectScrollUpButton = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.ScrollUpButton>,
@@ -70,8 +74,8 @@ const SelectScrollUpButton = React.forwardRef<
       className="shrink-0 text-muted-foreground/80"
     />
   </SelectPrimitive.ScrollUpButton>
-))
-SelectScrollUpButton.displayName = SelectPrimitive.ScrollUpButton.displayName
+));
+SelectScrollUpButton.displayName = SelectPrimitive.ScrollUpButton.displayName;
 
 const SelectScrollDownButton = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.ScrollDownButton>,
@@ -92,9 +96,9 @@ const SelectScrollDownButton = React.forwardRef<
       className="shrink-0 text-muted-foreground/80"
     />
   </SelectPrimitive.ScrollDownButton>
-))
+));
 SelectScrollDownButton.displayName =
-  SelectPrimitive.ScrollDownButton.displayName
+  SelectPrimitive.ScrollDownButton.displayName;
 
 const SelectContent = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Content>,
@@ -128,8 +132,8 @@ const SelectContent = React.forwardRef<
       <SelectScrollDownButton />
     </SelectPrimitive.Content>
   </SelectPrimitive.Portal>
-))
-SelectContent.displayName = SelectPrimitive.Content.displayName
+));
+SelectContent.displayName = SelectPrimitive.Content.displayName;
 
 const SelectLabel = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Label>,
@@ -140,8 +144,8 @@ const SelectLabel = React.forwardRef<
     className={cn(overlayLabel, className)}
     {...props}
   />
-))
-SelectLabel.displayName = SelectPrimitive.Label.displayName
+));
+SelectLabel.displayName = SelectPrimitive.Label.displayName;
 
 const SelectItem = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Item>,
@@ -152,7 +156,7 @@ const SelectItem = React.forwardRef<
     (child) =>
       React.isValidElement(child) &&
       (child.props as Record<string, unknown>)?.["data-desc"] !== undefined,
-  )
+  );
 
   return (
     <SelectPrimitive.Item
@@ -185,9 +189,9 @@ const SelectItem = React.forwardRef<
         {children}
       </SelectPrimitive.ItemText>
     </SelectPrimitive.Item>
-  )
-})
-SelectItem.displayName = SelectPrimitive.Item.displayName
+  );
+});
+SelectItem.displayName = SelectPrimitive.Item.displayName;
 
 const SelectSeparator = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Separator>,
@@ -198,8 +202,8 @@ const SelectSeparator = React.forwardRef<
     className={cn(overlaySeparator, className)}
     {...props}
   />
-))
-SelectSeparator.displayName = SelectPrimitive.Separator.displayName
+));
+SelectSeparator.displayName = SelectPrimitive.Separator.displayName;
 
 export {
   Select,
@@ -212,4 +216,4 @@ export {
   SelectSeparator,
   SelectTrigger,
   SelectValue,
-}
+};

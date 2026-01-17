@@ -1,25 +1,25 @@
-"use client"
+"use client";
 
-import { useState, useRef, useEffect, useCallback, memo } from "react"
-import { cn } from "../../../lib/utils"
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "../../../components/ui/dialog"
-import { AgentImageItem } from "./agent-image-item"
-import { RenderFileMentions } from "../mentions/render-file-mentions"
+} from "../../../components/ui/dialog";
+import { cn } from "../../../lib/utils";
+import { RenderFileMentions } from "../mentions/render-file-mentions";
+import { AgentImageItem } from "./agent-image-item";
 
 interface AgentUserMessageBubbleProps {
-  messageId: string
-  textContent: string
+  messageId: string;
+  textContent: string;
   imageParts?: Array<{
     data?: {
-      filename?: string
-      url?: string
-    }
-  }>
+      filename?: string;
+      url?: string;
+    };
+  }>;
 }
 
 export const AgentUserMessageBubble = memo(function AgentUserMessageBubble({
@@ -27,28 +27,31 @@ export const AgentUserMessageBubble = memo(function AgentUserMessageBubble({
   textContent,
   imageParts = [],
 }: AgentUserMessageBubbleProps) {
-  const [showGradient, setShowGradient] = useState(false)
-  const [isExpanded, setIsExpanded] = useState(false)
-  const contentRef = useRef<HTMLDivElement>(null)
+  const [showGradient, setShowGradient] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   // Check if content overflows to show gradient
   const checkOverflow = useCallback(() => {
     if (contentRef.current) {
-      const element = contentRef.current
-      setShowGradient(element.scrollHeight > element.clientHeight)
+      const element = contentRef.current;
+      setShowGradient(element.scrollHeight > element.clientHeight);
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
-    checkOverflow()
+    checkOverflow();
     // Recheck on resize
-    window.addEventListener("resize", checkOverflow)
-    return () => window.removeEventListener("resize", checkOverflow)
-  }, [checkOverflow, textContent])
+    window.addEventListener("resize", checkOverflow);
+    return () => window.removeEventListener("resize", checkOverflow);
+  }, [checkOverflow, textContent]);
 
   return (
     <>
-      <div className="flex justify-start drop-shadow-[0_10px_20px_hsl(var(--background))]" data-user-bubble>
+      <div
+        className="flex justify-start drop-shadow-[0_10px_20px_hsl(var(--background))]"
+        data-user-bubble
+      >
         <div className="space-y-2 w-full">
           {/* Show attached images from stored message */}
           {imageParts.length > 0 && (
@@ -61,7 +64,7 @@ export const AgentUserMessageBubble = memo(function AgentUserMessageBubble({
                     id: `${messageId}-img-${idx}`,
                     filename: img.data?.filename || "image",
                     url: img.data?.url || "",
-                  }))
+                  }));
 
                 return imageParts.map((img, idx) => (
                   <AgentImageItem
@@ -72,7 +75,7 @@ export const AgentUserMessageBubble = memo(function AgentUserMessageBubble({
                     allImages={allImages}
                     imageIndex={idx}
                   />
-                ))
+                ));
               })()}
             </div>
           )}
@@ -109,5 +112,5 @@ export const AgentUserMessageBubble = memo(function AgentUserMessageBubble({
         </DialogContent>
       </Dialog>
     </>
-  )
-})
+  );
+});

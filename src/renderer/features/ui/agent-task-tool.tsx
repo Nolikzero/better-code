@@ -1,18 +1,14 @@
-import { memo, useState, useMemo } from "react"
-import { TextShimmer } from "../../components/ui/text-shimmer"
-import {
-  IconSpinner,
-  ExpandIcon,
-  CollapseIcon,
-} from "../../icons"
-import { AgentToolRegistry, getToolStatus } from "./agent-tool-registry"
-import { AgentToolCall } from "./agent-tool-call"
-import { cn } from "../../lib/utils"
+import { memo, useMemo, useState } from "react";
+import { TextShimmer } from "../../components/ui/text-shimmer";
+import { CollapseIcon, ExpandIcon, IconSpinner } from "../../icons";
+import { cn } from "../../lib/utils";
+import { AgentToolCall } from "./agent-tool-call";
+import { AgentToolRegistry, getToolStatus } from "./agent-tool-registry";
 
 interface AgentTaskToolProps {
-  part: any
-  nestedTools: any[]
-  chatStatus?: string
+  part: any;
+  nestedTools: any[];
+  chatStatus?: string;
 }
 
 export const AgentTaskTool = memo(function AgentTaskTool({
@@ -20,41 +16,42 @@ export const AgentTaskTool = memo(function AgentTaskTool({
   nestedTools,
   chatStatus,
 }: AgentTaskToolProps) {
-  const [isExpanded, setIsExpanded] = useState(false)
-  const { isPending } = getToolStatus(part, chatStatus)
+  const [isExpanded, setIsExpanded] = useState(false);
+  const { isPending } = getToolStatus(part, chatStatus);
 
-  const description = part.input?.description || ""
+  const description = part.input?.description || "";
 
   // Output data
-  const result = part.output?.result
-  const durationMs = part.output?.duration_ms
-  const hasOutput = !isPending && result
+  const result = part.output?.result;
+  const durationMs = part.output?.duration_ms;
+  const hasOutput = !isPending && result;
 
-  const hasNestedTools = nestedTools.length > 0
-  const stepsCount = nestedTools.length
+  const hasNestedTools = nestedTools.length > 0;
+  const stepsCount = nestedTools.length;
 
   // Get last nested tool info for collapsed streaming view (memoized)
   const lastToolTitle = useMemo(() => {
-    if (!hasNestedTools) return null
-    const lastNestedTool = nestedTools[nestedTools.length - 1]
-    const lastToolMeta = lastNestedTool ? AgentToolRegistry[lastNestedTool.type] : null
-    return lastToolMeta?.title(lastNestedTool) ?? null
-  }, [hasNestedTools, nestedTools])
+    if (!hasNestedTools) return null;
+    const lastNestedTool = nestedTools[nestedTools.length - 1];
+    const lastToolMeta = lastNestedTool
+      ? AgentToolRegistry[lastNestedTool.type]
+      : null;
+    return lastToolMeta?.title(lastNestedTool) ?? null;
+  }, [hasNestedTools, nestedTools]);
 
   // When more than 3 nested tools during streaming AND expanded, align to bottom (show latest)
-  const shouldAlignBottom = isPending && isExpanded && stepsCount > 3
+  const shouldAlignBottom = isPending && isExpanded && stepsCount > 3;
 
   // Format duration for display
   const formatDuration = (ms: number) => {
-    if (ms < 1000) return `${ms}ms`
-    if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`
-    return `${(ms / 60000).toFixed(1)}m`
-  }
+    if (ms < 1000) return `${ms}ms`;
+    if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+    return `${(ms / 60000).toFixed(1)}m`;
+  };
 
   // Truncate description for header
-  const truncatedDescription = description.length > 50
-    ? description.slice(0, 47) + "..."
-    : description
+  const truncatedDescription =
+    description.length > 50 ? `${description.slice(0, 47)}...` : description;
 
   return (
     <div className="rounded-lg border border-border bg-muted/30 overflow-hidden mx-2">
@@ -115,17 +112,13 @@ export const AgentTaskTool = memo(function AgentTaskTool({
             <ExpandIcon
               className={cn(
                 "absolute inset-0 w-4 h-4 text-muted-foreground transition-[opacity,transform] duration-200 ease-out",
-                isExpanded
-                  ? "opacity-0 scale-75"
-                  : "opacity-100 scale-100",
+                isExpanded ? "opacity-0 scale-75" : "opacity-100 scale-100",
               )}
             />
             <CollapseIcon
               className={cn(
                 "absolute inset-0 w-4 h-4 text-muted-foreground transition-[opacity,transform] duration-200 ease-out",
-                isExpanded
-                  ? "opacity-100 scale-100"
-                  : "opacity-0 scale-75",
+                isExpanded ? "opacity-100 scale-100" : "opacity-0 scale-75",
               )}
             />
           </div>
@@ -148,7 +141,7 @@ export const AgentTaskTool = memo(function AgentTaskTool({
         >
           <div className={cn("py-1", shouldAlignBottom && "flex-shrink-0")}>
             {nestedTools.map((nestedPart, idx) => {
-              const nestedMeta = AgentToolRegistry[nestedPart.type]
+              const nestedMeta = AgentToolRegistry[nestedPart.type];
               if (!nestedMeta) {
                 // Fallback for unknown tools
                 return (
@@ -158,10 +151,10 @@ export const AgentTaskTool = memo(function AgentTaskTool({
                   >
                     {nestedPart.type?.replace("tool-", "")}
                   </div>
-                )
+                );
               }
               const { isPending: nestedIsPending, isError: nestedIsError } =
-                getToolStatus(nestedPart, chatStatus)
+                getToolStatus(nestedPart, chatStatus);
               return (
                 <AgentToolCall
                   key={idx}
@@ -172,7 +165,7 @@ export const AgentTaskTool = memo(function AgentTaskTool({
                   isError={nestedIsError}
                   isNested={true}
                 />
-              )
+              );
             })}
           </div>
         </div>
@@ -185,5 +178,5 @@ export const AgentTaskTool = memo(function AgentTaskTool({
         </div>
       )}
     </div>
-  )
-})
+  );
+});

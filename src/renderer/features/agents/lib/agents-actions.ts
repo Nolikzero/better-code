@@ -3,48 +3,48 @@
  * Actions can be triggered via hotkeys or UI buttons
  */
 
-import type { SettingsTab } from "../../../lib/atoms"
+import type { SettingsTab } from "../../../lib/atoms";
 
 // ============================================================================
 // TYPES
 // ============================================================================
 
-export type AgentActionSource = "hotkey" | "ui_button" | "context-menu"
+export type AgentActionSource = "hotkey" | "ui_button" | "context-menu";
 
-export type AgentActionCategory = "general" | "navigation" | "chat" | "view"
+export type AgentActionCategory = "general" | "navigation" | "chat" | "view";
 
 export interface AgentActionContext {
   // Navigation
-  setSelectedChatId?: (id: string | null) => void
+  setSelectedChatId?: (id: string | null) => void;
 
   // UI states
-  setSidebarOpen?: (open: boolean | ((prev: boolean) => boolean)) => void
-  setSettingsDialogOpen?: (open: boolean) => void
-  setSettingsActiveTab?: (tab: SettingsTab) => void
-  setShortcutsDialogOpen?: (open: boolean) => void
+  setSidebarOpen?: (open: boolean | ((prev: boolean) => boolean)) => void;
+  setSettingsDialogOpen?: (open: boolean) => void;
+  setSettingsActiveTab?: (tab: SettingsTab) => void;
+  setShortcutsDialogOpen?: (open: boolean) => void;
 
   // Data
-  selectedChatId?: string | null
+  selectedChatId?: string | null;
 }
 
 export interface AgentActionResult {
-  success: boolean
-  error?: string
+  success: boolean;
+  error?: string;
 }
 
 export type AgentActionHandler = (
   context: AgentActionContext,
   source: AgentActionSource,
-) => Promise<AgentActionResult> | AgentActionResult
+) => Promise<AgentActionResult> | AgentActionResult;
 
 export interface AgentActionDefinition {
-  id: string
-  label: string
-  description?: string
-  category: AgentActionCategory
-  hotkey?: string | string[]
-  handler: AgentActionHandler
-  isAvailable?: (context: AgentActionContext) => boolean
+  id: string;
+  label: string;
+  description?: string;
+  category: AgentActionCategory;
+  hotkey?: string | string[];
+  handler: AgentActionHandler;
+  isAvailable?: (context: AgentActionContext) => boolean;
 }
 
 // ============================================================================
@@ -58,10 +58,10 @@ const openShortcutsAction: AgentActionDefinition = {
   category: "general",
   hotkey: "?",
   handler: async (context) => {
-    context.setShortcutsDialogOpen?.(true)
-    return { success: true }
+    context.setShortcutsDialogOpen?.(true);
+    return { success: true };
   },
-}
+};
 
 const createNewAgentAction: AgentActionDefinition = {
   id: "create-new-agent",
@@ -70,15 +70,18 @@ const createNewAgentAction: AgentActionDefinition = {
   category: "general",
   hotkey: "cmd+n",
   handler: async (context) => {
-    console.log("[Action] create-new-agent handler called")
-    console.log("[Action] setSelectedChatId exists:", !!context.setSelectedChatId)
+    console.log("[Action] create-new-agent handler called");
+    console.log(
+      "[Action] setSelectedChatId exists:",
+      !!context.setSelectedChatId,
+    );
     if (context.setSelectedChatId) {
-      console.log("[Action] Calling setSelectedChatId(null)")
-      context.setSelectedChatId(null)
+      console.log("[Action] Calling setSelectedChatId(null)");
+      context.setSelectedChatId(null);
     }
-    return { success: true }
+    return { success: true };
   },
-}
+};
 
 const openSettingsAction: AgentActionDefinition = {
   id: "open-settings",
@@ -87,11 +90,11 @@ const openSettingsAction: AgentActionDefinition = {
   category: "general",
   hotkey: ["cmd+,", "ctrl+,"],
   handler: async (context) => {
-    context.setSettingsActiveTab?.("profile")
-    context.setSettingsDialogOpen?.(true)
-    return { success: true }
+    context.setSettingsActiveTab?.("profile");
+    context.setSettingsDialogOpen?.(true);
+    return { success: true };
   },
-}
+};
 
 const toggleSidebarAction: AgentActionDefinition = {
   id: "toggle-sidebar",
@@ -100,10 +103,10 @@ const toggleSidebarAction: AgentActionDefinition = {
   category: "view",
   hotkey: ["cmd+\\", "ctrl+\\"],
   handler: async (context) => {
-    context.setSidebarOpen?.((prev) => !prev)
-    return { success: true }
+    context.setSidebarOpen?.((prev) => !prev);
+    return { success: true };
   },
-}
+};
 
 // ============================================================================
 // ACTION REGISTRY
@@ -114,10 +117,10 @@ export const AGENT_ACTIONS: Record<string, AgentActionDefinition> = {
   "create-new-agent": createNewAgentAction,
   "open-settings": openSettingsAction,
   "toggle-sidebar": toggleSidebarAction,
-}
+};
 
 export function getAgentAction(id: string): AgentActionDefinition | undefined {
-  return AGENT_ACTIONS[id]
+  return AGENT_ACTIONS[id];
 }
 
 export function getAvailableAgentActions(
@@ -125,10 +128,10 @@ export function getAvailableAgentActions(
 ): AgentActionDefinition[] {
   return Object.values(AGENT_ACTIONS).filter((action) => {
     if (action.isAvailable) {
-      return action.isAvailable(context)
+      return action.isAvailable(context);
     }
-    return true
-  })
+    return true;
+  });
 }
 
 export async function executeAgentAction(
@@ -136,22 +139,22 @@ export async function executeAgentAction(
   context: AgentActionContext,
   source: AgentActionSource,
 ): Promise<AgentActionResult> {
-  const action = AGENT_ACTIONS[actionId]
+  const action = AGENT_ACTIONS[actionId];
 
   if (!action) {
-    return { success: false, error: `Action ${actionId} not found` }
+    return { success: false, error: `Action ${actionId} not found` };
   }
 
   if (action.isAvailable && !action.isAvailable(context)) {
-    return { success: false, error: `Action ${actionId} not available` }
+    return { success: false, error: `Action ${actionId} not available` };
   }
 
   try {
-    return await action.handler(context, source)
+    return await action.handler(context, source);
   } catch (error) {
     return {
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",
-    }
+    };
   }
 }

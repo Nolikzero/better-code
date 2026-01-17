@@ -1,6 +1,6 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core"
-import { relations } from "drizzle-orm"
-import { createId } from "../utils"
+import { relations } from "drizzle-orm";
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { createId } from "../utils";
 
 // ============ PROJECTS ============
 export const projects = sqliteTable("projects", {
@@ -20,11 +20,11 @@ export const projects = sqliteTable("projects", {
   gitProvider: text("git_provider"), // "github" | "gitlab" | "bitbucket" | null
   gitOwner: text("git_owner"),
   gitRepo: text("git_repo"),
-})
+});
 
 export const projectsRelations = relations(projects, ({ many }) => ({
   chats: many(chats),
-}))
+}));
 
 // ============ CHATS ============
 export const chats = sqliteTable("chats", {
@@ -51,7 +51,7 @@ export const chats = sqliteTable("chats", {
   prNumber: integer("pr_number"),
   // AI provider (claude | codex)
   providerId: text("provider_id").default("claude"),
-})
+});
 
 export const chatsRelations = relations(chats, ({ one, many }) => ({
   project: one(projects, {
@@ -59,7 +59,7 @@ export const chatsRelations = relations(chats, ({ one, many }) => ({
     references: [projects.id],
   }),
   subChats: many(subChats),
-}))
+}));
 
 // ============ SUB-CHATS ============
 export const subChats = sqliteTable("sub_chats", {
@@ -82,14 +82,14 @@ export const subChats = sqliteTable("sub_chats", {
   ),
   // AI provider (claude | codex)
   providerId: text("provider_id").default("claude"),
-})
+});
 
 export const subChatsRelations = relations(subChats, ({ one }) => ({
   chat: one(chats, {
     fields: [subChats.chatId],
     references: [chats.id],
   }),
-}))
+}));
 
 // ============ CLAUDE CODE CREDENTIALS ============
 // Stores encrypted OAuth token for Claude Code integration
@@ -100,14 +100,14 @@ export const claudeCodeCredentials = sqliteTable("claude_code_credentials", {
     () => new Date(),
   ),
   userId: text("user_id"), // Desktop auth user ID (for reference)
-})
+});
 
 // ============ TYPE EXPORTS ============
-export type Project = typeof projects.$inferSelect
-export type NewProject = typeof projects.$inferInsert
-export type Chat = typeof chats.$inferSelect
-export type NewChat = typeof chats.$inferInsert
-export type SubChat = typeof subChats.$inferSelect
-export type NewSubChat = typeof subChats.$inferInsert
-export type ClaudeCodeCredential = typeof claudeCodeCredentials.$inferSelect
-export type NewClaudeCodeCredential = typeof claudeCodeCredentials.$inferInsert
+export type Project = typeof projects.$inferSelect;
+export type NewProject = typeof projects.$inferInsert;
+export type Chat = typeof chats.$inferSelect;
+export type NewChat = typeof chats.$inferInsert;
+export type SubChat = typeof subChats.$inferSelect;
+export type NewSubChat = typeof subChats.$inferInsert;
+export type ClaudeCodeCredential = typeof claudeCodeCredentials.$inferSelect;
+export type NewClaudeCodeCredential = typeof claudeCodeCredentials.$inferInsert;

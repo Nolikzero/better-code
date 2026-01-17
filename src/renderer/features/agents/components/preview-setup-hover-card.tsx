@@ -1,41 +1,41 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useTheme } from "next-themes"
+import { atom, useSetAtom } from "jotai";
+import { useTheme } from "next-themes";
+import { useState } from "react";
 // import Image from "next/image" // Desktop doesn't use next/image
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
-} from "../../../components/ui/hover-card"
-import { useSetAtom, atom } from "jotai"
+} from "../../../components/ui/hover-card";
 // import { agentsSettingsDialogOpenAtom, agentsSettingsDialogActiveTabAtom } from "@/lib/atoms/agents-settings-dialog"
-const agentsSettingsDialogOpenAtom = atom(false)
-const agentsSettingsDialogActiveTabAtom = atom<string | null>(null)
-import { GitHubIcon } from "../../../icons"
+const agentsSettingsDialogOpenAtom = atom(false);
+const agentsSettingsDialogActiveTabAtom = atom<string | null>(null);
+import { GitHubIcon } from "../../../icons";
 
 interface PreviewSetupHoverCardProps {
-  children: React.ReactNode
+  children: React.ReactNode;
 }
 
-export function PreviewSetupHoverCard({ children }: PreviewSetupHoverCardProps) {
-  const { resolvedTheme } = useTheme()
-  const setSettingsDialogOpen = useSetAtom(agentsSettingsDialogOpenAtom)
-  const setSettingsActiveTab = useSetAtom(agentsSettingsDialogActiveTabAtom)
-  const [open, setOpen] = useState(false)
+export function PreviewSetupHoverCard({
+  children,
+}: PreviewSetupHoverCardProps) {
+  const { resolvedTheme } = useTheme();
+  const setSettingsDialogOpen = useSetAtom(agentsSettingsDialogOpenAtom);
+  const setSettingsActiveTab = useSetAtom(agentsSettingsDialogActiveTabAtom);
+  const [open, setOpen] = useState(false);
 
   const handleOpenSettings = () => {
-    setSettingsActiveTab("github")
-    setSettingsDialogOpen(true)
-    setOpen(false)
-  }
+    setSettingsActiveTab("github");
+    setSettingsDialogOpen(true);
+    setOpen(false);
+  };
 
   return (
     <HoverCard openDelay={300} open={open} onOpenChange={setOpen}>
-      <HoverCardTrigger asChild>
-        {children}
-      </HoverCardTrigger>
-      <HoverCardContent 
+      <HoverCardTrigger asChild>{children}</HoverCardTrigger>
+      <HoverCardContent
         className="w-[280px] p-0 overflow-hidden"
         align="end"
         side="bottom"
@@ -74,7 +74,8 @@ export function PreviewSetupHoverCard({ children }: PreviewSetupHoverCardProps) 
           <div className="space-y-1.5">
             <h4 className="text-sm font-semibold">Preview not available</h4>
             <p className="text-[13px] text-muted-foreground leading-relaxed">
-              To see live preview of your changes, you need to set up your repository first.
+              To see live preview of your changes, you need to set up your
+              repository first.
             </p>
           </div>
 
@@ -89,6 +90,5 @@ export function PreviewSetupHoverCard({ children }: PreviewSetupHoverCardProps) 
         </div>
       </HoverCardContent>
     </HoverCard>
-  )
+  );
 }
-

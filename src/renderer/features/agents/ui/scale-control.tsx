@@ -1,19 +1,19 @@
-"use client"
+"use client";
 
-import { cn } from "../../../lib/utils"
-import { useRef, useState, useEffect } from "react"
+import { useEffect, useRef, useState } from "react";
 import {
   Popover,
   PopoverAnchor,
   PopoverContent,
-} from "../../../components/ui/popover"
-import { AGENTS_PREVIEW_CONSTANTS } from "../constants"
+} from "../../../components/ui/popover";
+import { cn } from "../../../lib/utils";
+import { AGENTS_PREVIEW_CONSTANTS } from "../constants";
 
 interface ScaleControlProps {
-  value: number
-  onChange: (scale: number) => void
-  presets?: readonly number[]
-  className?: string
+  value: number;
+  onChange: (scale: number) => void;
+  presets?: readonly number[];
+  className?: string;
 }
 
 export function ScaleControl({
@@ -22,62 +22,62 @@ export function ScaleControl({
   presets = AGENTS_PREVIEW_CONSTANTS.SCALE_PRESETS,
   className,
 }: ScaleControlProps) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [inputValue, setInputValue] = useState(String(value))
-  const inputRef = useRef<HTMLInputElement>(null)
+  const [isOpen, setIsOpen] = useState(false);
+  const [inputValue, setInputValue] = useState(String(value));
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Sync input value when value prop changes
   useEffect(() => {
-    setInputValue(String(value))
-  }, [value])
+    setInputValue(String(value));
+  }, [value]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/[^0-9]/g, "")
-    setInputValue(raw)
-    const num = parseInt(raw)
+    const raw = e.target.value.replace(/[^0-9]/g, "");
+    setInputValue(raw);
+    const num = Number.parseInt(raw);
     if (
-      !isNaN(num) &&
+      !Number.isNaN(num) &&
       num >= AGENTS_PREVIEW_CONSTANTS.MIN_SCALE &&
       num <= AGENTS_PREVIEW_CONSTANTS.MAX_SCALE
     ) {
-      onChange(num)
+      onChange(num);
     }
-  }
+  };
 
   const handleCommit = () => {
-    const num = parseInt(inputValue)
+    const num = Number.parseInt(inputValue);
     if (
-      !isNaN(num) &&
+      !Number.isNaN(num) &&
       num >= AGENTS_PREVIEW_CONSTANTS.MIN_SCALE &&
       num <= AGENTS_PREVIEW_CONSTANTS.MAX_SCALE
     ) {
-      onChange(num)
-      setInputValue(String(num))
+      onChange(num);
+      setInputValue(String(num));
     } else {
-      setInputValue(String(value))
+      setInputValue(String(value));
     }
-  }
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
-      handleCommit()
-      setIsOpen(false)
-      inputRef.current?.blur()
+      handleCommit();
+      setIsOpen(false);
+      inputRef.current?.blur();
     }
     if (e.key === "Escape") {
-      setInputValue(String(value))
-      setIsOpen(false)
-      inputRef.current?.blur()
+      setInputValue(String(value));
+      setIsOpen(false);
+      inputRef.current?.blur();
     }
-  }
+  };
 
   return (
     <Popover
       open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
-          handleCommit()
-          setIsOpen(false)
+          handleCommit();
+          setIsOpen(false);
         }
       }}
     >
@@ -92,7 +92,7 @@ export function ScaleControl({
           onClick={(e) => {
             // If click is not on input, focus input
             if (e.target !== inputRef.current) {
-              inputRef.current?.focus()
+              inputRef.current?.focus();
             }
           }}
         >
@@ -102,9 +102,9 @@ export function ScaleControl({
             value={inputValue}
             onChange={handleInputChange}
             onFocus={(e) => {
-              e.target.select()
+              e.target.select();
               if (!isOpen) {
-                setIsOpen(true)
+                setIsOpen(true);
               }
             }}
             onKeyDown={handleKeyDown}
@@ -124,9 +124,9 @@ export function ScaleControl({
           <button
             key={preset}
             onClick={() => {
-              onChange(preset)
-              setInputValue(String(preset))
-              setIsOpen(false)
+              onChange(preset);
+              setInputValue(String(preset));
+              setIsOpen(false);
             }}
             className={cn(
               "flex items-center justify-center w-[calc(100%-8px)] mx-1 first:mt-1 last:mb-1 min-h-[32px] text-sm rounded-md transition-colors",
@@ -139,6 +139,5 @@ export function ScaleControl({
         ))}
       </PopoverContent>
     </Popover>
-  )
+  );
 }
-

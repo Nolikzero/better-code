@@ -1,15 +1,15 @@
 export interface PrContext {
-  branch: string
-  baseBranch: string
-  uncommittedCount: number
-  hasUpstream: boolean
+  branch: string;
+  baseBranch: string;
+  uncommittedCount: number;
+  hasUpstream: boolean;
 }
 
 /**
  * Generates a message for Claude to create a PR
  */
 export function generatePrMessage(context: PrContext): string {
-  const { branch, baseBranch, uncommittedCount, hasUpstream } = context
+  const { branch, baseBranch, uncommittedCount, hasUpstream } = context;
 
   const lines = [
     uncommittedCount > 0
@@ -24,41 +24,41 @@ export function generatePrMessage(context: PrContext): string {
     "",
     "Follow these exact steps to create a PR:",
     "",
-  ]
+  ];
 
-  const steps: string[] = []
+  const steps: string[] = [];
 
   if (uncommittedCount > 0) {
-    steps.push("Run git diff to review uncommitted changes")
-    steps.push("Commit them. Write a clear, concise commit message.")
+    steps.push("Run git diff to review uncommitted changes");
+    steps.push("Commit them. Write a clear, concise commit message.");
   }
 
   if (!hasUpstream) {
-    steps.push("Push to origin")
+    steps.push("Push to origin");
   }
 
-  steps.push(`Use git diff origin/${baseBranch}... to review the PR diff`)
+  steps.push(`Use git diff origin/${baseBranch}... to review the PR diff`);
   steps.push(
-    `Use gh pr create --base ${baseBranch} to create a PR. Keep the title under 80 characters and description under five sentences.`
-  )
-  steps.push("If any of these steps fail, ask the user for help.")
+    `Use gh pr create --base ${baseBranch} to create a PR. Keep the title under 80 characters and description under five sentences.`,
+  );
+  steps.push("If any of these steps fail, ask the user for help.");
 
   // Add numbered steps
   steps.forEach((step, index) => {
-    lines.push(`${index + 1}. ${step}`)
-  })
+    lines.push(`${index + 1}. ${step}`);
+  });
 
-  return lines.join("\n")
+  return lines.join("\n");
 }
 
 /**
  * Generates a message for Claude to commit and push changes to an existing PR
  */
 export function generateCommitToPrMessage(context: PrContext): string {
-  const { branch, baseBranch, uncommittedCount } = context
+  const { branch, baseBranch, uncommittedCount } = context;
 
   if (uncommittedCount === 0) {
-    return `All changes are already committed. The branch ${branch} is up to date.`
+    return `All changes are already committed. The branch ${branch} is up to date.`;
   }
 
   return `There are ${uncommittedCount} uncommitted changes on branch ${branch}.
@@ -69,14 +69,14 @@ Please commit and push these changes to update the PR:
 1. Run git diff to review uncommitted changes
 2. Commit them with a clear, concise commit message
 3. Push to origin to update the PR
-4. If any of these steps fail, ask the user for help.`
+4. If any of these steps fail, ask the user for help.`;
 }
 
 /**
  * Generates a message for Claude to perform a code review
  */
 export function generateReviewMessage(context: PrContext): string {
-  const { branch, baseBranch } = context
+  const { branch, baseBranch } = context;
 
   return `You are performing a code review on the changes in the current branch.
 
@@ -101,5 +101,5 @@ Provide:
 2. A table of issues found with columns: severity (🔴 high, 🟡 medium, 🟢 low), file:line, issue, suggestion
 3. If no issues found, state that the code looks good
 
-Keep the review concise and actionable.`
+Keep the review concise and actionable.`;
 }

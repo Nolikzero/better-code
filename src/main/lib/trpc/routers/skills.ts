@@ -1,30 +1,34 @@
-import { z } from "zod"
-import { router, publicProcedure } from "../index"
-import * as fs from "fs/promises"
-import * as path from "path"
-import * as os from "os"
-import matter from "gray-matter"
+import * as os from "os";
+import * as path from "path";
+import * as fs from "fs/promises";
+import matter from "gray-matter";
+import { z } from "zod";
+import { publicProcedure, router } from "../index";
 
-interface FileSkill {
-  name: string
-  description: string
-  source: "user" | "project"
-  path: string
+export interface FileSkill {
+  name: string;
+  description: string;
+  source: "user" | "project";
+  path: string;
 }
 
 /**
  * Parse SKILL.md frontmatter to extract name and description
  */
-function parseSkillMd(content: string): { name?: string; description?: string } {
+function parseSkillMd(content: string): {
+  name?: string;
+  description?: string;
+} {
   try {
-    const { data } = matter(content)
+    const { data } = matter(content);
     return {
       name: typeof data.name === "string" ? data.name : undefined,
-      description: typeof data.description === "string" ? data.description : undefined,
-    }
+      description:
+        typeof data.description === "string" ? data.description : undefined,
+    };
   } catch (err) {
-    console.error("[skills] Failed to parse frontmatter:", err)
-    return {}
+    console.error("[skills] Failed to parse frontmatter:", err);
+    return {};
   }
 }
 
@@ -35,49 +39,53 @@ async function scanSkillsDirectory(
   dir: string,
   source: "user" | "project",
 ): Promise<FileSkill[]> {
-  const skills: FileSkill[] = []
+  const skills: FileSkill[] = [];
 
   try {
     // Check if directory exists
     try {
-      await fs.access(dir)
+      await fs.access(dir);
     } catch {
-      return skills
+      return skills;
     }
 
-    const entries = await fs.readdir(dir, { withFileTypes: true })
+    const entries = await fs.readdir(dir, { withFileTypes: true });
 
     for (const entry of entries) {
-      if (!entry.isDirectory()) continue
+      if (!entry.isDirectory()) continue;
 
       // Validate entry name for security (prevent path traversal)
-      if (entry.name.includes("..") || entry.name.includes("/") || entry.name.includes("\\")) {
-        console.warn(`[skills] Skipping invalid directory name: ${entry.name}`)
-        continue
+      if (
+        entry.name.includes("..") ||
+        entry.name.includes("/") ||
+        entry.name.includes("\\")
+      ) {
+        console.warn(`[skills] Skipping invalid directory name: ${entry.name}`);
+        continue;
       }
 
-      const skillMdPath = path.join(dir, entry.name, "SKILL.md")
+      const skillMdPath = path.join(dir, entry.name, "SKILL.md");
 
       try {
-        await fs.access(skillMdPath)
-        const content = await fs.readFile(skillMdPath, "utf-8")
-        const parsed = parseSkillMd(content)
+        await fs.access(skillMdPath);
+        const content = await fs.readFile(skillMdPath, "utf-8");
+        const parsed = parseSkillMd(content);
 
         skills.push({
           name: parsed.name || entry.name,
           description: parsed.description || "",
           source,
           path: skillMdPath,
-        })
+        });
       } catch (err) {
         // Skill directory doesn't have SKILL.md or read failed - skip it
       }
     }
   } catch (err) {
-    console.error(`[skills] Failed to scan directory ${dir}:`, err)
+    console.error(`[skills] Failed to scan directory ${dir}:`, err);
   }
 
-  return skills
+  return skills;
 }
 
 // Shared procedure for listing skills
@@ -90,23 +98,23 @@ const listSkillsProcedure = publicProcedure
       .optional(),
   )
   .query(async ({ input }) => {
-    const userSkillsDir = path.join(os.homedir(), ".claude", "skills")
-    const userSkillsPromise = scanSkillsDirectory(userSkillsDir, "user")
+    const userSkillsDir = path.join(os.homedir(), ".claude", "skills");
+    const userSkillsPromise = scanSkillsDirectory(userSkillsDir, "user");
 
-    let projectSkillsPromise = Promise.resolve<FileSkill[]>([])
+    let projectSkillsPromise = Promise.resolve<FileSkill[]>([]);
     if (input?.cwd) {
-      const projectSkillsDir = path.join(input.cwd, ".claude", "skills")
-      projectSkillsPromise = scanSkillsDirectory(projectSkillsDir, "project")
+      const projectSkillsDir = path.join(input.cwd, ".claude", "skills");
+      projectSkillsPromise = scanSkillsDirectory(projectSkillsDir, "project");
     }
 
     // Scan both directories in parallel
     const [userSkills, projectSkills] = await Promise.all([
       userSkillsPromise,
       projectSkillsPromise,
-    ])
+    ]);
 
-    return [...projectSkills, ...userSkills]
-  })
+    return [...projectSkills, ...userSkills];
+  });
 
 export const skillsRouter = router({
   /**
@@ -120,4 +128,4 @@ export const skillsRouter = router({
    * Alias for list - used by @ mention
    */
   listEnabled: listSkillsProcedure,
-})
+});

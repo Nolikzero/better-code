@@ -1,18 +1,18 @@
-import { cn } from "../../../../lib/utils";
 import { LuCircleDot, LuGitMerge, LuGitPullRequest } from "react-icons/lu";
+import { cn } from "../../../../lib/utils";
 
 export type PRState = "open" | "merged" | "closed" | "draft";
 
 interface PRIconProps {
-	state: PRState;
-	className?: string;
+  state: PRState;
+  className?: string;
 }
 
 const stateStyles: Record<PRState, string> = {
-	open: "text-emerald-500",
-	merged: "text-violet-500",
-	closed: "text-red-500",
-	draft: "text-muted-foreground",
+  open: "text-emerald-500",
+  merged: "text-violet-500",
+  closed: "text-red-500",
+  draft: "text-muted-foreground",
 };
 
 /**
@@ -23,16 +23,16 @@ const stateStyles: Record<PRState, string> = {
  * - draft: muted pull request icon
  */
 export function PRIcon({ state, className }: PRIconProps) {
-	const baseClass = cn(stateStyles[state], className);
+  const baseClass = cn(stateStyles[state], className);
 
-	if (state === "merged") {
-		return <LuGitMerge className={baseClass} />;
-	}
+  if (state === "merged") {
+    return <LuGitMerge className={baseClass} />;
+  }
 
-	if (state === "closed") {
-		return <LuCircleDot className={baseClass} />;
-	}
+  if (state === "closed") {
+    return <LuCircleDot className={baseClass} />;
+  }
 
-	// open or draft
-	return <LuGitPullRequest className={baseClass} />;
+  // open or draft
+  return <LuGitPullRequest className={baseClass} />;
 }

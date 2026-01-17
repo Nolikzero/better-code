@@ -1,38 +1,58 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { X, FileText, FileCode, FileJson } from "lucide-react"
-import { IconSpinner } from "../../../components/ui/icons"
+import { FileCode, FileJson, FileText, X } from "lucide-react";
+import { useState } from "react";
+import { IconSpinner } from "../../../components/ui/icons";
 
 interface AgentFileItemProps {
-  id: string
-  filename: string
-  url: string
-  size?: number
-  isLoading?: boolean
-  onRemove?: () => void
+  id: string;
+  filename: string;
+  url: string;
+  size?: number;
+  isLoading?: boolean;
+  onRemove?: () => void;
 }
 
 function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function getFileIcon(filename: string) {
-  const ext = filename.split(".").pop()?.toLowerCase()
+  const ext = filename.split(".").pop()?.toLowerCase();
 
   // Code files
-  if (["js", "ts", "jsx", "tsx", "py", "rb", "go", "rs", "java", "kt", "swift", "c", "cpp", "h", "hpp", "cs", "php"].includes(ext || "")) {
-    return FileCode
+  if (
+    [
+      "js",
+      "ts",
+      "jsx",
+      "tsx",
+      "py",
+      "rb",
+      "go",
+      "rs",
+      "java",
+      "kt",
+      "swift",
+      "c",
+      "cpp",
+      "h",
+      "hpp",
+      "cs",
+      "php",
+    ].includes(ext || "")
+  ) {
+    return FileCode;
   }
 
   // JSON/YAML/XML
   if (["json", "yaml", "yml", "xml"].includes(ext || "")) {
-    return FileJson
+    return FileJson;
   }
 
-  return FileText
+  return FileText;
 }
 
 export function AgentFileItem({
@@ -43,8 +63,8 @@ export function AgentFileItem({
   isLoading = false,
   onRemove,
 }: AgentFileItemProps) {
-  const [isHovered, setIsHovered] = useState(false)
-  const Icon = getFileIcon(filename)
+  const [isHovered, setIsHovered] = useState(false);
+  const Icon = getFileIcon(filename);
 
   return (
     <div
@@ -72,8 +92,8 @@ export function AgentFileItem({
       {onRemove && (
         <button
           onClick={(e) => {
-            e.stopPropagation()
-            onRemove()
+            e.stopPropagation();
+            onRemove();
           }}
           className={`absolute -top-1.5 -right-1.5 size-4 rounded-full bg-background border border-border
                      flex items-center justify-center transition-[opacity,transform] duration-150 ease-out active:scale-[0.97] z-10
@@ -85,5 +105,5 @@ export function AgentFileItem({
         </button>
       )}
     </div>
-  )
+  );
 }

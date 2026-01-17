@@ -1,55 +1,50 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useRef } from "react"
-import { Button } from "../../../../components/ui/button"
-import { Input } from "../../../../components/ui/input"
-import { Label } from "../../../../components/ui/label"
-import { ClaudeCodeLogoIcon, IconSpinner } from "../../../../components/ui/icons"
-import { toast } from "sonner"
-import { Upload, Edit } from "lucide-react"
-import { motion } from "motion/react"
-import { cn } from "../../../../lib/utils"
+import { Edit, Upload } from "lucide-react";
+import { motion } from "motion/react";
+import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import { Button } from "../../../../components/ui/button";
+import {
+  ClaudeCodeLogoIcon,
+  IconSpinner,
+} from "../../../../components/ui/icons";
+import { Input } from "../../../../components/ui/input";
+import { Label } from "../../../../components/ui/label";
+import { cn } from "../../../../lib/utils";
 
 // Desktop user interface
 interface DesktopUser {
-  id: string
-  email: string
-  name: string | null
-  imageUrl: string | null
-  username: string | null
+  id: string;
+  email: string;
+  name: string | null;
+  imageUrl: string | null;
+  username: string | null;
 }
 
 // Custom hook for desktop user profile
+// Note: Auth is handled by Claude Code CLI, not the desktop app
 const useDesktopUserProfile = () => {
-  const [user, setUser] = useState<DesktopUser | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [user, setUser] = useState<DesktopUser | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    async function fetchUser() {
-      if (window.desktopApi?.getUser) {
-        const userData = await window.desktopApi.getUser()
-        setUser(userData)
-      }
-      setIsLoading(false)
-    }
-    fetchUser()
-  }, [])
-
-  return { user, setUser, isLoading }
-}
+  return { user, setUser, isLoading };
+};
 
 // Stub for image upload (not implemented in desktop yet)
 const useImageUpload = () => ({
   previewUrl: null as string | null,
   fileInputRef: { current: null as HTMLInputElement | null },
   handleThumbnailClick: () => {},
-  handleFileChange: async (_event?: unknown) => null as string | null
-})
+  handleFileChange: async (_event?: unknown) => null as string | null,
+});
 // Desktop uses mock data instead of trpc
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnyFn = (...args: any[]) => any
+type AnyFn = (...args: any[]) => any;
 const api = {
-  useUtils: () => ({ claudeCode: { getIntegration: { invalidate: (_args?: unknown) => {} } } }),
+  useUtils: () => ({
+    claudeCode: { getIntegration: { invalidate: (_args?: unknown) => {} } },
+  }),
   claudeCode: {
     getIntegration: {
       useQuery: (_args?: unknown, _opts?: unknown) => ({
@@ -61,7 +56,11 @@ const api = {
     startAuth: {
       useMutation: (opts?: { onSuccess?: AnyFn; onError?: AnyFn }) => ({
         mutate: (_args?: unknown) => {
-          opts?.onSuccess?.({ sandboxId: "mock", sandboxUrl: "mock", sessionId: "mock" })
+          opts?.onSuccess?.({
+            sandboxId: "mock",
+            sandboxUrl: "mock",
+            sessionId: "mock",
+          });
         },
         isPending: false,
       }),
@@ -84,99 +83,92 @@ const api = {
       }),
     },
   },
-}
-import { useAtomValue } from "jotai"
+};
+import { useAtomValue } from "jotai";
 // Desktop: mock team atom
-import { atom } from "jotai"
-const selectedTeamIdAtom = atom<string | null>(null)
+import { atom } from "jotai";
+const selectedTeamIdAtom = atom<string | null>(null);
 
 type AuthFlowState =
   | { step: "idle" }
   | { step: "starting" }
   | {
-      step: "waiting_url"
-      sandboxId: string
-      sandboxUrl: string
-      sessionId: string
+      step: "waiting_url";
+      sandboxId: string;
+      sandboxUrl: string;
+      sessionId: string;
     }
   | {
-      step: "has_url"
-      sandboxId: string
-      oauthUrl: string
-      sandboxUrl: string
-      sessionId: string
+      step: "has_url";
+      sandboxId: string;
+      oauthUrl: string;
+      sandboxUrl: string;
+      sessionId: string;
     }
   | { step: "submitting" }
-  | { step: "error"; message: string }
+  | { step: "error"; message: string };
 
 export function AgentsProfileTab() {
-  const { user, setUser, isLoading: isUserLoading } = useDesktopUserProfile()
-  const [fullName, setFullName] = useState("")
-  const [profileImage, setProfileImage] = useState("")
-  const [isSaving, setIsSaving] = useState(false)
+  const { user, setUser, isLoading: isUserLoading } = useDesktopUserProfile();
+  const [fullName, setFullName] = useState("");
+  const [profileImage, setProfileImage] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   const { previewUrl, fileInputRef, handleThumbnailClick, handleFileChange } =
-    useImageUpload()
+    useImageUpload();
 
   // Initialize state when user data is loaded
   useEffect(() => {
     if (!isUserLoading && user) {
-      setFullName(user.name || "")
-      setProfileImage(user.imageUrl || "")
+      setFullName(user.name || "");
+      setProfileImage(user.imageUrl || "");
     }
-  }, [isUserLoading, user])
+  }, [isUserLoading, user]);
 
   // Update profileImage when previewUrl changes
   useEffect(() => {
     if (previewUrl) {
-      setProfileImage(previewUrl)
+      setProfileImage(previewUrl);
     }
-  }, [previewUrl])
+  }, [previewUrl]);
 
   const handleSave = async () => {
-    setIsSaving(true)
+    setIsSaving(true);
 
     try {
-      if (window.desktopApi?.updateUser) {
-        const updatedUser = await window.desktopApi.updateUser({ name: fullName })
-        if (updatedUser) {
-          setUser(updatedUser)
-          toast.success("Profile updated successfully")
-        }
-      } else {
-        throw new Error("Desktop API not available")
-      }
+      // Note: Profile updates are not implemented - auth is handled by Claude Code CLI
+      toast.info("Profile settings are managed through Claude Code CLI");
     } catch (error) {
-      console.error("Error updating profile:", error)
+      console.error("Error updating profile:", error);
       toast.error(
         error instanceof Error ? error.message : "Failed to update profile",
-      )
+      );
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
 
   const handleFileSelect = async (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
-    const base64String = await handleFileChange(event)
+    const base64String = await handleFileChange(event);
     if (base64String) {
-      setProfileImage(base64String)
+      setProfileImage(base64String);
     }
-  }
+  };
 
   // Claude Code integration
-  const teamId = useAtomValue(selectedTeamIdAtom)
+  const teamId = useAtomValue(selectedTeamIdAtom);
 
   const [claudeFlowState, setClaudeFlowState] = useState<AuthFlowState>({
     step: "idle",
-  })
-  const [authCode, setAuthCode] = useState("")
-  const [userClickedConnect, setUserClickedConnect] = useState(false)
-  const [urlOpened, setUrlOpened] = useState(false)
-  const urlOpenedRef = useRef(false)
+  });
+  const [authCode, setAuthCode] = useState("");
+  const [userClickedConnect, setUserClickedConnect] = useState(false);
+  const [urlOpened, setUrlOpened] = useState(false);
+  const urlOpenedRef = useRef(false);
 
-  const utils = api.useUtils()
+  const utils = api.useUtils();
 
   const {
     data: claudeCodeIntegration,
@@ -185,8 +177,8 @@ export function AgentsProfileTab() {
   } = api.claudeCode.getIntegration.useQuery(
     { teamId: teamId || "" },
     { enabled: !!teamId },
-  )
-  const isClaudeCodeConnected = claudeCodeIntegration?.isConnected
+  );
+  const isClaudeCodeConnected = claudeCodeIntegration?.isConnected;
 
   // Start auth mutation
   const startClaudeAuth = api.claudeCode.startAuth.useMutation({
@@ -196,13 +188,13 @@ export function AgentsProfileTab() {
         sandboxId: data.sandboxId,
         sandboxUrl: data.sandboxUrl,
         sessionId: data.sessionId,
-      })
+      });
     },
     onError: (error) => {
-      setClaudeFlowState({ step: "error", message: error.message })
-      toast.error(error.message || "Failed to start authentication")
+      setClaudeFlowState({ step: "error", message: error.message });
+      toast.error(error.message || "Failed to start authentication");
     },
-  })
+  });
 
   // Poll for auth status
   const { data: authStatus } = api.claudeCode.pollAuthStatus.useQuery(
@@ -220,37 +212,37 @@ export function AgentsProfileTab() {
       refetchInterval: 1500,
       refetchIntervalInBackground: true,
     },
-  )
+  );
 
   // Submit code mutation
   const submitClaudeCode = api.claudeCode.submitCode.useMutation({
     onSuccess: () => {
-      toast.success("Claude Code connected successfully!")
-      setClaudeFlowState({ step: "idle" })
-      setAuthCode("")
-      setUserClickedConnect(false)
-      setUrlOpened(false)
-      urlOpenedRef.current = false
-      refetchClaudeCode()
-      utils.claudeCode.getIntegration.invalidate({ teamId: teamId || "" })
+      toast.success("Claude Code connected successfully!");
+      setClaudeFlowState({ step: "idle" });
+      setAuthCode("");
+      setUserClickedConnect(false);
+      setUrlOpened(false);
+      urlOpenedRef.current = false;
+      refetchClaudeCode();
+      utils.claudeCode.getIntegration.invalidate({ teamId: teamId || "" });
     },
     onError: (error) => {
-      setClaudeFlowState({ step: "error", message: error.message })
-      toast.error(error.message || "Failed to complete authentication")
+      setClaudeFlowState({ step: "error", message: error.message });
+      toast.error(error.message || "Failed to complete authentication");
     },
-  })
+  });
 
   // Disconnect mutation
   const disconnectClaudeCode = api.claudeCode.disconnect.useMutation({
     onSuccess: () => {
-      toast.success("Claude Code disconnected")
-      refetchClaudeCode()
-      utils.claudeCode.getIntegration.invalidate({ teamId: teamId || "" })
+      toast.success("Claude Code disconnected");
+      refetchClaudeCode();
+      utils.claudeCode.getIntegration.invalidate({ teamId: teamId || "" });
     },
     onError: (error) => {
-      toast.error(error.message || "Failed to disconnect")
+      toast.error(error.message || "Failed to disconnect");
     },
-  })
+  });
 
   // Update flow state when OAuth URL is ready (don't auto-open)
   useEffect(() => {
@@ -265,9 +257,9 @@ export function AgentsProfileTab() {
         oauthUrl: authStatus.oauthUrl,
         sandboxUrl: claudeFlowState.sandboxUrl,
         sessionId: claudeFlowState.sessionId,
-      })
+      });
     }
-  }, [authStatus, claudeFlowState])
+  }, [authStatus, claudeFlowState]);
 
   // Open OAuth URL when it becomes ready (after user clicked Connect)
   useEffect(() => {
@@ -276,61 +268,61 @@ export function AgentsProfileTab() {
       userClickedConnect &&
       !urlOpenedRef.current
     ) {
-      urlOpenedRef.current = true
-      setUrlOpened(true)
+      urlOpenedRef.current = true;
+      setUrlOpened(true);
       // Open the OAuth URL directly - no blank page
-      window.open(claudeFlowState.oauthUrl, "_blank")
+      window.open(claudeFlowState.oauthUrl, "_blank");
     }
-  }, [claudeFlowState, userClickedConnect])
+  }, [claudeFlowState, userClickedConnect]);
 
   const handleStartClaudeAuth = () => {
-    if (!teamId) return
-    setUserClickedConnect(true)
+    if (!teamId) return;
+    setUserClickedConnect(true);
 
     // If URL is already ready, open it immediately - no blank page needed
     if (claudeFlowState.step === "has_url") {
-      urlOpenedRef.current = true
-      setUrlOpened(true)
-      window.open(claudeFlowState.oauthUrl, "_blank")
+      urlOpenedRef.current = true;
+      setUrlOpened(true);
+      window.open(claudeFlowState.oauthUrl, "_blank");
     } else if (claudeFlowState.step === "error") {
       // Retry on error - just restart auth, don't open blank
-      urlOpenedRef.current = false
-      setUrlOpened(false)
-      setUserClickedConnect(false)
-      setClaudeFlowState({ step: "starting" })
-      startClaudeAuth.mutate({ teamId })
+      urlOpenedRef.current = false;
+      setUrlOpened(false);
+      setUserClickedConnect(false);
+      setClaudeFlowState({ step: "starting" });
+      startClaudeAuth.mutate({ teamId });
     } else if (claudeFlowState.step === "idle") {
       // Start auth process - don't open blank, wait for URL
-      setClaudeFlowState({ step: "starting" })
-      startClaudeAuth.mutate({ teamId })
+      setClaudeFlowState({ step: "starting" });
+      startClaudeAuth.mutate({ teamId });
     }
     // For "starting" or "waiting_url" - just wait, URL will be opened when ready via useEffect
-  }
+  };
 
   // Check if the code looks like a valid Claude auth code (format: XXX#YYY)
   const isValidCodeFormat = (code: string) => {
-    const trimmed = code.trim()
+    const trimmed = code.trim();
     // Auth codes are typically long strings with a # separator
-    return trimmed.length > 50 && trimmed.includes("#")
-  }
+    return trimmed.length > 50 && trimmed.includes("#");
+  };
 
   const handleSubmitClaudeCode = () => {
     if (!authCode.trim() || claudeFlowState.step !== "has_url" || !teamId)
-      return
+      return;
 
-    setClaudeFlowState({ step: "submitting" })
+    setClaudeFlowState({ step: "submitting" });
     submitClaudeCode.mutate({
       teamId,
       sandboxId: claudeFlowState.sandboxId,
       sandboxUrl: claudeFlowState.sandboxUrl,
       sessionId: claudeFlowState.sessionId,
       code: authCode.trim(),
-    })
-  }
+    });
+  };
 
   const handleClaudeCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    setAuthCode(value)
+    const value = e.target.value;
+    setAuthCode(value);
 
     // Auto-submit if the pasted value looks like a valid auth code
     if (
@@ -339,49 +331,49 @@ export function AgentsProfileTab() {
       teamId
     ) {
       // Capture values before setTimeout to avoid race condition
-      const { sandboxId, sandboxUrl, sessionId } = claudeFlowState
+      const { sandboxId, sandboxUrl, sessionId } = claudeFlowState;
       // Small delay to let the UI update before submitting
       setTimeout(() => {
-        setClaudeFlowState({ step: "submitting" })
+        setClaudeFlowState({ step: "submitting" });
         submitClaudeCode.mutate({
           teamId,
           code: value.trim(),
           sandboxId,
           sandboxUrl,
           sessionId,
-        })
-      }, 100)
+        });
+      }, 100);
     }
-  }
+  };
 
   const handleClaudeCodeKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && authCode.trim()) {
-      handleSubmitClaudeCode()
+      handleSubmitClaudeCode();
     }
-  }
+  };
 
   const handleCancelClaudeAuth = () => {
-    setClaudeFlowState({ step: "idle" })
-    setAuthCode("")
-    setUserClickedConnect(false)
-    setUrlOpened(false)
-    urlOpenedRef.current = false
-  }
+    setClaudeFlowState({ step: "idle" });
+    setAuthCode("");
+    setUserClickedConnect(false);
+    setUrlOpened(false);
+    urlOpenedRef.current = false;
+  };
 
   const handleDisconnectClaudeCode = () => {
-    if (!teamId) return
-    disconnectClaudeCode.mutate({ teamId })
-  }
+    if (!teamId) return;
+    disconnectClaudeCode.mutate({ teamId });
+  };
 
   if (isUserLoading) {
     return (
       <div className="flex items-center justify-center h-full">
         <IconSpinner className="h-6 w-6" />
       </div>
-    )
+    );
   }
 
-  const currentImageUrl = previewUrl || profileImage || user?.imageUrl
+  const currentImageUrl = previewUrl || profileImage || user?.imageUrl;
 
   return (
     <div className="p-6 space-y-6">
@@ -666,5 +658,5 @@ export function AgentsProfileTab() {
         </div>
       </div>
     </div>
-  )
+  );
 }

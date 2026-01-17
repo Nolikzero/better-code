@@ -1,40 +1,40 @@
-"use client"
+"use client";
 
-import { memo, useMemo } from "react"
+import { memo, useMemo } from "react";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "../../../components/ui/tooltip"
-import { cn } from "../../../lib/utils"
-import type { AgentMessageMetadata } from "./agent-message-usage"
+} from "../../../components/ui/tooltip";
+import { cn } from "../../../lib/utils";
+import type { AgentMessageMetadata } from "./agent-message-usage";
 
 // Claude model context windows
 const CONTEXT_WINDOWS = {
   opus: 200_000,
   sonnet: 200_000,
   haiku: 200_000,
-} as const
+} as const;
 
-type ModelId = keyof typeof CONTEXT_WINDOWS
+type ModelId = keyof typeof CONTEXT_WINDOWS;
 
 interface AgentContextIndicatorProps {
-  messages: Array<{ metadata?: AgentMessageMetadata }>
-  modelId?: ModelId
-  className?: string
-  onCompact?: () => void
-  isCompacting?: boolean
-  disabled?: boolean
+  messages: Array<{ metadata?: AgentMessageMetadata }>;
+  modelId?: ModelId;
+  className?: string;
+  onCompact?: () => void;
+  isCompacting?: boolean;
+  disabled?: boolean;
 }
 
 function formatTokens(tokens: number): string {
   if (tokens >= 1_000_000) {
-    return `${(tokens / 1_000_000).toFixed(1)}M`
+    return `${(tokens / 1_000_000).toFixed(1)}M`;
   }
   if (tokens >= 1000) {
-    return `${(tokens / 1000).toFixed(1)}K`
+    return `${(tokens / 1000).toFixed(1)}K`;
   }
-  return tokens.toString()
+  return tokens.toString();
 }
 
 // Circular progress component
@@ -44,14 +44,14 @@ function CircularProgress({
   strokeWidth = 2,
   className,
 }: {
-  percent: number
-  size?: number
-  strokeWidth?: number
-  className?: string
+  percent: number;
+  size?: number;
+  strokeWidth?: number;
+  className?: string;
 }) {
-  const radius = (size - strokeWidth) / 2
-  const circumference = 2 * Math.PI * radius
-  const offset = circumference - (percent / 100) * circumference
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (percent / 100) * circumference;
 
   return (
     <svg
@@ -83,7 +83,7 @@ function CircularProgress({
         className="transition-all duration-300 text-muted-foreground/60"
       />
     </svg>
-  )
+  );
 }
 
 export const AgentContextIndicator = memo(function AgentContextIndicator({
@@ -96,37 +96,37 @@ export const AgentContextIndicator = memo(function AgentContextIndicator({
 }: AgentContextIndicatorProps) {
   // Calculate session totals from all message metadata
   const sessionTotals = useMemo(() => {
-    let totalInputTokens = 0
-    let totalOutputTokens = 0
-    let totalCostUsd = 0
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
+    let totalCostUsd = 0;
 
     for (const msg of messages) {
       if (msg.metadata) {
-        totalInputTokens += msg.metadata.inputTokens || 0
-        totalOutputTokens += msg.metadata.outputTokens || 0
-        totalCostUsd += msg.metadata.totalCostUsd || 0
+        totalInputTokens += msg.metadata.inputTokens || 0;
+        totalOutputTokens += msg.metadata.outputTokens || 0;
+        totalCostUsd += msg.metadata.totalCostUsd || 0;
       }
     }
 
-    const totalTokens = totalInputTokens + totalOutputTokens
+    const totalTokens = totalInputTokens + totalOutputTokens;
 
     return {
       inputTokens: totalInputTokens,
       outputTokens: totalOutputTokens,
       totalTokens,
       totalCostUsd,
-    }
-  }, [messages])
+    };
+  }, [messages]);
 
-  const contextWindow = CONTEXT_WINDOWS[modelId]
+  const contextWindow = CONTEXT_WINDOWS[modelId];
   const percentUsed = Math.min(
     100,
     (sessionTotals.totalTokens / contextWindow) * 100,
-  )
+  );
 
-  const isEmpty = sessionTotals.totalTokens === 0
+  const isEmpty = sessionTotals.totalTokens === 0;
 
-  const isClickable = onCompact && !disabled && !isCompacting
+  const isClickable = onCompact && !disabled && !isCompacting;
 
   return (
     <Tooltip delayDuration={300}>
@@ -171,5 +171,5 @@ export const AgentContextIndicator = memo(function AgentContextIndicator({
         </p>
       </TooltipContent>
     </Tooltip>
-  )
-})
+  );
+});

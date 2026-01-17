@@ -1,35 +1,32 @@
-"use client"
+"use client";
 
-import { Textarea } from "./textarea"
+import type React from "react";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "./tooltip"
-import { cn } from "../../lib/utils"
-import React, {
   createContext,
+  forwardRef,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
-  useLayoutEffect,
-  forwardRef,
-} from "react"
+} from "react";
+import { cn } from "../../lib/utils";
+import { Textarea } from "./textarea";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip";
 
 type PromptInputContextType = {
-  isLoading: boolean
-  value: string
-  setValue: (_value: string) => void
-  maxHeight: number | string
-  onSubmit?: () => void
-  disabled?: boolean
+  isLoading: boolean;
+  value: string;
+  setValue: (_value: string) => void;
+  maxHeight: number | string;
+  onSubmit?: () => void;
+  disabled?: boolean;
   selectedVariant?: {
-    id: string
-    name: string
-  } | null
-  contextItems?: React.ReactNode
-}
+    id: string;
+    name: string;
+  } | null;
+  contextItems?: React.ReactNode;
+};
 
 const PromptInputContext = createContext<PromptInputContextType>({
   isLoading: false,
@@ -40,30 +37,30 @@ const PromptInputContext = createContext<PromptInputContextType>({
   disabled: false,
   selectedVariant: null,
   contextItems: null,
-})
+});
 
 function usePromptInput() {
-  const context = useContext(PromptInputContext)
+  const context = useContext(PromptInputContext);
   if (!context) {
-    throw new Error("usePromptInput must be used within a PromptInput")
+    throw new Error("usePromptInput must be used within a PromptInput");
   }
-  return context
+  return context;
 }
 
 type PromptInputProps = {
-  isLoading?: boolean
-  value?: string
-  onValueChange?: (_value: string) => void
-  maxHeight?: number | string
-  onSubmit?: () => void
-  children: React.ReactNode
-  className?: string
+  isLoading?: boolean;
+  value?: string;
+  onValueChange?: (_value: string) => void;
+  maxHeight?: number | string;
+  onSubmit?: () => void;
+  children: React.ReactNode;
+  className?: string;
   selectedVariant?: {
-    id: string
-    name: string
-  } | null
-  contextItems?: React.ReactNode
-}
+    id: string;
+    name: string;
+  } | null;
+  contextItems?: React.ReactNode;
+};
 
 function PromptInput({
   className,
@@ -76,12 +73,12 @@ function PromptInput({
   selectedVariant,
   contextItems,
 }: PromptInputProps) {
-  const [internalValue, setInternalValue] = useState(value || "")
+  const [internalValue, setInternalValue] = useState(value || "");
 
   const handleChange = (newValue: string) => {
-    setInternalValue(newValue)
-    onValueChange?.(newValue)
-  }
+    setInternalValue(newValue);
+    onValueChange?.(newValue);
+  };
 
   return (
     <PromptInputContext.Provider
@@ -97,12 +94,12 @@ function PromptInput({
     >
       <div className={cn("flex flex-col gap-2", className)}>{children}</div>
     </PromptInputContext.Provider>
-  )
+  );
 }
 
 export type PromptInputTextareaProps = {
-  disableAutosize?: boolean
-} & React.ComponentProps<typeof Textarea>
+  disableAutosize?: boolean;
+} & React.ComponentProps<typeof Textarea>;
 
 const PromptInputTextareaInner = (
   {
@@ -113,49 +110,49 @@ const PromptInputTextareaInner = (
   }: PromptInputTextareaProps,
   forwardedRef: React.Ref<HTMLTextAreaElement>,
 ) => {
-  const { value, setValue, maxHeight, onSubmit, disabled } = usePromptInput()
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const { value, setValue, maxHeight, onSubmit, disabled } = usePromptInput();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Expose internal ref
   useEffect(() => {
-    if (!forwardedRef) return
+    if (!forwardedRef) return;
     if (typeof forwardedRef === "function") {
-      forwardedRef(textareaRef.current)
+      forwardedRef(textareaRef.current);
     } else if (forwardedRef) {
-      ;(
+      (
         forwardedRef as React.MutableRefObject<HTMLTextAreaElement | null>
-      ).current = textareaRef.current
+      ).current = textareaRef.current;
     }
-  }, [forwardedRef])
+  }, [forwardedRef]);
 
   useLayoutEffect(() => {
-    if (disableAutosize || !textareaRef.current) return
+    if (disableAutosize || !textareaRef.current) return;
 
-    const textarea = textareaRef.current
+    const textarea = textareaRef.current;
     // Reset height to auto to measure correctly
-    textarea.style.height = "auto"
+    textarea.style.height = "auto";
 
-    const scrollHeight = textarea.scrollHeight
+    const scrollHeight = textarea.scrollHeight;
     const maxHeightPx =
       typeof maxHeight === "number"
         ? maxHeight
-        : parseInt(maxHeight as string, 10) || 240
+        : Number.parseInt(maxHeight as string, 10) || 240;
 
-    const newHeight = Math.min(scrollHeight, maxHeightPx)
-    textarea.style.height = `${newHeight}px`
-    textarea.style.overflowY = scrollHeight > maxHeightPx ? "auto" : "hidden"
-  }, [value, disableAutosize, maxHeight])
+    const newHeight = Math.min(scrollHeight, maxHeightPx);
+    textarea.style.height = `${newHeight}px`;
+    textarea.style.overflowY = scrollHeight > maxHeightPx ? "auto" : "hidden";
+  }, [value, disableAutosize, maxHeight]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
-      e.preventDefault()
-      onSubmit?.()
+      e.preventDefault();
+      onSubmit?.();
     }
-    onKeyDown?.(e)
-  }
+    onKeyDown?.(e);
+  };
 
   const maxHeightStyle =
-    typeof maxHeight === "number" ? `${maxHeight}px` : maxHeight
+    typeof maxHeight === "number" ? `${maxHeight}px` : maxHeight;
 
   return (
     <Textarea
@@ -175,17 +172,17 @@ const PromptInputTextareaInner = (
       disabled={disabled}
       {...props}
     />
-  )
-}
+  );
+};
 
 const PromptInputTextarea = forwardRef<
   HTMLTextAreaElement,
   PromptInputTextareaProps
->(PromptInputTextareaInner)
+>(PromptInputTextareaInner);
 
-PromptInputTextarea.displayName = "PromptInputTextarea"
+PromptInputTextarea.displayName = "PromptInputTextarea";
 
-type PromptInputActionsProps = React.HTMLAttributes<HTMLDivElement>
+type PromptInputActionsProps = React.HTMLAttributes<HTMLDivElement>;
 
 function PromptInputActions({
   children,
@@ -196,15 +193,15 @@ function PromptInputActions({
     <div className={cn("flex items-center gap-2", className)} {...props}>
       {children}
     </div>
-  )
+  );
 }
 
 type PromptInputActionProps = {
-  className?: string
-  tooltip: React.ReactNode
-  children: React.ReactNode
-  side?: "top" | "bottom" | "left" | "right"
-} & React.ComponentProps<typeof Tooltip>
+  className?: string;
+  tooltip: React.ReactNode;
+  children: React.ReactNode;
+  side?: "top" | "bottom" | "left" | "right";
+} & React.ComponentProps<typeof Tooltip>;
 
 function PromptInputAction({
   tooltip,
@@ -213,7 +210,7 @@ function PromptInputAction({
   side = "top",
   ...props
 }: PromptInputActionProps) {
-  const { disabled } = usePromptInput()
+  const { disabled } = usePromptInput();
 
   return (
     <Tooltip {...props}>
@@ -224,23 +221,23 @@ function PromptInputAction({
         {tooltip}
       </TooltipContent>
     </Tooltip>
-  )
+  );
 }
 
 // Used for displaying context items (components, shapes, etc.) that are added to the chat context
 function PromptInputContextItems() {
-  const { contextItems } = usePromptInput()
+  const { contextItems } = usePromptInput();
 
-  if (!contextItems) return null
+  if (!contextItems) return null;
 
-  return <>{contextItems}</>
+  return <>{contextItems}</>;
 }
 
 // Used for displaying the selected variant context
 function PromptInputVariantContext() {
-  const { selectedVariant } = usePromptInput()
+  const { selectedVariant } = usePromptInput();
 
-  if (!selectedVariant) return null
+  if (!selectedVariant) return null;
 
   return (
     <div className="mx-2 mt-1">
@@ -277,7 +274,7 @@ function PromptInputVariantContext() {
         <span className="truncate text-[10px]">{selectedVariant.name}</span>
       </div>
     </div>
-  )
+  );
 }
 
 export {
@@ -287,4 +284,4 @@ export {
   PromptInputAction,
   PromptInputContextItems,
   PromptInputVariantContext,
-}
+};

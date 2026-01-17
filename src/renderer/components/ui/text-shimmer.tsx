@@ -1,14 +1,14 @@
-import React, { useMemo, useState, useEffect, type JSX } from "react"
-import { motion } from "motion/react"
-import { cn } from "../../lib/utils"
+import { motion } from "motion/react";
+import React, { useMemo, useState, useEffect, type JSX } from "react";
+import { cn } from "../../lib/utils";
 
 interface TextShimmerProps {
-  children: React.ReactNode
-  as?: React.ElementType
-  className?: string
-  duration?: number
-  spread?: number
-  delay?: number
+  children: React.ReactNode;
+  as?: React.ElementType;
+  className?: string;
+  duration?: number;
+  spread?: number;
+  delay?: number;
 }
 
 function TextShimmerComponent({
@@ -19,26 +19,26 @@ function TextShimmerComponent({
   spread = 2,
   delay = 0,
 }: TextShimmerProps) {
-  const MotionComponent = motion(Component as keyof JSX.IntrinsicElements)
-  const [shouldAnimate, setShouldAnimate] = useState(delay === 0)
+  const MotionComponent = motion(Component as keyof JSX.IntrinsicElements);
+  const [shouldAnimate, setShouldAnimate] = useState(delay === 0);
 
   useEffect(() => {
     if (delay > 0) {
       const timer = setTimeout(() => {
-        setShouldAnimate(true)
-      }, delay * 1000)
-      return () => clearTimeout(timer)
+        setShouldAnimate(true);
+      }, delay * 1000);
+      return () => clearTimeout(timer);
     }
-  }, [delay])
+  }, [delay]);
 
   // Calculate spread based on text content if it's a string, otherwise use a default
   const dynamicSpread = useMemo(() => {
     if (typeof children === "string") {
-      return children.length * spread
+      return children.length * spread;
     }
     // For JSX elements, use a reasonable default spread
-    return 50 * spread
-  }, [children, spread])
+    return 50 * spread;
+  }, [children, spread]);
 
   return (
     <MotionComponent
@@ -50,23 +50,28 @@ function TextShimmerComponent({
         className,
       )}
       initial={{ backgroundPosition: "100% center" }}
-      animate={shouldAnimate ? { backgroundPosition: "0% center" } : { backgroundPosition: "100% center" }}
+      animate={
+        shouldAnimate
+          ? { backgroundPosition: "0% center" }
+          : { backgroundPosition: "100% center" }
+      }
       transition={{
-        repeat: shouldAnimate ? Infinity : 0,
+        repeat: shouldAnimate ? Number.POSITIVE_INFINITY : 0,
         duration,
         ease: "linear",
       }}
       style={
         {
           "--spread": `${dynamicSpread}px`,
-          backgroundImage: `var(--bg), linear-gradient(var(--base-color), var(--base-color))`,
+          backgroundImage:
+            "var(--bg), linear-gradient(var(--base-color), var(--base-color))",
         } as React.CSSProperties
       }
     >
       {children}
     </MotionComponent>
-  )
+  );
 }
 
 // Memoize component to prevent unnecessary re-renders
-export const TextShimmer = React.memo(TextShimmerComponent)
+export const TextShimmer = React.memo(TextShimmerComponent);

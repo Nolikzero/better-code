@@ -1,63 +1,62 @@
-import { useTheme } from "next-themes"
-import { useState, useEffect, useCallback, useMemo } from "react"
-import { IconSpinner } from "../../../icons"
-import { useAtom, useSetAtom } from "jotai"
-import { motion, AnimatePresence } from "motion/react"
-import { cn } from "../../../lib/utils"
-import {
-  selectedFullThemeIdAtom,
-  fullThemeDataAtom,
-  systemLightThemeIdAtom,
-  systemDarkThemeIdAtom,
-  type VSCodeFullTheme,
-} from "../../../lib/atoms"
-import {
-  BUILTIN_THEMES,
-  getBuiltinThemeById,
-} from "../../../lib/themes/builtin-themes"
-import {
-  generateCSSVariables,
-  applyCSSVariables,
-  removeCSSVariables,
-  getThemeTypeFromColors,
-} from "../../../lib/themes/vscode-to-css-mapping"
+import { useAtom, useSetAtom } from "jotai";
+import { AnimatePresence, motion } from "motion/react";
+import { useTheme } from "next-themes";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "../../../components/ui/select"
+} from "../../../components/ui/select";
+import { IconSpinner } from "../../../icons";
+import {
+  type VSCodeFullTheme,
+  fullThemeDataAtom,
+  selectedFullThemeIdAtom,
+  systemDarkThemeIdAtom,
+  systemLightThemeIdAtom,
+} from "../../../lib/atoms";
+import {
+  BUILTIN_THEMES,
+  getBuiltinThemeById,
+} from "../../../lib/themes/builtin-themes";
+import {
+  applyCSSVariables,
+  generateCSSVariables,
+  getThemeTypeFromColors,
+  removeCSSVariables,
+} from "../../../lib/themes/vscode-to-css-mapping";
+import { cn } from "../../../lib/utils";
 
 // Hook to detect narrow screen
 function useIsNarrowScreen(): boolean {
-  const [isNarrow, setIsNarrow] = useState(false)
+  const [isNarrow, setIsNarrow] = useState(false);
 
   useEffect(() => {
     const checkWidth = () => {
-      setIsNarrow(window.innerWidth <= 768)
-    }
+      setIsNarrow(window.innerWidth <= 768);
+    };
 
-    checkWidth()
-    window.addEventListener("resize", checkWidth)
-    return () => window.removeEventListener("resize", checkWidth)
-  }, [])
+    checkWidth();
+    window.addEventListener("resize", checkWidth);
+    return () => window.removeEventListener("resize", checkWidth);
+  }, []);
 
-  return isNarrow
+  return isNarrow;
 }
 
 // Check if a hex color is visible (not too transparent)
 function isVisibleColor(hex: string | undefined): boolean {
-  if (!hex) return false
+  if (!hex) return false;
   // Remove # if present
-  const cleanHex = hex.replace(/^#/, "")
+  const cleanHex = hex.replace(/^#/, "");
   // If 8 characters, check alpha
   if (cleanHex.length === 8) {
-    const alpha = parseInt(cleanHex.slice(6, 8), 16)
+    const alpha = Number.parseInt(cleanHex.slice(6, 8), 16);
     // Consider colors with less than 50% opacity as "not visible" for accent purposes
-    return alpha >= 128
+    return alpha >= 128;
   }
-  return true
+  return true;
 }
 
 // Theme preview box with dot and "Aa" text
@@ -66,37 +65,37 @@ function ThemePreviewBox({
   size = "md",
   className,
 }: {
-  theme: VSCodeFullTheme | null
-  size?: "sm" | "md"
-  className?: string
+  theme: VSCodeFullTheme | null;
+  size?: "sm" | "md";
+  className?: string;
 }) {
-  const bgColor = theme?.colors?.["editor.background"] || "#1a1a1a"
-  
+  const bgColor = theme?.colors?.["editor.background"] || "#1a1a1a";
+
   // Get accent color, preferring button.background and skipping transparent colors
   const getAccentColor = () => {
     const candidates = [
       theme?.colors?.["button.background"],
       theme?.colors?.["textLink.foreground"],
-      theme?.colors?.["focusBorder"],
+      theme?.colors?.focusBorder,
       theme?.colors?.["activityBarBadge.background"],
-    ]
+    ];
     for (const color of candidates) {
       if (isVisibleColor(color)) {
-        return color
+        return color;
       }
     }
-    return "#0034FF"
-  }
-  
-  const accentColor = getAccentColor()
-  const isDark = theme ? theme.type === "dark" : true
+    return "#0034FF";
+  };
+
+  const accentColor = getAccentColor();
+  const isDark = theme ? theme.type === "dark" : true;
 
   const sizeClasses =
     size === "sm"
       ? "w-7 h-5 text-[9px] gap-0.5 rounded-sm"
-      : "w-8 h-6 text-[10px] gap-1 rounded-sm"
+      : "w-8 h-6 text-[10px] gap-1 rounded-sm";
 
-  const dotSize = size === "sm" ? "w-1 h-1" : "w-1.5 h-1.5"
+  const dotSize = size === "sm" ? "w-1 h-1" : "w-1.5 h-1.5";
 
   return (
     <div
@@ -117,99 +116,101 @@ function ThemePreviewBox({
       />
       <span style={{ color: isDark ? "#fff" : "#000", opacity: 0.9 }}>Aa</span>
     </div>
-  )
+  );
 }
 
 export function AgentsAppearanceTab() {
-  const { resolvedTheme, setTheme: setNextTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
-  const isNarrowScreen = useIsNarrowScreen()
+  const { resolvedTheme, setTheme: setNextTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  const isNarrowScreen = useIsNarrowScreen();
 
   // Theme atoms
-  const [selectedThemeId, setSelectedThemeId] = useAtom(selectedFullThemeIdAtom)
+  const [selectedThemeId, setSelectedThemeId] = useAtom(
+    selectedFullThemeIdAtom,
+  );
   const [systemLightThemeId, setSystemLightThemeId] = useAtom(
     systemLightThemeIdAtom,
-  )
+  );
   const [systemDarkThemeId, setSystemDarkThemeId] = useAtom(
     systemDarkThemeIdAtom,
-  )
-  const setFullThemeData = useSetAtom(fullThemeDataAtom)
+  );
+  const setFullThemeData = useSetAtom(fullThemeDataAtom);
 
   useEffect(() => {
-    setMounted(true)
-  }, [])
+    setMounted(true);
+  }, []);
 
   // Group themes by type
   const darkThemes = useMemo(
     () => BUILTIN_THEMES.filter((t) => t.type === "dark"),
     [],
-  )
+  );
   const lightThemes = useMemo(
     () => BUILTIN_THEMES.filter((t) => t.type === "light"),
     [],
-  )
+  );
 
   // Is system mode selected
-  const isSystemMode = selectedThemeId === null
+  const isSystemMode = selectedThemeId === null;
 
   // Get the current theme for display
   const currentTheme = useMemo(() => {
     if (selectedThemeId === null) {
-      return null // System mode
+      return null; // System mode
     }
-    return BUILTIN_THEMES.find((t) => t.id === selectedThemeId) || null
-  }, [selectedThemeId])
+    return BUILTIN_THEMES.find((t) => t.id === selectedThemeId) || null;
+  }, [selectedThemeId]);
 
   // Get theme objects for system mode selectors
   const systemLightTheme = useMemo(
     () => getBuiltinThemeById(systemLightThemeId),
     [systemLightThemeId],
-  )
+  );
   const systemDarkTheme = useMemo(
     () => getBuiltinThemeById(systemDarkThemeId),
     [systemDarkThemeId],
-  )
+  );
 
   // Apply theme based on current settings
   const applyTheme = useCallback(
     (themeId: string | null) => {
       if (themeId === null) {
         // System mode - apply theme based on system preference
-        removeCSSVariables()
-        setFullThemeData(null)
-        setNextTheme("system")
+        removeCSSVariables();
+        setFullThemeData(null);
+        setNextTheme("system");
 
         // Apply the appropriate system theme
-        const isDark = resolvedTheme === "dark"
+        const isDark = resolvedTheme === "dark";
         const systemTheme = isDark
           ? getBuiltinThemeById(systemDarkThemeId)
-          : getBuiltinThemeById(systemLightThemeId)
+          : getBuiltinThemeById(systemLightThemeId);
 
         if (systemTheme) {
-          const cssVars = generateCSSVariables(systemTheme.colors)
-          applyCSSVariables(cssVars)
+          const cssVars = generateCSSVariables(systemTheme.colors);
+          applyCSSVariables(cssVars);
         }
-        return
+        return;
       }
 
-      const theme = BUILTIN_THEMES.find((t) => t.id === themeId)
+      const theme = BUILTIN_THEMES.find((t) => t.id === themeId);
       if (theme) {
-        setFullThemeData(theme)
+        setFullThemeData(theme);
 
         // Apply CSS variables
-        const cssVars = generateCSSVariables(theme.colors)
-        applyCSSVariables(cssVars)
+        const cssVars = generateCSSVariables(theme.colors);
+        applyCSSVariables(cssVars);
 
         // Sync next-themes with theme type
-        const themeType = getThemeTypeFromColors(theme.colors)
+        const themeType = getThemeTypeFromColors(theme.colors);
         if (themeType === "dark") {
-          document.documentElement.classList.add("dark")
-          document.documentElement.classList.remove("light")
+          document.documentElement.classList.add("dark");
+          document.documentElement.classList.remove("light");
         } else {
-          document.documentElement.classList.remove("dark")
-          document.documentElement.classList.add("light")
+          document.documentElement.classList.remove("dark");
+          document.documentElement.classList.add("light");
         }
-        setNextTheme(themeType)
+        setNextTheme(themeType);
       }
     },
     [
@@ -219,65 +220,65 @@ export function AgentsAppearanceTab() {
       setFullThemeData,
       setNextTheme,
     ],
-  )
+  );
 
   // Handle main theme selection
   const handleThemeChange = useCallback(
     (value: string) => {
       if (value === "system") {
-        setSelectedThemeId(null)
-        applyTheme(null)
+        setSelectedThemeId(null);
+        applyTheme(null);
       } else {
-        setSelectedThemeId(value)
-        applyTheme(value)
+        setSelectedThemeId(value);
+        applyTheme(value);
       }
     },
     [setSelectedThemeId, applyTheme],
-  )
+  );
 
   // Handle system light theme change
   const handleSystemLightThemeChange = useCallback(
     (themeId: string) => {
-      setSystemLightThemeId(themeId)
+      setSystemLightThemeId(themeId);
       // If currently in light mode, apply the new theme
       if (resolvedTheme === "light" && selectedThemeId === null) {
-        const theme = getBuiltinThemeById(themeId)
+        const theme = getBuiltinThemeById(themeId);
         if (theme) {
-          const cssVars = generateCSSVariables(theme.colors)
-          applyCSSVariables(cssVars)
+          const cssVars = generateCSSVariables(theme.colors);
+          applyCSSVariables(cssVars);
         }
       }
     },
     [setSystemLightThemeId, resolvedTheme, selectedThemeId],
-  )
+  );
 
   // Handle system dark theme change
   const handleSystemDarkThemeChange = useCallback(
     (themeId: string) => {
-      setSystemDarkThemeId(themeId)
+      setSystemDarkThemeId(themeId);
       // If currently in dark mode, apply the new theme
       if (resolvedTheme === "dark" && selectedThemeId === null) {
-        const theme = getBuiltinThemeById(themeId)
+        const theme = getBuiltinThemeById(themeId);
         if (theme) {
-          const cssVars = generateCSSVariables(theme.colors)
-          applyCSSVariables(cssVars)
+          const cssVars = generateCSSVariables(theme.colors);
+          applyCSSVariables(cssVars);
         }
       }
     },
     [setSystemDarkThemeId, resolvedTheme, selectedThemeId],
-  )
+  );
 
   // Re-apply theme when system preference changes
   useEffect(() => {
     if (selectedThemeId === null && mounted) {
-      const isDark = resolvedTheme === "dark"
+      const isDark = resolvedTheme === "dark";
       const systemTheme = isDark
         ? getBuiltinThemeById(systemDarkThemeId)
-        : getBuiltinThemeById(systemLightThemeId)
+        : getBuiltinThemeById(systemLightThemeId);
 
       if (systemTheme) {
-        const cssVars = generateCSSVariables(systemTheme.colors)
-        applyCSSVariables(cssVars)
+        const cssVars = generateCSSVariables(systemTheme.colors);
+        applyCSSVariables(cssVars);
       }
     }
   }, [
@@ -286,7 +287,7 @@ export function AgentsAppearanceTab() {
     systemLightThemeId,
     systemDarkThemeId,
     mounted,
-  ])
+  ]);
 
   if (!mounted) {
     return (
@@ -295,7 +296,7 @@ export function AgentsAppearanceTab() {
           <IconSpinner className="h-8 w-8 text-foreground" />
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -334,8 +335,8 @@ export function AgentsAppearanceTab() {
                     <ThemePreviewBox
                       theme={
                         resolvedTheme === "dark"
-                          ? (systemDarkTheme ?? null)
-                          : (systemLightTheme ?? null)
+                          ? systemDarkTheme ?? null
+                          : systemLightTheme ?? null
                       }
                     />
                     <span className="text-xs truncate">System preference</span>
@@ -357,8 +358,8 @@ export function AgentsAppearanceTab() {
                   <ThemePreviewBox
                     theme={
                       resolvedTheme === "dark"
-                        ? (systemDarkTheme ?? null)
-                        : (systemLightTheme ?? null)
+                        ? systemDarkTheme ?? null
+                        : systemLightTheme ?? null
                     }
                     size="sm"
                   />
@@ -478,5 +479,5 @@ export function AgentsAppearanceTab() {
         </AnimatePresence>
       </div>
     </div>
-  )
+  );
 }

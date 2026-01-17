@@ -1,70 +1,70 @@
 import {
-  SearchIcon,
-  EyeIcon,
-  IconEditFile,
-  PlanningIcon,
-  WriteFileIcon,
-  CustomTerminalIcon,
-  GlobeIcon,
-  SparklesIcon,
-} from "../../icons"
-import {
+  Database,
+  FileCode2,
   FolderSearch,
   GitBranch,
   ListTodo,
   LogOut,
-  FileCode2,
+  Server,
   Terminal,
   XCircle,
-  Server,
-  Database,
-} from "lucide-react"
+} from "lucide-react";
+import {
+  CustomTerminalIcon,
+  EyeIcon,
+  GlobeIcon,
+  IconEditFile,
+  PlanningIcon,
+  SearchIcon,
+  SparklesIcon,
+  WriteFileIcon,
+} from "../../icons";
 
-export type ToolVariant = "simple" | "collapsible"
+export type ToolVariant = "simple" | "collapsible";
 
 export interface ToolMeta {
-  icon: React.ComponentType<{ className?: string }>
-  title: (part: any) => string
-  subtitle?: (part: any) => string
-  variant: ToolVariant
+  icon: React.ComponentType<{ className?: string }>;
+  title: (part: any) => string;
+  subtitle?: (part: any) => string;
+  variant: ToolVariant;
 }
 
 export function getToolStatus(part: any, chatStatus?: string) {
   const basePending =
-    part.state !== "output-available" && part.state !== "output-error"
+    part.state !== "output-available" && part.state !== "output-error";
   const isError =
     part.state === "output-error" ||
-    (part.state === "output-available" && part.output?.success === false)
-  const isSuccess = part.state === "output-available" && !isError
+    (part.state === "output-available" && part.output?.success === false);
+  const isSuccess = part.state === "output-available" && !isError;
   // Critical: if chat stopped streaming, pending tools should show as complete
-  const isPending = basePending && chatStatus === "streaming"
+  const isPending = basePending && chatStatus === "streaming";
 
-  return { isPending, isError, isSuccess }
+  return { isPending, isError, isSuccess };
 }
 
 // Utility to calculate diff stats
 function calculateDiffStats(oldString: string, newString: string) {
-  const oldLines = oldString.split("\n")
-  const newLines = newString.split("\n")
-  const maxLines = Math.max(oldLines.length, newLines.length)
-  let addedLines = 0
-  let removedLines = 0
+  const oldLines = oldString.split("\n");
+  const newLines = newString.split("\n");
+  const maxLines = Math.max(oldLines.length, newLines.length);
+  let addedLines = 0;
+  let removedLines = 0;
 
   for (let i = 0; i < maxLines; i++) {
-    const oldLine = oldLines[i]
-    const newLine = newLines[i]
+    const oldLine = oldLines[i];
+    const newLine = newLines[i];
     if (oldLine !== undefined && newLine !== undefined) {
       if (oldLine !== newLine) {
-        removedLines++
-        addedLines++
+        removedLines++;
+        addedLines++;
       }
     } else if (oldLine !== undefined) {
-      removedLines++
+      removedLines++;
     } else if (newLine !== undefined) {
-      addedLines++
+      addedLines++;
     }
   }
-  return { addedLines, removedLines }
+  return { addedLines, removedLines };
 }
 
 export const AgentToolRegistry: Record<string, ToolMeta> = {
@@ -72,14 +72,14 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
     icon: SparklesIcon,
     title: (part) => {
       const isPending =
-        part.state !== "output-available" && part.state !== "output-error"
-      return isPending ? "Running Task" : "Task completed"
+        part.state !== "output-available" && part.state !== "output-error";
+      return isPending ? "Running Task" : "Task completed";
     },
     subtitle: (part) => {
-      const description = part.input?.description || ""
+      const description = part.input?.description || "";
       return description.length > 50
-        ? description.slice(0, 47) + "..."
-        : description
+        ? `${description.slice(0, 47)}...`
+        : description;
     },
     variant: "simple",
   },
@@ -88,22 +88,22 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
     icon: SearchIcon,
     title: (part) => {
       const isPending =
-        part.state !== "output-available" && part.state !== "output-error"
-      if (isPending) return "Grepping"
-      const numFiles = part.output?.numFiles || 0
-      return numFiles > 0 ? `Grepped ${numFiles} files` : "No matches"
+        part.state !== "output-available" && part.state !== "output-error";
+      if (isPending) return "Grepping";
+      const numFiles = part.output?.numFiles || 0;
+      return numFiles > 0 ? `Grepped ${numFiles} files` : "No matches";
     },
     subtitle: (part) => {
-      const pattern = part.input?.pattern || ""
-      const path = part.input?.path || ""
+      const pattern = part.input?.pattern || "";
+      const path = part.input?.path || "";
 
       if (path) {
         // Show "pattern in path"
-        const combined = `${pattern} in ${path}`
-        return combined.length > 40 ? combined.slice(0, 37) + "..." : combined
+        const combined = `${pattern} in ${path}`;
+        return combined.length > 40 ? `${combined.slice(0, 37)}...` : combined;
       }
 
-      return pattern.length > 40 ? pattern.slice(0, 37) + "..." : pattern
+      return pattern.length > 40 ? `${pattern.slice(0, 37)}...` : pattern;
     },
     variant: "simple",
   },
@@ -112,22 +112,22 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
     icon: FolderSearch,
     title: (part) => {
       const isPending =
-        part.state !== "output-available" && part.state !== "output-error"
-      if (isPending) return "Exploring files"
-      const numFiles = part.output?.numFiles || 0
-      return numFiles > 0 ? `Found ${numFiles} files` : "No files found"
+        part.state !== "output-available" && part.state !== "output-error";
+      if (isPending) return "Exploring files";
+      const numFiles = part.output?.numFiles || 0;
+      return numFiles > 0 ? `Found ${numFiles} files` : "No files found";
     },
     subtitle: (part) => {
-      const pattern = part.input?.pattern || ""
-      const targetDir = part.input?.target_directory || ""
+      const pattern = part.input?.pattern || "";
+      const targetDir = part.input?.target_directory || "";
 
       if (targetDir) {
         // Show "pattern in targetDir"
-        const combined = `${pattern} in ${targetDir}`
-        return combined.length > 40 ? combined.slice(0, 37) + "..." : combined
+        const combined = `${pattern} in ${targetDir}`;
+        return combined.length > 40 ? `${combined.slice(0, 37)}...` : combined;
       }
 
-      return pattern.length > 40 ? pattern.slice(0, 37) + "..." : pattern
+      return pattern.length > 40 ? `${pattern.slice(0, 37)}...` : pattern;
     },
     variant: "simple",
   },
@@ -136,13 +136,13 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
     icon: EyeIcon,
     title: (part) => {
       const isPending =
-        part.state !== "output-available" && part.state !== "output-error"
-      return isPending ? "Reading" : "Read"
+        part.state !== "output-available" && part.state !== "output-error";
+      return isPending ? "Reading" : "Read";
     },
     subtitle: (part) => {
-      const filePath = part.input?.file_path || ""
-      if (!filePath) return "" // Don't show "file" placeholder during streaming
-      return filePath.split("/").pop() || ""
+      const filePath = part.input?.file_path || "";
+      if (!filePath) return ""; // Don't show "file" placeholder during streaming
+      return filePath.split("/").pop() || "";
     },
     variant: "simple",
   },
@@ -150,20 +150,20 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
   "tool-Edit": {
     icon: IconEditFile,
     title: (part) => {
-      const filePath = part.input?.file_path || ""
-      if (!filePath) return "Edit" // Show "Edit" if no file path yet during streaming
-      return filePath.split("/").pop() || "Edit"
+      const filePath = part.input?.file_path || "";
+      if (!filePath) return "Edit"; // Show "Edit" if no file path yet during streaming
+      return filePath.split("/").pop() || "Edit";
     },
     subtitle: (part) => {
       const isPending =
-        part.state !== "output-available" && part.state !== "output-error"
-      if (isPending) return ""
+        part.state !== "output-available" && part.state !== "output-error";
+      if (isPending) return "";
 
-      const oldString = part.input?.old_string || ""
-      const newString = part.input?.new_string || ""
+      const oldString = part.input?.old_string || "";
+      const newString = part.input?.new_string || "";
 
       if (!oldString && !newString) {
-        return ""
+        return "";
       }
 
       // Always show actual line counts if there are any changes (copied from canvas)
@@ -171,11 +171,11 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
         const { addedLines, removedLines } = calculateDiffStats(
           oldString,
           newString,
-        )
-        return `<span style="font-size: 11px; color: light-dark(#587C0B, #A3BE8C)">+${addedLines}</span> <span style="font-size: 11px; color: light-dark(#AD0807, #AE5A62)">-${removedLines}</span>`
+        );
+        return `<span style="font-size: 11px; color: light-dark(#587C0B, #A3BE8C)">+${addedLines}</span> <span style="font-size: 11px; color: light-dark(#AD0807, #AE5A62)">-${removedLines}</span>`;
       }
 
-      return ""
+      return "";
     },
     variant: "simple",
   },
@@ -198,9 +198,9 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
     icon: WriteFileIcon,
     title: () => "Create",
     subtitle: (part) => {
-      const filePath = part.input?.file_path || ""
-      if (!filePath) return "" // Don't show "file" placeholder during streaming
-      return filePath.split("/").pop() || ""
+      const filePath = part.input?.file_path || "";
+      if (!filePath) return ""; // Don't show "file" placeholder during streaming
+      return filePath.split("/").pop() || "";
     },
     variant: "simple",
   },
@@ -209,14 +209,14 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
     icon: CustomTerminalIcon,
     title: (part) => {
       const isPending =
-        part.state !== "output-available" && part.state !== "output-error"
-      return isPending ? "Running command" : "Ran command"
+        part.state !== "output-available" && part.state !== "output-error";
+      return isPending ? "Running command" : "Ran command";
     },
     subtitle: (part) => {
-      const command = part.input?.command || ""
+      const command = part.input?.command || "";
       // Extract first command word
-      const firstWord = command.split(/\s+/)[0] || ""
-      return firstWord.length > 30 ? firstWord.slice(0, 27) + "..." : firstWord
+      const firstWord = command.split(/\s+/)[0] || "";
+      return firstWord.length > 30 ? `${firstWord.slice(0, 27)}...` : firstWord;
     },
     variant: "simple",
   },
@@ -225,15 +225,15 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
     icon: GlobeIcon,
     title: (part) => {
       const isPending =
-        part.state !== "output-available" && part.state !== "output-error"
-      return isPending ? "Fetching" : "Fetched"
+        part.state !== "output-available" && part.state !== "output-error";
+      return isPending ? "Fetching" : "Fetched";
     },
     subtitle: (part) => {
-      const url = part.input?.url || ""
+      const url = part.input?.url || "";
       try {
-        return new URL(url).hostname.replace("www.", "")
+        return new URL(url).hostname.replace("www.", "");
       } catch {
-        return url.slice(0, 30)
+        return url.slice(0, 30);
       }
     },
     variant: "simple",
@@ -243,12 +243,12 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
     icon: SearchIcon,
     title: (part) => {
       const isPending =
-        part.state !== "output-available" && part.state !== "output-error"
-      return isPending ? "Searching web" : "Searched web"
+        part.state !== "output-available" && part.state !== "output-error";
+      return isPending ? "Searching web" : "Searched web";
     },
     subtitle: (part) => {
-      const query = part.input?.query || ""
-      return query.length > 40 ? query.slice(0, 37) + "..." : query
+      const query = part.input?.query || "";
+      return query.length > 40 ? `${query.slice(0, 37)}...` : query;
     },
     variant: "simple",
   },
@@ -258,17 +258,17 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
     icon: ListTodo,
     title: (part) => {
       const isPending =
-        part.state !== "output-available" && part.state !== "output-error"
-      const action = part.input?.action || "update"
+        part.state !== "output-available" && part.state !== "output-error";
+      const action = part.input?.action || "update";
       if (isPending) {
-        return action === "add" ? "Adding todo" : "Updating todos"
+        return action === "add" ? "Adding todo" : "Updating todos";
       }
-      return action === "add" ? "Added todo" : "Updated todos"
+      return action === "add" ? "Added todo" : "Updated todos";
     },
     subtitle: (part) => {
-      const todos = part.input?.todos || []
-      if (todos.length === 0) return ""
-      return `${todos.length} ${todos.length === 1 ? "item" : "items"}`
+      const todos = part.input?.todos || [];
+      if (todos.length === 0) return "";
+      return `${todos.length} ${todos.length === 1 ? "item" : "items"}`;
     },
     variant: "simple",
   },
@@ -277,33 +277,33 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
     icon: PlanningIcon,
     title: (part) => {
       const isPending =
-        part.state !== "output-available" && part.state !== "output-error"
-      const action = part.input?.action || "create"
-      const status = part.input?.plan?.status
+        part.state !== "output-available" && part.state !== "output-error";
+      const action = part.input?.action || "create";
+      const status = part.input?.plan?.status;
       if (isPending) {
-        if (action === "create") return "Creating plan"
-        if (action === "approve") return "Approving plan"
-        if (action === "complete") return "Completing plan"
-        return "Updating plan"
+        if (action === "create") return "Creating plan";
+        if (action === "approve") return "Approving plan";
+        if (action === "complete") return "Completing plan";
+        return "Updating plan";
       }
-      if (status === "awaiting_approval") return "Plan ready for review"
-      if (status === "approved") return "Plan approved"
-      if (status === "completed") return "Plan completed"
-      return action === "create" ? "Created plan" : "Updated plan"
+      if (status === "awaiting_approval") return "Plan ready for review";
+      if (status === "approved") return "Plan approved";
+      if (status === "completed") return "Plan completed";
+      return action === "create" ? "Created plan" : "Updated plan";
     },
     subtitle: (part) => {
-      const plan = part.input?.plan
-      if (!plan) return ""
-      const steps = plan.steps || []
-      const completed = steps.filter((s: any) => s.status === "completed").length
+      const plan = part.input?.plan;
+      if (!plan) return "";
+      const steps = plan.steps || [];
+      const completed = steps.filter(
+        (s: any) => s.status === "completed",
+      ).length;
       if (plan.title) {
         return steps.length > 0
           ? `${plan.title} (${completed}/${steps.length})`
-          : plan.title
+          : plan.title;
       }
-      return steps.length > 0
-        ? `${completed}/${steps.length} steps`
-        : ""
+      return steps.length > 0 ? `${completed}/${steps.length} steps` : "";
     },
     variant: "simple",
   },
@@ -312,8 +312,8 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
     icon: LogOut,
     title: (part) => {
       const isPending =
-        part.state !== "output-available" && part.state !== "output-error"
-      return isPending ? "Finishing plan" : "Plan complete"
+        part.state !== "output-available" && part.state !== "output-error";
+      return isPending ? "Finishing plan" : "Plan complete";
     },
     subtitle: () => "",
     variant: "simple",
@@ -324,13 +324,13 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
     icon: FileCode2,
     title: (part) => {
       const isPending =
-        part.state !== "output-available" && part.state !== "output-error"
-      return isPending ? "Editing notebook" : "Edited notebook"
+        part.state !== "output-available" && part.state !== "output-error";
+      return isPending ? "Editing notebook" : "Edited notebook";
     },
     subtitle: (part) => {
-      const filePath = part.input?.file_path || ""
-      if (!filePath) return ""
-      return filePath.split("/").pop() || ""
+      const filePath = part.input?.file_path || "";
+      if (!filePath) return "";
+      return filePath.split("/").pop() || "";
     },
     variant: "simple",
   },
@@ -340,12 +340,12 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
     icon: Terminal,
     title: (part) => {
       const isPending =
-        part.state !== "output-available" && part.state !== "output-error"
-      return isPending ? "Getting output" : "Got output"
+        part.state !== "output-available" && part.state !== "output-error";
+      return isPending ? "Getting output" : "Got output";
     },
     subtitle: (part) => {
-      const pid = part.input?.pid
-      return pid ? `PID: ${pid}` : ""
+      const pid = part.input?.pid;
+      return pid ? `PID: ${pid}` : "";
     },
     variant: "simple",
   },
@@ -354,12 +354,12 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
     icon: XCircle,
     title: (part) => {
       const isPending =
-        part.state !== "output-available" && part.state !== "output-error"
-      return isPending ? "Stopping shell" : "Stopped shell"
+        part.state !== "output-available" && part.state !== "output-error";
+      return isPending ? "Stopping shell" : "Stopped shell";
     },
     subtitle: (part) => {
-      const pid = part.input?.pid
-      return pid ? `PID: ${pid}` : ""
+      const pid = part.input?.pid;
+      return pid ? `PID: ${pid}` : "";
     },
     variant: "simple",
   },
@@ -369,12 +369,12 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
     icon: Server,
     title: (part) => {
       const isPending =
-        part.state !== "output-available" && part.state !== "output-error"
-      return isPending ? "Listing resources" : "Listed resources"
+        part.state !== "output-available" && part.state !== "output-error";
+      return isPending ? "Listing resources" : "Listed resources";
     },
     subtitle: (part) => {
-      const server = part.input?.server || ""
-      return server
+      const server = part.input?.server || "";
+      return server;
     },
     variant: "simple",
   },
@@ -383,13 +383,13 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
     icon: Database,
     title: (part) => {
       const isPending =
-        part.state !== "output-available" && part.state !== "output-error"
-      return isPending ? "Reading resource" : "Read resource"
+        part.state !== "output-available" && part.state !== "output-error";
+      return isPending ? "Reading resource" : "Read resource";
     },
     subtitle: (part) => {
-      const uri = part.input?.uri || ""
-      return uri.length > 30 ? "..." + uri.slice(-27) : uri
+      const uri = part.input?.uri || "";
+      return uri.length > 30 ? `...${uri.slice(-27)}` : uri;
     },
     variant: "simple",
   },
-}
+};

@@ -1,4 +1,4 @@
-import type { BuiltinCommandAction, SlashCommandOption } from "./types"
+import type { BuiltinCommandAction, SlashCommandOption } from "./types";
 
 /**
  * Prompt texts for prompt-based slash commands
@@ -14,7 +14,7 @@ export const COMMAND_PROMPTS: Partial<
     "Generate release notes summarizing the changes in this codebase.",
   "security-review":
     "Perform a security audit of the code in the current context. Identify vulnerabilities, security risks, and suggest fixes.",
-}
+};
 
 /**
  * Check if a command is a prompt-based command
@@ -22,7 +22,7 @@ export const COMMAND_PROMPTS: Partial<
 export function isPromptCommand(
   type: BuiltinCommandAction["type"],
 ): type is "review" | "pr-comments" | "release-notes" | "security-review" {
-  return type in COMMAND_PROMPTS
+  return type in COMMAND_PROMPTS;
 }
 
 /**
@@ -86,7 +86,7 @@ export const BUILTIN_SLASH_COMMANDS: SlashCommandOption[] = [
     description: "Ask agent to perform a security audit",
     category: "builtin",
   },
-]
+];
 
 /**
  * Filter builtin commands by search text
@@ -94,12 +94,12 @@ export const BUILTIN_SLASH_COMMANDS: SlashCommandOption[] = [
 export function filterBuiltinCommands(
   searchText: string,
 ): SlashCommandOption[] {
-  if (!searchText) return BUILTIN_SLASH_COMMANDS
+  if (!searchText) return BUILTIN_SLASH_COMMANDS;
 
-  const query = searchText.toLowerCase()
+  const query = searchText.toLowerCase();
   return BUILTIN_SLASH_COMMANDS.filter(
     (cmd) =>
       cmd.name.toLowerCase().includes(query) ||
       cmd.description.toLowerCase().includes(query),
-  )
+  );
 }

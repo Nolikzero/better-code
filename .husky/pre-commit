@@ -1,0 +1,17 @@
+#!/usr/bin/env sh
+
+echo "Running pre-commit checks..."
+
+bun lint
+if [ $? -ne 0 ]; then
+  echo "Linting failed. Please fix the errors before committing."
+  exit 1
+fi
+
+bun typecheck
+if [ $? -ne 0 ]; then
+  echo "Type checking failed. Please fix the errors before committing."
+  exit 1
+fi
+
+echo "All pre-commit checks passed!"

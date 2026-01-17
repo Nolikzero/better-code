@@ -1,44 +1,46 @@
-import { useState, useEffect } from "react"
-import { ChevronRight } from "lucide-react"
-import { motion, AnimatePresence } from "motion/react"
-import { trpc } from "../../../lib/trpc"
-import { cn } from "../../../lib/utils"
-import { SkillIcon } from "../../ui/icons"
+import { ChevronRight } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { useEffect, useState } from "react";
+import { trpc } from "../../../lib/trpc";
+import { cn } from "../../../lib/utils";
+import { SkillIcon } from "../../ui/icons";
 
 // Hook to detect narrow screen
 function useIsNarrowScreen(): boolean {
-  const [isNarrow, setIsNarrow] = useState(false)
+  const [isNarrow, setIsNarrow] = useState(false);
 
   useEffect(() => {
     const checkWidth = () => {
-      setIsNarrow(window.innerWidth <= 768)
-    }
+      setIsNarrow(window.innerWidth <= 768);
+    };
 
-    checkWidth()
-    window.addEventListener("resize", checkWidth)
-    return () => window.removeEventListener("resize", checkWidth)
-  }, [])
+    checkWidth();
+    window.addEventListener("resize", checkWidth);
+    return () => window.removeEventListener("resize", checkWidth);
+  }, []);
 
-  return isNarrow
+  return isNarrow;
 }
 
 export function AgentsSkillsTab() {
-  const isNarrowScreen = useIsNarrowScreen()
-  const [expandedSkillName, setExpandedSkillName] = useState<string | null>(null)
+  const isNarrowScreen = useIsNarrowScreen();
+  const [expandedSkillName, setExpandedSkillName] = useState<string | null>(
+    null,
+  );
 
-  const { data: skills = [], isLoading } = trpc.skills.list.useQuery(undefined)
-  const openInFinderMutation = trpc.external.openInFinder.useMutation()
+  const { data: skills = [], isLoading } = trpc.skills.list.useQuery(undefined);
+  const openInFinderMutation = trpc.external.openInFinder.useMutation();
 
-  const userSkills = skills.filter((s) => s.source === "user")
-  const projectSkills = skills.filter((s) => s.source === "project")
+  const userSkills = skills.filter((s) => s.source === "user");
+  const projectSkills = skills.filter((s) => s.source === "project");
 
   const handleExpandSkill = (skillName: string) => {
-    setExpandedSkillName(expandedSkillName === skillName ? null : skillName)
-  }
+    setExpandedSkillName(expandedSkillName === skillName ? null : skillName);
+  };
 
   const handleOpenInFinder = (path: string) => {
-    openInFinderMutation.mutate(path)
-  }
+    openInFinderMutation.mutate(path);
+  };
 
   return (
     <div className="p-6 space-y-6 overflow-y-auto max-h-[70vh]">
@@ -75,7 +77,14 @@ export function AgentsSkillsTab() {
               No skills found
             </p>
             <p className="text-xs text-muted-foreground">
-              Add skills to <code className="px-1 py-0.5 bg-muted rounded">~/.claude/skills/</code> or <code className="px-1 py-0.5 bg-muted rounded">.claude/skills/</code>
+              Add skills to{" "}
+              <code className="px-1 py-0.5 bg-muted rounded">
+                ~/.claude/skills/
+              </code>{" "}
+              or{" "}
+              <code className="px-1 py-0.5 bg-muted rounded">
+                .claude/skills/
+              </code>
             </p>
           </div>
         ) : (
@@ -134,7 +143,9 @@ export function AgentsSkillsTab() {
             How to use Skills
           </h4>
           <p className="text-xs text-muted-foreground">
-            Mention a skill in chat with <code className="px-1 py-0.5 bg-muted rounded">@skill-name</code> or ask Claude to use it directly.
+            Mention a skill in chat with{" "}
+            <code className="px-1 py-0.5 bg-muted rounded">@skill-name</code> or
+            ask Claude to use it directly.
           </p>
         </div>
         <div>
@@ -142,12 +153,17 @@ export function AgentsSkillsTab() {
             Creating Skills
           </h4>
           <p className="text-xs text-muted-foreground">
-            Create a folder with a <code className="px-1 py-0.5 bg-muted rounded">SKILL.md</code> file in <code className="px-1 py-0.5 bg-muted rounded">~/.claude/skills/your-skill/</code>
+            Create a folder with a{" "}
+            <code className="px-1 py-0.5 bg-muted rounded">SKILL.md</code> file
+            in{" "}
+            <code className="px-1 py-0.5 bg-muted rounded">
+              ~/.claude/skills/your-skill/
+            </code>
           </p>
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function SkillRow({
@@ -156,10 +172,15 @@ function SkillRow({
   onToggle,
   onOpenInFinder,
 }: {
-  skill: { name: string; description: string; source: "user" | "project"; path: string }
-  isExpanded: boolean
-  onToggle: () => void
-  onOpenInFinder: () => void
+  skill: {
+    name: string;
+    description: string;
+    source: "user" | "project";
+    path: string;
+  };
+  isExpanded: boolean;
+  onToggle: () => void;
+  onOpenInFinder: () => void;
 }) {
   return (
     <div>
@@ -200,11 +221,13 @@ function SkillRow({
             <div className="px-4 pb-4 pt-0 border-t border-border bg-muted/20">
               <div className="pt-3 space-y-2">
                 <div>
-                  <span className="text-xs font-medium text-foreground">Path</span>
+                  <span className="text-xs font-medium text-foreground">
+                    Path
+                  </span>
                   <button
                     onClick={(e) => {
-                      e.stopPropagation()
-                      onOpenInFinder()
+                      e.stopPropagation();
+                      onOpenInFinder();
                     }}
                     className="block text-xs text-muted-foreground font-mono mt-0.5 break-all text-left hover:text-foreground hover:underline transition-colors cursor-pointer"
                   >
@@ -212,9 +235,15 @@ function SkillRow({
                   </button>
                 </div>
                 <div>
-                  <span className="text-xs font-medium text-foreground">Usage</span>
+                  <span className="text-xs font-medium text-foreground">
+                    Usage
+                  </span>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Type <code className="px-1 py-0.5 bg-muted rounded">@{skill.name}</code> in chat or ask Claude to use the {skill.name} skill.
+                    Type{" "}
+                    <code className="px-1 py-0.5 bg-muted rounded">
+                      @{skill.name}
+                    </code>{" "}
+                    in chat or ask Claude to use the {skill.name} skill.
                   </p>
                 </div>
               </div>
@@ -223,5 +252,5 @@ function SkillRow({
         )}
       </AnimatePresence>
     </div>
-  )
+  );
 }

@@ -1,20 +1,24 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { GitBranch } from "lucide-react"
+import { GitBranch } from "lucide-react";
+import { useState } from "react";
+import {
+  CheckIcon,
+  IconChevronDown,
+  LaptopIcon,
+} from "../../../components/ui/icons";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "../../../components/ui/popover"
-import { IconChevronDown, CheckIcon, LaptopIcon } from "../../../components/ui/icons"
-import { cn } from "../../../lib/utils"
-import type { WorkMode } from "../atoms"
+} from "../../../components/ui/popover";
+import { cn } from "../../../lib/utils";
+import type { WorkMode } from "../atoms";
 
 interface WorkModeSelectorProps {
-  value: WorkMode
-  onChange: (mode: WorkMode) => void
-  disabled?: boolean
+  value: WorkMode;
+  onChange: (mode: WorkMode) => void;
+  disabled?: boolean;
 }
 
 const workModeOptions = [
@@ -28,16 +32,17 @@ const workModeOptions = [
     label: "Worktree",
     icon: GitBranch,
   },
-]
+];
 
 export function WorkModeSelector({
   value,
   onChange,
   disabled,
 }: WorkModeSelectorProps) {
-  const [open, setOpen] = useState(false)
-  const selectedOption = workModeOptions.find((opt) => opt.id === value) || workModeOptions[1]
-  const Icon = selectedOption.icon
+  const [open, setOpen] = useState(false);
+  const selectedOption =
+    workModeOptions.find((opt) => opt.id === value) || workModeOptions[1];
+  const Icon = selectedOption.icon;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -57,29 +62,29 @@ export function WorkModeSelector({
       </PopoverTrigger>
       <PopoverContent className="w-[140px] min-w-[140px]" align="start">
         {workModeOptions.map((option) => {
-          const OptionIcon = option.icon
-          const isSelected = value === option.id
+          const OptionIcon = option.icon;
+          const isSelected = value === option.id;
           return (
             <button
               key={option.id}
               onClick={() => {
-                onChange(option.id)
-                setOpen(false)
+                onChange(option.id);
+                setOpen(false);
               }}
               className={cn(
                 "flex items-center gap-1.5 min-h-[32px] py-[5px] px-1.5 mx-1 w-[calc(100%-8px)] text-sm text-left rounded-md cursor-default select-none outline-none transition-colors",
                 isSelected
                   ? "dark:bg-neutral-800 text-foreground"
-                  : "dark:hover:bg-neutral-800 hover:text-foreground"
+                  : "dark:hover:bg-neutral-800 hover:text-foreground",
               )}
             >
               <OptionIcon className="h-4 w-4 text-muted-foreground shrink-0" />
               <span className="flex-1">{option.label}</span>
               {isSelected && <CheckIcon className="h-4 w-4 shrink-0" />}
             </button>
-          )
+          );
         })}
       </PopoverContent>
     </Popover>
-  )
+  );
 }

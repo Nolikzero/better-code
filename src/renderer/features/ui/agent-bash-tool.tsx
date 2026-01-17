@@ -1,61 +1,57 @@
-import { memo, useState, useMemo } from "react"
-import { Check, X } from "lucide-react"
-import {
-  IconSpinner,
-  ExpandIcon,
-  CollapseIcon,
-} from "../../icons"
-import { TextShimmer } from "../../components/ui/text-shimmer"
-import { getToolStatus } from "./agent-tool-registry"
-import { cn } from "../../lib/utils"
+import { Check, X } from "lucide-react";
+import { memo, useMemo, useState } from "react";
+import { TextShimmer } from "../../components/ui/text-shimmer";
+import { CollapseIcon, ExpandIcon, IconSpinner } from "../../icons";
+import { cn } from "../../lib/utils";
+import { getToolStatus } from "./agent-tool-registry";
 
 interface AgentBashToolProps {
-  part: any
-  chatStatus?: string
+  part: any;
+  chatStatus?: string;
 }
 
 // Extract command summary - first word of each command in a pipeline
 function extractCommandSummary(command: string): string {
   // First, normalize line continuations (backslash + newline) into single line
-  const normalizedCommand = command.replace(/\\\s*\n\s*/g, " ")
-  const parts = normalizedCommand.split(/\s*(?:&&|\|\||;|\|)\s*/)
-  const firstWords = parts.map((p) => p.trim().split(/\s+/)[0]).filter(Boolean)
+  const normalizedCommand = command.replace(/\\\s*\n\s*/g, " ");
+  const parts = normalizedCommand.split(/\s*(?:&&|\|\||;|\|)\s*/);
+  const firstWords = parts.map((p) => p.trim().split(/\s+/)[0]).filter(Boolean);
   // Limit to first 4 commands to keep it concise
-  const limited = firstWords.slice(0, 4)
+  const limited = firstWords.slice(0, 4);
   if (firstWords.length > 4) {
-    return limited.join(", ") + "..."
+    return `${limited.join(", ")}...`;
   }
-  return limited.join(", ")
+  return limited.join(", ");
 }
 
 export const AgentBashTool = memo(function AgentBashTool({
   part,
   chatStatus,
 }: AgentBashToolProps) {
-  const [isOutputExpanded, setIsOutputExpanded] = useState(false)
-  const { isPending } = getToolStatus(part, chatStatus)
+  const [isOutputExpanded, setIsOutputExpanded] = useState(false);
+  const { isPending } = getToolStatus(part, chatStatus);
 
-  const command = part.input?.command || ""
-  const stdout = part.output?.stdout || part.output?.output || ""
-  const stderr = part.output?.stderr || ""
-  const exitCode = part.output?.exitCode ?? part.output?.exit_code
+  const command = part.input?.command || "";
+  const stdout = part.output?.stdout || part.output?.output || "";
+  const stderr = part.output?.stderr || "";
+  const exitCode = part.output?.exitCode ?? part.output?.exit_code;
 
   // For bash tools, success/error is determined by exitCode, not by state
   // exitCode 0 = success, anything else (or undefined if no output yet) = error
-  const isSuccess = exitCode === 0
-  const isError = exitCode !== undefined && exitCode !== 0
+  const isSuccess = exitCode === 0;
+  const isError = exitCode !== undefined && exitCode !== 0;
 
   // Determine if we have any output
-  const hasOutput = stdout || stderr
+  const hasOutput = stdout || stderr;
 
   // Memoize command summary to avoid recalculation on every render
   const commandSummary = useMemo(
     () => extractCommandSummary(command),
     [command],
-  )
+  );
 
   // Check if command input is still being streamed
-  const isInputStreaming = part.state === "input-streaming"
+  const isInputStreaming = part.state === "input-streaming";
 
   // If command is still being generated (input-streaming state), show like other tools
   // Use isPending to stop shimmer when chat is stopped (consistent with other tools)
@@ -80,7 +76,7 @@ export const AgentBashTool = memo(function AgentBashTool({
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -185,5 +181,5 @@ export const AgentBashTool = memo(function AgentBashTool({
         )}
       </div>
     </div>
-  )
-})
+  );
+});

@@ -1,13 +1,13 @@
-"use client"
+"use client";
 
-import { useId } from "react"
-import { cn } from "../lib/utils"
+import { useId } from "react";
+import { cn } from "../lib/utils";
 
 // Framework icon components with brand colors
 // Based on language from GitHub API + common framework detection
 
 interface FrameworkIconProps {
-  className?: string
+  className?: string;
 }
 
 // Next.js - Black circle with N arrow
@@ -64,7 +64,7 @@ export function NextjsIcon({ className }: FrameworkIconProps) {
         </linearGradient>
       </defs>
     </svg>
-  )
+  );
 }
 
 // Vite - Cyan to purple gradient with yellow lightning
@@ -107,7 +107,7 @@ export function ViteIcon({ className }: FrameworkIconProps) {
         fill="url(#vite_gradient_b)"
       />
     </svg>
-  )
+  );
 }
 
 // React - Blue #087EA4
@@ -130,7 +130,7 @@ export function ReactIcon({ className }: FrameworkIconProps) {
         />
       </g>
     </svg>
-  )
+  );
 }
 
 // Vue - Green with dark inner
@@ -154,7 +154,7 @@ export function VueIcon({ className }: FrameworkIconProps) {
         fill="#35495E"
       />
     </svg>
-  )
+  );
 }
 
 // Angular - Red/Purple gradient
@@ -198,7 +198,7 @@ export function AngularIcon({ className }: FrameworkIconProps) {
         d="m241 43-9 136L149 0l92 43Zm-58 176-62 36-63-36 12-31h101l12 31ZM121 68l32 80H88l33-80ZM9 179 0 43 92 0 9 179Z"
       />
     </svg>
-  )
+  );
 }
 
 // Svelte - Orange with white inner
@@ -218,7 +218,7 @@ export function SvelteIcon({ className }: FrameworkIconProps) {
         fill="#FFF"
       />
     </svg>
-  )
+  );
 }
 
 // Astro - Dark rocket shape
@@ -230,7 +230,7 @@ export function AstroIcon({ className }: FrameworkIconProps) {
         d="M27.59 91.136c-4.834-4.418-6.246-13.703-4.232-20.429 3.492 4.241 8.33 5.584 13.342 6.343 7.737 1.17 15.336.732 22.523-2.804.822-.405 1.582-.943 2.48-1.489.675 1.957.85 3.932.615 5.943-.573 4.896-3.01 8.678-6.885 11.545-1.55 1.147-3.19 2.172-4.79 3.253-4.917 3.323-6.247 7.22-4.4 12.888.044.139.084.277.183.614-2.51-1.124-4.344-2.76-5.742-4.911-1.475-2.27-2.177-4.78-2.214-7.498-.019-1.322-.019-2.656-.197-3.96-.434-3.178-1.926-4.601-4.737-4.683-2.884-.084-5.166 1.699-5.771 4.507-.046.216-.113.429-.18.68l.004.001ZM0 69.587s14.314-6.973 28.668-6.973L39.49 29.12c.405-1.62 1.588-2.72 2.924-2.72 1.335 0 2.518 1.1 2.924 2.72L56.16 62.614c17 0 28.668 6.973 28.668 6.973S60.514 3.352 60.467 3.219C59.769 1.261 58.591 0 57.003 0H27.827c-1.588 0-2.718 1.261-3.464 3.22C24.311 3.35 0 69.586 0 69.586Z"
       />
     </svg>
-  )
+  );
 }
 
 // Remix - Dark R shape
@@ -242,7 +242,7 @@ export function RemixIcon({ className }: FrameworkIconProps) {
         d="M141.675 0C218.047 0 256 36.35 256 94.414c0 43.43-26.707 71.753-62.785 76.474 30.455 6.137 48.259 23.604 51.54 58.065l.474 6.337.415 5.924.358 5.542.249 4.179.267 4.93.138 2.814.198 4.47.159 4.222.079 2.427.107 3.888.092 4.446.033 2.148.06 6.226.02 6.496v3.885h-78.758l.004-1.62.028-3.147.047-3.065.136-7.424.035-2.489.027-3.902-.004-2.496-.023-2.617-.032-2.054-.064-2.876-.094-3.05-.125-3.242-.16-3.455-.096-1.813-.16-2.833-.186-2.976-.287-4.204-.247-3.342a116.56 116.56 0 0 0-.247-3.02l-.202-1.934c-2.6-22.827-11.655-32.157-27.163-35.269l-1.307-.245a60.184 60.184 0 0 0-2.704-.408l-1.397-.164c-.236-.025-.472-.05-.71-.073l-1.442-.127-1.471-.103-1.502-.081-1.514-.058-1.544-.039-1.574-.018L0 198.74V136.9h127.62c2.086 0 4.108-.04 6.066-.12l1.936-.095 1.893-.122 1.85-.15c.305-.028.608-.056.909-.086l1.785-.193a86.3 86.3 0 0 0 3.442-.475l1.657-.28c20.709-3.755 31.063-14.749 31.063-36.2 0-24.075-16.867-38.666-50.602-38.666H0V0h141.675ZM83.276 250.785c10.333 0 14.657 5.738 16.197 11.23l.203.79.167.782.109.617.046.306.078.603.058.59.023.29.031.569.01.278.008.54v29.507H0v-46.102h83.276Z"
       />
     </svg>
-  )
+  );
 }
 
 // Gatsby - Purple #64328B
@@ -254,7 +254,7 @@ export function GatsbyIcon({ className }: FrameworkIconProps) {
         d="M64 0C28.7 0 0 28.7 0 64s28.7 64 64 64 64-28.7 64-64S99.3 0 64 0zM13.2 64 64 114.8c-28.1 0-50.8-22.7-50.8-50.8zm62.2 49.5-60.9-61C19.7 30 39.9 13.2 64 13.2c16.6 0 31.3 7.9 40.5 20.2L97 40.6c-7.3-10.4-19.3-17.1-33-17.1-17.6 0-32.5 11.2-38.1 26.8C33.1 57 75.4 98.8 78.1 102c12.7-4.7 22.3-15.5 25.4-28.9H81.9v-9.4l33 .2c-.1 24.3-16.9 44.5-39.5 49.6z"
       />
     </svg>
-  )
+  );
 }
 
 // Nuxt - Green #00DC82
@@ -270,7 +270,7 @@ export function NuxtIcon({ className }: FrameworkIconProps) {
         d="M143.618 167.029h95.166c3.023 0 5.992-.771 8.61-2.237a16.963 16.963 0 0 0 6.302-6.115 16.324 16.324 0 0 0 2.304-8.352c0-2.932-.799-5.811-2.312-8.35L189.778 34.6a16.966 16.966 0 0 0-6.301-6.113 17.626 17.626 0 0 0-8.608-2.238c-3.023 0-5.991.772-8.609 2.238a16.964 16.964 0 0 0-6.3 6.113l-16.342 27.473-31.95-53.724a16.973 16.973 0 0 0-6.304-6.112A17.638 17.638 0 0 0 96.754 0c-3.022 0-5.992.772-8.61 2.237a16.973 16.973 0 0 0-6.303 6.112L2.31 141.975A16.302 16.302 0 0 0 0 150.325c0 2.932.793 5.813 2.304 8.352a16.964 16.964 0 0 0 6.302 6.115 17.628 17.628 0 0 0 8.61 2.237h59.737c23.669 0 41.123-10.084 53.134-29.758l29.159-48.983 15.618-26.215 46.874 78.742h-62.492l-15.628 26.214Zm-67.64-26.24-41.688-.01L96.782 35.796l31.181 52.492-20.877 35.084c-7.976 12.765-17.037 17.416-31.107 17.416Z"
       />
     </svg>
-  )
+  );
 }
 
 // Turbo/Turborepo - Black with gradient
@@ -301,7 +301,7 @@ export function TurboIcon({ className }: FrameworkIconProps) {
         </linearGradient>
       </defs>
     </svg>
-  )
+  );
 }
 
 // TypeScript - Blue #007acc
@@ -317,14 +317,14 @@ export function TypeScriptIcon({ className }: FrameworkIconProps) {
         fill="#007acc"
       />
     </svg>
-  )
+  );
 }
 
 // JavaScript - Yellow JS logo #f6de19 (updated)
 export function JavaScriptIcon({ className }: FrameworkIconProps) {
   // Generate unique ID for clipPath to avoid conflicts when multiple icons are rendered
-  const clipId = useId()
-  
+  const clipId = useId();
+
   return (
     <svg
       viewBox="0 0 800 800"
@@ -344,7 +344,7 @@ export function JavaScriptIcon({ className }: FrameworkIconProps) {
         </clipPath>
       </defs>
     </svg>
-  )
+  );
 }
 
 // Python - Blue/Yellow gradients
@@ -384,7 +384,7 @@ export function PythonIcon({ className }: FrameworkIconProps) {
         </linearGradient>
       </defs>
     </svg>
-  )
+  );
 }
 
 // Go - Black
@@ -404,17 +404,13 @@ export function GoIcon({ className }: FrameworkIconProps) {
         </g>
       </g>
     </svg>
-  )
+  );
 }
 
 // Markdown - Blue info circle icon (for README files)
 export function MarkdownInfoIcon({ className }: FrameworkIconProps) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      className={cn("w-4 h-4", className)}
-    >
+    <svg viewBox="0 0 24 24" fill="none" className={cn("w-4 h-4", className)}>
       <g transform="scale(1.1) translate(-1.2, -1.2)">
         <path
           d="M11 11H12V16M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"
@@ -431,7 +427,7 @@ export function MarkdownInfoIcon({ className }: FrameworkIconProps) {
         />
       </g>
     </svg>
-  )
+  );
 }
 
 // Markdown - Standard markdown icon (for regular .md/.mdx files)
@@ -450,7 +446,7 @@ export function MarkdownIcon({ className }: FrameworkIconProps) {
         />
       </g>
     </svg>
-  )
+  );
 }
 
 // Rust - Black gear shape
@@ -462,7 +458,7 @@ export function RustIcon({ className }: FrameworkIconProps) {
         d="M218.46 109.358l-9.062-5.614c-.076-.882-.162-1.762-.258-2.642l7.803-7.265a3.107 3.107 0 00.933-2.89 3.093 3.093 0 00-1.967-2.312l-9.97-3.715c-.25-.863-.512-1.72-.781-2.58l6.214-8.628a3.114 3.114 0 00-.592-4.263 3.134 3.134 0 00-1.431-.637l-10.507-1.709a80.869 80.869 0 00-1.263-2.353l4.417-9.7a3.12 3.12 0 00-.243-3.035 3.106 3.106 0 00-2.705-1.385l-10.671.372a85.152 85.152 0 00-1.685-2.044l2.456-10.381a3.125 3.125 0 00-3.762-3.763l-10.384 2.456a88.996 88.996 0 00-2.047-1.684l.373-10.671a3.11 3.11 0 00-1.385-2.704 3.127 3.127 0 00-3.034-.246l-9.681 4.417c-.782-.429-1.567-.854-2.353-1.265l-1.713-10.506a3.098 3.098 0 00-1.887-2.373 3.108 3.108 0 00-3.014.35l-8.628 6.213c-.85-.27-1.703-.53-2.56-.778l-3.716-9.97a3.111 3.111 0 00-2.311-1.97 3.134 3.134 0 00-2.89.933l-7.266 7.802a93.746 93.746 0 00-2.643-.258l-5.614-9.082A3.125 3.125 0 00111.97 4c-1.09 0-2.085.56-2.642 1.478l-5.615 9.081a93.32 93.32 0 00-2.642.259l-7.266-7.802a3.13 3.13 0 00-2.89-.933 3.106 3.106 0 00-2.312 1.97l-3.715 9.97c-.857.247-1.71.506-2.56.778L73.7 12.588a3.101 3.101 0 00-3.014-.35A3.127 3.127 0 0068.8 14.61l-1.713 10.506c-.79.41-1.575.832-2.353 1.265l-9.681-4.417a3.125 3.125 0 00-4.42 2.95l.372 10.67c-.69.553-1.373 1.115-2.048 1.685l-10.383-2.456a3.143 3.143 0 00-2.93.832 3.124 3.124 0 00-.833 2.93l2.436 10.383a93.897 93.897 0 00-1.68 2.043l-10.672-.372a3.138 3.138 0 00-2.704 1.385 3.126 3.126 0 00-.246 3.035l4.418 9.7c-.43.779-.855 1.563-1.266 2.353l-10.507 1.71a3.097 3.097 0 00-2.373 1.886 3.117 3.117 0 00.35 3.013l6.214 8.628a89.12 89.12 0 00-.78 2.58l-9.97 3.715a3.117 3.117 0 00-1.035 5.202l7.803 7.265c-.098.879-.184 1.76-.258 2.642l-9.062 5.614A3.122 3.122 0 004 112.021c0 1.092.56 2.084 1.478 2.642l9.062 5.614c.074.882.16 1.762.258 2.642l-7.803 7.265a3.117 3.117 0 001.034 5.201l9.97 3.716a110 110 0 00.78 2.58l-6.212 8.627a3.112 3.112 0 00.6 4.27c.419.33.916.547 1.443.63l10.507 1.709c.407.792.83 1.576 1.265 2.353l-4.417 9.68a3.126 3.126 0 002.95 4.42l10.65-.374c.553.69 1.115 1.372 1.685 2.047l-2.435 10.383a3.09 3.09 0 00.831 2.91 3.117 3.117 0 002.931.83l10.384-2.436a82.268 82.268 0 002.047 1.68l-.371 10.671a3.11 3.11 0 001.385 2.704 3.125 3.125 0 003.034.241l9.681-4.416c.779.432 1.563.854 2.353 1.265l1.713 10.505a3.147 3.147 0 001.887 2.395 3.111 3.111 0 003.014-.349l8.628-6.213c.853.271 1.71.535 2.58.783l3.716 9.969a3.112 3.112 0 002.312 1.967 3.112 3.112 0 002.89-.933l7.266-7.802c.877.101 1.761.186 2.642.264l5.615 9.061a3.12 3.12 0 002.642 1.478 3.165 3.165 0 002.663-1.478l5.614-9.061c.884-.078 1.765-.163 2.643-.264l7.265 7.802a3.106 3.106 0 002.89.933 3.105 3.105 0 002.312-1.967l3.716-9.969c.863-.248 1.719-.512 2.58-.783l8.629 6.213a3.12 3.12 0 004.9-2.045l1.713-10.506c.793-.411 1.577-.838 2.353-1.265l9.681 4.416a3.13 3.13 0 003.035-.241 3.126 3.126 0 001.385-2.704l-.372-10.671a81.794 81.794 0 002.046-1.68l10.383 2.436a3.123 3.123 0 003.763-3.74l-2.436-10.382a84.588 84.588 0 001.68-2.048l10.672.374a3.104 3.104 0 002.704-1.385 3.118 3.118 0 00.244-3.035l-4.417-9.68c.43-.779.852-1.563 1.263-2.353l10.507-1.709a3.08 3.08 0 002.373-1.886 3.11 3.11 0 00-.35-3.014l-6.214-8.627c.272-.857.532-1.717.781-2.58l9.97-3.716a3.109 3.109 0 001.967-2.311 3.107 3.107 0 00-.933-2.89l-7.803-7.265c.096-.88.182-1.761.258-2.642l9.062-5.614a3.11 3.11 0 001.478-2.642 3.157 3.157 0 00-1.476-2.663h-.064zm-60.687 75.337c-3.468-.747-5.656-4.169-4.913-7.637a6.412 6.412 0 017.617-4.933c3.468.741 5.676 4.169 4.933 7.637a6.414 6.414 0 01-7.617 4.933h-.02zm-3.076-20.847c-3.158-.677-6.275 1.334-6.936 4.5l-3.22 15.026c-9.929 4.5-21.055 7.018-32.614 7.018-11.89 0-23.12-2.622-33.234-7.328l-3.22-15.026c-.677-3.158-3.778-5.18-6.936-4.499l-13.273 2.848a80.222 80.222 0 01-6.853-8.091h64.61c.731 0 1.218-.132 1.218-.797v-22.91c0-.665-.487-.797-1.218-.797H94.133v-14.469h20.415c1.864 0 9.97.533 12.551 10.898.811 3.179 2.601 13.54 3.818 16.863 1.214 3.715 6.152 11.146 11.415 11.146h32.202c.365 0 .755-.041 1.166-.116a80.56 80.56 0 01-7.307 8.587l-13.583-2.911-.113.058zm-89.38 20.537a6.407 6.407 0 01-7.617-4.933c-.74-3.467 1.462-6.894 4.934-7.637a6.417 6.417 0 017.617 4.933c.74 3.468-1.464 6.894-4.934 7.637zm-24.564-99.28a6.438 6.438 0 01-3.261 8.484c-3.241 1.438-7.019-.025-8.464-3.261-1.445-3.237.025-7.039 3.262-8.483a6.416 6.416 0 018.463 3.26zM33.22 102.94l13.83-6.15c2.952-1.311 4.294-4.769 2.972-7.72l-2.848-6.44H58.36v50.362h-22.5a79.158 79.158 0 01-3.014-21.672c0-2.869.155-5.697.452-8.483l-.08.103zm60.687-4.892v-14.86h26.629c1.376 0 9.722 1.59 9.722 7.822 0 5.18-6.399 7.038-11.663 7.038h-24.77.082zm96.811 13.375c0 1.973-.072 3.922-.216 5.862h-8.113c-.811 0-1.137.532-1.137 1.327v3.715c0 8.752-4.934 10.671-9.268 11.146-4.129.464-8.691-1.726-9.248-4.252-2.436-13.684-6.482-16.595-12.881-21.672 7.948-5.036 16.204-12.487 16.204-22.498 0-10.753-7.369-17.523-12.385-20.847-7.059-4.644-14.862-5.572-16.968-5.572H52.899c11.374-12.673 26.835-21.673 44.174-24.975l9.887 10.361a5.849 5.849 0 008.278.19l11.064-10.568c23.119 4.314 42.729 18.721 54.082 38.598l-7.576 17.09c-1.306 2.951.027 6.419 2.973 7.72l14.573 6.48c.255 2.607.383 5.224.384 7.843l-.021.052zM106.912 24.94a6.398 6.398 0 019.062.209 6.437 6.437 0 01-.213 9.082 6.396 6.396 0 01-9.062-.21 6.436 6.436 0 01.213-9.083v.002zm75.137 60.476a6.402 6.402 0 018.463-3.26 6.425 6.425 0 013.261 8.482 6.402 6.402 0 01-8.463 3.261 6.425 6.425 0 01-3.261-8.483z"
       />
     </svg>
-  )
+  );
 }
 
 // CSS - Blue hashtag symbol #519ABA
@@ -478,7 +474,7 @@ export function CSSIcon({ className }: FrameworkIconProps) {
         fill="#519ABA"
       />
     </svg>
-  )
+  );
 }
 
 // HTML - Orange angle brackets
@@ -499,7 +495,7 @@ export function HTMLIcon({ className }: FrameworkIconProps) {
         fill="#e37834"
       />
     </svg>
-  )
+  );
 }
 
 // SCSS/Sass - Pink #cd6799
@@ -515,7 +511,7 @@ export function SCSSIcon({ className }: FrameworkIconProps) {
         fill="#cd6799"
       />
     </svg>
-  )
+  );
 }
 
 // JSON - Yellow brackets #fbc02d
@@ -535,7 +531,7 @@ export function JSONIcon({ className }: FrameworkIconProps) {
         fill="#fbc02d"
       />
     </svg>
-  )
+  );
 }
 
 // YAML - Purple #A074C4
@@ -552,7 +548,7 @@ export function YAMLIcon({ className }: FrameworkIconProps) {
         fill="#A074C4"
       />
     </svg>
-  )
+  );
 }
 
 // Shell/Bash - Green dollar symbol #8DC149
@@ -570,7 +566,7 @@ export function ShellIcon({ className }: FrameworkIconProps) {
         fill="#8DC149"
       />
     </svg>
-  )
+  );
 }
 
 // SQL - Pink database symbol #F55385
@@ -587,7 +583,7 @@ export function SQLIcon({ className }: FrameworkIconProps) {
         fill="#F55385"
       />
     </svg>
-  )
+  );
 }
 
 // GraphQL - Pink logo #E535AB
@@ -607,7 +603,7 @@ export function GraphQLIcon({ className }: FrameworkIconProps) {
         />
       </g>
     </svg>
-  )
+  );
 }
 
 // Prisma - Blue logo #519ABA
@@ -624,7 +620,7 @@ export function PrismaIcon({ className }: FrameworkIconProps) {
         fillRule="evenodd"
       />
     </svg>
-  )
+  );
 }
 
 // Docker - Cyan logo #0DB7ED
@@ -641,7 +637,7 @@ export function DockerIcon({ className }: FrameworkIconProps) {
         d="M6.94221099,14.9002344 C6.9980621,14.9002344 7.05128211,14.9107588 7.10043586,14.9297745 C7.04721586,14.9606302 7.01109801,15.018335 7.01109801,15.0842919 C7.01109801,15.1828984 7.09098782,15.2626686 7.18959432,15.2626686 C7.25710599,15.2626686 7.31570779,15.2251754 7.34608506,15.1698027 C7.36743286,15.2214082 7.37939241,15.2780367 7.37939241,15.3374756 C7.37939241,15.578939 7.18361455,15.774657 6.94221099,15.774657 C6.70080744,15.774657 6.50496978,15.578939 6.50496978,15.3374756 C6.50496978,15.0959525 6.70080744,14.9002344 6.94221099,14.9002344 L6.94221099,14.9002344 Z M6.94221099,16.0853662 C6.52978585,16.0853662 6.19420083,15.7499008 6.19420083,15.3374756 C6.19420083,14.9250505 6.52978585,14.5895253 6.94221099,14.5895253 C7.35457634,14.5895253 7.69010156,14.9250505 7.69010156,15.3374756 C7.69010156,15.7499008 7.35457634,16.0853662 6.94221099,16.0853662 L6.94221099,16.0853662 Z M20.3859431,11.1838037 C18.2619865,16.8117894 13.4653093,19.318631 7.81023526,19.318631 C5.13823222,19.318631 3.00656172,18.3995992 1.64323262,16.8672219 L1.65327865,16.8605843 C2.04609012,16.880497 2.39758135,16.8872541 2.75439457,16.8872541 C3.08065114,16.8872541 3.39979178,16.8838457 3.6953721,16.8672219 C3.72108514,16.8657867 3.75325633,16.8621989 3.77878997,16.8605843 C3.77902916,16.8605245 3.86998155,16.8546046 3.82549202,16.853887 C4.57667146,16.8075437 5.15892224,16.7031368 5.70188589,16.5482008 C5.70200548,16.548141 5.70212508,16.548141 5.70224467,16.5480812 C5.80091098,16.5198567 5.89658739,16.4901372 5.98825735,16.4583846 C6.09081051,16.4228049 6.14510687,16.3108635 6.109587,16.2083104 C6.07406714,16.1056974 5.96218553,16.0512815 5.85957258,16.0869807 C5.16992503,16.3259326 4.26010213,16.4574876 3.14505333,16.4821841 L3.14475434,16.4821841 C2.57739321,16.4947416 1.95717085,16.4797922 1.28450587,16.4365584 L1.28444607,16.4365584 C1.14529669,16.2507668 1.01649231,16.0576798 0.89869073,15.8577161 L0.71248051,15.5172277 C0.149903198,14.4112083 -0.0964037696,13.1191582 0.0343141305,11.7160038 L16.3965356,11.7160038 C17.7407294,11.7160038 19.0534696,11.2143604 19.6764427,10.6609919 C18.5601381,9.75332174 18.670764,7.59731356 19.3822377,6.774616 C19.9997093,7.270758 20.9954018,8.31584342 20.824141,9.64622396 C21.6011531,9.255625 22.9506091,9.06259783 24,9.66816973 C23.3411483,10.9541803 21.8929064,11.3383809 20.3859431,11.1838037 L20.3859431,11.1838037 Z M2.25508329,11.3188869 L4.46771995,11.3188869 L4.46771995,9.1061306 L2.25508329,9.1061306 L2.25508329,11.3188869 Z M4.80808879,11.3188869 L7.02096464,11.3188869 L7.02096464,9.1061306 L4.80808879,9.1061306 L4.80808879,11.3188869 Z M4.80808879,8.76576176 L7.02096464,8.76576176 L7.02096464,6.5530653 L4.80808879,6.5530653 L4.80808879,8.76576176 Z M7.36127369,11.3188869 L9.57402994,11.3188869 L9.57402994,9.1061306 L7.36127369,9.1061306 L7.36127369,11.3188869 Z M7.36127369,8.76576176 L9.57402994,8.76576176 L9.57402994,6.5530653 L7.36127369,6.5530653 L7.36127369,8.76576176 Z M9.91433899,11.3188869 L12.1270952,11.3188869 L12.1270952,9.1061306 L9.91433899,9.1061306 L9.91433899,11.3188869 Z M9.91433899,8.76576176 L12.1270952,8.76576176 L12.1270952,6.5530653 L9.91433899,6.5530653 L9.91433899,8.76576176 Z M9.91433899,6.21275626 L12.1270952,6.21275626 L12.1270952,4 L9.91433899,4 L9.91433899,6.21275626 Z M12.4674043,11.3188869 L14.6801605,11.3188869 L14.6801605,9.1061306 L12.4674043,9.1061306 L12.4674043,11.3188869 Z"
       />
     </svg>
-  )
+  );
 }
 
 // TOML - Gray settings gear #5C5F62
@@ -657,7 +653,7 @@ export function TOMLIcon({ className }: FrameworkIconProps) {
         fill="#5C5F62"
       />
     </svg>
-  )
+  );
 }
 
 // Java - Blue/orange logo
@@ -689,7 +685,7 @@ export function JavaIcon({ className }: FrameworkIconProps) {
         fill="#5382A1"
       />
     </svg>
-  )
+  );
 }
 
 // C - Cyan letter C #40C0E7
@@ -706,7 +702,7 @@ export function CIcon({ className }: FrameworkIconProps) {
         fill="#40C0E7"
       />
     </svg>
-  )
+  );
 }
 
 // C++ - Blue logo with plus signs
@@ -738,7 +734,7 @@ export function CppIcon({ className }: FrameworkIconProps) {
         d="M249.135 148.636h-9.738v9.74h-9.74v-9.74h-9.737V138.9h9.737v-9.738h9.74v9.738h9.738v9.737ZM128 58.847c31.135 0 58.358 16.74 73.17 41.709l.444.759-37.001 21.307c-7.333-12.609-20.978-21.094-36.613-21.094-23.38 0-42.333 18.953-42.333 42.332a42.13 42.13 0 0 0 5.583 21.003c7.297 12.738 21.014 21.33 36.75 21.33 15.659 0 29.325-8.51 36.647-21.153l.241-.423 36.947 21.406c-14.65 25.597-42.228 42.851-73.835 42.851-31.549 0-59.084-17.185-73.754-42.707-7.162-12.459-11.26-26.904-11.26-42.307 0-46.95 38.061-85.013 85.014-85.013Zm75.865 70.314v9.738h9.737v9.737h-9.737v9.74h-9.738v-9.74h-9.738V138.9h9.738v-9.738h9.738Z"
       />
     </svg>
-  )
+  );
 }
 
 // C# - Purple logo with hash symbol
@@ -766,7 +762,7 @@ export function CSharpIcon({ className }: FrameworkIconProps) {
         <path d="M128.46 48.63a94.96 94.96 0 0 1 82.26 47.45l-.16-.27-41.35 23.8A47.28 47.28 0 0 0 129 96.33h-.54a47.3 47.3 0 0 0-47.3 47.3 47.08 47.08 0 0 0 6.23 23.47 47.28 47.28 0 0 0 82.29-.27l-.2.35 41.29 23.91a94.97 94.97 0 0 1-81.25 47.54h-1.06a94.96 94.96 0 0 1-95-95 95 95 0 0 1 95-95z" />
       </g>
     </svg>
-  )
+  );
 }
 
 // PHP - Purple elephant logo #A074C4
@@ -782,7 +778,7 @@ export function PHPIcon({ className }: FrameworkIconProps) {
         fill="#A074C4"
       />
     </svg>
-  )
+  );
 }
 
 // Kotlin - Orange logo #E37834
@@ -800,7 +796,7 @@ export function KotlinIcon({ className }: FrameworkIconProps) {
         fill="#E37834"
       />
     </svg>
-  )
+  );
 }
 
 // Swift - Orange bird logo #D15F3E
@@ -817,7 +813,7 @@ export function SwiftIcon({ className }: FrameworkIconProps) {
         d="M18.1029473,21.0182797 C15.2758951,22.6513915 11.388774,22.8191853 7.4780286,21.143065 C4.31157263,19.7958689 1.6842374,17.43767 -1.77635684e-15,14.7432778 C0.808438798,15.4168759 1.7515972,15.9559966 2.76211541,16.4272729 C6.80079604,18.320253 10.8386286,18.1906218 13.6802189,16.432119 C13.6784016,16.4303017 13.6771901,16.4290902 13.6759786,16.4272729 C9.63378462,13.3282374 6.19795002,9.28604337 3.63803517,5.98529182 C3.09885386,5.44629224 2.69463446,4.77257305 2.29041506,4.16627424 C5.38939007,6.99574946 10.3075644,10.5660614 12.0587981,11.5770642 C8.35400892,7.6693475 5.05265163,2.81907816 5.18712893,2.95355547 C11.0484011,8.88206627 16.5056356,12.2506622 16.5056356,12.2506622 C16.6861501,12.3524288 16.8254735,12.4372343 16.9375379,12.5129535 C17.0556599,12.2124997 17.1592437,11.9005366 17.2464723,11.5770642 C18.1896307,8.14122958 17.1119949,4.23351289 14.7537961,1 C20.2104248,4.30105442 23.4445434,10.4988227 22.0967416,15.6864968 C22.0616079,15.8264259 22.0234454,15.9645377 21.9822542,16.1002266 C21.9980037,16.1190049 22.0137533,16.138389 22.0295029,16.1583789 C24.7238951,19.5269749 23.9830584,23.0972868 23.6462594,22.4236887 C22.1845759,19.5633201 19.4786744,20.4380283 18.1030079,21.0183403 L18.1029473,21.0182797 Z"
       />
     </svg>
-  )
+  );
 }
 
 // Ruby - Red gem logo
@@ -1148,7 +1144,7 @@ export function RubyIcon({ className }: FrameworkIconProps) {
         </linearGradient>
       </defs>
     </svg>
-  )
+  );
 }
 
 // Mintlify - Documentation platform
@@ -1168,7 +1164,7 @@ export function MintlifyIcon({ className }: FrameworkIconProps) {
         fill="#0C8C5E"
       />
     </svg>
-  )
+  );
 }
 
 // GitHub icon
@@ -1181,7 +1177,7 @@ export function GitHubIcon({ className }: FrameworkIconProps) {
     >
       <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
     </svg>
-  )
+  );
 }
 
 // Map language/framework to icon component
@@ -1193,133 +1189,133 @@ export function getFrameworkIcon(
   // First priority: check GitHub topics (most reliable)
   // GitHub topics are user-defined and often include framework names
   if (topics && topics.length > 0) {
-    const topicsLower = topics.map((t) => t.toLowerCase())
+    const topicsLower = topics.map((t) => t.toLowerCase());
 
     // Check for frameworks in topics
     if (topicsLower.includes("mintlify") || topicsLower.includes("docs")) {
-      return <MintlifyIcon />
+      return <MintlifyIcon />;
     }
     if (topicsLower.includes("nextjs") || topicsLower.includes("next")) {
-      return <NextjsIcon />
+      return <NextjsIcon />;
     }
     if (topicsLower.includes("vite") || topicsLower.includes("vitejs")) {
-      return <ViteIcon />
+      return <ViteIcon />;
     }
     if (topicsLower.includes("nuxt") || topicsLower.includes("nuxtjs")) {
-      return <NuxtIcon />
+      return <NuxtIcon />;
     }
     if (topicsLower.includes("remix") || topicsLower.includes("remix-run")) {
-      return <RemixIcon />
+      return <RemixIcon />;
     }
     if (topicsLower.includes("astro") || topicsLower.includes("astrojs")) {
-      return <AstroIcon />
+      return <AstroIcon />;
     }
     if (
       topicsLower.includes("svelte") ||
       topicsLower.includes("sveltekit") ||
       topicsLower.includes("sveltejs")
     ) {
-      return <SvelteIcon />
+      return <SvelteIcon />;
     }
     if (topicsLower.includes("vue") || topicsLower.includes("vuejs")) {
-      return <VueIcon />
+      return <VueIcon />;
     }
     if (topicsLower.includes("angular") || topicsLower.includes("angularjs")) {
-      return <AngularIcon />
+      return <AngularIcon />;
     }
     if (topicsLower.includes("gatsby") || topicsLower.includes("gatsbyjs")) {
-      return <GatsbyIcon />
+      return <GatsbyIcon />;
     }
     if (topicsLower.includes("react") || topicsLower.includes("reactjs")) {
-      return <ReactIcon />
+      return <ReactIcon />;
     }
     if (
       topicsLower.includes("turborepo") ||
       topicsLower.includes("turbo") ||
       topicsLower.includes("monorepo")
     ) {
-      return <TurboIcon />
+      return <TurboIcon />;
     }
   }
 
   // Second priority: check repo name for common framework patterns
-  const name = repoName?.toLowerCase() || ""
+  const name = repoName?.toLowerCase() || "";
 
   // Check for documentation (Mintlify)
   if (name === "docs" || name.includes("-docs") || name.endsWith("docs")) {
-    return <MintlifyIcon />
+    return <MintlifyIcon />;
   }
 
   // Check for monorepo tools
   if (name.includes("turbo") || name.includes("turborepo")) {
-    return <TurboIcon />
+    return <TurboIcon />;
   }
 
   // Check for Next.js patterns
   if (name.includes("next") || name.includes("nextjs")) {
-    return <NextjsIcon />
+    return <NextjsIcon />;
   }
 
   // Check for Vite patterns
   if (name.includes("vite")) {
-    return <ViteIcon />
+    return <ViteIcon />;
   }
 
   // Check for Nuxt patterns
   if (name.includes("nuxt")) {
-    return <NuxtIcon />
+    return <NuxtIcon />;
   }
 
   // Check for Remix patterns
   if (name.includes("remix")) {
-    return <RemixIcon />
+    return <RemixIcon />;
   }
 
   // Check for Astro patterns
   if (name.includes("astro")) {
-    return <AstroIcon />
+    return <AstroIcon />;
   }
 
   // Check for Svelte patterns
   if (name.includes("svelte") || name.includes("sveltekit")) {
-    return <SvelteIcon />
+    return <SvelteIcon />;
   }
 
   // Check for Vue patterns
   if (name.includes("vue")) {
-    return <VueIcon />
+    return <VueIcon />;
   }
 
   // Check for Angular patterns
   if (name.includes("angular") || name.includes("ng-")) {
-    return <AngularIcon />
+    return <AngularIcon />;
   }
 
   // Check for Gatsby patterns
   if (name.includes("gatsby")) {
-    return <GatsbyIcon />
+    return <GatsbyIcon />;
   }
 
   // Map by language as fallback
-  const lang = language?.toLowerCase()
+  const lang = language?.toLowerCase();
 
   switch (lang) {
     case "mdx":
-      return <MintlifyIcon />
+      return <MintlifyIcon />;
     case "typescript":
-      return <TypeScriptIcon />
+      return <TypeScriptIcon />;
     case "javascript":
-      return <JavaScriptIcon />
+      return <JavaScriptIcon />;
     case "python":
-      return <PythonIcon />
+      return <PythonIcon />;
     case "go":
-      return <GoIcon />
+      return <GoIcon />;
     case "rust":
-      return <RustIcon />
+      return <RustIcon />;
     case "vue":
-      return <VueIcon />
+      return <VueIcon />;
     default:
-      return <CodeIcon />
+      return <CodeIcon />;
   }
 }
 
@@ -1333,55 +1329,55 @@ export function getDetectedFrameworkIcon(
   // First check known frameworks
   switch (framework?.toLowerCase()) {
     case "mintlify":
-      return <MintlifyIcon className={className} />
+      return <MintlifyIcon className={className} />;
     case "nextjs":
-      return <NextjsIcon className={className} />
+      return <NextjsIcon className={className} />;
     case "vite":
-      return <ViteIcon className={className} />
+      return <ViteIcon className={className} />;
     case "react":
-      return <ReactIcon className={className} />
+      return <ReactIcon className={className} />;
     case "vue":
-      return <VueIcon className={className} />
+      return <VueIcon className={className} />;
     case "angular":
-      return <AngularIcon className={className} />
+      return <AngularIcon className={className} />;
     case "svelte":
     case "sveltekit":
-      return <SvelteIcon className={className} />
+      return <SvelteIcon className={className} />;
     case "astro":
-      return <AstroIcon className={className} />
+      return <AstroIcon className={className} />;
     case "remix":
-      return <RemixIcon className={className} />
+      return <RemixIcon className={className} />;
     case "gatsby":
-      return <GatsbyIcon className={className} />
+      return <GatsbyIcon className={className} />;
     case "nuxt":
-      return <NuxtIcon className={className} />
+      return <NuxtIcon className={className} />;
     case "turborepo":
     case "turbo":
-      return <TurboIcon className={className} />
+      return <TurboIcon className={className} />;
   }
 
   // If framework is unknown, fall back to language icon
   if (language) {
-    const langLower = language.toLowerCase()
+    const langLower = language.toLowerCase();
     if (langLower === "typescript" || langLower === "ts") {
-      return <TypeScriptIcon className={className} />
+      return <TypeScriptIcon className={className} />;
     }
     if (langLower === "javascript" || langLower === "js") {
-      return <JavaScriptIcon className={className} />
+      return <JavaScriptIcon className={className} />;
     }
     if (langLower === "python" || langLower === "py") {
-      return <PythonIcon className={className} />
+      return <PythonIcon className={className} />;
     }
     if (langLower === "go" || langLower === "golang") {
-      return <GoIcon className={className} />
+      return <GoIcon className={className} />;
     }
     if (langLower === "rust" || langLower === "rs") {
-      return <RustIcon className={className} />
+      return <RustIcon className={className} />;
     }
   }
 
   // Return default logo as final fallback
-  return <CodeIcon className={className} />
+  return <CodeIcon className={className} />;
 }
 
 // Default/Unknown - BetterCode logo (same as canvas sidebar placeholder)
@@ -1415,5 +1411,5 @@ export function CodeIcon({ className }: FrameworkIconProps) {
       {/* Letter B */}
       <path d="M170 130 H 270 C 325.228 130 350 160 350 200 C 350 230 330 250 300 256 C 340 262 360 290 360 326 C 360 370 325.228 382 270 382 H 170 V 130 Z M 230 180 V 230 H 270 C 290 230 300 220 300 205 C 300 190 290 180 270 180 H 230 Z M 230 280 V 332 H 270 C 295 332 310 320 310 306 C 310 290 295 280 270 280 H 230 Z" />
     </svg>
-  )
+  );
 }

@@ -1,15 +1,15 @@
-"use client"
+"use client";
 
-import { memo, useState, useEffect, useCallback, useRef } from "react"
-import { ChevronUp, ChevronDown, CornerDownLeft } from "lucide-react"
-import { Button } from "../../../components/ui/button"
-import { cn } from "../../../lib/utils"
-import type { PendingUserQuestions } from "../atoms"
+import { ChevronDown, ChevronUp, CornerDownLeft } from "lucide-react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { Button } from "../../../components/ui/button";
+import { cn } from "../../../lib/utils";
+import type { PendingUserQuestions } from "../atoms";
 
 interface AgentUserQuestionProps {
-  pendingQuestions: PendingUserQuestions
-  onAnswer: (answers: Record<string, string>) => void
-  onSkip: () => void
+  pendingQuestions: PendingUserQuestions;
+  onAnswer: (answers: Record<string, string>) => void;
+  onSkip: () => void;
 }
 
 export const AgentUserQuestion = memo(function AgentUserQuestion({
@@ -17,127 +17,125 @@ export const AgentUserQuestion = memo(function AgentUserQuestion({
   onAnswer,
   onSkip,
 }: AgentUserQuestionProps) {
-  const { questions, toolUseId } = pendingQuestions
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
-  const [answers, setAnswers] = useState<Record<string, string[]>>({})
-  const [focusedOptionIndex, setFocusedOptionIndex] = useState(0)
-  const [isVisible, setIsVisible] = useState(true)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const prevIndexRef = useRef(currentQuestionIndex)
-  const prevToolUseIdRef = useRef(toolUseId)
+  const { questions, toolUseId } = pendingQuestions;
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [answers, setAnswers] = useState<Record<string, string[]>>({});
+  const [focusedOptionIndex, setFocusedOptionIndex] = useState(0);
+  const [isVisible, setIsVisible] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const prevIndexRef = useRef(currentQuestionIndex);
+  const prevToolUseIdRef = useRef(toolUseId);
 
   // Reset when toolUseId changes (new question set)
   useEffect(() => {
     if (prevToolUseIdRef.current !== toolUseId) {
-      setIsSubmitting(false)
-      setCurrentQuestionIndex(0)
-      setAnswers({})
-      setFocusedOptionIndex(0)
-      prevToolUseIdRef.current = toolUseId
+      setIsSubmitting(false);
+      setCurrentQuestionIndex(0);
+      setAnswers({});
+      setFocusedOptionIndex(0);
+      prevToolUseIdRef.current = toolUseId;
     }
-  }, [toolUseId])
+  }, [toolUseId]);
 
   // Animate on question change
   useEffect(() => {
     if (prevIndexRef.current !== currentQuestionIndex) {
-      setIsVisible(false)
+      setIsVisible(false);
       const timer = setTimeout(() => {
-        setIsVisible(true)
-      }, 50)
-      prevIndexRef.current = currentQuestionIndex
-      return () => clearTimeout(timer)
+        setIsVisible(true);
+      }, 50);
+      prevIndexRef.current = currentQuestionIndex;
+      return () => clearTimeout(timer);
     }
-  }, [currentQuestionIndex])
+  }, [currentQuestionIndex]);
 
   if (questions.length === 0) {
-    return null
+    return null;
   }
 
-  const currentQuestion = questions[currentQuestionIndex]
-  const currentOptions = currentQuestion?.options || []
+  const currentQuestion = questions[currentQuestionIndex];
+  const currentOptions = currentQuestion?.options || [];
 
   const isOptionSelected = (questionText: string, optionLabel: string) => {
-    return answers[questionText]?.includes(optionLabel) || false
-  }
+    return answers[questionText]?.includes(optionLabel) || false;
+  };
 
   // Handle option click - auto-advance for single-select questions
   const handleOptionClick = useCallback(
     (questionText: string, optionLabel: string, questionIndex: number) => {
-      const question = questions[questionIndex]
-      const allowMultiple = question?.multiSelect || false
-      const isLastQuestion = questionIndex === questions.length - 1
+      const question = questions[questionIndex];
+      const allowMultiple = question?.multiSelect || false;
+      const isLastQuestion = questionIndex === questions.length - 1;
 
       setAnswers((prev) => {
-        const currentAnswers = prev[questionText] || []
+        const currentAnswers = prev[questionText] || [];
 
         if (allowMultiple) {
           if (currentAnswers.includes(optionLabel)) {
             return {
               ...prev,
               [questionText]: currentAnswers.filter((l) => l !== optionLabel),
-            }
-          } else {
-            return {
-              ...prev,
-              [questionText]: [...currentAnswers, optionLabel],
-            }
+            };
           }
-        } else {
           return {
             ...prev,
-            [questionText]: [optionLabel],
-          }
+            [questionText]: [...currentAnswers, optionLabel],
+          };
         }
-      })
+        return {
+          ...prev,
+          [questionText]: [optionLabel],
+        };
+      });
 
       // For single-select questions, auto-advance to next question
       if (!allowMultiple && !isLastQuestion) {
         setTimeout(() => {
-          setCurrentQuestionIndex(questionIndex + 1)
-          setFocusedOptionIndex(0)
-        }, 150)
+          setCurrentQuestionIndex(questionIndex + 1);
+          setFocusedOptionIndex(0);
+        }, 150);
       }
     },
     [questions],
-  )
+  );
 
   const handlePrevious = () => {
     if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(currentQuestionIndex - 1)
-      setFocusedOptionIndex(0)
+      setCurrentQuestionIndex(currentQuestionIndex - 1);
+      setFocusedOptionIndex(0);
     }
-  }
+  };
 
   const handleNext = () => {
     if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1)
-      setFocusedOptionIndex(0)
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
+      setFocusedOptionIndex(0);
     }
-  }
+  };
 
   const handleContinue = useCallback(() => {
-    if (isSubmitting) return
+    if (isSubmitting) return;
 
-    const currentAnswer = answers[currentQuestion?.question] || []
-    if (currentAnswer.length === 0) return
+    const currentAnswer = answers[currentQuestion?.question] || [];
+    if (currentAnswer.length === 0) return;
 
     if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1)
-      setFocusedOptionIndex(0)
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
+      setFocusedOptionIndex(0);
     } else {
       // On the last question, validate ALL questions are answered before submit
       const allAnswered = questions.every(
         (q) => (answers[q.question] || []).length > 0,
-      )
+      );
       if (allAnswered) {
-        setIsSubmitting(true)
+        setIsSubmitting(true);
         // Convert answers to SDK format: { questionText: label } or { questionText: "label1, label2" } for multiSelect
-        const formattedAnswers: Record<string, string> = {}
+        const formattedAnswers: Record<string, string> = {};
         for (const question of questions) {
-          const selected = answers[question.question] || []
-          formattedAnswers[question.question] = selected.join(", ")
+          const selected = answers[question.question] || [];
+          formattedAnswers[question.question] = selected.join(", ");
         }
-        onAnswer(formattedAnswers)
+        onAnswer(formattedAnswers);
       }
     }
   }, [
@@ -148,84 +146,84 @@ export const AgentUserQuestion = memo(function AgentUserQuestion({
     currentQuestion?.question,
     isSubmitting,
     pendingQuestions.toolUseId,
-  ])
+  ]);
 
   const handleSkipWithGuard = useCallback(() => {
-    if (isSubmitting) return
-    setIsSubmitting(true)
-    onSkip()
-  }, [isSubmitting, onSkip])
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    onSkip();
+  }, [isSubmitting, onSkip]);
 
   const getOptionNumber = (index: number) => {
-    return String(index + 1)
-  }
+    return String(index + 1);
+  };
 
   const currentQuestionHasAnswer =
-    (answers[currentQuestion?.question] || []).length > 0
+    (answers[currentQuestion?.question] || []).length > 0;
   const allQuestionsAnswered = questions.every(
     (q) => (answers[q.question] || []).length > 0,
-  )
-  const isLastQuestion = currentQuestionIndex === questions.length - 1
+  );
+  const isLastQuestion = currentQuestionIndex === questions.length - 1;
 
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isSubmitting) return
+      if (isSubmitting) return;
 
-      const activeEl = document.activeElement
+      const activeEl = document.activeElement;
       if (
         activeEl instanceof HTMLInputElement ||
         activeEl instanceof HTMLTextAreaElement ||
         activeEl?.getAttribute("contenteditable") === "true"
       ) {
-        return
+        return;
       }
 
       if (e.key === "ArrowDown") {
-        e.preventDefault()
+        e.preventDefault();
         if (focusedOptionIndex < currentOptions.length - 1) {
-          setFocusedOptionIndex(focusedOptionIndex + 1)
+          setFocusedOptionIndex(focusedOptionIndex + 1);
         } else if (currentQuestionIndex < questions.length - 1) {
-          setCurrentQuestionIndex(currentQuestionIndex + 1)
-          setFocusedOptionIndex(0)
+          setCurrentQuestionIndex(currentQuestionIndex + 1);
+          setFocusedOptionIndex(0);
         }
       } else if (e.key === "ArrowUp") {
-        e.preventDefault()
+        e.preventDefault();
         if (focusedOptionIndex > 0) {
-          setFocusedOptionIndex(focusedOptionIndex - 1)
+          setFocusedOptionIndex(focusedOptionIndex - 1);
         } else if (currentQuestionIndex > 0) {
           const prevQuestionOptions =
-            questions[currentQuestionIndex - 1]?.options || []
-          setCurrentQuestionIndex(currentQuestionIndex - 1)
-          setFocusedOptionIndex(prevQuestionOptions.length - 1)
+            questions[currentQuestionIndex - 1]?.options || [];
+          setCurrentQuestionIndex(currentQuestionIndex - 1);
+          setFocusedOptionIndex(prevQuestionOptions.length - 1);
         }
       } else if (e.key === "Enter") {
-        e.preventDefault()
+        e.preventDefault();
         if (currentQuestionHasAnswer) {
-          handleContinue()
+          handleContinue();
         } else if (currentOptions[focusedOptionIndex]) {
           handleOptionClick(
             currentQuestion.question,
             currentOptions[focusedOptionIndex].label,
             currentQuestionIndex,
-          )
+          );
         }
       } else if (e.key >= "1" && e.key <= "9") {
-        const numberIndex = parseInt(e.key, 10) - 1
+        const numberIndex = Number.parseInt(e.key, 10) - 1;
         if (numberIndex >= 0 && numberIndex < currentOptions.length) {
-          e.preventDefault()
+          e.preventDefault();
           handleOptionClick(
             currentQuestion.question,
             currentOptions[numberIndex].label,
             currentQuestionIndex,
-          )
-          setFocusedOptionIndex(numberIndex)
+          );
+          setFocusedOptionIndex(numberIndex);
         }
       }
-    }
+    };
 
-    document.addEventListener("keydown", handleKeyDown)
-    return () => document.removeEventListener("keydown", handleKeyDown)
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [
     currentOptions,
     currentQuestion,
@@ -236,7 +234,7 @@ export const AgentUserQuestion = memo(function AgentUserQuestion({
     handleContinue,
     questions,
     isSubmitting,
-  ])
+  ]);
 
   return (
     <div className="border rounded-t-xl border-b-0 border-border bg-muted/30 overflow-hidden">
@@ -284,7 +282,10 @@ export const AgentUserQuestion = memo(function AgentUserQuestion({
         )}
       >
         <div className="text-[14px] font-[450] text-foreground mb-3 pt-1 px-2">
-          <span className="text-muted-foreground">{currentQuestionIndex + 1}.</span> {currentQuestion?.question}
+          <span className="text-muted-foreground">
+            {currentQuestionIndex + 1}.
+          </span>{" "}
+          {currentQuestion?.question}
         </div>
 
         {/* Options */}
@@ -293,21 +294,21 @@ export const AgentUserQuestion = memo(function AgentUserQuestion({
             const isSelected = isOptionSelected(
               currentQuestion.question,
               option.label,
-            )
-            const isFocused = focusedOptionIndex === optIndex
-            const number = getOptionNumber(optIndex)
+            );
+            const isFocused = focusedOptionIndex === optIndex;
+            const number = getOptionNumber(optIndex);
 
             return (
               <button
                 key={option.label}
                 onClick={() => {
-                  if (isSubmitting) return
+                  if (isSubmitting) return;
                   handleOptionClick(
                     currentQuestion.question,
                     option.label,
                     currentQuestionIndex,
-                  )
-                  setFocusedOptionIndex(optIndex)
+                  );
+                  setFocusedOptionIndex(optIndex);
                 }}
                 disabled={isSubmitting}
                 className={cn(
@@ -342,7 +343,7 @@ export const AgentUserQuestion = memo(function AgentUserQuestion({
                   )}
                 </div>
               </button>
-            )
+            );
           })}
         </div>
       </div>
@@ -378,5 +379,5 @@ export const AgentUserQuestion = memo(function AgentUserQuestion({
         </Button>
       </div>
     </div>
-  )
-})
+  );
+});

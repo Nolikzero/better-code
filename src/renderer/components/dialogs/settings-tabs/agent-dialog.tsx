@@ -1,123 +1,130 @@
-import { useState, useEffect } from "react"
-import { X } from "lucide-react"
-import { motion, AnimatePresence } from "motion/react"
-import { createPortal } from "react-dom"
-import { trpc } from "../../../lib/trpc"
-import { cn } from "../../../lib/utils"
-import { ToolSelector } from "./tool-selector"
+import { X } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { trpc } from "../../../lib/trpc";
+import { cn } from "../../../lib/utils";
+import { ToolSelector } from "./tool-selector";
 
 interface FileAgent {
-  name: string
-  description: string
-  prompt: string
-  tools?: string[]
-  disallowedTools?: string[]
-  model?: "sonnet" | "opus" | "haiku" | "inherit"
-  source: "user" | "project"
-  path: string
+  name: string;
+  description: string;
+  prompt: string;
+  tools?: string[];
+  disallowedTools?: string[];
+  model?: "sonnet" | "opus" | "haiku" | "inherit";
+  source: "user" | "project";
+  path: string;
 }
 
 interface AgentDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  agent: FileAgent | null
-  onSuccess: () => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  agent: FileAgent | null;
+  onSuccess: () => void;
 }
 
-type ToolMode = "all" | "allowlist" | "denylist"
+type ToolMode = "all" | "allowlist" | "denylist";
 
-export function AgentDialog({ open, onOpenChange, agent, onSuccess }: AgentDialogProps) {
-  const [mounted, setMounted] = useState(false)
-  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null)
+export function AgentDialog({
+  open,
+  onOpenChange,
+  agent,
+  onSuccess,
+}: AgentDialogProps) {
+  const [mounted, setMounted] = useState(false);
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
 
   // Form state
-  const [name, setName] = useState("")
-  const [description, setDescription] = useState("")
-  const [prompt, setPrompt] = useState("")
-  const [model, setModel] = useState<"sonnet" | "opus" | "haiku" | "inherit">("inherit")
-  const [source, setSource] = useState<"user" | "project">("user")
-  const [toolMode, setToolMode] = useState<ToolMode>("all")
-  const [selectedTools, setSelectedTools] = useState<string[]>([])
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [prompt, setPrompt] = useState("");
+  const [model, setModel] = useState<"sonnet" | "opus" | "haiku" | "inherit">(
+    "inherit",
+  );
+  const [source, setSource] = useState<"user" | "project">("user");
+  const [toolMode, setToolMode] = useState<ToolMode>("all");
+  const [selectedTools, setSelectedTools] = useState<string[]>([]);
 
   const createMutation = trpc.agents.create.useMutation({
     onSuccess: () => {
-      onSuccess()
-      resetForm()
+      onSuccess();
+      resetForm();
     },
-  })
+  });
 
   const updateMutation = trpc.agents.update.useMutation({
     onSuccess: () => {
-      onSuccess()
-      resetForm()
+      onSuccess();
+      resetForm();
     },
-  })
+  });
 
-  const isEditing = agent !== null
-  const isLoading = createMutation.isPending || updateMutation.isPending
+  const isEditing = agent !== null;
+  const isLoading = createMutation.isPending || updateMutation.isPending;
 
   // Initialize form when editing
   useEffect(() => {
     if (agent) {
-      setName(agent.name)
-      setDescription(agent.description)
-      setPrompt(agent.prompt)
-      setModel(agent.model || "inherit")
-      setSource(agent.source)
+      setName(agent.name);
+      setDescription(agent.description);
+      setPrompt(agent.prompt);
+      setModel(agent.model || "inherit");
+      setSource(agent.source);
 
       if (agent.tools && agent.tools.length > 0) {
-        setToolMode("allowlist")
-        setSelectedTools(agent.tools)
+        setToolMode("allowlist");
+        setSelectedTools(agent.tools);
       } else if (agent.disallowedTools && agent.disallowedTools.length > 0) {
-        setToolMode("denylist")
-        setSelectedTools(agent.disallowedTools)
+        setToolMode("denylist");
+        setSelectedTools(agent.disallowedTools);
       } else {
-        setToolMode("all")
-        setSelectedTools([])
+        setToolMode("all");
+        setSelectedTools([]);
       }
     } else {
-      resetForm()
+      resetForm();
     }
-  }, [agent, open])
+  }, [agent, open]);
 
   // Ensure portal target only accessed on client
   useEffect(() => {
-    setMounted(true)
+    setMounted(true);
     if (typeof document !== "undefined") {
-      setPortalTarget(document.body)
+      setPortalTarget(document.body);
     }
-  }, [])
+  }, []);
 
   // Handle escape key
   useEffect(() => {
-    if (!open) return
+    if (!open) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        event.preventDefault()
-        onOpenChange(false)
+        event.preventDefault();
+        onOpenChange(false);
       }
-    }
+    };
 
-    document.addEventListener("keydown", handleKeyDown)
-    return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [open, onOpenChange])
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open, onOpenChange]);
 
   const resetForm = () => {
-    setName("")
-    setDescription("")
-    setPrompt("")
-    setModel("inherit")
-    setSource("user")
-    setToolMode("all")
-    setSelectedTools([])
-  }
+    setName("");
+    setDescription("");
+    setPrompt("");
+    setModel("inherit");
+    setSource("user");
+    setToolMode("all");
+    setSelectedTools([]);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
-    const tools = toolMode === "allowlist" ? selectedTools : undefined
-    const disallowedTools = toolMode === "denylist" ? selectedTools : undefined
+    const tools = toolMode === "allowlist" ? selectedTools : undefined;
+    const disallowedTools = toolMode === "denylist" ? selectedTools : undefined;
 
     if (isEditing) {
       updateMutation.mutate({
@@ -129,7 +136,7 @@ export function AgentDialog({ open, onOpenChange, agent, onSuccess }: AgentDialo
         disallowedTools,
         model,
         source: agent.source,
-      })
+      });
     } else {
       createMutation.mutate({
         name: name.toLowerCase().replace(/\s+/g, "-"),
@@ -139,13 +146,13 @@ export function AgentDialog({ open, onOpenChange, agent, onSuccess }: AgentDialo
         disallowedTools,
         model,
         source,
-      })
+      });
     }
-  }
+  };
 
-  const isValid = name.trim() && description.trim() && prompt.trim()
+  const isValid = name.trim() && description.trim() && prompt.trim();
 
-  if (!mounted || !portalTarget || !open) return null
+  if (!mounted || !portalTarget || !open) return null;
 
   return createPortal(
     <AnimatePresence mode="wait">
@@ -186,7 +193,10 @@ export function AgentDialog({ open, onOpenChange, agent, onSuccess }: AgentDialo
               </div>
 
               {/* Content */}
-              <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
+              <form
+                onSubmit={handleSubmit}
+                className="flex-1 overflow-y-auto p-6 space-y-5"
+              >
                 {/* Name */}
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium text-foreground">
@@ -244,43 +254,51 @@ export function AgentDialog({ open, onOpenChange, agent, onSuccess }: AgentDialo
 
                 {/* Model */}
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-foreground">Model</label>
+                  <label className="text-sm font-medium text-foreground">
+                    Model
+                  </label>
                   <div className="flex flex-wrap gap-2">
-                    {(["inherit", "sonnet", "opus", "haiku"] as const).map((m) => (
-                      <button
-                        key={m}
-                        type="button"
-                        onClick={() => setModel(m)}
-                        className={cn(
-                          "px-3 py-1.5 text-sm rounded-md border transition-colors",
-                          model === m
-                            ? "border-foreground/30 bg-foreground/10 text-foreground"
-                            : "border-border bg-background text-muted-foreground hover:border-foreground/20"
-                        )}
-                      >
-                        {m === "inherit" ? "Inherit (default)" : m.charAt(0).toUpperCase() + m.slice(1)}
-                      </button>
-                    ))}
+                    {(["inherit", "sonnet", "opus", "haiku"] as const).map(
+                      (m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setModel(m)}
+                          className={cn(
+                            "px-3 py-1.5 text-sm rounded-md border transition-colors",
+                            model === m
+                              ? "border-foreground/30 bg-foreground/10 text-foreground"
+                              : "border-border bg-background text-muted-foreground hover:border-foreground/20",
+                          )}
+                        >
+                          {m === "inherit"
+                            ? "Inherit (default)"
+                            : m.charAt(0).toUpperCase() + m.slice(1)}
+                        </button>
+                      ),
+                    )}
                   </div>
                 </div>
 
                 {/* Tools */}
                 <div className="space-y-3">
-                  <label className="text-sm font-medium text-foreground">Tools</label>
+                  <label className="text-sm font-medium text-foreground">
+                    Tools
+                  </label>
                   <div className="flex flex-wrap gap-2">
                     {(["all", "allowlist", "denylist"] as const).map((mode) => (
                       <button
                         key={mode}
                         type="button"
                         onClick={() => {
-                          setToolMode(mode)
-                          if (mode === "all") setSelectedTools([])
+                          setToolMode(mode);
+                          if (mode === "all") setSelectedTools([]);
                         }}
                         className={cn(
                           "px-3 py-1.5 text-sm rounded-md border transition-colors",
                           toolMode === mode
                             ? "border-foreground/30 bg-foreground/10 text-foreground"
-                            : "border-border bg-background text-muted-foreground hover:border-foreground/20"
+                            : "border-border bg-background text-muted-foreground hover:border-foreground/20",
                         )}
                       >
                         {mode === "all" && "All Tools"}
@@ -302,7 +320,9 @@ export function AgentDialog({ open, onOpenChange, agent, onSuccess }: AgentDialo
                 {/* Source (only for new agents) */}
                 {!isEditing && (
                   <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-foreground">Location</label>
+                    <label className="text-sm font-medium text-foreground">
+                      Location
+                    </label>
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
@@ -311,7 +331,7 @@ export function AgentDialog({ open, onOpenChange, agent, onSuccess }: AgentDialo
                           "px-3 py-1.5 text-sm rounded-md border transition-colors",
                           source === "user"
                             ? "border-foreground/30 bg-foreground/10 text-foreground"
-                            : "border-border bg-background text-muted-foreground hover:border-foreground/20"
+                            : "border-border bg-background text-muted-foreground hover:border-foreground/20",
                         )}
                       >
                         User (~/.claude/agents/)
@@ -323,14 +343,15 @@ export function AgentDialog({ open, onOpenChange, agent, onSuccess }: AgentDialo
                           "px-3 py-1.5 text-sm rounded-md border transition-colors",
                           source === "project"
                             ? "border-foreground/30 bg-foreground/10 text-foreground"
-                            : "border-border bg-background text-muted-foreground hover:border-foreground/20"
+                            : "border-border bg-background text-muted-foreground hover:border-foreground/20",
                         )}
                       >
                         Project (.claude/agents/)
                       </button>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      User agents are available globally, project agents only in the current project
+                      User agents are available globally, project agents only in
+                      the current project
                     </p>
                   </div>
                 )}
@@ -352,10 +373,14 @@ export function AgentDialog({ open, onOpenChange, agent, onSuccess }: AgentDialo
                     "px-4 py-2 text-sm font-medium rounded-md transition-colors",
                     isValid && !isLoading
                       ? "bg-foreground text-background hover:bg-foreground/90"
-                      : "bg-foreground/50 text-background/70 cursor-not-allowed"
+                      : "bg-foreground/50 text-background/70 cursor-not-allowed",
                   )}
                 >
-                  {isLoading ? "Saving..." : isEditing ? "Save Changes" : "Create Agent"}
+                  {isLoading
+                    ? "Saving..."
+                    : isEditing
+                      ? "Save Changes"
+                      : "Create Agent"}
                 </button>
               </div>
             </motion.div>
@@ -363,6 +388,6 @@ export function AgentDialog({ open, onOpenChange, agent, onSuccess }: AgentDialo
         </>
       )}
     </AnimatePresence>,
-    portalTarget
-  )
+    portalTarget,
+  );
 }

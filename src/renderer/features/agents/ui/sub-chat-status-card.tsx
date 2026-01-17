@@ -1,42 +1,46 @@
-"use client"
+"use client";
 
-import { memo, useState, useMemo, useEffect } from "react"
-import { useSetAtom, useAtom } from "jotai"
-import { ChevronUp } from "lucide-react"
-import { motion, AnimatePresence } from "motion/react"
-import { Button } from "../../../components/ui/button"
-import { cn } from "../../../lib/utils"
-import { trpc } from "../../../lib/trpc"
-import { useFileChangeListener } from "../../../lib/hooks/use-file-change-listener"
-import { getFileIconByExtension } from "../mentions/agents-file-mention"
+import { useAtom, useSetAtom } from "jotai";
+import { ChevronUp } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { memo, useEffect, useMemo, useState } from "react";
+import { Button } from "../../../components/ui/button";
+import { useFileChangeListener } from "../../../lib/hooks/use-file-change-listener";
+import { trpc } from "../../../lib/trpc";
+import { cn } from "../../../lib/utils";
 import {
-  diffSidebarOpenAtomFamily,
-  agentsFocusedDiffFileAtom,
-  filteredDiffFilesAtom,
   type SubChatFileChange,
-} from "../atoms"
+  agentsFocusedDiffFileAtom,
+  diffSidebarOpenAtomFamily,
+  filteredDiffFilesAtom,
+} from "../atoms";
+import { getFileIconByExtension } from "../mentions/agents-file-mention";
 
 // Animated dots component that cycles through ., .., ...
 function AnimatedDots() {
-  const [dotCount, setDotCount] = useState(1)
+  const [dotCount, setDotCount] = useState(1);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setDotCount((prev) => (prev % 3) + 1)
-    }, 400)
-    return () => clearInterval(interval)
-  }, [])
+      setDotCount((prev) => (prev % 3) + 1);
+    }, 400);
+    return () => clearInterval(interval);
+  }, []);
 
-  return <span className="inline-block w-[1em] text-left">{".".repeat(dotCount)}</span>
+  return (
+    <span className="inline-block w-[1em] text-left">
+      {".".repeat(dotCount)}
+    </span>
+  );
 }
 
 interface SubChatStatusCardProps {
-  chatId: string // Parent chat ID for per-chat diff sidebar state
-  isStreaming: boolean
-  isCompacting?: boolean
-  changedFiles: SubChatFileChange[]
-  worktreePath?: string | null // For git status check to hide committed files
-  onStop?: () => void
+  chatId: string; // Parent chat ID for per-chat diff sidebar state
+  isStreaming: boolean;
+  isCompacting?: boolean;
+  changedFiles: SubChatFileChange[];
+  worktreePath?: string | null; // For git status check to hide committed files
+  onStop?: () => void;
 }
 
 export const SubChatStatusCard = memo(function SubChatStatusCard({
@@ -47,18 +51,18 @@ export const SubChatStatusCard = memo(function SubChatStatusCard({
   worktreePath,
   onStop,
 }: SubChatStatusCardProps) {
-  const [isExpanded, setIsExpanded] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false);
   // Use per-chat atom family instead of legacy global atom
   const diffSidebarAtom = useMemo(
     () => diffSidebarOpenAtomFamily(chatId),
     [chatId],
-  )
-  const [, setDiffSidebarOpen] = useAtom(diffSidebarAtom)
-  const setFilteredDiffFiles = useSetAtom(filteredDiffFilesAtom)
-  const setFocusedDiffFile = useSetAtom(agentsFocusedDiffFileAtom)
+  );
+  const [, setDiffSidebarOpen] = useAtom(diffSidebarAtom);
+  const setFilteredDiffFiles = useSetAtom(filteredDiffFilesAtom);
+  const setFocusedDiffFile = useSetAtom(agentsFocusedDiffFileAtom);
 
   // Listen for file changes from Claude Write/Edit tools
-  useFileChangeListener(worktreePath)
+  useFileChangeListener(worktreePath);
 
   // Fetch git status to filter out committed files
   const { data: gitStatus } = trpc.changes.getStatus.useQuery(
@@ -69,61 +73,63 @@ export const SubChatStatusCard = memo(function SubChatStatusCard({
       staleTime: 30000,
       placeholderData: (prev) => prev,
     },
-  )
+  );
 
   // Filter changedFiles to only include files that are still uncommitted
   const uncommittedFiles = useMemo(() => {
     // If no git status yet, no worktreePath, or still streaming - show all files
     if (!gitStatus || !worktreePath || isStreaming) {
-      return changedFiles
+      return changedFiles;
     }
 
     // Build set of all uncommitted file paths from git status
-    const uncommittedPaths = new Set<string>()
+    const uncommittedPaths = new Set<string>();
     // Safely iterate - arrays might be undefined in edge cases
     if (gitStatus.staged) {
       for (const file of gitStatus.staged) {
-        uncommittedPaths.add(file.path)
+        uncommittedPaths.add(file.path);
       }
     }
     if (gitStatus.unstaged) {
       for (const file of gitStatus.unstaged) {
-        uncommittedPaths.add(file.path)
+        uncommittedPaths.add(file.path);
       }
     }
     if (gitStatus.untracked) {
       for (const file of gitStatus.untracked) {
-        uncommittedPaths.add(file.path)
+        uncommittedPaths.add(file.path);
       }
     }
 
     // Filter changedFiles to only include files that are still uncommitted
-    return changedFiles.filter((file) => uncommittedPaths.has(file.displayPath))
-  }, [changedFiles, gitStatus, worktreePath, isStreaming])
+    return changedFiles.filter((file) =>
+      uncommittedPaths.has(file.displayPath),
+    );
+  }, [changedFiles, gitStatus, worktreePath, isStreaming]);
 
   // Calculate totals from uncommitted files only
   const totals = useMemo(() => {
-    let additions = 0
-    let deletions = 0
+    let additions = 0;
+    let deletions = 0;
     for (const file of uncommittedFiles) {
-      additions += file.additions
-      deletions += file.deletions
+      additions += file.additions;
+      deletions += file.deletions;
     }
-    return { additions, deletions, fileCount: uncommittedFiles.length }
-  }, [uncommittedFiles])
+    return { additions, deletions, fileCount: uncommittedFiles.length };
+  }, [uncommittedFiles]);
 
   // Don't show if no uncommitted files and not streaming
   if (!isStreaming && uncommittedFiles.length === 0) {
-    return null
+    return null;
   }
 
   const handleReview = () => {
     // Set filter to only show files from this sub-chat
     // Use displayPath (relative path) to match git diff paths
-    const filePaths = uncommittedFiles.map((f) => f.displayPath)
-    setFilteredDiffFiles(filePaths.length > 0 ? filePaths : null)
-    setDiffSidebarOpen(true)
-  }
+    const filePaths = uncommittedFiles.map((f) => f.displayPath);
+    setFilteredDiffFiles(filePaths.length > 0 ? filePaths : null);
+    setDiffSidebarOpen(true);
+  };
 
   return (
     <div className="rounded-t-xl border border-b-0 border-border bg-muted/30 overflow-hidden flex flex-col pb-6">
@@ -139,25 +145,25 @@ export const SubChatStatusCard = memo(function SubChatStatusCard({
           >
             <div className="border-b border-border max-h-[200px] overflow-y-auto">
               {uncommittedFiles.map((file) => {
-                const FileIcon = getFileIconByExtension(file.displayPath)
+                const FileIcon = getFileIconByExtension(file.displayPath);
 
                 const handleFileClick = () => {
                   // Set filter to only show files from this sub-chat
                   // Use displayPath (relative path) to match git diff paths
-                  const filePaths = uncommittedFiles.map((f) => f.displayPath)
-                  setFilteredDiffFiles(filePaths.length > 0 ? filePaths : null)
+                  const filePaths = uncommittedFiles.map((f) => f.displayPath);
+                  setFilteredDiffFiles(filePaths.length > 0 ? filePaths : null);
                   // Set focus on this specific file
-                  setFocusedDiffFile(file.displayPath)
+                  setFocusedDiffFile(file.displayPath);
                   // Open diff sidebar
-                  setDiffSidebarOpen(true)
-                }
+                  setDiffSidebarOpen(true);
+                };
 
                 const handleKeyDown = (e: React.KeyboardEvent) => {
                   if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault()
-                    handleFileClick()
+                    e.preventDefault();
+                    handleFileClick();
                   }
-                }
+                };
 
                 return (
                   <div
@@ -182,7 +188,7 @@ export const SubChatStatusCard = memo(function SubChatStatusCard({
                       -{file.deletions}
                     </span>
                   </div>
-                )
+                );
               })}
             </div>
           </motion.div>
@@ -193,11 +199,16 @@ export const SubChatStatusCard = memo(function SubChatStatusCard({
       <div
         role={uncommittedFiles.length > 0 ? "button" : undefined}
         tabIndex={uncommittedFiles.length > 0 ? 0 : undefined}
-        onClick={() => uncommittedFiles.length > 0 && setIsExpanded(!isExpanded)}
+        onClick={() =>
+          uncommittedFiles.length > 0 && setIsExpanded(!isExpanded)
+        }
         onKeyDown={(e) => {
-          if (uncommittedFiles.length > 0 && (e.key === "Enter" || e.key === " ")) {
-            e.preventDefault()
-            setIsExpanded(!isExpanded)
+          if (
+            uncommittedFiles.length > 0 &&
+            (e.key === "Enter" || e.key === " ")
+          ) {
+            e.preventDefault();
+            setIsExpanded(!isExpanded);
           }
         }}
         aria-expanded={uncommittedFiles.length > 0 ? isExpanded : undefined}
@@ -226,7 +237,8 @@ export const SubChatStatusCard = memo(function SubChatStatusCard({
           {/* Streaming indicator */}
           {isStreaming && uncommittedFiles.length === 0 && (
             <span className="text-xs text-muted-foreground">
-              {isCompacting ? "Compacting" : "Generating"}<AnimatedDots />
+              {isCompacting ? "Compacting" : "Generating"}
+              <AnimatedDots />
             </span>
           )}
 
@@ -256,8 +268,8 @@ export const SubChatStatusCard = memo(function SubChatStatusCard({
               variant="ghost"
               size="sm"
               onClick={(e) => {
-                e.stopPropagation()
-                onStop()
+                e.stopPropagation();
+                onStop();
               }}
               className="h-6 px-2 text-xs font-normal rounded-md transition-transform duration-150 active:scale-[0.97]"
             >
@@ -270,8 +282,8 @@ export const SubChatStatusCard = memo(function SubChatStatusCard({
               variant="secondary"
               size="sm"
               onClick={(e) => {
-                e.stopPropagation()
-                handleReview()
+                e.stopPropagation();
+                handleReview();
               }}
               className="h-6 px-3 text-xs font-medium rounded-md transition-transform duration-150 active:scale-[0.97]"
             >
@@ -281,5 +293,5 @@ export const SubChatStatusCard = memo(function SubChatStatusCard({
         </div>
       </div>
     </div>
-  )
-})
+  );
+});

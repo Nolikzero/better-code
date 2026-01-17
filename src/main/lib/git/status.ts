@@ -1,212 +1,218 @@
-import type { ChangedFile, GitChangesStatus } from "../../../shared/changes-types";
 import simpleGit from "simple-git";
 import { z } from "zod";
+import type {
+  ChangedFile,
+  GitChangesStatus,
+} from "../../../shared/changes-types";
 import { publicProcedure, router } from "../trpc";
 import { assertRegisteredWorktree, secureFs } from "./security";
 import { applyNumstatToFiles } from "./utils/apply-numstat";
 import {
-	parseGitLog,
-	parseGitStatus,
-	parseNameStatus,
+  parseGitLog,
+  parseGitStatus,
+  parseNameStatus,
 } from "./utils/parse-status";
 
 export const createStatusRouter = () => {
-	return router({
-		getStatus: publicProcedure
-			.input(
-				z.object({
-					worktreePath: z.string(),
-					defaultBranch: z.string().optional(),
-				}),
-			)
-			.query(async ({ input }): Promise<GitChangesStatus> => {
-				console.log("[getStatus] Called with worktreePath:", input.worktreePath);
-				assertRegisteredWorktree(input.worktreePath);
+  return router({
+    getStatus: publicProcedure
+      .input(
+        z.object({
+          worktreePath: z.string(),
+          defaultBranch: z.string().optional(),
+        }),
+      )
+      .query(async ({ input }): Promise<GitChangesStatus> => {
+        console.log(
+          "[getStatus] Called with worktreePath:",
+          input.worktreePath,
+        );
+        assertRegisteredWorktree(input.worktreePath);
 
-				const git = simpleGit(input.worktreePath);
-				const defaultBranch = input.defaultBranch || "main";
+        const git = simpleGit(input.worktreePath);
+        const defaultBranch = input.defaultBranch || "main";
 
-				const status = await git.status();
-				const parsed = parseGitStatus(status);
+        const status = await git.status();
+        const parsed = parseGitStatus(status);
 
-				const branchComparison = await getBranchComparison(git, defaultBranch);
-				const trackingStatus = await getTrackingBranchStatus(git);
+        const branchComparison = await getBranchComparison(git, defaultBranch);
+        const trackingStatus = await getTrackingBranchStatus(git);
 
-				await applyNumstatToFiles(git, parsed.staged, [
-					"diff",
-					"--cached",
-					"--numstat",
-				]);
+        await applyNumstatToFiles(git, parsed.staged, [
+          "diff",
+          "--cached",
+          "--numstat",
+        ]);
 
-				await applyNumstatToFiles(git, parsed.unstaged, ["diff", "--numstat"]);
+        await applyNumstatToFiles(git, parsed.unstaged, ["diff", "--numstat"]);
 
-				await applyUntrackedLineCount(input.worktreePath, parsed.untracked);
+        await applyUntrackedLineCount(input.worktreePath, parsed.untracked);
 
-				const result = {
-					branch: parsed.branch,
-					defaultBranch,
-					againstBase: branchComparison.againstBase,
-					commits: branchComparison.commits,
-					staged: parsed.staged,
-					unstaged: parsed.unstaged,
-					untracked: parsed.untracked,
-					ahead: branchComparison.ahead,
-					behind: branchComparison.behind,
-					pushCount: trackingStatus.pushCount,
-					pullCount: trackingStatus.pullCount,
-					hasUpstream: trackingStatus.hasUpstream,
-				};
-				console.log("[getStatus] Returning:", {
-					branch: result.branch,
-					stagedCount: result.staged.length,
-					unstagedCount: result.unstaged.length,
-					untrackedCount: result.untracked.length,
-					commitsCount: result.commits.length,
-				});
-				return result;
-			}),
+        const result = {
+          branch: parsed.branch,
+          defaultBranch,
+          againstBase: branchComparison.againstBase,
+          commits: branchComparison.commits,
+          staged: parsed.staged,
+          unstaged: parsed.unstaged,
+          untracked: parsed.untracked,
+          ahead: branchComparison.ahead,
+          behind: branchComparison.behind,
+          pushCount: trackingStatus.pushCount,
+          pullCount: trackingStatus.pullCount,
+          hasUpstream: trackingStatus.hasUpstream,
+        };
+        console.log("[getStatus] Returning:", {
+          branch: result.branch,
+          stagedCount: result.staged.length,
+          unstagedCount: result.unstaged.length,
+          untrackedCount: result.untracked.length,
+          commitsCount: result.commits.length,
+        });
+        return result;
+      }),
 
-		getCommitFiles: publicProcedure
-			.input(
-				z.object({
-					worktreePath: z.string(),
-					commitHash: z.string(),
-				}),
-			)
-			.query(async ({ input }): Promise<ChangedFile[]> => {
-				assertRegisteredWorktree(input.worktreePath);
+    getCommitFiles: publicProcedure
+      .input(
+        z.object({
+          worktreePath: z.string(),
+          commitHash: z.string(),
+        }),
+      )
+      .query(async ({ input }): Promise<ChangedFile[]> => {
+        assertRegisteredWorktree(input.worktreePath);
 
-				const git = simpleGit(input.worktreePath);
+        const git = simpleGit(input.worktreePath);
 
-				const nameStatus = await git.raw([
-					"diff-tree",
-					"--no-commit-id",
-					"--name-status",
-					"-r",
-					input.commitHash,
-				]);
-				const files = parseNameStatus(nameStatus);
+        const nameStatus = await git.raw([
+          "diff-tree",
+          "--no-commit-id",
+          "--name-status",
+          "-r",
+          input.commitHash,
+        ]);
+        const files = parseNameStatus(nameStatus);
 
-				await applyNumstatToFiles(git, files, [
-					"diff-tree",
-					"--no-commit-id",
-					"--numstat",
-					"-r",
-					input.commitHash,
-				]);
+        await applyNumstatToFiles(git, files, [
+          "diff-tree",
+          "--no-commit-id",
+          "--numstat",
+          "-r",
+          input.commitHash,
+        ]);
 
-				return files;
-			}),
-	});
+        return files;
+      }),
+  });
 };
 
 interface BranchComparison {
-	commits: GitChangesStatus["commits"];
-	againstBase: ChangedFile[];
-	ahead: number;
-	behind: number;
+  commits: GitChangesStatus["commits"];
+  againstBase: ChangedFile[];
+  ahead: number;
+  behind: number;
 }
 
 async function getBranchComparison(
-	git: ReturnType<typeof simpleGit>,
-	defaultBranch: string,
+  git: ReturnType<typeof simpleGit>,
+  defaultBranch: string,
 ): Promise<BranchComparison> {
-	let commits: GitChangesStatus["commits"] = [];
-	let againstBase: ChangedFile[] = [];
-	let ahead = 0;
-	let behind = 0;
+  let commits: GitChangesStatus["commits"] = [];
+  let againstBase: ChangedFile[] = [];
+  let ahead = 0;
+  let behind = 0;
 
-	try {
-		const tracking = await git.raw([
-			"rev-list",
-			"--left-right",
-			"--count",
-			`origin/${defaultBranch}...HEAD`,
-		]);
-		const [behindStr, aheadStr] = tracking.trim().split(/\s+/);
-		behind = Number.parseInt(behindStr || "0", 10);
-		ahead = Number.parseInt(aheadStr || "0", 10);
+  try {
+    const tracking = await git.raw([
+      "rev-list",
+      "--left-right",
+      "--count",
+      `origin/${defaultBranch}...HEAD`,
+    ]);
+    const [behindStr, aheadStr] = tracking.trim().split(/\s+/);
+    behind = Number.parseInt(behindStr || "0", 10);
+    ahead = Number.parseInt(aheadStr || "0", 10);
 
-		const logOutput = await git.raw([
-			"log",
-			`origin/${defaultBranch}..HEAD`,
-			"--format=%H|%h|%s|%an|%aI",
-		]);
-		commits = parseGitLog(logOutput);
+    const logOutput = await git.raw([
+      "log",
+      `origin/${defaultBranch}..HEAD`,
+      "--format=%H|%h|%s|%an|%aI",
+    ]);
+    commits = parseGitLog(logOutput);
 
-		if (ahead > 0) {
-			const nameStatus = await git.raw([
-				"diff",
-				"--name-status",
-				`origin/${defaultBranch}...HEAD`,
-			]);
-			againstBase = parseNameStatus(nameStatus);
+    if (ahead > 0) {
+      const nameStatus = await git.raw([
+        "diff",
+        "--name-status",
+        `origin/${defaultBranch}...HEAD`,
+      ]);
+      againstBase = parseNameStatus(nameStatus);
 
-			await applyNumstatToFiles(git, againstBase, [
-				"diff",
-				"--numstat",
-				`origin/${defaultBranch}...HEAD`,
-			]);
-		}
-	} catch {}
+      await applyNumstatToFiles(git, againstBase, [
+        "diff",
+        "--numstat",
+        `origin/${defaultBranch}...HEAD`,
+      ]);
+    }
+  } catch {}
 
-	return { commits, againstBase, ahead, behind };
+  return { commits, againstBase, ahead, behind };
 }
 
 /** Max file size for line counting (1 MiB) - skip larger files to avoid OOM */
 const MAX_LINE_COUNT_SIZE = 1 * 1024 * 1024;
 
 async function applyUntrackedLineCount(
-	worktreePath: string,
-	untracked: ChangedFile[],
+  worktreePath: string,
+  untracked: ChangedFile[],
 ): Promise<void> {
-	for (const file of untracked) {
-		try {
-			const stats = await secureFs.stat(worktreePath, file.path);
-			if (stats.size > MAX_LINE_COUNT_SIZE) continue;
+  for (const file of untracked) {
+    try {
+      const stats = await secureFs.stat(worktreePath, file.path);
+      if (stats.size > MAX_LINE_COUNT_SIZE) continue;
 
-			const content = await secureFs.readFile(worktreePath, file.path);
-			const lineCount = content.split("\n").length;
-			file.additions = lineCount;
-			file.deletions = 0;
-		} catch {
-			// Skip files that fail validation or reading
-		}
-	}
+      const content = await secureFs.readFile(worktreePath, file.path);
+      const lineCount = content.split("\n").length;
+      file.additions = lineCount;
+      file.deletions = 0;
+    } catch {
+      // Skip files that fail validation or reading
+    }
+  }
 }
 
 interface TrackingStatus {
-	pushCount: number;
-	pullCount: number;
-	hasUpstream: boolean;
+  pushCount: number;
+  pullCount: number;
+  hasUpstream: boolean;
 }
 
 async function getTrackingBranchStatus(
-	git: ReturnType<typeof simpleGit>,
+  git: ReturnType<typeof simpleGit>,
 ): Promise<TrackingStatus> {
-	try {
-		const upstream = await git.raw([
-			"rev-parse",
-			"--abbrev-ref",
-			"@{upstream}",
-		]);
-		if (!upstream.trim()) {
-			return { pushCount: 0, pullCount: 0, hasUpstream: false };
-		}
+  try {
+    const upstream = await git.raw([
+      "rev-parse",
+      "--abbrev-ref",
+      "@{upstream}",
+    ]);
+    if (!upstream.trim()) {
+      return { pushCount: 0, pullCount: 0, hasUpstream: false };
+    }
 
-		const tracking = await git.raw([
-			"rev-list",
-			"--left-right",
-			"--count",
-			"@{upstream}...HEAD",
-		]);
-		const [pullStr, pushStr] = tracking.trim().split(/\s+/);
-		return {
-			pushCount: Number.parseInt(pushStr || "0", 10),
-			pullCount: Number.parseInt(pullStr || "0", 10),
-			hasUpstream: true,
-		};
-	} catch {
-		return { pushCount: 0, pullCount: 0, hasUpstream: false };
-	}
+    const tracking = await git.raw([
+      "rev-list",
+      "--left-right",
+      "--count",
+      "@{upstream}...HEAD",
+    ]);
+    const [pullStr, pushStr] = tracking.trim().split(/\s+/);
+    return {
+      pushCount: Number.parseInt(pushStr || "0", 10),
+      pullCount: Number.parseInt(pullStr || "0", 10),
+      hasUpstream: true,
+    };
+  } catch {
+    return { pushCount: 0, pullCount: 0, hasUpstream: false };
+  }
 }

@@ -1,6 +1,6 @@
 /**
  * Themes module exports
- * 
+ *
  * This module provides full VS Code theme support for the application.
  */
 
@@ -10,7 +10,7 @@ export {
   useVSCodeTheme,
   useTerminalTheme,
   useShikiTheme,
-} from "./theme-provider"
+} from "./theme-provider";
 
 // Builtin themes
 export {
@@ -19,10 +19,10 @@ export {
   getBuiltinThemesByType,
   DEFAULT_LIGHT_THEME_ID,
   DEFAULT_DARK_THEME_ID,
-} from "./builtin-themes"
+} from "./builtin-themes";
 
 // Cursor themes (with full tokenColors)
-export { CURSOR_DARK, CURSOR_LIGHT, CURSOR_MIDNIGHT } from "./cursor-themes"
+export { CURSOR_DARK, CURSOR_LIGHT, CURSOR_MIDNIGHT } from "./cursor-themes";
 
 // CSS variable mapping
 export {
@@ -32,10 +32,13 @@ export {
   hexToHSL,
   isLightColor,
   getThemeTypeFromColors,
-} from "./vscode-to-css-mapping"
+} from "./vscode-to-css-mapping";
 
 // Terminal theme mapping
-export { extractTerminalTheme, hasTerminalColors } from "./terminal-theme-mapper"
+export {
+  extractTerminalTheme,
+  hasTerminalColors,
+} from "./terminal-theme-mapper";
 
 // Shiki theme loader
 export {
@@ -44,4 +47,4 @@ export {
   ensureThemeLoaded,
   highlightCode,
   getLoadedThemes,
-} from "./shiki-theme-loader"
+} from "./shiki-theme-loader";

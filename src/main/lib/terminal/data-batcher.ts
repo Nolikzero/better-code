@@ -1,4 +1,4 @@
-import { StringDecoder } from "node:string_decoder"
+import { StringDecoder } from "node:string_decoder";
 
 /**
  * Batches terminal data to reduce IPC overhead between main and renderer processes.
@@ -11,18 +11,18 @@ import { StringDecoder } from "node:string_decoder"
  *    that may be split across data chunks
  */
 
-const BATCH_DURATION_MS = 16
-const BATCH_MAX_SIZE = 200 * 1024
+const BATCH_DURATION_MS = 16;
+const BATCH_MAX_SIZE = 200 * 1024;
 
 export class DataBatcher {
-  private decoder: StringDecoder
-  private buffer: string = ""
-  private timeout: ReturnType<typeof setTimeout> | null = null
-  private onFlush: (data: string) => void
+  private decoder: StringDecoder;
+  private buffer = "";
+  private timeout: ReturnType<typeof setTimeout> | null = null;
+  private onFlush: (data: string) => void;
 
   constructor(onFlush: (data: string) => void) {
-    this.decoder = new StringDecoder("utf8")
-    this.onFlush = onFlush
+    this.decoder = new StringDecoder("utf8");
+    this.onFlush = onFlush;
   }
 
   /**
@@ -31,16 +31,16 @@ export class DataBatcher {
    * - Buffer size exceeds BATCH_MAX_SIZE
    */
   write(data: Buffer | string): void {
-    const decoded = typeof data === "string" ? data : this.decoder.write(data)
-    this.buffer += decoded
+    const decoded = typeof data === "string" ? data : this.decoder.write(data);
+    this.buffer += decoded;
 
     if (this.buffer.length >= BATCH_MAX_SIZE) {
-      this.flush()
-      return
+      this.flush();
+      return;
     }
 
     if (this.timeout === null) {
-      this.timeout = setTimeout(() => this.flush(), BATCH_DURATION_MS)
+      this.timeout = setTimeout(() => this.flush(), BATCH_DURATION_MS);
     }
   }
 
@@ -49,13 +49,13 @@ export class DataBatcher {
    */
   flush(): void {
     if (this.timeout !== null) {
-      clearTimeout(this.timeout)
-      this.timeout = null
+      clearTimeout(this.timeout);
+      this.timeout = null;
     }
 
     if (this.buffer.length > 0) {
-      this.onFlush(this.buffer)
-      this.buffer = ""
+      this.onFlush(this.buffer);
+      this.buffer = "";
     }
   }
 
@@ -64,12 +64,12 @@ export class DataBatcher {
    * Calls decoder.end() to handle any trailing incomplete sequences.
    */
   dispose(): void {
-    this.flush()
+    this.flush();
 
     // Flush any incomplete multi-byte sequences
-    const remaining = this.decoder.end()
+    const remaining = this.decoder.end();
     if (remaining) {
-      this.onFlush(remaining)
+      this.onFlush(remaining);
     }
   }
 }

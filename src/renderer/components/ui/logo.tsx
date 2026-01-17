@@ -1,12 +1,16 @@
-import * as React from "react"
-import { cn } from "../../lib/utils"
+import type * as React from "react";
+import { cn } from "../../lib/utils";
 
 interface LogoProps extends React.SVGProps<SVGSVGElement> {
-  className?: string
-  fill?: string
+  className?: string;
+  fill?: string;
 }
 
-export function Logo({ fill = "currentColor", className, ...props }: LogoProps) {
+export function Logo({
+  fill = "currentColor",
+  className,
+  ...props
+}: LogoProps) {
   return (
     <svg
       viewBox="30 110 452 292"
@@ -38,5 +42,5 @@ export function Logo({ fill = "currentColor", className, ...props }: LogoProps) 
         fill={fill}
       />
     </svg>
-  )
+  );
 }

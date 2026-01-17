@@ -1,13 +1,13 @@
-"use client"
+"use client";
 
-import { cn } from "../../../lib/utils"
-import { Monitor, Smartphone } from "lucide-react"
-import { motion } from "motion/react"
+import { Monitor, Smartphone } from "lucide-react";
+import { motion } from "motion/react";
+import { cn } from "../../../lib/utils";
 
 interface ViewportToggleProps {
-  value: "desktop" | "mobile"
-  onChange: (mode: "desktop" | "mobile") => void
-  className?: string
+  value: "desktop" | "mobile";
+  onChange: (mode: "desktop" | "mobile") => void;
+  className?: string;
 }
 
 export function ViewportToggle({
@@ -44,15 +44,15 @@ export function ViewportToggle({
         />
         <button
           onClick={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            onChange("desktop")
+            e.preventDefault();
+            e.stopPropagation();
+            onChange("desktop");
           }}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault()
-              e.stopPropagation()
-              onChange("desktop")
+              e.preventDefault();
+              e.stopPropagation();
+              onChange("desktop");
             }
           }}
           aria-label="Desktop viewport"
@@ -65,15 +65,15 @@ export function ViewportToggle({
         </button>
         <button
           onClick={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            onChange("mobile")
+            e.preventDefault();
+            e.stopPropagation();
+            onChange("mobile");
           }}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault()
-              e.stopPropagation()
-              onChange("mobile")
+              e.preventDefault();
+              e.stopPropagation();
+              onChange("mobile");
             }
           }}
           aria-label="Mobile viewport"
@@ -86,6 +86,5 @@ export function ViewportToggle({
         </button>
       </motion.div>
     </motion.div>
-  )
+  );
 }
-

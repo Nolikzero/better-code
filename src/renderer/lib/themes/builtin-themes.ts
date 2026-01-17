@@ -1,12 +1,12 @@
 /**
  * Built-in VS Code themes with full color definitions
- * 
+ *
  * These themes include both UI colors and are compatible with Shiki for syntax highlighting.
  * Each theme has been curated to work well with the app's design system.
  */
 
-import type { VSCodeFullTheme } from "../atoms"
-import { CURSOR_DARK, CURSOR_LIGHT, CURSOR_MIDNIGHT } from "./cursor-themes"
+import type { VSCodeFullTheme } from "../atoms";
+import { CURSOR_DARK, CURSOR_LIGHT, CURSOR_MIDNIGHT } from "./cursor-themes";
 
 /**
  * Default Dark - Linear-style monochrome dark theme
@@ -20,7 +20,7 @@ const DEFAULT_DARK: VSCodeFullTheme = {
   colors: {
     "editor.background": "#121212", // 0 0% 7%
     "editor.foreground": "#ededed", // 0 0% 93%
-    "foreground": "#ededed",
+    foreground: "#ededed",
     "sideBar.background": "#0d0d0d", // slightly darker
     "sideBar.foreground": "#ededed",
     "sideBar.border": "#2e2e2e", // 0 0% 18%
@@ -37,15 +37,15 @@ const DEFAULT_DARK: VSCodeFullTheme = {
     "input.background": "#1c1c1c", // 0 0% 11%
     "input.border": "#2e2e2e",
     "input.foreground": "#ededed",
-    "focusBorder": "#606060", // subtle gray focus
+    focusBorder: "#606060", // subtle gray focus
     "textLink.foreground": "#ededed", // monochrome links
     "textLink.activeForeground": "#ffffff",
     "list.activeSelectionBackground": "#2a2a2a",
     "list.hoverBackground": "#1f1f1f",
     "editor.selectionBackground": "#ffffff25", // white at 15%
     "editorLineNumber.foreground": "#505050",
-    "descriptionForeground": "#8c8c8c",
-    "errorForeground": "#ef4444",
+    descriptionForeground: "#8c8c8c",
+    errorForeground: "#ef4444",
     "button.background": "#ededed", // monochrome primary
     "button.foreground": "#121212",
     "button.secondaryBackground": "#2a2a2a",
@@ -70,7 +70,7 @@ const DEFAULT_DARK: VSCodeFullTheme = {
     "terminal.ansiBrightCyan": "#a0a0a0",
     "terminal.ansiBrightWhite": "#fafafa",
   },
-}
+};
 
 /**
  * Default Light - Linear-style monochrome light theme
@@ -84,7 +84,7 @@ const DEFAULT_LIGHT: VSCodeFullTheme = {
   colors: {
     "editor.background": "#ffffff",
     "editor.foreground": "#171717", // 0 0% 9%
-    "foreground": "#171717",
+    foreground: "#171717",
     "sideBar.background": "#fafafa", // 0 0% 98%
     "sideBar.foreground": "#171717",
     "sideBar.border": "#e5e5e5", // 0 0% 90%
@@ -101,15 +101,15 @@ const DEFAULT_LIGHT: VSCodeFullTheme = {
     "input.background": "#fafafa", // 0 0% 98%
     "input.border": "#e5e5e5",
     "input.foreground": "#171717",
-    "focusBorder": "#a0a0a0", // subtle gray focus
+    focusBorder: "#a0a0a0", // subtle gray focus
     "textLink.foreground": "#171717", // monochrome links
     "textLink.activeForeground": "#000000",
     "list.activeSelectionBackground": "#f0f0f0",
     "list.hoverBackground": "#f5f5f5",
     "editor.selectionBackground": "#17171720", // black at 12%
     "editorLineNumber.foreground": "#a0a0a0",
-    "descriptionForeground": "#737373",
-    "errorForeground": "#dc2626",
+    descriptionForeground: "#737373",
+    errorForeground: "#dc2626",
     "button.background": "#171717", // monochrome primary
     "button.foreground": "#ffffff",
     "button.secondaryBackground": "#f5f5f5",
@@ -134,8 +134,7 @@ const DEFAULT_LIGHT: VSCodeFullTheme = {
     "terminal.ansiBrightCyan": "#a0a0a0",
     "terminal.ansiBrightWhite": "#fafafa",
   },
-}
-
+};
 
 /**
  * Vitesse Dark theme colors
@@ -148,7 +147,7 @@ const VITESSE_DARK: VSCodeFullTheme = {
   colors: {
     "editor.background": "#121212",
     "editor.foreground": "#dbd7ca",
-    "foreground": "#dbd7ca",
+    foreground: "#dbd7ca",
     "sideBar.background": "#121212",
     "sideBar.foreground": "#dbd7ca",
     "sideBar.border": "#1e1e1e",
@@ -165,15 +164,15 @@ const VITESSE_DARK: VSCodeFullTheme = {
     "input.background": "#1e1e1e",
     "input.border": "#2e2e2e",
     "input.foreground": "#dbd7ca",
-    "focusBorder": "#4d9375",
+    focusBorder: "#4d9375",
     "textLink.foreground": "#4d9375",
     "textLink.activeForeground": "#5eaab5",
     "list.activeSelectionBackground": "#4d937530",
     "list.hoverBackground": "#1e1e1e",
     "editor.selectionBackground": "#4d937540",
     "editorLineNumber.foreground": "#444444",
-    "descriptionForeground": "#75715e",
-    "errorForeground": "#cb7676",
+    descriptionForeground: "#75715e",
+    errorForeground: "#cb7676",
     "button.background": "#4d9375",
     "button.foreground": "#121212",
     "button.secondaryBackground": "#2e2e2e",
@@ -198,7 +197,7 @@ const VITESSE_DARK: VSCodeFullTheme = {
     "terminal.ansiBrightCyan": "#5eaab5",
     "terminal.ansiBrightWhite": "#eeeeee",
   },
-}
+};
 
 /**
  * Vitesse Light theme colors
@@ -211,7 +210,7 @@ const VITESSE_LIGHT: VSCodeFullTheme = {
   colors: {
     "editor.background": "#ffffff",
     "editor.foreground": "#393a34",
-    "foreground": "#393a34",
+    foreground: "#393a34",
     "sideBar.background": "#fafafa",
     "sideBar.foreground": "#393a34",
     "sideBar.border": "#eeeeee",
@@ -228,15 +227,15 @@ const VITESSE_LIGHT: VSCodeFullTheme = {
     "input.background": "#f5f5f5", // slightly gray for visibility
     "input.border": "#eeeeee",
     "input.foreground": "#393a34",
-    "focusBorder": "#1e754f",
+    focusBorder: "#1e754f",
     "textLink.foreground": "#1e754f",
     "textLink.activeForeground": "#2993a3",
     "list.activeSelectionBackground": "#eeeeee66",
     "list.hoverBackground": "#f5f5f5",
     "editor.selectionBackground": "#22222215",
     "editorLineNumber.foreground": "#aaaaaa",
-    "descriptionForeground": "#999999",
-    "errorForeground": "#ab5959",
+    descriptionForeground: "#999999",
+    errorForeground: "#ab5959",
     "button.background": "#1e754f",
     "button.foreground": "#ffffff",
     "button.secondaryBackground": "#eeeeee",
@@ -261,8 +260,7 @@ const VITESSE_LIGHT: VSCodeFullTheme = {
     "terminal.ansiBrightCyan": "#2993a3",
     "terminal.ansiBrightWhite": "#393a34",
   },
-}
-
+};
 
 /**
  * Min Dark theme colors (minimal dark theme)
@@ -275,7 +273,7 @@ const MIN_DARK: VSCodeFullTheme = {
   colors: {
     "editor.background": "#1f1f1f",
     "editor.foreground": "#d4d4d4",
-    "foreground": "#d4d4d4",
+    foreground: "#d4d4d4",
     "sideBar.background": "#181818",
     "sideBar.foreground": "#d4d4d4",
     "sideBar.border": "#252525",
@@ -292,15 +290,15 @@ const MIN_DARK: VSCodeFullTheme = {
     "input.background": "#181818",
     "input.border": "#3c3c3c",
     "input.foreground": "#d4d4d4",
-    "focusBorder": "#6ca1ef",
+    focusBorder: "#6ca1ef",
     "textLink.foreground": "#6ca1ef",
     "textLink.activeForeground": "#89b4fa",
     "list.activeSelectionBackground": "#2a2a2a",
     "list.hoverBackground": "#252525",
     "editor.selectionBackground": "#264f78",
     "editorLineNumber.foreground": "#5a5a5a",
-    "descriptionForeground": "#6e6e6e",
-    "errorForeground": "#f48771",
+    descriptionForeground: "#6e6e6e",
+    errorForeground: "#f48771",
     "button.background": "#6ca1ef",
     "button.foreground": "#1f1f1f",
     "button.secondaryBackground": "#3c3c3c",
@@ -325,7 +323,7 @@ const MIN_DARK: VSCodeFullTheme = {
     "terminal.ansiBrightCyan": "#4ec9b0",
     "terminal.ansiBrightWhite": "#e5e5e5",
   },
-}
+};
 
 /**
  * Vesper Dark theme colors
@@ -340,7 +338,7 @@ const VESPER_DARK: VSCodeFullTheme = {
     "editor.background": "#101010",
     "editorPane.background": "#101010",
     "editor.foreground": "#FFFFFF",
-    "foreground": "#FFFFFF",
+    foreground: "#FFFFFF",
     "sideBar.background": "#101010",
     "sideBar.foreground": "#A0A0A0",
     "sideBar.border": "#232323",
@@ -359,15 +357,15 @@ const VESPER_DARK: VSCodeFullTheme = {
     "input.background": "#1B1B1B",
     "input.border": "#282828",
     "input.foreground": "#FFFFFF",
-    "focusBorder": "#FFC799",
+    focusBorder: "#FFC799",
     "textLink.foreground": "#FFC799",
     "textLink.activeForeground": "#FFCFA8",
     "list.activeSelectionBackground": "#232323",
     "list.hoverBackground": "#282828",
     "editor.selectionBackground": "#FFFFFF25",
     "editorLineNumber.foreground": "#505050",
-    "descriptionForeground": "#A0A0A0",
-    "errorForeground": "#FF8080",
+    descriptionForeground: "#A0A0A0",
+    errorForeground: "#FF8080",
     "button.background": "#FFC799",
     "button.foreground": "#000000",
     "button.secondaryBackground": "#232323",
@@ -392,7 +390,7 @@ const VESPER_DARK: VSCodeFullTheme = {
     "terminal.ansiBrightCyan": "#99FFE4",
     "terminal.ansiBrightWhite": "#FFFFFF",
   },
-}
+};
 
 /**
  * Min Light theme colors (minimal light theme)
@@ -405,7 +403,7 @@ const MIN_LIGHT: VSCodeFullTheme = {
   colors: {
     "editor.background": "#ffffff",
     "editor.foreground": "#1f1f1f",
-    "foreground": "#1f1f1f",
+    foreground: "#1f1f1f",
     "sideBar.background": "#f3f3f3",
     "sideBar.foreground": "#1f1f1f",
     "sideBar.border": "#e0e0e0",
@@ -422,15 +420,15 @@ const MIN_LIGHT: VSCodeFullTheme = {
     "input.background": "#f3f3f3", // match sidebar for visibility
     "input.border": "#cecece",
     "input.foreground": "#1f1f1f",
-    "focusBorder": "#0451a5",
+    focusBorder: "#0451a5",
     "textLink.foreground": "#0451a5",
     "textLink.activeForeground": "#0066cc",
     "list.activeSelectionBackground": "#e8e8e8",
     "list.hoverBackground": "#f3f3f3",
     "editor.selectionBackground": "#add6ff",
     "editorLineNumber.foreground": "#6e7681",
-    "descriptionForeground": "#717171",
-    "errorForeground": "#d32f2f",
+    descriptionForeground: "#717171",
+    errorForeground: "#d32f2f",
     "button.background": "#0451a5",
     "button.foreground": "#ffffff",
     "button.secondaryBackground": "#e0e0e0",
@@ -455,7 +453,7 @@ const MIN_LIGHT: VSCodeFullTheme = {
     "terminal.ansiBrightCyan": "#0598bc",
     "terminal.ansiBrightWhite": "#1f1f1f",
   },
-}
+};
 
 /**
  * Claude Light theme colors
@@ -470,7 +468,7 @@ const CLAUDE_LIGHT: VSCodeFullTheme = {
     "editor.background": "#FAF9F5",
     "editorPane.background": "#FAF9F5",
     "editor.foreground": "#4a4538",
-    "foreground": "#4a4538",
+    foreground: "#4a4538",
     "sideBar.background": "#FAF9F5",
     "sideBar.foreground": "#4a4538",
     "sideBar.border": "#e5e3de",
@@ -487,15 +485,15 @@ const CLAUDE_LIGHT: VSCodeFullTheme = {
     "input.background": "#ffffff",
     "input.border": "#d5d3ce",
     "input.foreground": "#4a4538",
-    "focusBorder": "#D97857",
+    focusBorder: "#D97857",
     "textLink.foreground": "#D97857",
     "textLink.activeForeground": "#C4684A",
     "list.activeSelectionBackground": "#e8e5dd",
     "list.hoverBackground": "#f0ede7",
     "editor.selectionBackground": "#D9785733",
     "editorLineNumber.foreground": "#a5a193",
-    "descriptionForeground": "#8b8578",
-    "errorForeground": "#dc2626",
+    descriptionForeground: "#8b8578",
+    errorForeground: "#dc2626",
     "button.background": "#D97857",
     "button.foreground": "#ffffff",
     "button.secondaryBackground": "#e8e5dd",
@@ -520,7 +518,7 @@ const CLAUDE_LIGHT: VSCodeFullTheme = {
     "terminal.ansiBrightCyan": "#06b6d4",
     "terminal.ansiBrightWhite": "#FAF9F5",
   },
-}
+};
 
 /**
  * Claude Dark theme colors
@@ -535,7 +533,7 @@ const CLAUDE_DARK: VSCodeFullTheme = {
     "editor.background": "#262624",
     "editorPane.background": "#262624",
     "editor.foreground": "#c9c5bc",
-    "foreground": "#c9c5bc",
+    foreground: "#c9c5bc",
     "sideBar.background": "#262624",
     "sideBar.foreground": "#c9c5bc",
     "sideBar.border": "#3a3937",
@@ -552,15 +550,15 @@ const CLAUDE_DARK: VSCodeFullTheme = {
     "input.background": "#232120",
     "input.border": "#4a4742",
     "input.foreground": "#c9c5bc",
-    "focusBorder": "#D97857",
+    focusBorder: "#D97857",
     "textLink.foreground": "#D97857",
     "textLink.activeForeground": "#E8917A",
     "list.activeSelectionBackground": "#3d3a36",
     "list.hoverBackground": "#353230",
     "editor.selectionBackground": "#D9785744",
     "editorLineNumber.foreground": "#6b6660",
-    "descriptionForeground": "#8a857c",
-    "errorForeground": "#ef4444",
+    descriptionForeground: "#8a857c",
+    errorForeground: "#ef4444",
     "button.background": "#D97857",
     "button.foreground": "#ffffff",
     "button.secondaryBackground": "#3d3a36",
@@ -585,7 +583,7 @@ const CLAUDE_DARK: VSCodeFullTheme = {
     "terminal.ansiBrightCyan": "#22d3ee",
     "terminal.ansiBrightWhite": "#e5e3de",
   },
-}
+};
 
 /**
  * Liquid Glass - Transparent theme with macOS vibrancy
@@ -628,16 +626,16 @@ const LIQUID_GLASS_DARK: VSCodeFullTheme = {
     "input.foreground": "#ededed",
     // Fully opaque foreground colors for readability
     "editor.foreground": "#ededed",
-    "foreground": "#ededed",
-    "focusBorder": "#ffffff50", // more visible (was #ffffff40)
+    foreground: "#ededed",
+    focusBorder: "#ffffff50", // more visible (was #ffffff40)
     "textLink.foreground": "#ededed",
     "textLink.activeForeground": "#ffffff",
     "list.activeSelectionBackground": "#ffffff30", // more visible (was #ffffff20)
     "list.hoverBackground": "#ffffff20", // more visible (was #ffffff10)
     "editor.selectionBackground": "#ffffff35", // more visible (was #ffffff25)
     "editorLineNumber.foreground": "#606060", // brighter (was #505050)
-    "descriptionForeground": "#a0a0a0", // brighter (was #8c8c8c)
-    "errorForeground": "#ef4444",
+    descriptionForeground: "#a0a0a0", // brighter (was #8c8c8c)
+    errorForeground: "#ef4444",
     "button.background": "#ffffff35", // much more visible (was #ffffff20)
     "button.foreground": "#ededed",
     "button.secondaryBackground": "#ffffff25", // more visible (was #ffffff15)
@@ -662,7 +660,7 @@ const LIQUID_GLASS_DARK: VSCodeFullTheme = {
     "terminal.ansiBrightCyan": "#a0a0a0",
     "terminal.ansiBrightWhite": "#fafafa",
   },
-}
+};
 
 /**
  * Liquid Glass (Light mode variant) - Same dark glass styling for light system preference
@@ -704,16 +702,16 @@ const LIQUID_GLASS_LIGHT: VSCodeFullTheme = {
     "input.foreground": "#ededed",
     // Same foreground colors
     "editor.foreground": "#ededed",
-    "foreground": "#ededed",
-    "focusBorder": "#ffffff50",
+    foreground: "#ededed",
+    focusBorder: "#ffffff50",
     "textLink.foreground": "#ededed",
     "textLink.activeForeground": "#ffffff",
     "list.activeSelectionBackground": "#ffffff30",
     "list.hoverBackground": "#ffffff20",
     "editor.selectionBackground": "#ffffff35",
     "editorLineNumber.foreground": "#606060",
-    "descriptionForeground": "#a0a0a0",
-    "errorForeground": "#ef4444",
+    descriptionForeground: "#a0a0a0",
+    errorForeground: "#ef4444",
     "button.background": "#ffffff35",
     "button.foreground": "#ededed",
     "button.secondaryBackground": "#ffffff25",
@@ -738,7 +736,7 @@ const LIQUID_GLASS_LIGHT: VSCodeFullTheme = {
     "terminal.ansiBrightCyan": "#a0a0a0",
     "terminal.ansiBrightWhite": "#fafafa",
   },
-}
+};
 
 /**
  * All built-in themes
@@ -763,24 +761,26 @@ export const BUILTIN_THEMES: VSCodeFullTheme[] = [
   CLAUDE_LIGHT,
   VITESSE_LIGHT,
   MIN_LIGHT,
-]
+];
 
 /**
  * Get theme by ID
  */
 export function getBuiltinThemeById(id: string): VSCodeFullTheme | undefined {
-  return BUILTIN_THEMES.find((theme) => theme.id === id)
+  return BUILTIN_THEMES.find((theme) => theme.id === id);
 }
 
 /**
  * Get themes by type
  */
-export function getBuiltinThemesByType(type: "light" | "dark"): VSCodeFullTheme[] {
-  return BUILTIN_THEMES.filter((theme) => theme.type === type)
+export function getBuiltinThemesByType(
+  type: "light" | "dark",
+): VSCodeFullTheme[] {
+  return BUILTIN_THEMES.filter((theme) => theme.type === type);
 }
 
 /**
  * Default theme IDs for light/dark modes
  */
-export const DEFAULT_LIGHT_THEME_ID = "default-light"
-export const DEFAULT_DARK_THEME_ID = "default-dark"
+export const DEFAULT_LIGHT_THEME_ID = "default-light";
+export const DEFAULT_DARK_THEME_ID = "default-dark";

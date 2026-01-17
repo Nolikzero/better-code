@@ -1,69 +1,70 @@
-"use client"
+"use client";
 
-import { memo, useState, useEffect, useRef } from "react"
-import { ChevronRight } from "lucide-react"
-import { cn } from "../../../lib/utils"
-import { ChatMarkdownRenderer } from "../../../components/chat-markdown-renderer"
-import { AgentToolInterrupted } from "./agent-tool-interrupted"
+import { ChevronRight } from "lucide-react";
+import { memo, useEffect, useRef, useState } from "react";
+import { ChatMarkdownRenderer } from "../../../components/chat-markdown-renderer";
+import { cn } from "../../../lib/utils";
+import { AgentToolInterrupted } from "./agent-tool-interrupted";
 
 interface ThinkingToolPart {
-  type: string
-  state: string
+  type: string;
+  state: string;
   input?: {
-    text?: string
-  }
+    text?: string;
+  };
   output?: {
-    completed?: boolean
-  }
+    completed?: boolean;
+  };
 }
 
 interface AgentThinkingToolProps {
-  part: ThinkingToolPart
-  chatStatus?: string
+  part: ThinkingToolPart;
+  chatStatus?: string;
 }
 
 // Constants for thinking preview and scrolling
-const PREVIEW_LENGTH = 60
-const SCROLL_THRESHOLD = 500
+const PREVIEW_LENGTH = 60;
+const SCROLL_THRESHOLD = 500;
 
 export const AgentThinkingTool = memo(function AgentThinkingTool({
   part,
   chatStatus,
 }: AgentThinkingToolProps) {
   const isPending =
-    part.state !== "output-available" && part.state !== "output-error"
-  const isStreaming = isPending && chatStatus === "streaming"
-  const isInterrupted = isPending && chatStatus !== "streaming" && chatStatus !== undefined
+    part.state !== "output-available" && part.state !== "output-error";
+  const isStreaming = isPending && chatStatus === "streaming";
+  const isInterrupted =
+    isPending && chatStatus !== "streaming" && chatStatus !== undefined;
 
   // Default: expanded while streaming, collapsed when done
-  const [isExpanded, setIsExpanded] = useState(isStreaming)
-  const wasStreamingRef = useRef(isStreaming)
-  const scrollRef = useRef<HTMLDivElement>(null)
+  const [isExpanded, setIsExpanded] = useState(isStreaming);
+  const wasStreamingRef = useRef(isStreaming);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   // Auto-collapse when streaming ends (transition from true -> false)
   useEffect(() => {
     if (wasStreamingRef.current && !isStreaming) {
-      setIsExpanded(false)
+      setIsExpanded(false);
     }
-    wasStreamingRef.current = isStreaming
-  }, [isStreaming])
+    wasStreamingRef.current = isStreaming;
+  }, [isStreaming]);
 
   // Auto-scroll to bottom when streaming
   useEffect(() => {
     if (isStreaming && isExpanded && scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [part.input?.text, isStreaming, isExpanded])
+  }, [part.input?.text, isStreaming, isExpanded]);
 
   // Get thinking text
-  const thinkingText = part.input?.text || ""
+  const thinkingText = part.input?.text || "";
 
   // Build preview for collapsed state
-  const previewText = thinkingText.slice(0, PREVIEW_LENGTH).replace(/\n/g, " ")
+  const previewText = thinkingText.slice(0, PREVIEW_LENGTH).replace(/\n/g, " ");
 
   // Show interrupted state if thinking was interrupted without completing
   if (isInterrupted && !thinkingText) {
-    return <AgentToolInterrupted toolName="Thinking" />
+    return <AgentToolInterrupted toolName="Thinking" />;
   }
 
   return (
@@ -128,5 +129,5 @@ export const AgentThinkingTool = memo(function AgentThinkingTool({
         </div>
       )}
     </div>
-  )
-})
+  );
+});

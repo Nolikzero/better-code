@@ -1,20 +1,20 @@
-"use client"
+"use client";
 
-import { Button } from "../../../components/ui/button"
-import { AlignJustify } from "lucide-react"
+import { AlignJustify } from "lucide-react";
+import { Button } from "../../../components/ui/button";
+import { Kbd } from "../../../components/ui/kbd";
 import {
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
   TooltipProvider,
-} from "../../../components/ui/tooltip"
-import { Kbd } from "../../../components/ui/kbd"
+  TooltipTrigger,
+} from "../../../components/ui/tooltip";
 
 interface AgentsHeaderControlsProps {
-  isSidebarOpen: boolean
-  onToggleSidebar: () => void
-  hasUnseenChanges?: boolean
-  isSubChatsSidebarOpen?: boolean
+  isSidebarOpen: boolean;
+  onToggleSidebar: () => void;
+  hasUnseenChanges?: boolean;
+  isSubChatsSidebarOpen?: boolean;
 }
 
 export function AgentsHeaderControls({
@@ -24,7 +24,7 @@ export function AgentsHeaderControls({
   isSubChatsSidebarOpen = false,
 }: AgentsHeaderControlsProps) {
   // Only show open button when both sidebars are closed
-  if (isSidebarOpen || isSubChatsSidebarOpen) return null
+  if (isSidebarOpen || isSubChatsSidebarOpen) return null;
 
   return (
     <TooltipProvider>
@@ -50,5 +50,5 @@ export function AgentsHeaderControls({
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
-  )
+  );
 }

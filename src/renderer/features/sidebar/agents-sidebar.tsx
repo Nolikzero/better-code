@@ -1,106 +1,106 @@
-"use client"
+"use client";
 
-import React from "react"
-import { useState, useRef, useMemo, useEffect, useCallback } from "react"
-import { createPortal } from "react-dom"
-import { motion, AnimatePresence } from "motion/react"
-import { Button as ButtonCustom } from "../../components/ui/button"
-import { cn } from "../../lib/utils"
-import { useSetAtom, useAtom, useAtomValue } from "jotai"
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { ChevronDown, FolderGit2 } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import React from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { Button as ButtonCustom } from "../../components/ui/button";
 import {
-  createTeamDialogOpenAtom,
+  agentsHelpPopoverOpenAtom,
   agentsSettingsDialogActiveTabAtom,
   agentsSettingsDialogOpenAtom,
-  agentsHelpPopoverOpenAtom,
   agentsShortcutsDialogOpenAtom,
-  selectedAgentChatIdsAtom,
-  isAgentMultiSelectModeAtom,
-  toggleAgentChatSelectionAtom,
-  selectAllAgentChatsAtom,
   clearAgentChatSelectionAtom,
-  selectedAgentChatsCountAtom,
+  createTeamDialogOpenAtom,
+  isAgentMultiSelectModeAtom,
   isDesktopAtom,
   isFullscreenAtom,
-} from "../../lib/atoms"
-import { ArchivePopover } from "../agents/ui/archive-popover"
-import { ChevronDown, MoreHorizontal, FolderGit2 } from "lucide-react"
+  selectAllAgentChatsAtom,
+  selectedAgentChatIdsAtom,
+  selectedAgentChatsCountAtom,
+  toggleAgentChatSelectionAtom,
+} from "../../lib/atoms";
+import { cn } from "../../lib/utils";
+import { ArchivePopover } from "../agents/ui/archive-popover";
 // import { useRouter } from "next/navigation" // Desktop doesn't use next/navigation
 // import { useCombinedAuth } from "@/lib/hooks/use-combined-auth"
-const useCombinedAuth = () => ({ userId: null })
+const useCombinedAuth = () => ({ userId: null, isLoaded: true });
 // import { AuthDialog } from "@/components/auth/auth-dialog"
-const AuthDialog = () => null
-// Desktop: archive is handled inline, not via hook
-// import { DiscordIcon } from "@/components/icons"
-import { AgentsRenameSubChatDialog } from "../agents/components/agents-rename-subchat-dialog"
-import { trpc } from "../../lib/trpc"
-import { toast } from "sonner"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuSeparator,
-} from "../../components/ui/dropdown-menu"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "../../components/ui/tooltip"
-import { Kbd } from "../../components/ui/kbd"
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const AuthDialog = (_props: any) => null;
+import { useHotkeys } from "react-hotkeys-hook";
+import { toast } from "sonner";
+import { Button } from "../../components/ui/button";
+import { Checkbox } from "../../components/ui/checkbox";
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
   ContextMenuTrigger,
-} from "../../components/ui/context-menu"
+} from "../../components/ui/context-menu";
 import {
-  IconDoubleChevronLeft,
-  SettingsIcon,
-  PlusIcon,
-  ProfileIcon,
-  PublisherStudioIcon,
-  SearchIcon,
-  LoadingDot,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "../../components/ui/dropdown-menu";
+import {
   ArchiveIcon,
-  TrashIcon,
-  QuestionCircleIcon,
+  IconDoubleChevronLeft,
   KeyboardIcon,
-  TicketIcon,
-} from "../../components/ui/icons"
-import { Logo } from "../../components/ui/logo"
-import { Input } from "../../components/ui/input"
-import { Button } from "../../components/ui/button"
+  LoadingDot,
+  ProfileIcon,
+  QuestionCircleIcon,
+  SettingsIcon,
+  TrashIcon,
+} from "../../components/ui/icons";
+import { Input } from "../../components/ui/input";
+import { Kbd } from "../../components/ui/kbd";
+import { Logo } from "../../components/ui/logo";
 import {
-  selectedAgentChatIdAtom,
-  previousAgentChatIdAtom,
-  selectedDraftIdAtom,
-  loadingSubChatsAtom,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../../components/ui/tooltip";
+import { TypewriterText } from "../../components/ui/typewriter-text";
+import { trpc } from "../../lib/trpc";
+import { getShortcutKey, isDesktopApp } from "../../lib/utils/platform";
+import {
+  type UndoItem,
+  agentsDebugModeAtom,
   agentsUnseenChangesAtom,
   archivePopoverOpenAtom,
-  agentsDebugModeAtom,
-  selectedProjectAtom,
   justCreatedIdsAtom,
+  loadingSubChatsAtom,
+  previousAgentChatIdAtom,
+  selectedAgentChatIdAtom,
+  selectedDraftIdAtom,
+  selectedProjectAtom,
   undoStackAtom,
-  type UndoItem,
-} from "../agents/atoms"
-import { useAgentSubChatStore, OPEN_SUB_CHATS_CHANGE_EVENT } from "../agents/stores/sub-chat-store"
-import { AgentsHelpPopover } from "../agents/components/agents-help-popover"
-import { getShortcutKey, isDesktopApp } from "../../lib/utils/platform"
-import { pluralize } from "../agents/utils/pluralize"
-import { useNewChatDrafts, deleteNewChatDraft, type NewChatDraft } from "../agents/lib/drafts"
+} from "../agents/atoms";
+import { AgentsHelpPopover } from "../agents/components/agents-help-popover";
+// Desktop: archive is handled inline, not via hook
+// import { DiscordIcon } from "@/components/icons"
+import { AgentsRenameSubChatDialog } from "../agents/components/agents-rename-subchat-dialog";
 import {
   TrafficLightSpacer,
   TrafficLights,
-} from "../agents/components/traffic-light-spacer"
-import { useHotkeys } from "react-hotkeys-hook"
-import { Checkbox } from "../../components/ui/checkbox"
-import { useHaptic } from "./hooks/use-haptic"
-import { TypewriterText } from "../../components/ui/typewriter-text"
+} from "../agents/components/traffic-light-spacer";
+import { deleteNewChatDraft, useNewChatDrafts } from "../agents/lib/drafts";
+import {
+  OPEN_SUB_CHATS_CHANGE_EVENT,
+  useAgentSubChatStore,
+} from "../agents/stores/sub-chat-store";
+import { pluralize } from "../agents/utils/pluralize";
+import { useHaptic } from "./hooks/use-haptic";
 
 // Component to render chat icon with loading status
 const ChatIcon = React.memo(function ChatIcon({
@@ -114,15 +114,15 @@ const ChatIcon = React.memo(function ChatIcon({
   gitOwner,
   gitProvider,
 }: {
-  isSelected: boolean
-  isLoading: boolean
-  hasUnseenChanges?: boolean
-  hasPendingPlan?: boolean
-  isMultiSelectMode?: boolean
-  isChecked?: boolean
-  onCheckboxClick?: (e: React.MouseEvent) => void
-  gitOwner?: string | null
-  gitProvider?: string | null
+  isSelected: boolean;
+  isLoading: boolean;
+  hasUnseenChanges?: boolean;
+  hasPendingPlan?: boolean;
+  isMultiSelectMode?: boolean;
+  isChecked?: boolean;
+  onCheckboxClick?: (e: React.MouseEvent) => void;
+  gitOwner?: string | null;
+  gitProvider?: string | null;
 }) {
   // Show GitHub avatar if available, otherwise blank project icon
   const renderMainIcon = () => {
@@ -133,7 +133,7 @@ const ChatIcon = React.memo(function ChatIcon({
           alt={gitOwner}
           className="h-4 w-4 rounded-sm flex-shrink-0"
         />
-      )
+      );
     }
     return (
       <FolderGit2
@@ -142,8 +142,8 @@ const ChatIcon = React.memo(function ChatIcon({
           isSelected ? "text-foreground" : "text-muted-foreground",
         )}
       />
-    )
-  }
+    );
+  };
 
   return (
     <div className="relative flex-shrink-0 w-4 h-4">
@@ -175,37 +175,51 @@ const ChatIcon = React.memo(function ChatIcon({
         {renderMainIcon()}
       </div>
       {/* Badge in bottom-right corner: loader → amber dot → blue dot - hidden during multi-select */}
-      {(isLoading || hasUnseenChanges || hasPendingPlan) && !isMultiSelectMode && (
-        <div
-          className={cn(
-            "absolute -bottom-1 -right-1 w-3 h-3 rounded-full flex items-center justify-center",
-            isSelected
-              ? "bg-[#E8E8E8] dark:bg-[#1B1B1B]"
-              : "bg-[#F4F4F4] group-hover:bg-[#E8E8E8] dark:bg-[#101010] dark:group-hover:bg-[#1B1B1B]",
-          )}
-        >
-          {/* Priority: loader > amber dot (pending plan) > blue dot (unseen) */}
-          {isLoading ? (
-            <LoadingDot isLoading={true} className="w-2.5 h-2.5 text-muted-foreground" />
-          ) : hasPendingPlan ? (
-            <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-          ) : (
-            <LoadingDot isLoading={false} className="w-2.5 h-2.5 text-muted-foreground" />
-          )}
-        </div>
-      )}
+      {(isLoading || hasUnseenChanges || hasPendingPlan) &&
+        !isMultiSelectMode && (
+          <div
+            className={cn(
+              "absolute -bottom-1 -right-1 w-3 h-3 rounded-full flex items-center justify-center",
+              isSelected
+                ? "bg-[#E8E8E8] dark:bg-[#1B1B1B]"
+                : "bg-[#F4F4F4] group-hover:bg-[#E8E8E8] dark:bg-[#101010] dark:group-hover:bg-[#1B1B1B]",
+            )}
+          >
+            {/* Priority: loader > amber dot (pending plan) > blue dot (unseen) */}
+            {isLoading ? (
+              <LoadingDot
+                isLoading={true}
+                className="w-2.5 h-2.5 text-muted-foreground"
+              />
+            ) : hasPendingPlan ? (
+              <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+            ) : (
+              <LoadingDot
+                isLoading={false}
+                className="w-2.5 h-2.5 text-muted-foreground"
+              />
+            )}
+          </div>
+        )}
     </div>
-  )
-})
+  );
+});
 
 interface AgentsSidebarProps {
-  userId?: string | null | undefined
-  clerkUser?: any
-  desktopUser?: { id: string; email: string; name?: string } | null
-  onSignOut?: () => void
-  onToggleSidebar?: () => void
-  isMobileFullscreen?: boolean
-  onChatSelect?: () => void
+  userId?: string | null | undefined;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  clerkUser?: any;
+  desktopUser?: {
+    id: string;
+    email: string;
+    name?: string | null;
+    imageUrl?: string | null;
+    username?: string | null;
+  } | null;
+  onSignOut?: () => void;
+  onToggleSidebar?: () => void;
+  isMobileFullscreen?: boolean;
+  onChatSelect?: () => void;
 }
 
 export function AgentsSidebar({
@@ -221,122 +235,123 @@ export function AgentsSidebar({
   isMobileFullscreen = false,
   onChatSelect,
 }: AgentsSidebarProps) {
-  const [selectedChatId, setSelectedChatId] = useAtom(selectedAgentChatIdAtom)
-  const previousChatId = useAtomValue(previousAgentChatIdAtom)
-  const [selectedDraftId, setSelectedDraftId] = useAtom(selectedDraftIdAtom)
-  const [loadingSubChats] = useAtom(loadingSubChatsAtom)
-  const [isSidebarHovered, setIsSidebarHovered] = useState(false)
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [focusedChatIndex, setFocusedChatIndex] = useState<number>(-1) // -1 means no focus
-  const [hoveredChatIndex, setHoveredChatIndex] = useState<number>(-1) // Track hovered chat for X hotkey
+  const [selectedChatId, setSelectedChatId] = useAtom(selectedAgentChatIdAtom);
+  const previousChatId = useAtomValue(previousAgentChatIdAtom);
+  const [selectedDraftId, setSelectedDraftId] = useAtom(selectedDraftIdAtom);
+  const [loadingSubChats] = useAtom(loadingSubChatsAtom);
+  const [isSidebarHovered, setIsSidebarHovered] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [focusedChatIndex, setFocusedChatIndex] = useState<number>(-1); // -1 means no focus
+  const [hoveredChatIndex, setHoveredChatIndex] = useState<number>(-1); // Track hovered chat for X hotkey
 
   // Global desktop/fullscreen state from atoms (initialized in AgentsLayout)
-  const isDesktop = useAtomValue(isDesktopAtom)
-  const isFullscreen = useAtomValue(isFullscreenAtom)
+  const isDesktop = useAtomValue(isDesktopAtom);
+  const isFullscreen = useAtomValue(isFullscreenAtom);
 
   // Multi-select state
   const [selectedChatIds, setSelectedChatIds] = useAtom(
     selectedAgentChatIdsAtom,
-  )
-  const isMultiSelectMode = useAtomValue(isAgentMultiSelectModeAtom)
-  const selectedChatsCount = useAtomValue(selectedAgentChatsCountAtom)
-  const toggleChatSelection = useSetAtom(toggleAgentChatSelectionAtom)
-  const selectAllChats = useSetAtom(selectAllAgentChatsAtom)
-  const clearChatSelection = useSetAtom(clearAgentChatSelectionAtom)
+  );
+  const isMultiSelectMode = useAtomValue(isAgentMultiSelectModeAtom);
+  const selectedChatsCount = useAtomValue(selectedAgentChatsCountAtom);
+  const toggleChatSelection = useSetAtom(toggleAgentChatSelectionAtom);
+  const selectAllChats = useSetAtom(selectAllAgentChatsAtom);
+  const clearChatSelection = useSetAtom(clearAgentChatSelectionAtom);
 
   // Scroll gradient state for agents list
-  const [showBottomGradient, setShowBottomGradient] = useState(false)
-  const [showTopGradient, setShowTopGradient] = useState(false)
-  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const [showBottomGradient, setShowBottomGradient] = useState(false);
+  const [showTopGradient, setShowTopGradient] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Multiple drafts state - uses event-based sync instead of polling
-  const drafts = useNewChatDrafts()
+  const drafts = useNewChatDrafts();
 
   // Read unseen changes from global atoms
-  const unseenChanges = useAtomValue(agentsUnseenChangesAtom)
-  const archivePopoverOpen = useAtomValue(archivePopoverOpenAtom)
-  const justCreatedIds = useAtomValue(justCreatedIdsAtom)
+  const unseenChanges = useAtomValue(agentsUnseenChangesAtom);
+  const archivePopoverOpen = useAtomValue(archivePopoverOpenAtom);
+  const justCreatedIds = useAtomValue(justCreatedIdsAtom);
 
   const [helpPopoverOpen, setHelpPopoverOpen] = useAtom(
     agentsHelpPopoverOpenAtom,
-  )
-  const setShortcutsDialogOpen = useSetAtom(agentsShortcutsDialogOpenAtom)
-  const [blockHelpTooltip, setBlockHelpTooltip] = useState(false)
-  const [blockArchiveTooltip, setBlockArchiveTooltip] = useState(false)
-  const prevHelpPopoverOpen = useRef(false)
-  const prevArchivePopoverOpen = useRef(false)
+  );
+  const setShortcutsDialogOpen = useSetAtom(agentsShortcutsDialogOpenAtom);
+  const [blockHelpTooltip, setBlockHelpTooltip] = useState(false);
+  const [blockArchiveTooltip, setBlockArchiveTooltip] = useState(false);
+  const prevHelpPopoverOpen = useRef(false);
+  const prevArchivePopoverOpen = useRef(false);
 
   // Haptic feedback
-  const { trigger: triggerHaptic } = useHaptic()
+  const { trigger: triggerHaptic } = useHaptic();
 
   // Rename dialog state
-  const [renameDialogOpen, setRenameDialogOpen] = useState(false)
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [renamingChat, setRenamingChat] = useState<{
-    id: string
-    name: string
-  } | null>(null)
-  const [renameLoading, setRenameLoading] = useState(false)
+    id: string;
+    name: string | null;
+  } | null>(null);
+  const [renameLoading, setRenameLoading] = useState(false);
 
   // Track initial mount to skip footer animation on load
-  const hasFooterAnimated = useRef(false)
+  const hasFooterAnimated = useRef(false);
 
   // Pinned chats (stored in localStorage per project)
-  const [pinnedChatIds, setPinnedChatIds] = useState<Set<string>>(new Set())
-  const helpButtonRef = useRef<HTMLButtonElement>(null)
-  const archiveButtonRef = useRef<HTMLButtonElement>(null)
-  const searchInputRef = useRef<HTMLInputElement>(null)
+  const [pinnedChatIds, setPinnedChatIds] = useState<Set<string>>(new Set());
+  const helpButtonRef = useRef<HTMLButtonElement>(null);
+  const archiveButtonRef = useRef<HTMLButtonElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Agent name tooltip state (for truncated names)
   const [agentTooltip, setAgentTooltip] = useState<{
-    visible: boolean
-    position: { top: number; left: number }
-    name: string
-  } | null>(null)
-  const nameRefs = useRef<Map<string, HTMLSpanElement>>(new Map())
+    visible: boolean;
+    position: { top: number; left: number };
+    name: string | null;
+  } | null>(null);
+  const nameRefs = useRef<Map<string, HTMLSpanElement>>(new Map());
   const agentTooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
-  )
+  );
 
-  const setSettingsDialogOpen = useSetAtom(agentsSettingsDialogOpenAtom)
-  const setSettingsActiveTab = useSetAtom(agentsSettingsDialogActiveTabAtom)
-  const { isLoaded: isAuthLoaded } = useCombinedAuth()
-  const [showAuthDialog, setShowAuthDialog] = useState(false)
-  const setCreateTeamDialogOpen = useSetAtom(createTeamDialogOpenAtom)
+  const setSettingsDialogOpen = useSetAtom(agentsSettingsDialogOpenAtom);
+  const setSettingsActiveTab = useSetAtom(agentsSettingsDialogActiveTabAtom);
+  const { isLoaded: isAuthLoaded } = useCombinedAuth();
+  const [showAuthDialog, setShowAuthDialog] = useState(false);
+  const setCreateTeamDialogOpen = useSetAtom(createTeamDialogOpenAtom);
 
   // Debug mode for testing first-time user experience
-  const debugMode = useAtomValue(agentsDebugModeAtom)
+  const debugMode = useAtomValue(agentsDebugModeAtom);
 
   // Desktop: use selectedProject instead of teams
-  const [selectedProject] = useAtom(selectedProjectAtom)
+  const [selectedProject] = useAtom(selectedProjectAtom);
 
   // Fetch all chats (no project filter)
-  const { data: agentChats } = trpc.chats.list.useQuery({})
+  const { data: agentChats } = trpc.chats.list.useQuery({});
 
   // Track open sub-chat changes for reactivity
-  const [openSubChatsVersion, setOpenSubChatsVersion] = useState(0)
+  const [openSubChatsVersion, setOpenSubChatsVersion] = useState(0);
   useEffect(() => {
-    const handleChange = () => setOpenSubChatsVersion((v) => v + 1)
-    window.addEventListener(OPEN_SUB_CHATS_CHANGE_EVENT, handleChange)
-    return () => window.removeEventListener(OPEN_SUB_CHATS_CHANGE_EVENT, handleChange)
-  }, [])
+    const handleChange = () => setOpenSubChatsVersion((v) => v + 1);
+    window.addEventListener(OPEN_SUB_CHATS_CHANGE_EVENT, handleChange);
+    return () =>
+      window.removeEventListener(OPEN_SUB_CHATS_CHANGE_EVENT, handleChange);
+  }, []);
 
   // Store previous value to avoid unnecessary React Query refetches
-  const prevOpenSubChatIdsRef = useRef<string[]>([])
+  const prevOpenSubChatIdsRef = useRef<string[]>([]);
 
   // Collect all open sub-chat IDs from localStorage for all workspaces
   const allOpenSubChatIds = useMemo(() => {
     // openSubChatsVersion is used to trigger recalculation when sub-chats change
-    void openSubChatsVersion
-    if (!agentChats) return prevOpenSubChatIdsRef.current
+    void openSubChatsVersion;
+    if (!agentChats) return prevOpenSubChatIdsRef.current;
 
-    const allIds: string[] = []
+    const allIds: string[] = [];
     for (const chat of agentChats) {
       try {
-        const stored = localStorage.getItem(`agent-open-sub-chats-${chat.id}`)
+        const stored = localStorage.getItem(`agent-open-sub-chats-${chat.id}`);
         if (stored) {
-          const ids = JSON.parse(stored) as string[]
-          allIds.push(...ids)
+          const ids = JSON.parse(stored) as string[];
+          allIds.push(...ids);
         }
       } catch {
         // Skip invalid JSON
@@ -345,184 +360,207 @@ export function AgentsSidebar({
 
     // Compare with previous - if content is same, return old reference
     // This prevents React Query from refetching when array content hasn't changed
-    const prev = prevOpenSubChatIdsRef.current
-    const sorted = [...allIds].sort()
-    const prevSorted = [...prev].sort()
-    if (sorted.length === prevSorted.length && sorted.every((id, i) => id === prevSorted[i])) {
-      return prev
+    const prev = prevOpenSubChatIdsRef.current;
+    const sorted = [...allIds].sort();
+    const prevSorted = [...prev].sort();
+    if (
+      sorted.length === prevSorted.length &&
+      sorted.every((id, i) => id === prevSorted[i])
+    ) {
+      return prev;
     }
 
-    prevOpenSubChatIdsRef.current = allIds
-    return allIds
-  }, [agentChats, openSubChatsVersion])
+    prevOpenSubChatIdsRef.current = allIds;
+    return allIds;
+  }, [agentChats, openSubChatsVersion]);
 
   // File changes stats from DB - only for open sub-chats
   const { data: fileStatsData } = trpc.chats.getFileStats.useQuery(
     { openSubChatIds: allOpenSubChatIds },
-    { refetchInterval: 5000, enabled: allOpenSubChatIds.length > 0, placeholderData: (prev) => prev }
-  )
+    {
+      refetchInterval: 5000,
+      enabled: allOpenSubChatIds.length > 0,
+      placeholderData: (prev) => prev,
+    },
+  );
 
   // Pending plan approvals from DB - only for open sub-chats
-  const { data: pendingPlanApprovalsData } = trpc.chats.getPendingPlanApprovals.useQuery(
-    { openSubChatIds: allOpenSubChatIds },
-    { refetchInterval: 5000, enabled: allOpenSubChatIds.length > 0, placeholderData: (prev) => prev }
-  )
+  const { data: pendingPlanApprovalsData } =
+    trpc.chats.getPendingPlanApprovals.useQuery(
+      { openSubChatIds: allOpenSubChatIds },
+      {
+        refetchInterval: 5000,
+        enabled: allOpenSubChatIds.length > 0,
+        placeholderData: (prev) => prev,
+      },
+    );
 
   // Fetch all projects for git info
-  const { data: projects } = trpc.projects.list.useQuery()
+  const { data: projects } = trpc.projects.list.useQuery();
 
   // Create map for quick project lookup by id
   const projectsMap = useMemo(() => {
-    if (!projects) return new Map()
-    return new Map(projects.map((p) => [p.id, p]))
-  }, [projects])
+    if (!projects) return new Map();
+    return new Map(projects.map((p) => [p.id, p]));
+  }, [projects]);
 
   // Fetch all archived chats (to get count)
-  const { data: archivedChats } = trpc.chats.listArchived.useQuery({})
-  const archivedChatsCount = archivedChats?.length ?? 0
+  const { data: archivedChats } = trpc.chats.listArchived.useQuery({});
+  const archivedChatsCount = archivedChats?.length ?? 0;
 
   // Get utils outside of callbacks - hooks must be called at top level
-  const utils = trpc.useUtils()
+  const utils = trpc.useUtils();
 
   // Block tooltips temporarily after popover closes and remove focus
   useEffect(() => {
     // Only trigger when transitioning from open (true) to closed (false)
     if (prevHelpPopoverOpen.current && !helpPopoverOpen) {
       // Help popover just closed, remove focus and block tooltip for 300ms
-      helpButtonRef.current?.blur()
-      setBlockHelpTooltip(true)
-      const timer = setTimeout(() => setBlockHelpTooltip(false), 300)
-      prevHelpPopoverOpen.current = helpPopoverOpen
-      return () => clearTimeout(timer)
+      helpButtonRef.current?.blur();
+      setBlockHelpTooltip(true);
+      const timer = setTimeout(() => setBlockHelpTooltip(false), 300);
+      prevHelpPopoverOpen.current = helpPopoverOpen;
+      return () => clearTimeout(timer);
     }
-    prevHelpPopoverOpen.current = helpPopoverOpen
-  }, [helpPopoverOpen])
+    prevHelpPopoverOpen.current = helpPopoverOpen;
+  }, [helpPopoverOpen]);
 
   useEffect(() => {
     // Only trigger when transitioning from open (true) to closed (false)
     if (prevArchivePopoverOpen.current && !archivePopoverOpen) {
       // Archive popover just closed, remove focus and block tooltip for 300ms
-      archiveButtonRef.current?.blur()
-      setBlockArchiveTooltip(true)
-      const timer = setTimeout(() => setBlockArchiveTooltip(false), 300)
-      prevArchivePopoverOpen.current = archivePopoverOpen
-      return () => clearTimeout(timer)
+      archiveButtonRef.current?.blur();
+      setBlockArchiveTooltip(true);
+      const timer = setTimeout(() => setBlockArchiveTooltip(false), 300);
+      prevArchivePopoverOpen.current = archivePopoverOpen;
+      return () => clearTimeout(timer);
     }
-    prevArchivePopoverOpen.current = archivePopoverOpen
-  }, [archivePopoverOpen])
+    prevArchivePopoverOpen.current = archivePopoverOpen;
+  }, [archivePopoverOpen]);
 
   // Unified undo stack for workspaces and sub-chats (Jotai atom)
-  const [undoStack, setUndoStack] = useAtom(undoStackAtom)
+  const [undoStack, setUndoStack] = useAtom(undoStackAtom);
 
   // Restore chat mutation (for undo)
   const restoreChatMutation = trpc.chats.restore.useMutation({
     onSuccess: (_, variables) => {
-      utils.chats.list.invalidate()
-      utils.chats.listArchived.invalidate()
+      utils.chats.list.invalidate();
+      utils.chats.listArchived.invalidate();
       // Select the restored chat
-      setSelectedChatId(variables.id)
+      setSelectedChatId(variables.id);
     },
-  })
+  });
 
   // Remove workspace item from stack by chatId
-  const removeWorkspaceFromStack = useCallback((chatId: string) => {
-    setUndoStack((prev) => {
-      const index = prev.findIndex((item) => item.type === "workspace" && item.chatId === chatId)
-      if (index !== -1) {
-        clearTimeout(prev[index].timeoutId)
-        return [...prev.slice(0, index), ...prev.slice(index + 1)]
-      }
-      return prev
-    })
-  }, [setUndoStack])
+  const removeWorkspaceFromStack = useCallback(
+    (chatId: string) => {
+      setUndoStack((prev) => {
+        const index = prev.findIndex(
+          (item) => item.type === "workspace" && item.chatId === chatId,
+        );
+        if (index !== -1) {
+          clearTimeout(prev[index].timeoutId);
+          return [...prev.slice(0, index), ...prev.slice(index + 1)];
+        }
+        return prev;
+      });
+    },
+    [setUndoStack],
+  );
 
   // Archive chat mutation
   const archiveChatMutation = trpc.chats.archive.useMutation({
     onSuccess: (_, variables) => {
-      utils.chats.list.invalidate()
-      utils.chats.listArchived.invalidate()
+      utils.chats.list.invalidate();
+      utils.chats.listArchived.invalidate();
 
       // If archiving the currently selected chat, navigate to previous or new workspace
       if (selectedChatId === variables.id) {
         // Check if previous chat is available (exists and not being archived)
-        const isPreviousAvailable = previousChatId &&
-          agentChats?.some((c) => c.id === previousChatId && c.id !== variables.id)
+        const isPreviousAvailable =
+          previousChatId &&
+          agentChats?.some(
+            (c) => c.id === previousChatId && c.id !== variables.id,
+          );
 
         if (isPreviousAvailable) {
-          setSelectedChatId(previousChatId)
+          setSelectedChatId(previousChatId);
         } else {
           // Fallback to new workspace view
-          setSelectedChatId(null)
+          setSelectedChatId(null);
         }
       }
 
       // Clear after 10 seconds (Cmd+Z window)
       const timeoutId = setTimeout(() => {
-        removeWorkspaceFromStack(variables.id)
-      }, 10000)
+        removeWorkspaceFromStack(variables.id);
+      }, 10000);
 
       // Add to unified undo stack for Cmd+Z
-      setUndoStack((prev) => [...prev, {
-        type: "workspace",
-        chatId: variables.id,
-        timeoutId,
-      }])
+      setUndoStack((prev) => [
+        ...prev,
+        {
+          type: "workspace",
+          chatId: variables.id,
+          timeoutId,
+        },
+      ]);
     },
-  })
+  });
 
   // Cmd+Z to undo archive (supports multiple undos for workspaces AND sub-chats)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "z" && undoStack.length > 0) {
-        e.preventDefault()
+        e.preventDefault();
         // Get the most recent item
-        const lastItem = undoStack[undoStack.length - 1]
-        if (!lastItem) return
+        const lastItem = undoStack[undoStack.length - 1];
+        if (!lastItem) return;
 
         // Clear timeout and remove from stack
-        clearTimeout(lastItem.timeoutId)
-        setUndoStack((prev) => prev.slice(0, -1))
+        clearTimeout(lastItem.timeoutId);
+        setUndoStack((prev) => prev.slice(0, -1));
 
         if (lastItem.type === "workspace") {
           // Restore workspace from archive
-          restoreChatMutation.mutate({ id: lastItem.chatId })
+          restoreChatMutation.mutate({ id: lastItem.chatId });
         } else if (lastItem.type === "subchat") {
           // Restore sub-chat tab (re-add to open tabs)
-          const store = useAgentSubChatStore.getState()
-          store.addToOpenSubChats(lastItem.subChatId)
-          store.setActiveSubChat(lastItem.subChatId)
+          const store = useAgentSubChatStore.getState();
+          store.addToOpenSubChats(lastItem.subChatId);
+          store.setActiveSubChat(lastItem.subChatId);
         }
       }
-    }
+    };
 
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [undoStack, setUndoStack, restoreChatMutation])
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [undoStack, setUndoStack, restoreChatMutation]);
 
   // Batch archive mutation
   const archiveChatsBatchMutation = trpc.chats.archiveBatch.useMutation({
     onSuccess: (_, variables) => {
-      utils.chats.list.invalidate()
-      utils.chats.listArchived.invalidate()
+      utils.chats.list.invalidate();
+      utils.chats.listArchived.invalidate();
 
       // Add each chat to unified undo stack for Cmd+Z
       const newItems: UndoItem[] = variables.chatIds.map((chatId) => {
         const timeoutId = setTimeout(() => {
-          removeWorkspaceFromStack(chatId)
-        }, 10000)
-        return { type: "workspace" as const, chatId, timeoutId }
-      })
-      setUndoStack((prev) => [...prev, ...newItems])
+          removeWorkspaceFromStack(chatId);
+        }, 10000);
+        return { type: "workspace" as const, chatId, timeoutId };
+      });
+      setUndoStack((prev) => [...prev, ...newItems]);
     },
-  })
+  });
 
   // Reset selected chat when project changes (but not on initial load)
-  const prevProjectIdRef = useRef<string | null | undefined>(undefined)
+  const prevProjectIdRef = useRef<string | null | undefined>(undefined);
   useEffect(() => {
     // Skip on initial mount (prevProjectIdRef is undefined)
     if (prevProjectIdRef.current === undefined) {
-      prevProjectIdRef.current = selectedProject?.id ?? null
-      return
+      prevProjectIdRef.current = selectedProject?.id ?? null;
+      return;
     }
     // Only reset if project actually changed from a real value (not from null/initial load)
     if (
@@ -530,31 +568,31 @@ export function AgentsSidebar({
       prevProjectIdRef.current !== selectedProject?.id &&
       selectedChatId
     ) {
-      setSelectedChatId(null)
+      setSelectedChatId(null);
     }
-    prevProjectIdRef.current = selectedProject?.id ?? null
-  }, [selectedProject?.id]) // Don't include selectedChatId in deps to avoid loops
+    prevProjectIdRef.current = selectedProject?.id ?? null;
+  }, [selectedProject?.id]); // Don't include selectedChatId in deps to avoid loops
 
   // Load pinned IDs from localStorage when project changes
   useEffect(() => {
     if (!selectedProject?.id) {
-      setPinnedChatIds(new Set())
-      return
+      setPinnedChatIds(new Set());
+      return;
     }
     try {
       const stored = localStorage.getItem(
         `agent-pinned-chats-${selectedProject.id}`,
-      )
-      setPinnedChatIds(stored ? new Set(JSON.parse(stored)) : new Set())
+      );
+      setPinnedChatIds(stored ? new Set(JSON.parse(stored)) : new Set());
     } catch {
-      setPinnedChatIds(new Set())
+      setPinnedChatIds(new Set());
     }
-  }, [selectedProject?.id])
+  }, [selectedProject?.id]);
 
   // Save pinned IDs to localStorage when they change
-  const prevPinnedRef = useRef<Set<string>>(new Set())
+  const prevPinnedRef = useRef<Set<string>>(new Set());
   useEffect(() => {
-    if (!selectedProject?.id) return
+    if (!selectedProject?.id) return;
     // Only save if pinnedChatIds actually changed (avoid saving on load)
     if (
       (pinnedChatIds !== prevPinnedRef.current && pinnedChatIds.size > 0) ||
@@ -563,165 +601,166 @@ export function AgentsSidebar({
       localStorage.setItem(
         `agent-pinned-chats-${selectedProject.id}`,
         JSON.stringify([...pinnedChatIds]),
-      )
+      );
     }
-    prevPinnedRef.current = pinnedChatIds
-  }, [pinnedChatIds, selectedProject?.id])
+    prevPinnedRef.current = pinnedChatIds;
+  }, [pinnedChatIds, selectedProject?.id]);
 
   // Rename mutation
   const renameChatMutation = trpc.chats.rename.useMutation({
     onSuccess: () => {
-      utils.chats.list.invalidate()
+      utils.chats.list.invalidate();
     },
     onError: () => {
-      toast.error("Failed to rename agent")
+      toast.error("Failed to rename agent");
     },
-  })
+  });
 
   const handleTogglePin = (chatId: string) => {
     setPinnedChatIds((prev) => {
-      const next = new Set(prev)
+      const next = new Set(prev);
       if (next.has(chatId)) {
-        next.delete(chatId)
+        next.delete(chatId);
       } else {
-        next.add(chatId)
+        next.add(chatId);
       }
-      return next
-    })
-  }
+      return next;
+    });
+  };
 
-  const handleRenameClick = (chat: { id: string; name: string }) => {
-    setRenamingChat(chat)
-    setRenameDialogOpen(true)
-  }
+  const handleRenameClick = (chat: { id: string; name: string | null }) => {
+    setRenamingChat(chat);
+    setRenameDialogOpen(true);
+  };
 
   const handleRenameSave = async (newName: string) => {
-    if (!renamingChat) return
+    if (!renamingChat) return;
 
-    const chatId = renamingChat.id
-    const oldName = renamingChat.name
+    const chatId = renamingChat.id;
+    const oldName = renamingChat.name;
 
     // Optimistically update the query cache
     utils.chats.list.setData({}, (old) => {
-      if (!old) return old
-      return old.map((c) => (c.id === chatId ? { ...c, name: newName } : c))
-    })
+      if (!old) return old;
+      return old.map((c) => (c.id === chatId ? { ...c, name: newName } : c));
+    });
 
-    setRenameLoading(true)
+    setRenameLoading(true);
 
     try {
       await renameChatMutation.mutateAsync({
         id: chatId,
         name: newName,
-      })
+      });
     } catch {
       // Rollback on error
       utils.chats.list.setData({}, (old) => {
-        if (!old) return old
-        return old.map((c) => (c.id === chatId ? { ...c, name: oldName } : c))
-      })
+        if (!old) return old;
+        return old.map((c) => (c.id === chatId ? { ...c, name: oldName } : c));
+      });
     } finally {
-      setRenameLoading(false)
-      setRenamingChat(null)
+      setRenameLoading(false);
+      setRenamingChat(null);
     }
-  }
+  };
 
   const handleArchiveAllBelow = (chatId: string) => {
-    const currentIndex = filteredChats.findIndex((c) => c.id === chatId)
-    if (currentIndex === -1 || currentIndex === filteredChats.length - 1) return
+    const currentIndex = filteredChats.findIndex((c) => c.id === chatId);
+    if (currentIndex === -1 || currentIndex === filteredChats.length - 1)
+      return;
 
     const chatsToArchive = filteredChats
       .slice(currentIndex + 1)
-      .map((c) => c.id)
+      .map((c) => c.id);
 
     if (chatsToArchive.length > 0) {
-      archiveChatsBatchMutation.mutate({ chatIds: chatsToArchive })
+      archiveChatsBatchMutation.mutate({ chatIds: chatsToArchive });
     }
-  }
+  };
 
   const handleArchiveOthers = (chatId: string) => {
     const chatsToArchive = filteredChats
       .filter((c) => c.id !== chatId)
-      .map((c) => c.id)
+      .map((c) => c.id);
 
     if (chatsToArchive.length > 0) {
-      archiveChatsBatchMutation.mutate({ chatIds: chatsToArchive })
+      archiveChatsBatchMutation.mutate({ chatIds: chatsToArchive });
     }
-  }
+  };
 
   // Check if all selected chats are pinned
   const areAllSelectedPinned = useMemo(() => {
-    if (selectedChatIds.size === 0) return false
-    return Array.from(selectedChatIds).every((id) => pinnedChatIds.has(id))
-  }, [selectedChatIds, pinnedChatIds])
+    if (selectedChatIds.size === 0) return false;
+    return Array.from(selectedChatIds).every((id) => pinnedChatIds.has(id));
+  }, [selectedChatIds, pinnedChatIds]);
 
   // Check if all selected chats are unpinned
   const areAllSelectedUnpinned = useMemo(() => {
-    if (selectedChatIds.size === 0) return false
-    return Array.from(selectedChatIds).every((id) => !pinnedChatIds.has(id))
-  }, [selectedChatIds, pinnedChatIds])
+    if (selectedChatIds.size === 0) return false;
+    return Array.from(selectedChatIds).every((id) => !pinnedChatIds.has(id));
+  }, [selectedChatIds, pinnedChatIds]);
 
   // Show pin option only if all selected have same pin state
-  const canShowPinOption = areAllSelectedPinned || areAllSelectedUnpinned
+  const canShowPinOption = areAllSelectedPinned || areAllSelectedUnpinned;
 
   // Handle bulk pin of selected chats
   const handleBulkPin = () => {
-    const chatIdsToPin = Array.from(selectedChatIds)
+    const chatIdsToPin = Array.from(selectedChatIds);
     if (chatIdsToPin.length > 0) {
       setPinnedChatIds((prev) => {
-        const next = new Set(prev)
-        chatIdsToPin.forEach((id) => next.add(id))
-        return next
-      })
-      clearChatSelection()
+        const next = new Set(prev);
+        chatIdsToPin.forEach((id) => next.add(id));
+        return next;
+      });
+      clearChatSelection();
     }
-  }
+  };
 
   // Handle bulk unpin of selected chats
   const handleBulkUnpin = () => {
-    const chatIdsToUnpin = Array.from(selectedChatIds)
+    const chatIdsToUnpin = Array.from(selectedChatIds);
     if (chatIdsToUnpin.length > 0) {
       setPinnedChatIds((prev) => {
-        const next = new Set(prev)
-        chatIdsToUnpin.forEach((id) => next.delete(id))
-        return next
-      })
-      clearChatSelection()
+        const next = new Set(prev);
+        chatIdsToUnpin.forEach((id) => next.delete(id));
+        return next;
+      });
+      clearChatSelection();
     }
-  }
+  };
 
   // Get clerk username
-  const clerkUsername = clerkUser?.username
+  const clerkUsername = clerkUser?.username;
 
   // Filter and separate pinned/unpinned agents
   const { pinnedAgents, unpinnedAgents, filteredChats } = useMemo(() => {
     if (!agentChats)
-      return { pinnedAgents: [], unpinnedAgents: [], filteredChats: [] }
+      return { pinnedAgents: [], unpinnedAgents: [], filteredChats: [] };
 
     const filtered = searchQuery.trim()
       ? agentChats.filter((chat) =>
-          chat.name.toLowerCase().includes(searchQuery.toLowerCase()),
+          (chat.name ?? "").toLowerCase().includes(searchQuery.toLowerCase()),
         )
-      : agentChats
+      : agentChats;
 
-    const pinned = filtered.filter((chat) => pinnedChatIds.has(chat.id))
-    const unpinned = filtered.filter((chat) => !pinnedChatIds.has(chat.id))
+    const pinned = filtered.filter((chat) => pinnedChatIds.has(chat.id));
+    const unpinned = filtered.filter((chat) => !pinnedChatIds.has(chat.id));
 
     return {
       pinnedAgents: pinned,
       unpinnedAgents: unpinned,
       filteredChats: [...pinned, ...unpinned],
-    }
-  }, [searchQuery, agentChats, pinnedChatIds])
+    };
+  }, [searchQuery, agentChats, pinnedChatIds]);
 
   // Handle bulk archive of selected chats
   const handleBulkArchive = useCallback(() => {
-    const chatIdsToArchive = Array.from(selectedChatIds)
-    if (chatIdsToArchive.length === 0) return
+    const chatIdsToArchive = Array.from(selectedChatIds);
+    if (chatIdsToArchive.length === 0) return;
 
     // If active chat is being archived, navigate to previous or new workspace
     const isArchivingActiveChat =
-      selectedChatId && chatIdsToArchive.includes(selectedChatId)
+      selectedChatId && chatIdsToArchive.includes(selectedChatId);
 
     archiveChatsBatchMutation.mutate(
       { chatIds: chatIdsToArchive },
@@ -730,21 +769,22 @@ export function AgentsSidebar({
           if (isArchivingActiveChat) {
             // Check if previous chat is available (exists and not being archived)
             const remainingChats = filteredChats.filter(
-              (c) => !chatIdsToArchive.includes(c.id)
-            )
-            const isPreviousAvailable = previousChatId &&
-              remainingChats.some((c) => c.id === previousChatId)
+              (c) => !chatIdsToArchive.includes(c.id),
+            );
+            const isPreviousAvailable =
+              previousChatId &&
+              remainingChats.some((c) => c.id === previousChatId);
 
             if (isPreviousAvailable) {
-              setSelectedChatId(previousChatId)
+              setSelectedChatId(previousChatId);
             } else {
-              setSelectedChatId(null)
+              setSelectedChatId(null);
             }
           }
-          clearChatSelection()
+          clearChatSelection();
         },
       },
-    )
+    );
   }, [
     selectedChatIds,
     selectedChatId,
@@ -753,82 +793,84 @@ export function AgentsSidebar({
     archiveChatsBatchMutation,
     setSelectedChatId,
     clearChatSelection,
-  ])
+  ]);
 
   // Delete a draft from localStorage
   const handleDeleteDraft = useCallback(
     (draftId: string) => {
-      deleteNewChatDraft(draftId)
+      deleteNewChatDraft(draftId);
       // If the deleted draft was selected, clear selection
       if (selectedDraftId === draftId) {
-        setSelectedDraftId(null)
+        setSelectedDraftId(null);
       }
     },
     [selectedDraftId, setSelectedDraftId],
-  )
+  );
 
   // Reset focused index when search query changes
   useEffect(() => {
-    setFocusedChatIndex(-1)
-  }, [searchQuery, filteredChats.length])
+    setFocusedChatIndex(-1);
+  }, [searchQuery, filteredChats.length]);
 
   // Scroll focused item into view
   useEffect(() => {
     if (focusedChatIndex >= 0 && filteredChats.length > 0) {
       const focusedElement = scrollContainerRef.current?.querySelector(
         `[data-chat-index="${focusedChatIndex}"]`,
-      ) as HTMLElement
+      ) as HTMLElement;
       if (focusedElement) {
         focusedElement.scrollIntoView({
           block: "nearest",
           behavior: "smooth",
-        })
+        });
       }
     }
-  }, [focusedChatIndex, filteredChats.length])
+  }, [focusedChatIndex, filteredChats.length]);
 
   // Derive which chats have loading sub-chats
   const loadingChatIds = useMemo(
     () => new Set([...loadingSubChats.values()]),
     [loadingSubChats],
-  )
+  );
 
   // Convert file stats from DB to a Map for easy lookup
   const workspaceFileStats = useMemo(() => {
-    const statsMap = new Map<string, { fileCount: number; additions: number; deletions: number }>()
+    const statsMap = new Map<
+      string,
+      { fileCount: number; additions: number; deletions: number }
+    >();
     if (fileStatsData) {
-      
       for (const stat of fileStatsData) {
         statsMap.set(stat.chatId, {
           fileCount: stat.fileCount,
           additions: stat.additions,
           deletions: stat.deletions,
-        })
+        });
       }
     }
-    return statsMap
-  }, [fileStatsData])
+    return statsMap;
+  }, [fileStatsData]);
 
   // Aggregate pending plan approvals by workspace (chatId) from DB
   const workspacePendingPlans = useMemo(() => {
-    const chatIdsWithPendingPlans = new Set<string>()
+    const chatIdsWithPendingPlans = new Set<string>();
     if (pendingPlanApprovalsData) {
       for (const { chatId } of pendingPlanApprovalsData) {
-        chatIdsWithPendingPlans.add(chatId)
+        chatIdsWithPendingPlans.add(chatId);
       }
     }
-    return chatIdsWithPendingPlans
-  }, [pendingPlanApprovalsData])
+    return chatIdsWithPendingPlans;
+  }, [pendingPlanApprovalsData]);
 
   const handleNewAgent = () => {
-    triggerHaptic("light")
-    setSelectedChatId(null)
-    setSelectedDraftId(null) // Clear selected draft so form starts empty
+    triggerHaptic("light");
+    setSelectedChatId(null);
+    setSelectedDraftId(null); // Clear selected draft so form starts empty
     // On mobile, switch to chat mode to show NewChatForm
     if (isMobileFullscreen && onChatSelect) {
-      onChatSelect()
+      onChatSelect();
     }
-  }
+  };
 
   const handleChatClick = (
     chatId: string,
@@ -837,19 +879,19 @@ export function AgentsSidebar({
   ) => {
     // Shift+click for range selection (works in both normal and multi-select mode)
     if (e?.shiftKey) {
-      e.preventDefault()
+      e.preventDefault();
 
       const clickedIndex =
-        globalIndex ?? filteredChats.findIndex((c) => c.id === chatId)
+        globalIndex ?? filteredChats.findIndex((c) => c.id === chatId);
 
-      if (clickedIndex === -1) return
+      if (clickedIndex === -1) return;
 
       // Find the anchor: use active chat or last selected item
-      let anchorIndex = -1
+      let anchorIndex = -1;
 
       // First try: use currently active/selected chat as anchor
       if (selectedChatId) {
-        anchorIndex = filteredChats.findIndex((c) => c.id === selectedChatId)
+        anchorIndex = filteredChats.findIndex((c) => c.id === selectedChatId);
       }
 
       // If no active chat, try to use the last item in selection
@@ -857,8 +899,8 @@ export function AgentsSidebar({
         // Find the first selected item in the list as anchor
         for (let i = 0; i < filteredChats.length; i++) {
           if (selectedChatIds.has(filteredChats[i]!.id)) {
-            anchorIndex = i
-            break
+            anchorIndex = i;
+            break;
           }
         }
       }
@@ -866,76 +908,76 @@ export function AgentsSidebar({
       // If still no anchor, just select the clicked item
       if (anchorIndex === -1) {
         if (!selectedChatIds.has(chatId)) {
-          toggleChatSelection(chatId)
+          toggleChatSelection(chatId);
         }
-        return
+        return;
       }
 
       // Select range from anchor to clicked item
-      const startIndex = Math.min(anchorIndex, clickedIndex)
-      const endIndex = Math.max(anchorIndex, clickedIndex)
+      const startIndex = Math.min(anchorIndex, clickedIndex);
+      const endIndex = Math.max(anchorIndex, clickedIndex);
 
       // Build new selection set with the range
-      const newSelection = new Set(selectedChatIds)
+      const newSelection = new Set(selectedChatIds);
       for (let i = startIndex; i <= endIndex; i++) {
-        const chat = filteredChats[i]
+        const chat = filteredChats[i];
         if (chat) {
-          newSelection.add(chat.id)
+          newSelection.add(chat.id);
         }
       }
-      setSelectedChatIds(newSelection)
-      return
+      setSelectedChatIds(newSelection);
+      return;
     }
 
     // In multi-select mode, clicking on the item still navigates to the chat
     // Only clicking on the checkbox toggles selection
-    setSelectedChatId(chatId)
+    setSelectedChatId(chatId);
     // On mobile, notify parent to switch to chat mode
     if (isMobileFullscreen && onChatSelect) {
-      onChatSelect()
+      onChatSelect();
     }
-  }
+  };
 
   const handleCheckboxClick = (e: React.MouseEvent, chatId: string) => {
-    e.stopPropagation()
-    toggleChatSelection(chatId)
-  }
+    e.stopPropagation();
+    toggleChatSelection(chatId);
+  };
 
   const formatTime = (dateStr: string) => {
-    const date = new Date(dateStr)
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffMins = Math.floor(diffMs / 60_000)
-    const diffHours = Math.floor(diffMs / 3_600_000)
-    const diffDays = Math.floor(diffMs / 86_400_000)
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60_000);
+    const diffHours = Math.floor(diffMs / 3_600_000);
+    const diffDays = Math.floor(diffMs / 86_400_000);
 
-    if (diffMins < 1) return "now"
-    if (diffMins < 60) return `${diffMins}m`
-    if (diffHours < 24) return `${diffHours}h`
-    if (diffDays < 7) return `${diffDays}d`
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)}w`
-    if (diffDays < 365) return `${Math.floor(diffDays / 30)}mo`
-    return `${Math.floor(diffDays / 365)}y`
-  }
+    if (diffMins < 1) return "now";
+    if (diffMins < 60) return `${diffMins}m`;
+    if (diffHours < 24) return `${diffHours}h`;
+    if (diffDays < 7) return `${diffDays}d`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)}w`;
+    if (diffDays < 365) return `${Math.floor(diffDays / 30)}mo`;
+    return `${Math.floor(diffDays / 365)}y`;
+  };
 
   // Handle agent card hover for truncated name tooltip (1s delay)
   const handleAgentMouseEnter = useCallback(
-    (chatId: string, name: string, cardElement: HTMLElement) => {
+    (chatId: string, name: string | null, cardElement: HTMLElement) => {
       // Clear any existing timer
       if (agentTooltipTimerRef.current) {
-        clearTimeout(agentTooltipTimerRef.current)
+        clearTimeout(agentTooltipTimerRef.current);
       }
 
-      const nameEl = nameRefs.current.get(chatId)
-      if (!nameEl) return
+      const nameEl = nameRefs.current.get(chatId);
+      if (!nameEl) return;
 
       // Check if name is truncated
-      const isTruncated = nameEl.scrollWidth > nameEl.clientWidth
-      if (!isTruncated) return
+      const isTruncated = nameEl.scrollWidth > nameEl.clientWidth;
+      if (!isTruncated) return;
 
       // Show tooltip after 1 second delay
       agentTooltipTimerRef.current = setTimeout(() => {
-        const rect = cardElement.getBoundingClientRect()
+        const rect = cardElement.getBoundingClientRect();
         setAgentTooltip({
           visible: true,
           position: {
@@ -943,44 +985,44 @@ export function AgentsSidebar({
             left: rect.right + 8,
           },
           name,
-        })
-      }, 1000)
+        });
+      }, 1000);
     },
     [],
-  )
+  );
 
   const handleAgentMouseLeave = useCallback(() => {
     // Clear timer if hovering ends before delay
     if (agentTooltipTimerRef.current) {
-      clearTimeout(agentTooltipTimerRef.current)
-      agentTooltipTimerRef.current = null
+      clearTimeout(agentTooltipTimerRef.current);
+      agentTooltipTimerRef.current = null;
     }
-    setAgentTooltip(null)
-  }, [])
+    setAgentTooltip(null);
+  }, []);
 
   // Check if scroll is needed and show/hide gradients
   React.useEffect(() => {
-    const container = scrollContainerRef.current
-    if (!container) return
+    const container = scrollContainerRef.current;
+    if (!container) return;
 
     const checkScroll = () => {
-      const needsScroll = container.scrollHeight > container.clientHeight
+      const needsScroll = container.scrollHeight > container.clientHeight;
       if (needsScroll) {
-        setShowBottomGradient(true)
-        setShowTopGradient(false)
+        setShowBottomGradient(true);
+        setShowTopGradient(false);
       } else {
-        setShowBottomGradient(false)
-        setShowTopGradient(false)
+        setShowBottomGradient(false);
+        setShowTopGradient(false);
       }
-    }
+    };
 
-    checkScroll()
+    checkScroll();
     // Re-check when content might change
-    const resizeObserver = new ResizeObserver(checkScroll)
-    resizeObserver.observe(container)
+    const resizeObserver = new ResizeObserver(checkScroll);
+    resizeObserver.observe(container);
 
-    return () => resizeObserver.disconnect()
-  }, [filteredChats])
+    return () => resizeObserver.disconnect();
+  }, [filteredChats]);
 
   // Direct listener for Cmd+F to focus search input
   useEffect(() => {
@@ -992,28 +1034,28 @@ export function AgentsSidebar({
         !e.shiftKey &&
         !e.altKey
       ) {
-        e.preventDefault()
-        e.stopPropagation()
+        e.preventDefault();
+        e.stopPropagation();
 
         // Focus search input
-        searchInputRef.current?.focus()
-        searchInputRef.current?.select()
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
       }
-    }
+    };
 
-    window.addEventListener("keydown", handleSearchHotkey, true)
+    window.addEventListener("keydown", handleSearchHotkey, true);
 
     return () => {
-      window.removeEventListener("keydown", handleSearchHotkey, true)
-    }
-  }, [])
+      window.removeEventListener("keydown", handleSearchHotkey, true);
+    };
+  }, []);
 
   // Multi-select hotkeys
   // X to toggle selection of hovered or focused chat
   useHotkeys(
     "x",
     () => {
-      if (!filteredChats || filteredChats.length === 0) return
+      if (!filteredChats || filteredChats.length === 0) return;
 
       // Prefer hovered, then focused - do NOT fallback to 0 (would conflict with sub-chat sidebar)
       const targetIndex =
@@ -1021,45 +1063,45 @@ export function AgentsSidebar({
           ? hoveredChatIndex
           : focusedChatIndex >= 0
             ? focusedChatIndex
-            : -1
+            : -1;
 
       if (targetIndex >= 0 && targetIndex < filteredChats.length) {
-        const chatId = filteredChats[targetIndex]!.id
+        const chatId = filteredChats[targetIndex]!.id;
         // Toggle selection (both select and deselect)
-        toggleChatSelection(chatId)
+        toggleChatSelection(chatId);
       }
     },
     [filteredChats, hoveredChatIndex, focusedChatIndex, toggleChatSelection],
-  )
+  );
 
   // Cmd+A / Ctrl+A to select all chats (only when at least one is already selected)
   useHotkeys(
     "mod+a",
     (e) => {
       if (isMultiSelectMode && filteredChats && filteredChats.length > 0) {
-        e.preventDefault()
-        selectAllChats(filteredChats.map((c) => c.id))
+        e.preventDefault();
+        selectAllChats(filteredChats.map((c) => c.id));
       }
     },
     [filteredChats, selectAllChats, isMultiSelectMode],
-  )
+  );
 
   // Escape to clear selection
   useHotkeys(
     "escape",
     () => {
       if (isMultiSelectMode) {
-        clearChatSelection()
-        setFocusedChatIndex(-1)
+        clearChatSelection();
+        setFocusedChatIndex(-1);
       }
     },
     [isMultiSelectMode, clearChatSelection],
-  )
+  );
 
   // Cmd+E to archive current workspace (desktop) or Opt+Cmd+E (web)
   useEffect(() => {
     const handleArchiveHotkey = (e: KeyboardEvent) => {
-      const isDesktop = isDesktopApp()
+      const isDesktop = isDesktopApp();
 
       // Desktop: Cmd+E (without Alt)
       const isDesktopShortcut =
@@ -1068,30 +1110,30 @@ export function AgentsSidebar({
         e.code === "KeyE" &&
         !e.altKey &&
         !e.shiftKey &&
-        !e.ctrlKey
+        !e.ctrlKey;
       // Web: Opt+Cmd+E (with Alt)
-      const isWebShortcut = e.altKey && e.metaKey && e.code === "KeyE"
+      const isWebShortcut = e.altKey && e.metaKey && e.code === "KeyE";
 
       if (isDesktopShortcut || isWebShortcut) {
-        e.preventDefault()
+        e.preventDefault();
 
         // If multi-select mode, bulk archive selected chats
         if (isMultiSelectMode && selectedChatIds.size > 0) {
           if (!archiveChatsBatchMutation.isPending) {
-            handleBulkArchive()
+            handleBulkArchive();
           }
-          return
+          return;
         }
 
         // Otherwise archive current chat
         if (selectedChatId && !archiveChatMutation.isPending) {
-          archiveChatMutation.mutate({ id: selectedChatId })
+          archiveChatMutation.mutate({ id: selectedChatId });
         }
       }
-    }
+    };
 
-    window.addEventListener("keydown", handleArchiveHotkey)
-    return () => window.removeEventListener("keydown", handleArchiveHotkey)
+    window.addEventListener("keydown", handleArchiveHotkey);
+    return () => window.removeEventListener("keydown", handleArchiveHotkey);
   }, [
     selectedChatId,
     archiveChatMutation,
@@ -1099,33 +1141,33 @@ export function AgentsSidebar({
     selectedChatIds,
     archiveChatsBatchMutation,
     handleBulkArchive,
-  ])
+  ]);
 
   // Clear selection when project changes
   useEffect(() => {
-    clearChatSelection()
-  }, [selectedProject?.id, clearChatSelection])
+    clearChatSelection();
+  }, [selectedProject?.id, clearChatSelection]);
 
   // Handle scroll for gradients
   const handleAgentsScroll = React.useCallback(
     (e: React.UIEvent<HTMLDivElement>) => {
-      const { scrollTop, scrollHeight, clientHeight } = e.currentTarget
-      const needsScroll = scrollHeight > clientHeight
+      const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+      const needsScroll = scrollHeight > clientHeight;
 
       if (!needsScroll) {
-        setShowBottomGradient(false)
-        setShowTopGradient(false)
-        return
+        setShowBottomGradient(false);
+        setShowTopGradient(false);
+        return;
       }
 
-      const isAtBottom = scrollTop + clientHeight >= scrollHeight - 5
-      const isAtTop = scrollTop <= 5
+      const isAtBottom = scrollTop + clientHeight >= scrollHeight - 5;
+      const isAtTop = scrollTop <= 5;
 
-      setShowBottomGradient(!isAtBottom)
-      setShowTopGradient(!isAtTop)
+      setShowBottomGradient(!isAtBottom);
+      setShowTopGradient(!isAtTop);
     },
     [],
-  )
+  );
 
   // Mobile fullscreen mode - render without ResizableSidebar wrapper
   const sidebarContent = (
@@ -1141,11 +1183,13 @@ export function AgentsSidebar({
         // Electron's drag region (WebkitAppRegion: "drag") returns a non-HTMLElement
         // object as relatedTarget. We preserve hover state in this case so the
         // traffic lights remain visible when hovering over the drag area.
-        const relatedTarget = e.relatedTarget
-        if (!relatedTarget || !(relatedTarget instanceof HTMLElement)) return
-        const isStillInSidebar = relatedTarget.closest("[data-sidebar-content]")
+        const relatedTarget = e.relatedTarget;
+        if (!relatedTarget || !(relatedTarget instanceof HTMLElement)) return;
+        const isStillInSidebar = relatedTarget.closest(
+          "[data-sidebar-content]",
+        );
         if (!isStillInSidebar) {
-          setIsSidebarHovered(false)
+          setIsSidebarHovered(false);
         }
       }}
       data-mobile-fullscreen={isMobileFullscreen || undefined}
@@ -1160,13 +1204,13 @@ export function AgentsSidebar({
           // Electron's drag region (WebkitAppRegion: "drag") returns a non-HTMLElement
           // object as relatedTarget. We preserve hover state in this case so the
           // traffic lights remain visible when hovering over the drag area.
-          const relatedTarget = e.relatedTarget
-          if (!relatedTarget || !(relatedTarget instanceof HTMLElement)) return
+          const relatedTarget = e.relatedTarget;
+          if (!relatedTarget || !(relatedTarget instanceof HTMLElement)) return;
           const isStillInSidebar = relatedTarget.closest(
             "[data-sidebar-content]",
-          )
+          );
           if (!isStillInSidebar) {
-            setIsSidebarHovered(false)
+            setIsSidebarHovered(false);
           }
         }}
       >
@@ -1252,7 +1296,7 @@ export function AgentsSidebar({
                       </div>
                       <div className="min-w-0 flex-1 overflow-hidden">
                         <div className="text-sm font-medium text-foreground truncate">
-                          Better Code 
+                          Better Code
                         </div>
                       </div>
                       <ChevronDown
@@ -1297,9 +1341,9 @@ export function AgentsSidebar({
                       <DropdownMenuItem
                         className="gap-2"
                         onSelect={() => {
-                          setIsDropdownOpen(false)
-                          setSettingsActiveTab("profile")
-                          setSettingsDialogOpen(true)
+                          setIsDropdownOpen(false);
+                          setSettingsActiveTab("profile");
+                          setSettingsDialogOpen(true);
                         }}
                       >
                         <SettingsIcon className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
@@ -1320,8 +1364,8 @@ export function AgentsSidebar({
                           {!isMobileFullscreen && (
                             <DropdownMenuItem
                               onSelect={() => {
-                                setIsDropdownOpen(false)
-                                setShortcutsDialogOpen(true)
+                                setIsDropdownOpen(false);
+                                setShortcutsDialogOpen(true);
                               }}
                               className="gap-2"
                             >
@@ -1382,8 +1426,8 @@ export function AgentsSidebar({
                         <DropdownMenuItem
                           className="gap-2"
                           onSelect={() => {
-                            setIsDropdownOpen(false)
-                            setShowAuthDialog(true)
+                            setIsDropdownOpen(false);
+                            setShowAuthDialog(true);
                           }}
                         >
                           <ProfileIcon className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
@@ -1407,8 +1451,8 @@ export function AgentsSidebar({
                           {!isMobileFullscreen && (
                             <DropdownMenuItem
                               onSelect={() => {
-                                setIsDropdownOpen(false)
-                                setShortcutsDialogOpen(true)
+                                setIsDropdownOpen(false);
+                                setShortcutsDialogOpen(true);
                               }}
                               className="gap-2"
                             >
@@ -1439,46 +1483,46 @@ export function AgentsSidebar({
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Escape") {
-                  e.preventDefault()
-                  searchInputRef.current?.blur()
-                  setFocusedChatIndex(-1) // Reset focus
-                  return
+                  e.preventDefault();
+                  searchInputRef.current?.blur();
+                  setFocusedChatIndex(-1); // Reset focus
+                  return;
                 }
 
                 if (e.key === "ArrowDown") {
-                  e.preventDefault()
+                  e.preventDefault();
                   setFocusedChatIndex((prev) => {
                     // If no focus yet, start from first item
-                    if (prev === -1) return 0
+                    if (prev === -1) return 0;
                     // Otherwise move down
-                    return prev < filteredChats.length - 1 ? prev + 1 : prev
-                  })
-                  return
+                    return prev < filteredChats.length - 1 ? prev + 1 : prev;
+                  });
+                  return;
                 }
 
                 if (e.key === "ArrowUp") {
-                  e.preventDefault()
+                  e.preventDefault();
                   setFocusedChatIndex((prev) => {
                     // If no focus yet, start from last item
-                    if (prev === -1) return filteredChats.length - 1
+                    if (prev === -1) return filteredChats.length - 1;
                     // Otherwise move up
-                    return prev > 0 ? prev - 1 : prev
-                  })
-                  return
+                    return prev > 0 ? prev - 1 : prev;
+                  });
+                  return;
                 }
 
                 if (e.key === "Enter") {
-                  e.preventDefault()
+                  e.preventDefault();
                   // Only open if something is focused (not -1)
                   if (focusedChatIndex >= 0) {
-                    const focusedChat = filteredChats[focusedChatIndex]
+                    const focusedChat = filteredChats[focusedChatIndex];
                     if (focusedChat) {
-                      handleChatClick(focusedChat.id)
-                      searchInputRef.current?.blur()
-                      setFocusedChatIndex(-1) // Reset focus after selection
+                      handleChatClick(focusedChat.id);
+                      searchInputRef.current?.blur();
+                      setFocusedChatIndex(-1); // Reset focus after selection
                     }
                   }
-                  return
+                  return;
                 }
               }}
               className={cn(
@@ -1537,82 +1581,85 @@ export function AgentsSidebar({
               </div>
               <div className="list-none p-0 m-0">
                 {drafts.map((draft) => {
-                  const isSelected = selectedDraftId === draft.id && !selectedChatId
+                  const isSelected =
+                    selectedDraftId === draft.id && !selectedChatId;
                   return (
-                  <div
-                    key={draft.id}
-                    onClick={() => {
-                      // Navigate to NewChatForm with this draft selected
-                      setSelectedChatId(null)
-                      setSelectedDraftId(draft.id)
-                      if (isMobileFullscreen && onChatSelect) {
-                        onChatSelect()
-                      }
-                    }}
-                    className={cn(
-                      "w-full text-left py-1.5 cursor-pointer group relative",
-                      "transition-colors duration-150",
-                      "outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70",
-                      isMultiSelectMode ? "px-3" : "pl-2 pr-2",
-                      !isMultiSelectMode && "rounded-md",
-                      isSelected
-                        ? "bg-foreground/5 text-foreground"
-                        : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground",
-                    )}
-                  >
-                    <div className="flex items-start gap-2.5">
-                      <div className="pt-0.5">
-                        <div className="relative flex-shrink-0 w-4 h-4">
-                          {draft.project?.gitOwner &&
-                          draft.project?.gitProvider === "github" ? (
-                            <img
-                              src={`https://github.com/${draft.project.gitOwner}.png?size=64`}
-                              alt={draft.project.gitOwner}
-                              className="h-4 w-4 rounded-sm flex-shrink-0"
-                            />
-                          ) : (
-                            <FolderGit2 className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                          )}
+                    <div
+                      key={draft.id}
+                      onClick={() => {
+                        // Navigate to NewChatForm with this draft selected
+                        setSelectedChatId(null);
+                        setSelectedDraftId(draft.id);
+                        if (isMobileFullscreen && onChatSelect) {
+                          onChatSelect();
+                        }
+                      }}
+                      className={cn(
+                        "w-full text-left py-1.5 cursor-pointer group relative",
+                        "transition-colors duration-150",
+                        "outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70",
+                        isMultiSelectMode ? "px-3" : "pl-2 pr-2",
+                        !isMultiSelectMode && "rounded-md",
+                        isSelected
+                          ? "bg-foreground/5 text-foreground"
+                          : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground",
+                      )}
+                    >
+                      <div className="flex items-start gap-2.5">
+                        <div className="pt-0.5">
+                          <div className="relative flex-shrink-0 w-4 h-4">
+                            {draft.project?.gitOwner &&
+                            draft.project?.gitProvider === "github" ? (
+                              <img
+                                src={`https://github.com/${draft.project.gitOwner}.png?size=64`}
+                                alt={draft.project.gitOwner}
+                                className="h-4 w-4 rounded-sm flex-shrink-0"
+                              />
+                            ) : (
+                              <FolderGit2 className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                            )}
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-                        <div className="flex items-center gap-1">
-                          <span className="truncate block text-sm leading-tight flex-1">
-                            {draft.text.slice(0, 50)}
-                            {draft.text.length > 50 ? "..." : ""}
-                          </span>
-                          {/* Delete button - shown on hover */}
-                          {!isMultiSelectMode && !isMobileFullscreen && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleDeleteDraft(draft.id)
-                              }}
-                              tabIndex={-1}
-                              className="flex-shrink-0 text-muted-foreground hover:text-foreground active:text-foreground transition-[opacity,transform,color] duration-150 ease-out opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto active:scale-[0.97]"
-                              aria-label="Delete draft"
-                            >
-                              <TrashIcon className="h-3.5 w-3.5" />
-                            </button>
-                          )}
-                        </div>
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-[11px] text-muted-foreground/60 truncate">
-                            <span className="text-blue-500">Draft</span>
-                            {draft.project?.gitRepo
-                              ? ` • ${draft.project.gitRepo}`
-                              : draft.project?.name
-                                ? ` • ${draft.project.name}`
-                                : ""}
-                          </span>
-                          <span className="text-[11px] text-muted-foreground/60 flex-shrink-0">
-                            {formatTime(new Date(draft.updatedAt).toISOString())}
-                          </span>
+                        <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                          <div className="flex items-center gap-1">
+                            <span className="truncate block text-sm leading-tight flex-1">
+                              {draft.text.slice(0, 50)}
+                              {draft.text.length > 50 ? "..." : ""}
+                            </span>
+                            {/* Delete button - shown on hover */}
+                            {!isMultiSelectMode && !isMobileFullscreen && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteDraft(draft.id);
+                                }}
+                                tabIndex={-1}
+                                className="flex-shrink-0 text-muted-foreground hover:text-foreground active:text-foreground transition-[opacity,transform,color] duration-150 ease-out opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto active:scale-[0.97]"
+                                aria-label="Delete draft"
+                              >
+                                <TrashIcon className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </div>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[11px] text-muted-foreground/60 truncate">
+                              <span className="text-blue-500">Draft</span>
+                              {draft.project?.gitRepo
+                                ? ` • ${draft.project.gitRepo}`
+                                : draft.project?.name
+                                  ? ` • ${draft.project.name}`
+                                  : ""}
+                            </span>
+                            <span className="text-[11px] text-muted-foreground/60 flex-shrink-0">
+                              {formatTime(
+                                new Date(draft.updatedAt).toISOString(),
+                              )}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                  )
+                  );
                 })}
               </div>
             </div>
@@ -1636,28 +1683,28 @@ export function AgentsSidebar({
                   </div>
                   <div className="list-none p-0 m-0 mb-3">
                     {pinnedAgents.map((chat, index) => {
-                      const isLoading = loadingChatIds.has(chat.id)
-                      const isSelected = selectedChatId === chat.id
-                      const isPinned = pinnedChatIds.has(chat.id)
+                      const isLoading = loadingChatIds.has(chat.id);
+                      const isSelected = selectedChatId === chat.id;
+                      const isPinned = pinnedChatIds.has(chat.id);
                       const globalIndex = filteredChats.findIndex(
                         (c) => c.id === chat.id,
-                      )
+                      );
                       const isFocused =
                         focusedChatIndex === globalIndex &&
-                        focusedChatIndex >= 0
+                        focusedChatIndex >= 0;
                       // Desktop: use branch from chat and repo name from project
-                      const branch = chat.branch
-                      const project = projectsMap.get(chat.projectId)
-                      const repoName = project?.gitRepo || project?.name
+                      const branch = chat.branch;
+                      const project = projectsMap.get(chat.projectId);
+                      const repoName = project?.gitRepo || project?.name;
                       const displayText = branch
                         ? repoName
                           ? `${repoName} • ${branch}`
                           : branch
-                        : repoName || "Local project"
+                        : repoName || "Local project";
 
-                      const isChecked = selectedChatIds.has(chat.id)
-                      const stats = workspaceFileStats.get(chat.id)
-                      const hasPendingPlan = workspacePendingPlans.has(chat.id)
+                      const isChecked = selectedChatIds.has(chat.id);
+                      const stats = workspaceFileStats.get(chat.id);
+                      const hasPendingPlan = workspacePendingPlans.has(chat.id);
 
                       return (
                         <ContextMenu key={chat.id}>
@@ -1668,42 +1715,41 @@ export function AgentsSidebar({
                               onClick={(e) => {
                                 // On real mobile (touch devices), onTouchEnd handles the click
                                 // In desktop app with narrow window, we still use mouse clicks
-                                if (isMobileFullscreen && !isDesktop) return
-                                handleChatClick(chat.id, e, globalIndex)
+                                if (isMobileFullscreen && !isDesktop) return;
+                                handleChatClick(chat.id, e, globalIndex);
                               }}
                               onTouchEnd={(e) => {
                                 // On real mobile touch devices, use touchEnd directly to bypass ContextMenu's click delay
                                 if (isMobileFullscreen && !isDesktop) {
-                                  e.preventDefault()
+                                  e.preventDefault();
                                   handleChatClick(
                                     chat.id,
                                     undefined,
                                     globalIndex,
-                                  )
+                                  );
                                 }
                               }}
-                              tabIndex={0}
                               onKeyDown={(e) => {
                                 if (e.key === "Enter" || e.key === " ") {
-                                  e.preventDefault()
+                                  e.preventDefault();
                                   handleChatClick(
                                     chat.id,
                                     undefined,
                                     globalIndex,
-                                  )
+                                  );
                                 }
                               }}
                               onMouseEnter={(e) => {
-                                setHoveredChatIndex(globalIndex)
+                                setHoveredChatIndex(globalIndex);
                                 handleAgentMouseEnter(
                                   chat.id,
                                   chat.name,
                                   e.currentTarget,
-                                )
+                                );
                               }}
                               onMouseLeave={() => {
-                                setHoveredChatIndex(-1)
-                                handleAgentMouseLeave()
+                                setHoveredChatIndex(-1);
+                                handleAgentMouseLeave();
                               }}
                               className={cn(
                                 "w-full text-left py-1.5 cursor-pointer group relative",
@@ -1756,7 +1802,7 @@ export function AgentsSidebar({
                                     <span
                                       ref={(el) => {
                                         if (el)
-                                          nameRefs.current.set(chat.id, el)
+                                          nameRefs.current.set(chat.id, el);
                                       }}
                                       className="truncate block text-sm leading-tight flex-1"
                                     >
@@ -1775,10 +1821,10 @@ export function AgentsSidebar({
                                       !isMobileFullscreen && (
                                         <button
                                           onClick={(e) => {
-                                            e.stopPropagation()
+                                            e.stopPropagation();
                                             archiveChatMutation.mutate({
                                               id: chat.id,
-                                            })
+                                            });
                                           }}
                                           tabIndex={-1}
                                           className="flex-shrink-0 text-muted-foreground hover:text-foreground active:text-foreground transition-[opacity,transform,color] duration-150 ease-out opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto active:scale-[0.97]"
@@ -1793,16 +1839,18 @@ export function AgentsSidebar({
                                       {displayText}
                                     </span>
                                     <div className="flex items-center gap-1.5 flex-shrink-0">
-                                      {stats && (stats.additions > 0 || stats.deletions > 0) && (
-                                        <>
-                                          <span className="text-green-600 dark:text-green-400">
-                                            +{stats.additions}
-                                          </span>
-                                          <span className="text-red-600 dark:text-red-400">
-                                            -{stats.deletions}
-                                          </span>
-                                        </>
-                                      )}
+                                      {stats &&
+                                        (stats.additions > 0 ||
+                                          stats.deletions > 0) && (
+                                          <>
+                                            <span className="text-green-600 dark:text-green-400">
+                                              +{stats.additions}
+                                            </span>
+                                            <span className="text-red-600 dark:text-red-400">
+                                              -{stats.deletions}
+                                            </span>
+                                          </>
+                                        )}
                                       <span>
                                         {formatTime(
                                           chat.updatedAt?.toISOString() ??
@@ -1867,11 +1915,10 @@ export function AgentsSidebar({
                                 {branch && (
                                   <ContextMenuItem
                                     onClick={() => {
-                                      navigator.clipboard.writeText(branch)
-                                      toast.success(
-                                        "Branch name copied",
-                                        { description: branch },
-                                      )
+                                      navigator.clipboard.writeText(branch);
+                                      toast.success("Branch name copied", {
+                                        description: branch,
+                                      });
                                     }}
                                   >
                                     Copy branch name
@@ -1910,7 +1957,7 @@ export function AgentsSidebar({
                             )}
                           </ContextMenuContent>
                         </ContextMenu>
-                      )
+                      );
                     })}
                   </div>
                 </>
@@ -1926,33 +1973,35 @@ export function AgentsSidebar({
                     )}
                   >
                     <h3 className="text-xs font-medium text-muted-foreground whitespace-nowrap">
-                      {pinnedAgents.length > 0 ? "Recent workspaces" : "Workspaces"}
+                      {pinnedAgents.length > 0
+                        ? "Recent workspaces"
+                        : "Workspaces"}
                     </h3>
                   </div>
                   <div className="list-none p-0 m-0">
                     {unpinnedAgents.map((chat, index) => {
-                      const isLoading = loadingChatIds.has(chat.id)
-                      const isSelected = selectedChatId === chat.id
-                      const isPinned = pinnedChatIds.has(chat.id)
+                      const isLoading = loadingChatIds.has(chat.id);
+                      const isSelected = selectedChatId === chat.id;
+                      const isPinned = pinnedChatIds.has(chat.id);
                       const globalIndex = filteredChats.findIndex(
                         (c) => c.id === chat.id,
-                      )
+                      );
                       const isFocused =
                         focusedChatIndex === globalIndex &&
-                        focusedChatIndex >= 0
+                        focusedChatIndex >= 0;
                       // Desktop: use branch from chat and repo name from project
-                      const branch = chat.branch
-                      const project = projectsMap.get(chat.projectId)
-                      const repoName = project?.gitRepo || project?.name
+                      const branch = chat.branch;
+                      const project = projectsMap.get(chat.projectId);
+                      const repoName = project?.gitRepo || project?.name;
                       const displayText = branch
                         ? repoName
                           ? `${repoName} • ${branch}`
                           : branch
-                        : repoName || "Local project"
+                        : repoName || "Local project";
 
-                      const isChecked = selectedChatIds.has(chat.id)
-                      const stats = workspaceFileStats.get(chat.id)
-                      const hasPendingPlan = workspacePendingPlans.has(chat.id)
+                      const isChecked = selectedChatIds.has(chat.id);
+                      const stats = workspaceFileStats.get(chat.id);
+                      const hasPendingPlan = workspacePendingPlans.has(chat.id);
 
                       return (
                         <ContextMenu key={chat.id}>
@@ -1963,42 +2012,41 @@ export function AgentsSidebar({
                               onClick={(e) => {
                                 // On real mobile (touch devices), onTouchEnd handles the click
                                 // In desktop app with narrow window, we still use mouse clicks
-                                if (isMobileFullscreen && !isDesktop) return
-                                handleChatClick(chat.id, e, globalIndex)
+                                if (isMobileFullscreen && !isDesktop) return;
+                                handleChatClick(chat.id, e, globalIndex);
                               }}
                               onTouchEnd={(e) => {
                                 // On real mobile touch devices, use touchEnd directly to bypass ContextMenu's click delay
                                 if (isMobileFullscreen && !isDesktop) {
-                                  e.preventDefault()
+                                  e.preventDefault();
                                   handleChatClick(
                                     chat.id,
                                     undefined,
                                     globalIndex,
-                                  )
+                                  );
                                 }
                               }}
-                              tabIndex={0}
                               onKeyDown={(e) => {
                                 if (e.key === "Enter" || e.key === " ") {
-                                  e.preventDefault()
+                                  e.preventDefault();
                                   handleChatClick(
                                     chat.id,
                                     undefined,
                                     globalIndex,
-                                  )
+                                  );
                                 }
                               }}
                               onMouseEnter={(e) => {
-                                setHoveredChatIndex(globalIndex)
+                                setHoveredChatIndex(globalIndex);
                                 handleAgentMouseEnter(
                                   chat.id,
                                   chat.name,
                                   e.currentTarget,
-                                )
+                                );
                               }}
                               onMouseLeave={() => {
-                                setHoveredChatIndex(-1)
-                                handleAgentMouseLeave()
+                                setHoveredChatIndex(-1);
+                                handleAgentMouseLeave();
                               }}
                               className={cn(
                                 "w-full text-left py-1.5 cursor-pointer group relative",
@@ -2052,7 +2100,7 @@ export function AgentsSidebar({
                                     <span
                                       ref={(el) => {
                                         if (el)
-                                          nameRefs.current.set(chat.id, el)
+                                          nameRefs.current.set(chat.id, el);
                                       }}
                                       className="truncate block text-sm leading-tight flex-1"
                                     >
@@ -2072,10 +2120,10 @@ export function AgentsSidebar({
                                       !isMobileFullscreen && (
                                         <button
                                           onClick={(e) => {
-                                            e.stopPropagation()
+                                            e.stopPropagation();
                                             archiveChatMutation.mutate({
                                               id: chat.id,
-                                            })
+                                            });
                                           }}
                                           tabIndex={-1}
                                           className="flex-shrink-0 text-muted-foreground hover:text-foreground active:text-foreground transition-[opacity,transform,color] duration-150 ease-out opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto active:scale-[0.97]"
@@ -2091,16 +2139,18 @@ export function AgentsSidebar({
                                       {displayText}
                                     </span>
                                     <div className="flex items-center gap-1.5 flex-shrink-0">
-                                      {stats && (stats.additions > 0 || stats.deletions > 0) && (
-                                        <>
-                                          <span className="text-green-600 dark:text-green-400">
-                                            +{stats.additions}
-                                          </span>
-                                          <span className="text-red-600 dark:text-red-400">
-                                            -{stats.deletions}
-                                          </span>
-                                        </>
-                                      )}
+                                      {stats &&
+                                        (stats.additions > 0 ||
+                                          stats.deletions > 0) && (
+                                          <>
+                                            <span className="text-green-600 dark:text-green-400">
+                                              +{stats.additions}
+                                            </span>
+                                            <span className="text-red-600 dark:text-red-400">
+                                              -{stats.deletions}
+                                            </span>
+                                          </>
+                                        )}
                                       <span>
                                         {formatTime(
                                           chat.updatedAt?.toISOString() ??
@@ -2165,11 +2215,10 @@ export function AgentsSidebar({
                                 {branch && (
                                   <ContextMenuItem
                                     onClick={() => {
-                                      navigator.clipboard.writeText(branch)
-                                      toast.success(
-                                        "Branch name copied",
-                                        { description: branch },
-                                      )
+                                      navigator.clipboard.writeText(branch);
+                                      toast.success("Branch name copied", {
+                                        description: branch,
+                                      });
                                     }}
                                   >
                                     Copy branch name
@@ -2208,7 +2257,7 @@ export function AgentsSidebar({
                             )}
                           </ContextMenuContent>
                         </ContextMenu>
-                      )
+                      );
                     })}
                   </div>
                 </>
@@ -2244,7 +2293,7 @@ export function AgentsSidebar({
             exit={{ opacity: 0, y: 8 }}
             transition={{ duration: 0 }}
             onAnimationComplete={() => {
-              hasFooterAnimated.current = true
+              hasFooterAnimated.current = true;
             }}
             className="p-2 flex flex-col gap-2"
           >
@@ -2285,7 +2334,7 @@ export function AgentsSidebar({
             exit={{ opacity: 0, y: 8 }}
             transition={{ duration: 0 }}
             onAnimationComplete={() => {
-              hasFooterAnimated.current = true
+              hasFooterAnimated.current = true;
             }}
             className="p-2 pt-2 flex flex-col gap-2"
           >
@@ -2297,8 +2346,8 @@ export function AgentsSidebar({
                     <button
                       type="button"
                       onClick={() => {
-                        setSettingsActiveTab("profile")
-                        setSettingsDialogOpen(true)
+                        setSettingsActiveTab("profile");
+                        setSettingsDialogOpen(true);
                       }}
                       className="flex items-center justify-center h-7 w-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-[background-color,color,transform] duration-150 ease-out active:scale-[0.97] outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70"
                     >
@@ -2369,7 +2418,7 @@ export function AgentsSidebar({
         )}
       </AnimatePresence>
     </div>
-  )
+  );
 
   return (
     <>
@@ -2401,13 +2450,13 @@ export function AgentsSidebar({
       <AgentsRenameSubChatDialog
         isOpen={renameDialogOpen}
         onClose={() => {
-          setRenameDialogOpen(false)
-          setRenamingChat(null)
+          setRenameDialogOpen(false);
+          setRenamingChat(null);
         }}
         onSave={handleRenameSave}
         currentName={renamingChat?.name || ""}
         isLoading={renameLoading}
       />
     </>
-  )
+  );
 }

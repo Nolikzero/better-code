@@ -1,46 +1,46 @@
-import { useAtom } from "jotai"
-import { useState, useEffect } from "react"
-import { Check, AlertCircle, Loader2, ShieldAlert } from "lucide-react"
+import { useAtom } from "jotai";
+import { AlertCircle, Check, Loader2, ShieldAlert } from "lucide-react";
+import { useEffect, useState } from "react";
 import {
-  defaultProviderIdAtom,
+  APPROVAL_POLICIES,
+  type ApprovalPolicy,
   PROVIDER_INFO,
   PROVIDER_MODELS,
-  lastSelectedModelByProviderAtom,
-  codexSandboxModeAtom,
+  type ProviderId,
+  REASONING_EFFORTS,
+  type ReasoningEffort,
+  SANDBOX_MODES,
+  type SandboxMode,
   codexApprovalPolicyAtom,
   codexReasoningEffortAtom,
-  SANDBOX_MODES,
-  APPROVAL_POLICIES,
-  REASONING_EFFORTS,
-  type ProviderId,
-  type SandboxMode,
-  type ApprovalPolicy,
-  type ReasoningEffort,
-} from "../../../lib/atoms"
-import { trpc } from "../../../lib/trpc"
+  codexSandboxModeAtom,
+  defaultProviderIdAtom,
+  lastSelectedModelByProviderAtom,
+} from "../../../lib/atoms";
+import { trpc } from "../../../lib/trpc";
+import { Badge } from "../../ui/badge";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-} from "../../ui/select"
-import { Badge } from "../../ui/badge"
+} from "../../ui/select";
 
 // Hook to detect narrow screen
 function useIsNarrowScreen(): boolean {
-  const [isNarrow, setIsNarrow] = useState(false)
+  const [isNarrow, setIsNarrow] = useState(false);
 
   useEffect(() => {
     const checkWidth = () => {
-      setIsNarrow(window.innerWidth <= 768)
-    }
+      setIsNarrow(window.innerWidth <= 768);
+    };
 
-    checkWidth()
-    window.addEventListener("resize", checkWidth)
-    return () => window.removeEventListener("resize", checkWidth)
-  }, [])
+    checkWidth();
+    window.addEventListener("resize", checkWidth);
+    return () => window.removeEventListener("resize", checkWidth);
+  }, []);
 
-  return isNarrow
+  return isNarrow;
 }
 
 // Provider status indicator
@@ -48,8 +48,8 @@ function ProviderStatus({
   available,
   authenticated,
 }: {
-  available: boolean
-  authenticated: boolean
+  available: boolean;
+  authenticated: boolean;
 }) {
   if (!available) {
     return (
@@ -57,7 +57,7 @@ function ProviderStatus({
         <AlertCircle className="w-3 h-3 mr-1" />
         Not Installed
       </Badge>
-    )
+    );
   }
 
   if (!authenticated) {
@@ -66,7 +66,7 @@ function ProviderStatus({
         <AlertCircle className="w-3 h-3 mr-1" />
         Not Signed In
       </Badge>
-    )
+    );
   }
 
   return (
@@ -74,41 +74,41 @@ function ProviderStatus({
       <Check className="w-3 h-3 mr-1" />
       Ready
     </Badge>
-  )
+  );
 }
 
 export function AgentsProviderTab() {
-  const [defaultProvider, setDefaultProvider] = useAtom(defaultProviderIdAtom)
+  const [defaultProvider, setDefaultProvider] = useAtom(defaultProviderIdAtom);
   const [modelsByProvider, setModelsByProvider] = useAtom(
-    lastSelectedModelByProviderAtom
-  )
-  const [sandboxMode, setSandboxMode] = useAtom(codexSandboxModeAtom)
-  const [approvalPolicy, setApprovalPolicy] = useAtom(codexApprovalPolicyAtom)
-  const [reasoningEffort, setReasoningEffort] = useAtom(codexReasoningEffortAtom)
-  const isNarrowScreen = useIsNarrowScreen()
+    lastSelectedModelByProviderAtom,
+  );
+  const [sandboxMode, setSandboxMode] = useAtom(codexSandboxModeAtom);
+  const [approvalPolicy, setApprovalPolicy] = useAtom(codexApprovalPolicyAtom);
+  const [reasoningEffort, setReasoningEffort] = useAtom(
+    codexReasoningEffortAtom,
+  );
+  const isNarrowScreen = useIsNarrowScreen();
 
   // Fetch provider status from backend
-  const { data: providers, isLoading } = trpc.providers.list.useQuery()
+  const { data: providers, isLoading } = trpc.providers.list.useQuery();
 
   const handleProviderChange = (value: ProviderId) => {
-    setDefaultProvider(value)
-  }
+    setDefaultProvider(value);
+  };
 
   const handleModelChange = (providerId: ProviderId, modelId: string) => {
     setModelsByProvider({
       ...modelsByProvider,
       [providerId]: modelId,
-    })
-  }
+    });
+  };
 
   return (
     <div className="p-6 space-y-6">
       {/* Header - hidden on narrow screens since it's in the navigation bar */}
       {!isNarrowScreen && (
         <div className="flex flex-col space-y-1.5 text-center sm:text-left">
-          <h3 className="text-sm font-semibold text-foreground">
-            AI Provider
-          </h3>
+          <h3 className="text-sm font-semibold text-foreground">AI Provider</h3>
           <p className="text-xs text-muted-foreground">
             Choose your default AI assistant and model
           </p>
@@ -143,7 +143,7 @@ export function AgentsProviderTab() {
                     <SelectItem key={providerId} value={providerId}>
                       {PROVIDER_INFO[providerId].name}
                     </SelectItem>
-                  )
+                  ),
                 )}
               </SelectContent>
             </Select>
@@ -209,36 +209,40 @@ export function AgentsProviderTab() {
           </div>
 
           <div className="space-y-3">
-            {(Object.keys(PROVIDER_MODELS) as ProviderId[]).map((providerId) => (
-              <div
-                key={providerId}
-                className="flex items-center justify-between"
-              >
-                <span className="text-sm text-muted-foreground">
-                  {PROVIDER_INFO[providerId].name}
-                </span>
-
-                <Select
-                  value={modelsByProvider[providerId]}
-                  onValueChange={(value) => handleModelChange(providerId, value)}
+            {(Object.keys(PROVIDER_MODELS) as ProviderId[]).map(
+              (providerId) => (
+                <div
+                  key={providerId}
+                  className="flex items-center justify-between"
                 >
-                  <SelectTrigger className="w-[180px]">
-                    <span className="text-xs">
-                      {PROVIDER_MODELS[providerId].find(
-                        (m) => m.id === modelsByProvider[providerId]
-                      )?.displayName || modelsByProvider[providerId]}
-                    </span>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PROVIDER_MODELS[providerId].map((model) => (
-                      <SelectItem key={model.id} value={model.id}>
-                        {model.displayName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ))}
+                  <span className="text-sm text-muted-foreground">
+                    {PROVIDER_INFO[providerId].name}
+                  </span>
+
+                  <Select
+                    value={modelsByProvider[providerId]}
+                    onValueChange={(value) =>
+                      handleModelChange(providerId, value)
+                    }
+                  >
+                    <SelectTrigger className="w-[180px]">
+                      <span className="text-xs">
+                        {PROVIDER_MODELS[providerId].find(
+                          (m) => m.id === modelsByProvider[providerId],
+                        )?.displayName || modelsByProvider[providerId]}
+                      </span>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PROVIDER_MODELS[providerId].map((model) => (
+                        <SelectItem key={model.id} value={model.id}>
+                          {model.displayName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ),
+            )}
           </div>
         </div>
       </div>
@@ -252,7 +256,10 @@ export function AgentsProviderTab() {
                 OpenAI Codex Settings
               </span>
               {defaultProvider !== "codex" && (
-                <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                <Badge
+                  variant="outline"
+                  className="text-[10px] text-muted-foreground"
+                >
                   Not Active
                 </Badge>
               )}
@@ -268,7 +275,7 @@ export function AgentsProviderTab() {
               <div className="flex flex-col gap-0.5 min-w-0 flex-1">
                 <span className="text-sm text-foreground">Sandbox Mode</span>
                 <span className="text-xs text-muted-foreground truncate">
-                  {SANDBOX_MODES.find(m => m.id === sandboxMode)?.description}
+                  {SANDBOX_MODES.find((m) => m.id === sandboxMode)?.description}
                 </span>
               </div>
               <Select
@@ -277,7 +284,7 @@ export function AgentsProviderTab() {
               >
                 <SelectTrigger className="w-[160px] flex-shrink-0">
                   <span className="text-xs">
-                    {SANDBOX_MODES.find(m => m.id === sandboxMode)?.name}
+                    {SANDBOX_MODES.find((m) => m.id === sandboxMode)?.name}
                   </span>
                 </SelectTrigger>
                 <SelectContent>
@@ -300,7 +307,8 @@ export function AgentsProviderTab() {
               <div className="flex items-start gap-2 p-2 bg-red-500/10 border border-red-500/20 rounded text-xs text-red-500">
                 <ShieldAlert className="w-4 h-4 flex-shrink-0 mt-0.5" />
                 <span>
-                  Full access mode allows unrestricted system access. Only use in isolated environments.
+                  Full access mode allows unrestricted system access. Only use
+                  in isolated environments.
                 </span>
               </div>
             )}
@@ -315,7 +323,9 @@ export function AgentsProviderTab() {
               </div>
               <Select
                 value={approvalPolicy}
-                onValueChange={(value: ApprovalPolicy) => setApprovalPolicy(value)}
+                onValueChange={(value: ApprovalPolicy) =>
+                  setApprovalPolicy(value)
+                }
                 disabled
               >
                 <SelectTrigger className="w-[160px] flex-shrink-0" disabled>
@@ -334,18 +344,28 @@ export function AgentsProviderTab() {
             {/* Reasoning Effort */}
             <div className="flex items-start justify-between gap-4">
               <div className="flex flex-col gap-0.5 min-w-0 flex-1">
-                <span className="text-sm text-foreground">Reasoning Effort</span>
+                <span className="text-sm text-foreground">
+                  Reasoning Effort
+                </span>
                 <span className="text-xs text-muted-foreground truncate">
-                  {REASONING_EFFORTS.find(e => e.id === reasoningEffort)?.description}
+                  {
+                    REASONING_EFFORTS.find((e) => e.id === reasoningEffort)
+                      ?.description
+                  }
                 </span>
               </div>
               <Select
                 value={reasoningEffort}
-                onValueChange={(value: ReasoningEffort) => setReasoningEffort(value)}
+                onValueChange={(value: ReasoningEffort) =>
+                  setReasoningEffort(value)
+                }
               >
                 <SelectTrigger className="w-[160px] flex-shrink-0">
                   <span className="text-xs">
-                    {REASONING_EFFORTS.find(e => e.id === reasoningEffort)?.name}
+                    {
+                      REASONING_EFFORTS.find((e) => e.id === reasoningEffort)
+                        ?.name
+                    }
                   </span>
                 </SelectTrigger>
                 <SelectContent>
@@ -364,7 +384,9 @@ export function AgentsProviderTab() {
       {/* Install Help Section */}
       <div className="bg-muted/30 rounded-lg border border-border p-4">
         <span className="text-xs text-muted-foreground">
-          <strong className="text-foreground">Need to install a provider?</strong>
+          <strong className="text-foreground">
+            Need to install a provider?
+          </strong>
           <br />
           <span className="mt-1 block">
             Claude Code:{" "}
@@ -381,5 +403,5 @@ export function AgentsProviderTab() {
         </span>
       </div>
     </div>
-  )
+  );
 }

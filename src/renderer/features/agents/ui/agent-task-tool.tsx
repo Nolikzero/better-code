@@ -1,32 +1,32 @@
-"use client"
+"use client";
 
-import { memo, useState, useEffect, useRef } from "react"
-import { ChevronRight } from "lucide-react"
-import { AgentToolRegistry, getToolStatus } from "./agent-tool-registry"
-import { AgentToolCall } from "./agent-tool-call"
-import { AgentToolInterrupted } from "./agent-tool-interrupted"
-import { TextShimmer } from "../../../components/ui/text-shimmer"
-import { cn } from "../../../lib/utils"
+import { ChevronRight } from "lucide-react";
+import { memo, useEffect, useRef, useState } from "react";
+import { TextShimmer } from "../../../components/ui/text-shimmer";
+import { cn } from "../../../lib/utils";
+import { AgentToolCall } from "./agent-tool-call";
+import { AgentToolInterrupted } from "./agent-tool-interrupted";
+import { AgentToolRegistry, getToolStatus } from "./agent-tool-registry";
 
 interface AgentTaskToolProps {
-  part: any
-  nestedTools: any[]
-  chatStatus?: string
+  part: any;
+  nestedTools: any[];
+  chatStatus?: string;
 }
 
 // Constants for rendering
-const MAX_VISIBLE_TOOLS = 5
-const TOOL_HEIGHT_PX = 24
+const MAX_VISIBLE_TOOLS = 5;
+const TOOL_HEIGHT_PX = 24;
 
 // Format elapsed time in a human-readable format
 function formatElapsedTime(ms: number): string {
-  if (ms < 1000) return ""
-  const seconds = Math.floor(ms / 1000)
-  if (seconds < 60) return `${seconds}s`
-  const minutes = Math.floor(seconds / 60)
-  const remainingSeconds = seconds % 60
-  if (remainingSeconds === 0) return `${minutes}m`
-  return `${minutes}m ${remainingSeconds}s`
+  if (ms < 1000) return "";
+  const seconds = Math.floor(ms / 1000);
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  if (remainingSeconds === 0) return `${minutes}m`;
+  return `${minutes}m ${remainingSeconds}s`;
 }
 
 export const AgentTaskTool = memo(function AgentTaskTool({
@@ -34,78 +34,79 @@ export const AgentTaskTool = memo(function AgentTaskTool({
   nestedTools,
   chatStatus,
 }: AgentTaskToolProps) {
-  const { isPending, isInterrupted } = getToolStatus(part, chatStatus)
+  const { isPending, isInterrupted } = getToolStatus(part, chatStatus);
 
   // Default: expanded while streaming, collapsed when done
-  const [isExpanded, setIsExpanded] = useState(isPending)
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const wasStreamingRef = useRef(isPending)
+  const [isExpanded, setIsExpanded] = useState(isPending);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const wasStreamingRef = useRef(isPending);
 
   // Track elapsed time for running tasks
-  const [elapsedMs, setElapsedMs] = useState(0)
-  const startTimeRef = useRef<number | null>(null)
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const startTimeRef = useRef<number | null>(null);
 
-  const description = part.input?.description || ""
+  const description = part.input?.description || "";
 
   // Auto-collapse when streaming ends (transition from true -> false)
   useEffect(() => {
     if (wasStreamingRef.current && !isPending) {
-      setIsExpanded(false)
+      setIsExpanded(false);
     }
-    wasStreamingRef.current = isPending
-  }, [isPending])
+    wasStreamingRef.current = isPending;
+  }, [isPending]);
 
   // Track elapsed time while task is running
   useEffect(() => {
     if (isPending) {
       // Start tracking time
       if (startTimeRef.current === null) {
-        startTimeRef.current = Date.now()
+        startTimeRef.current = Date.now();
       }
       const interval = setInterval(() => {
         if (startTimeRef.current !== null) {
-          setElapsedMs(Date.now() - startTimeRef.current)
+          setElapsedMs(Date.now() - startTimeRef.current);
         }
-      }, 1000)
-      return () => clearInterval(interval)
+      }, 1000);
+      return () => clearInterval(interval);
     }
-  }, [isPending])
+  }, [isPending]);
 
   // Use output duration from Claude Code if available, otherwise use our tracked time
-  const outputDuration = part.output?.duration || part.output?.duration_ms
-  const displayMs = !isPending && outputDuration ? outputDuration : elapsedMs
-  const elapsedTimeDisplay = formatElapsedTime(displayMs)
+  const outputDuration = part.output?.duration || part.output?.duration_ms;
+  const displayMs = !isPending && outputDuration ? outputDuration : elapsedMs;
+  const elapsedTimeDisplay = formatElapsedTime(displayMs);
 
   // Auto-scroll to bottom when streaming and new nested tools added
   useEffect(() => {
     if (isPending && isExpanded && scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [nestedTools.length, isPending, isExpanded])
+  }, [nestedTools.length, isPending, isExpanded]);
 
-  const hasNestedTools = nestedTools.length > 0
+  const hasNestedTools = nestedTools.length > 0;
 
   // Build subtitle - always show description
   const getSubtitle = () => {
     if (description) {
-      const truncated = description.length > 60 
-        ? description.slice(0, 57) + "..." 
-        : description
-      return truncated
+      const truncated =
+        description.length > 60
+          ? `${description.slice(0, 57)}...`
+          : description;
+      return truncated;
     }
-    return ""
-  }
+    return "";
+  };
 
-  const subtitle = getSubtitle()
+  const subtitle = getSubtitle();
 
   // Get title text - always use "Task"
   const getTitle = () => {
-    return isPending ? "Running Task" : "Task"
-  }
+    return isPending ? "Running Task" : "Task";
+  };
 
   // Show interrupted state if task was interrupted without completing
   if (isInterrupted && !part.output) {
-    return <AgentToolInterrupted toolName="Task" subtitle={subtitle} />
+    return <AgentToolInterrupted toolName="Task" subtitle={subtitle} />;
   }
 
   return (
@@ -183,7 +184,7 @@ export const AgentTaskTool = memo(function AgentTaskTool({
             }
           >
             {nestedTools.map((nestedPart, idx) => {
-              const nestedMeta = AgentToolRegistry[nestedPart.type]
+              const nestedMeta = AgentToolRegistry[nestedPart.type];
               if (!nestedMeta) {
                 return (
                   <div
@@ -192,10 +193,10 @@ export const AgentTaskTool = memo(function AgentTaskTool({
                   >
                     {nestedPart.type?.replace("tool-", "")}
                   </div>
-                )
+                );
               }
               const { isPending: nestedIsPending, isError: nestedIsError } =
-                getToolStatus(nestedPart, chatStatus)
+                getToolStatus(nestedPart, chatStatus);
               return (
                 <AgentToolCall
                   key={idx}
@@ -205,11 +206,11 @@ export const AgentTaskTool = memo(function AgentTaskTool({
                   isPending={nestedIsPending}
                   isError={nestedIsError}
                 />
-              )
+              );
             })}
           </div>
         </div>
       )}
     </div>
-  )
-})
+  );
+});

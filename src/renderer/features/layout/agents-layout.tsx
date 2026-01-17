@@ -1,40 +1,40 @@
-import { useCallback, useEffect, useState, useMemo } from "react"
-import { useAtom, useAtomValue, useSetAtom } from "jotai"
-import { isDesktopApp } from "../../lib/utils/platform"
-import { useIsMobile } from "../../lib/hooks/use-mobile"
+import { useAtom, useSetAtom } from "jotai";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useIsMobile } from "../../lib/hooks/use-mobile";
+import { isDesktopApp } from "../../lib/utils/platform";
 
+import { AgentsSettingsDialog } from "../../components/dialogs/agents-settings-dialog";
+import { AgentsShortcutsDialog } from "../../components/dialogs/agents-shortcuts-dialog";
+import { ClaudeLoginModal } from "../../components/dialogs/claude-login-modal";
+import { ResizableSidebar } from "../../components/ui/resizable-sidebar";
+import { TooltipProvider } from "../../components/ui/tooltip";
+import { UpdateBanner } from "../../components/update-banner";
 import {
+  agentsSettingsDialogActiveTabAtom,
+  agentsSettingsDialogOpenAtom,
+  agentsShortcutsDialogOpenAtom,
   agentsSidebarOpenAtom,
   agentsSidebarWidthAtom,
-  agentsSettingsDialogOpenAtom,
-  agentsSettingsDialogActiveTabAtom,
-  agentsShortcutsDialogOpenAtom,
+  anthropicOnboardingCompletedAtom,
   isDesktopAtom,
   isFullscreenAtom,
-  anthropicOnboardingCompletedAtom,
-} from "../../lib/atoms"
-import { selectedAgentChatIdAtom, selectedProjectAtom } from "../agents/atoms"
-import { trpc } from "../../lib/trpc"
-import { useAgentsHotkeys } from "../agents/lib/agents-hotkeys-manager"
-import { AgentsSettingsDialog } from "../../components/dialogs/agents-settings-dialog"
-import { AgentsShortcutsDialog } from "../../components/dialogs/agents-shortcuts-dialog"
-import { ClaudeLoginModal } from "../../components/dialogs/claude-login-modal"
-import { TooltipProvider } from "../../components/ui/tooltip"
-import { ResizableSidebar } from "../../components/ui/resizable-sidebar"
-import { AgentsSidebar } from "../sidebar/agents-sidebar"
-import { AgentsContent } from "../agents/ui/agents-content"
-import { UpdateBanner } from "../../components/update-banner"
-import { useUpdateChecker } from "../../lib/hooks/use-update-checker"
-import { useAgentSubChatStore } from "../../lib/stores/sub-chat-store"
+} from "../../lib/atoms";
+import { useUpdateChecker } from "../../lib/hooks/use-update-checker";
+import { useAgentSubChatStore } from "../../lib/stores/sub-chat-store";
+import { trpc } from "../../lib/trpc";
+import { selectedAgentChatIdAtom, selectedProjectAtom } from "../agents/atoms";
+import { useAgentsHotkeys } from "../agents/lib/agents-hotkeys-manager";
+import { AgentsContent } from "../agents/ui/agents-content";
+import { AgentsSidebar } from "../sidebar/agents-sidebar";
 
 // ============================================================================
 // Constants
 // ============================================================================
 
-const SIDEBAR_MIN_WIDTH = 160
-const SIDEBAR_MAX_WIDTH = 300
-const SIDEBAR_ANIMATION_DURATION = 0
-const SIDEBAR_CLOSE_HOTKEY = "⌘\\"
+const SIDEBAR_MIN_WIDTH = 160;
+const SIDEBAR_MAX_WIDTH = 300;
+const SIDEBAR_ANIMATION_DURATION = 0;
+const SIDEBAR_CLOSE_HOTKEY = "⌘\\";
 
 // ============================================================================
 // Component
@@ -42,16 +42,16 @@ const SIDEBAR_CLOSE_HOTKEY = "⌘\\"
 
 export function AgentsLayout() {
   // No useHydrateAtoms - desktop doesn't need SSR, atomWithStorage handles persistence
-  const isMobile = useIsMobile()
+  const isMobile = useIsMobile();
 
   // Global desktop/fullscreen state - initialized here at root level
-  const [isDesktop, setIsDesktop] = useAtom(isDesktopAtom)
-  const [, setIsFullscreen] = useAtom(isFullscreenAtom)
+  const [isDesktop, setIsDesktop] = useAtom(isDesktopAtom);
+  const [, setIsFullscreen] = useAtom(isFullscreenAtom);
 
   // Initialize isDesktop on mount
   useEffect(() => {
-    setIsDesktop(isDesktopApp())
-  }, [setIsDesktop])
+    setIsDesktop(isDesktopApp());
+  }, [setIsDesktop]);
 
   // Subscribe to fullscreen changes from Electron
   useEffect(() => {
@@ -60,56 +60,56 @@ export function AgentsLayout() {
       typeof window === "undefined" ||
       !window.desktopApi?.windowIsFullscreen
     )
-      return
+      return;
 
     // Get initial fullscreen state
-    window.desktopApi.windowIsFullscreen().then(setIsFullscreen)
+    window.desktopApi.windowIsFullscreen().then(setIsFullscreen);
 
     // In dev mode, HMR breaks IPC event subscriptions, so we poll instead
-    const isDev = import.meta.env.DEV
+    const isDev = import.meta.env.DEV;
     if (isDev) {
       const interval = setInterval(() => {
-        window.desktopApi?.windowIsFullscreen?.().then(setIsFullscreen)
-      }, 300)
-      return () => clearInterval(interval)
+        window.desktopApi?.windowIsFullscreen?.().then(setIsFullscreen);
+      }, 300);
+      return () => clearInterval(interval);
     }
 
     // In production, use events (more efficient)
-    const unsubscribe = window.desktopApi.onFullscreenChange?.(setIsFullscreen)
-    return unsubscribe
-  }, [isDesktop, setIsFullscreen])
+    const unsubscribe = window.desktopApi.onFullscreenChange?.(setIsFullscreen);
+    return unsubscribe;
+  }, [isDesktop, setIsFullscreen]);
 
   // Check for updates on mount and periodically
-  useUpdateChecker()
+  useUpdateChecker();
 
-  const [sidebarOpen, setSidebarOpen] = useAtom(agentsSidebarOpenAtom)
-  const [sidebarWidth, setSidebarWidth] = useAtom(agentsSidebarWidthAtom)
-  const [settingsOpen, setSettingsOpen] = useAtom(agentsSettingsDialogOpenAtom)
-  const setSettingsActiveTab = useSetAtom(agentsSettingsDialogActiveTabAtom)
+  const [sidebarOpen, setSidebarOpen] = useAtom(agentsSidebarOpenAtom);
+  const [sidebarWidth, setSidebarWidth] = useAtom(agentsSidebarWidthAtom);
+  const [settingsOpen, setSettingsOpen] = useAtom(agentsSettingsDialogOpenAtom);
+  const setSettingsActiveTab = useSetAtom(agentsSettingsDialogActiveTabAtom);
   const [shortcutsOpen, setShortcutsOpen] = useAtom(
     agentsShortcutsDialogOpenAtom,
-  )
-  const [selectedChatId, setSelectedChatId] = useAtom(selectedAgentChatIdAtom)
-  const [selectedProject, setSelectedProject] = useAtom(selectedProjectAtom)
+  );
+  const [selectedChatId, setSelectedChatId] = useAtom(selectedAgentChatIdAtom);
+  const [selectedProject, setSelectedProject] = useAtom(selectedProjectAtom);
   const setAnthropicOnboardingCompleted = useSetAtom(
-    anthropicOnboardingCompletedAtom
-  )
+    anthropicOnboardingCompletedAtom,
+  );
 
   // Fetch projects to validate selectedProject exists
   const { data: projects, isLoading: isLoadingProjects } =
-    trpc.projects.list.useQuery()
+    trpc.projects.list.useQuery();
 
   // Validated project - only valid if exists in DB
   // While loading, trust localStorage value to prevent clearing on app restart
   const validatedProject = useMemo(() => {
-    if (!selectedProject) return null
+    if (!selectedProject) return null;
     // While loading, trust localStorage value to prevent flicker and clearing
-    if (isLoadingProjects) return selectedProject
+    if (isLoadingProjects) return selectedProject;
     // After loading, validate against DB
-    if (!projects) return null
-    const exists = projects.some((p) => p.id === selectedProject.id)
-    return exists ? selectedProject : null
-  }, [selectedProject, projects, isLoadingProjects])
+    if (!projects) return null;
+    const exists = projects.some((p) => p.id === selectedProject.id);
+    return exists ? selectedProject : null;
+  }, [selectedProject, projects, isLoadingProjects]);
 
   // Clear invalid project from storage (only after loading completes)
   useEffect(() => {
@@ -119,7 +119,7 @@ export function AgentsLayout() {
       !isLoadingProjects &&
       !validatedProject
     ) {
-      setSelectedProject(null)
+      setSelectedProject(null);
     }
   }, [
     selectedProject,
@@ -127,76 +127,76 @@ export function AgentsLayout() {
     isLoadingProjects,
     validatedProject,
     setSelectedProject,
-  ])
+  ]);
 
   // Hide native traffic lights when sidebar is closed (no traffic lights needed when sidebar is closed)
   useEffect(() => {
-    if (!isDesktop) return
+    if (!isDesktop) return;
     if (
       typeof window === "undefined" ||
       !window.desktopApi?.setTrafficLightVisibility
     )
-      return
+      return;
 
     // When sidebar is closed, hide native traffic lights
     // When sidebar is open, TrafficLights component handles visibility
     if (!sidebarOpen) {
-      window.desktopApi.setTrafficLightVisibility(false)
+      window.desktopApi.setTrafficLightVisibility(false);
     }
-  }, [sidebarOpen, isDesktop])
-  const setChatId = useAgentSubChatStore((state) => state.setChatId)
+  }, [sidebarOpen, isDesktop]);
+  const setChatId = useAgentSubChatStore((state) => state.setChatId);
 
   // Desktop user state
   const [desktopUser, setDesktopUser] = useState<{
-    id: string
-    email: string
-    name: string | null
-    imageUrl: string | null
-    username: string | null
-  } | null>(null)
+    id: string;
+    email: string;
+    name: string | null;
+    imageUrl: string | null;
+    username: string | null;
+  } | null>(null);
 
   // Fetch desktop user on mount
   useEffect(() => {
     async function fetchUser() {
       if (window.desktopApi?.getUser) {
-        const user = await window.desktopApi.getUser()
-        setDesktopUser(user)
+        const user = await window.desktopApi.getUser();
+        setDesktopUser(user);
       }
     }
-    fetchUser()
-  }, [])
+    fetchUser();
+  }, []);
 
   // Auto-open sidebar when project is selected, close when no project
   // Only act after projects have loaded to avoid closing sidebar during initial load
   useEffect(() => {
-    if (!projects) return // Don't change sidebar state while loading
+    if (!projects) return; // Don't change sidebar state while loading
 
     if (validatedProject) {
-      setSidebarOpen(true)
+      setSidebarOpen(true);
     } else {
-      setSidebarOpen(false)
+      setSidebarOpen(false);
     }
-  }, [validatedProject, projects, setSidebarOpen])
+  }, [validatedProject, projects, setSidebarOpen]);
 
   // Handle sign out
   const handleSignOut = useCallback(async () => {
     // Clear selected project and anthropic onboarding on logout
-    setSelectedProject(null)
-    setSelectedChatId(null)
-    setAnthropicOnboardingCompleted(false)
+    setSelectedProject(null);
+    setSelectedChatId(null);
+    setAnthropicOnboardingCompleted(false);
     if (window.desktopApi?.logout) {
-      await window.desktopApi.logout()
+      await window.desktopApi.logout();
     }
-  }, [setSelectedProject, setSelectedChatId, setAnthropicOnboardingCompleted])
+  }, [setSelectedProject, setSelectedChatId, setAnthropicOnboardingCompleted]);
 
   // Initialize sub-chats when chat is selected
   useEffect(() => {
     if (selectedChatId) {
-      setChatId(selectedChatId)
+      setChatId(selectedChatId);
     } else {
-      setChatId(null)
+      setChatId(null);
     }
-  }, [selectedChatId, setChatId])
+  }, [selectedChatId, setChatId]);
 
   // Initialize hotkeys manager
   useAgentsHotkeys({
@@ -206,11 +206,11 @@ export function AgentsLayout() {
     setSettingsActiveTab,
     setShortcutsDialogOpen: setShortcutsOpen,
     selectedChatId,
-  })
+  });
 
   const handleCloseSidebar = useCallback(() => {
-    setSidebarOpen(false)
-  }, [setSidebarOpen])
+    setSidebarOpen(false);
+  }, [setSidebarOpen]);
 
   return (
     <TooltipProvider delayDuration={300}>
@@ -256,5 +256,5 @@ export function AgentsLayout() {
         <UpdateBanner />
       </div>
     </TooltipProvider>
-  )
+  );
 }

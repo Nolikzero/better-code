@@ -1,55 +1,55 @@
-"use client"
+"use client";
 
-import { memo, useState } from "react"
+import { memo, useState } from "react";
 import {
+  CollapseIcon,
+  ExpandIcon,
   GlobeIcon,
   IconSpinner,
-  ExpandIcon,
-  CollapseIcon,
-} from "../../../components/ui/icons"
-import { TextShimmer } from "../../../components/ui/text-shimmer"
-import { getToolStatus } from "./agent-tool-registry"
-import { AgentToolInterrupted } from "./agent-tool-interrupted"
-import { cn } from "../../../lib/utils"
+} from "../../../components/ui/icons";
+import { TextShimmer } from "../../../components/ui/text-shimmer";
+import { cn } from "../../../lib/utils";
+import { AgentToolInterrupted } from "./agent-tool-interrupted";
+import { getToolStatus } from "./agent-tool-registry";
 
 interface AgentWebFetchToolProps {
-  part: any
-  chatStatus?: string
+  part: any;
+  chatStatus?: string;
 }
 
 export const AgentWebFetchTool = memo(function AgentWebFetchTool({
   part,
   chatStatus,
 }: AgentWebFetchToolProps) {
-  const [isExpanded, setIsExpanded] = useState(false)
-  const { isPending, isError, isInterrupted } = getToolStatus(part, chatStatus)
+  const [isExpanded, setIsExpanded] = useState(false);
+  const { isPending, isError, isInterrupted } = getToolStatus(part, chatStatus);
 
-  const url = part.input?.url || ""
-  const result = part.output?.result || ""
-  const bytes = part.output?.bytes || 0
-  const statusCode = part.output?.code
-  const isSuccess = statusCode === 200
+  const url = part.input?.url || "";
+  const result = part.output?.result || "";
+  const bytes = part.output?.bytes || 0;
+  const statusCode = part.output?.code;
+  const isSuccess = statusCode === 200;
 
   // Extract hostname for display
-  let hostname = ""
+  let hostname = "";
   try {
-    hostname = new URL(url).hostname.replace("www.", "")
+    hostname = new URL(url).hostname.replace("www.", "");
   } catch {
-    hostname = url.slice(0, 30)
+    hostname = url.slice(0, 30);
   }
 
   // Format bytes
   const formatBytes = (bytes: number) => {
-    if (bytes < 1024) return `${bytes} B`
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-  }
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
 
-  const hasContent = result.length > 0
+  const hasContent = result.length > 0;
 
   // Show interrupted state if fetch was interrupted without completing
   if (isInterrupted && !result) {
-    return <AgentToolInterrupted toolName="Fetch" subtitle={hostname} />
+    return <AgentToolInterrupted toolName="Fetch" subtitle={hostname} />;
   }
 
   return (
@@ -59,12 +59,14 @@ export const AgentWebFetchTool = memo(function AgentWebFetchTool({
         onClick={() => hasContent && !isPending && setIsExpanded(!isExpanded)}
         className={cn(
           "flex items-center justify-between px-2.5 h-7",
-          hasContent && !isPending && "cursor-pointer hover:bg-muted/50 transition-colors duration-150",
+          hasContent &&
+            !isPending &&
+            "cursor-pointer hover:bg-muted/50 transition-colors duration-150",
         )}
       >
         <div className="flex items-center gap-1.5 text-xs truncate flex-1 min-w-0">
           <GlobeIcon className="w-3 h-3 flex-shrink-0 text-muted-foreground" />
-          
+
           {isPending ? (
             <TextShimmer
               as="span"
@@ -76,7 +78,7 @@ export const AgentWebFetchTool = memo(function AgentWebFetchTool({
           ) : (
             <span className="text-xs text-muted-foreground">Fetched</span>
           )}
-          
+
           <span className="truncate text-foreground">{hostname}</span>
         </div>
 
@@ -125,6 +127,5 @@ export const AgentWebFetchTool = memo(function AgentWebFetchTool({
         </div>
       )}
     </div>
-  )
-})
-
+  );
+});

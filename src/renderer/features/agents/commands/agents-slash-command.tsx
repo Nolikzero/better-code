@@ -1,66 +1,58 @@
-"use client"
+"use client";
 
-import { cn } from "../../../lib/utils"
-import { api } from "../../../lib/mock-api"
+import { Eye, FileText, MessageSquareCode, ShieldCheck } from "lucide-react";
 import {
+  memo,
   useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
-  memo,
-} from "react"
+} from "react";
 import {
-  IconSpinner,
-  IconChatBubble,
-  PlanIcon,
   AgentIcon,
-} from "../../../components/ui/icons"
-import {
-  MessageSquareCode,
-  FileText,
-  ShieldCheck,
-  Eye,
-} from "lucide-react"
-import type { SlashCommandOption, SlashTriggerPayload } from "./types"
-import {
-  filterBuiltinCommands,
-  BUILTIN_SLASH_COMMANDS,
-} from "./builtin-commands"
+  IconChatBubble,
+  IconSpinner,
+  PlanIcon,
+} from "../../../components/ui/icons";
+import { api } from "../../../lib/mock-api";
+import { cn } from "../../../lib/utils";
+import { filterBuiltinCommands } from "./builtin-commands";
+import type { SlashCommandOption } from "./types";
 
 // Get icon component for a slash command
 function getCommandIcon(commandName: string) {
   switch (commandName) {
     case "clear":
-      return IconChatBubble
+      return IconChatBubble;
     case "plan":
-      return PlanIcon
+      return PlanIcon;
     case "agent":
-      return AgentIcon
+      return AgentIcon;
     case "review":
-      return Eye
+      return Eye;
     case "pr-comments":
-      return MessageSquareCode
+      return MessageSquareCode;
     case "release-notes":
-      return FileText
+      return FileText;
     case "security-review":
-      return ShieldCheck
+      return ShieldCheck;
     default:
-      return IconChatBubble
+      return IconChatBubble;
   }
 }
 
 interface AgentsSlashCommandProps {
-  isOpen: boolean
-  onClose: () => void
-  onSelect: (command: SlashCommandOption) => void
-  searchText: string
-  position: { top: number; left: number }
-  teamId?: string
-  repository?: string
-  isPlanMode?: boolean
-  disabledCommands?: string[]
+  isOpen: boolean;
+  onClose: () => void;
+  onSelect: (command: SlashCommandOption) => void;
+  searchText: string;
+  position: { top: number; left: number };
+  teamId?: string;
+  repository?: string;
+  isPlanMode?: boolean;
+  disabledCommands?: string[];
 }
 
 // Memoized to prevent re-renders when parent re-renders
@@ -75,18 +67,18 @@ export const AgentsSlashCommand = memo(function AgentsSlashCommand({
   isPlanMode,
   disabledCommands,
 }: AgentsSlashCommandProps) {
-  const dropdownRef = useRef<HTMLDivElement>(null)
-  const [selectedIndex, setSelectedIndex] = useState(0)
-  const placementRef = useRef<"above" | "below" | null>(null)
-  const [debouncedSearchText, setDebouncedSearchText] = useState(searchText)
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const placementRef = useRef<"above" | "below" | null>(null);
+  const [debouncedSearchText, setDebouncedSearchText] = useState(searchText);
 
   // Debounce search text (300ms to match file mention)
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedSearchText(searchText)
-    }, 300)
-    return () => clearTimeout(timer)
-  }, [searchText])
+      setDebouncedSearchText(searchText);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchText]);
 
   // Fetch repository commands
   const { data: repoCommands = [], isLoading } =
@@ -100,256 +92,258 @@ export const AgentsSlashCommand = memo(function AgentsSlashCommand({
         staleTime: 30_000, // Cache for 30 seconds
         refetchOnWindowFocus: false,
       },
-    )
+    );
 
   // State for loading command content
-  const [isLoadingContent, setIsLoadingContent] = useState(false)
+  const [isLoadingContent, setIsLoadingContent] = useState(false);
 
   // tRPC utils for fetching command content
-  const utils = api.useUtils()
+  const utils = api.useUtils();
 
   // Handle command selection - fetch content for repository commands
   const handleSelect = useCallback(
     async (option: SlashCommandOption) => {
       // For builtin commands, call onSelect directly
       if (option.category === "builtin") {
-        onSelect(option)
-        return
+        onSelect(option);
+        return;
       }
 
       // For repository commands, fetch the prompt content first
       if (option.path && teamId) {
-        setIsLoadingContent(true)
+        setIsLoadingContent(true);
         try {
           const result = await utils.github.getSlashCommandContent.fetch({
             teamId,
             repository: option.repository || repository!,
             path: option.path,
-          })
+          });
 
           // Call onSelect with the fetched prompt
           onSelect({
             ...option,
             prompt: result.content,
-          })
+          });
         } catch (error) {
-          console.error("Failed to fetch slash command content:", error)
+          console.error("Failed to fetch slash command content:", error);
           // Still close the dropdown even on error
-          onClose()
+          onClose();
         } finally {
-          setIsLoadingContent(false)
+          setIsLoadingContent(false);
         }
       } else {
         // Fallback - just call onSelect without prompt
-        onSelect(option)
+        onSelect(option);
       }
     },
     [onSelect, onClose, teamId, repository, utils],
-  )
+  );
 
   // Combine builtin and repository commands, filtered by search
   const options: SlashCommandOption[] = useMemo(() => {
-    let builtinFiltered = filterBuiltinCommands(debouncedSearchText)
+    let builtinFiltered = filterBuiltinCommands(debouncedSearchText);
 
     // Hide /plan when already in Plan mode, hide /agent when already in Agent mode
     if (isPlanMode !== undefined) {
       builtinFiltered = builtinFiltered.filter((cmd) => {
-        if (isPlanMode && cmd.name === "plan") return false
-        if (!isPlanMode && cmd.name === "agent") return false
-        return true
-      })
+        if (isPlanMode && cmd.name === "plan") return false;
+        if (!isPlanMode && cmd.name === "agent") return false;
+        return true;
+      });
     }
 
     // Filter out disabled commands
     if (disabledCommands && disabledCommands.length > 0) {
       builtinFiltered = builtinFiltered.filter(
         (cmd) => !disabledCommands.includes(cmd.name),
-      )
+      );
     }
 
     // Filter repo commands by search
-    let repoFiltered = repoCommands
+    let repoFiltered = repoCommands;
     if (debouncedSearchText) {
-      const query = debouncedSearchText.toLowerCase()
+      const query = debouncedSearchText.toLowerCase();
       repoFiltered = repoCommands.filter(
         (cmd) =>
           cmd.name.toLowerCase().includes(query) ||
           cmd.command.toLowerCase().includes(query),
-      )
+      );
     }
 
     // Return builtin first, then repository commands
-    return [...builtinFiltered, ...repoFiltered]
-  }, [debouncedSearchText, repoCommands, isPlanMode, disabledCommands])
+    return [...builtinFiltered, ...repoFiltered];
+  }, [debouncedSearchText, repoCommands, isPlanMode, disabledCommands]);
 
   // Track previous values for smarter selection reset
-  const prevIsOpenRef = useRef(isOpen)
-  const prevSearchRef = useRef(debouncedSearchText)
+  const prevIsOpenRef = useRef(isOpen);
+  const prevSearchRef = useRef(debouncedSearchText);
 
   // CONSOLIDATED: Single useLayoutEffect for selection management
   useLayoutEffect(() => {
-    const didJustOpen = isOpen && !prevIsOpenRef.current
-    const didSearchChange = debouncedSearchText !== prevSearchRef.current
+    const didJustOpen = isOpen && !prevIsOpenRef.current;
+    const didSearchChange = debouncedSearchText !== prevSearchRef.current;
 
     // Reset to 0 when opening or search changes
     if (didJustOpen || didSearchChange) {
-      setSelectedIndex(0)
+      setSelectedIndex(0);
     }
     // Clamp to valid range if options shrunk
     else if (options.length > 0 && selectedIndex >= options.length) {
-      setSelectedIndex(Math.max(0, options.length - 1))
+      setSelectedIndex(Math.max(0, options.length - 1));
     }
 
     // Update refs
-    prevIsOpenRef.current = isOpen
-    prevSearchRef.current = debouncedSearchText
-  }, [isOpen, debouncedSearchText, options.length, selectedIndex])
+    prevIsOpenRef.current = isOpen;
+    prevSearchRef.current = debouncedSearchText;
+  }, [isOpen, debouncedSearchText, options.length, selectedIndex]);
 
   // Reset placement when closed
   useEffect(() => {
     if (!isOpen) {
-      placementRef.current = null
+      placementRef.current = null;
     }
-  }, [isOpen])
+  }, [isOpen]);
 
   // Keyboard navigation
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       switch (e.key) {
         case "ArrowDown":
-          e.preventDefault()
-          e.stopPropagation()
-          e.stopImmediatePropagation()
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
           // Guard against modulo by zero when no options
           if (options.length > 0) {
-            setSelectedIndex((prev) => (prev + 1) % options.length)
+            setSelectedIndex((prev) => (prev + 1) % options.length);
           }
-          break
+          break;
         case "ArrowUp":
-          e.preventDefault()
-          e.stopPropagation()
-          e.stopImmediatePropagation()
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
           // Guard against modulo by zero when no options
           if (options.length > 0) {
             setSelectedIndex(
               (prev) => (prev - 1 + options.length) % options.length,
-            )
+            );
           }
-          break
+          break;
         case "Enter":
-          if (e.shiftKey) return
-          e.preventDefault()
-          e.stopPropagation()
-          e.stopImmediatePropagation()
+          if (e.shiftKey) return;
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
           if (options[selectedIndex]) {
-            handleSelect(options[selectedIndex])
+            handleSelect(options[selectedIndex]);
           }
-          break
+          break;
         case "Escape":
-          e.preventDefault()
-          e.stopPropagation()
-          e.stopImmediatePropagation()
-          onClose()
-          break
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          onClose();
+          break;
         case "Tab":
-          e.preventDefault()
-          e.stopPropagation()
-          e.stopImmediatePropagation()
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
           if (options[selectedIndex]) {
-            handleSelect(options[selectedIndex])
+            handleSelect(options[selectedIndex]);
           }
-          break
+          break;
       }
-    }
+    };
 
-    window.addEventListener("keydown", handleKeyDown, { capture: true })
+    window.addEventListener("keydown", handleKeyDown, { capture: true });
     return () =>
-      window.removeEventListener("keydown", handleKeyDown, { capture: true })
-  }, [isOpen, options, selectedIndex, handleSelect, onClose])
+      window.removeEventListener("keydown", handleKeyDown, { capture: true });
+  }, [isOpen, options, selectedIndex, handleSelect, onClose]);
 
   // Auto-scroll selected item into view
   useEffect(() => {
-    if (!isOpen || !dropdownRef.current) return
+    if (!isOpen || !dropdownRef.current) return;
 
     if (selectedIndex === 0) {
-      dropdownRef.current.scrollTo({ top: 0, behavior: "auto" })
-      return
+      dropdownRef.current.scrollTo({ top: 0, behavior: "auto" });
+      return;
     }
 
-    const elements = dropdownRef.current.querySelectorAll("[data-option-index]")
-    const selectedElement = elements[selectedIndex] as HTMLElement
+    const elements = dropdownRef.current.querySelectorAll(
+      "[data-option-index]",
+    );
+    const selectedElement = elements[selectedIndex] as HTMLElement;
     if (selectedElement) {
-      selectedElement.scrollIntoView({ block: "nearest" })
+      selectedElement.scrollIntoView({ block: "nearest" });
     }
-  }, [selectedIndex, isOpen])
+  }, [selectedIndex, isOpen]);
 
   // Click outside
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) return;
 
     const handleClickOutside = (e: MouseEvent) => {
       if (
         dropdownRef.current &&
         !dropdownRef.current.contains(e.target as Node)
       ) {
-        onClose()
+        onClose();
       }
-    }
+    };
 
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [isOpen, onClose])
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen, onClose]);
 
-  if (!isOpen) return null
+  if (!isOpen) return null;
 
   // Calculate dropdown dimensions (matching file mention style)
-  const dropdownWidth = 320
-  const itemHeight = 28  // h-7 = 28px to match file mention
-  const headerHeight = 24
-  const builtinCount = filterBuiltinCommands(debouncedSearchText).length
-  const repoCount = options.length - builtinCount
-  const headersCount = (builtinCount > 0 ? 1 : 0) + (repoCount > 0 ? 1 : 0)
+  const dropdownWidth = 320;
+  const itemHeight = 28; // h-7 = 28px to match file mention
+  const headerHeight = 24;
+  const builtinCount = filterBuiltinCommands(debouncedSearchText).length;
+  const repoCount = options.length - builtinCount;
+  const headersCount = (builtinCount > 0 ? 1 : 0) + (repoCount > 0 ? 1 : 0);
   const requestedHeight = Math.min(
     options.length * itemHeight + headersCount * headerHeight + 8,
-    200,  // Match file mention maxHeight
-  )
-  const gap = 8
+    200, // Match file mention maxHeight
+  );
+  const gap = 8;
 
   // Decide placement like Radix Popover (auto-flip top/bottom)
-  const safeMargin = 10
-  const caretOffsetBelow = 20
+  const safeMargin = 10;
+  const caretOffsetBelow = 20;
   const availableBelow =
-    window.innerHeight - (position.top + caretOffsetBelow) - safeMargin
-  const availableAbove = position.top - safeMargin
+    window.innerHeight - (position.top + caretOffsetBelow) - safeMargin;
+  const availableAbove = position.top - safeMargin;
 
   // Compute desired placement, but lock it for the duration of the open state
   if (placementRef.current === null) {
     const condition1 =
-      availableAbove >= requestedHeight && availableBelow < requestedHeight
+      availableAbove >= requestedHeight && availableBelow < requestedHeight;
     const condition2 =
-      availableAbove > availableBelow && availableAbove >= requestedHeight
-    const shouldPlaceAbove = condition1 || condition2
-    placementRef.current = shouldPlaceAbove ? "above" : "below"
+      availableAbove > availableBelow && availableAbove >= requestedHeight;
+    const shouldPlaceAbove = condition1 || condition2;
+    placementRef.current = shouldPlaceAbove ? "above" : "below";
   }
-  const placeAbove = placementRef.current === "above"
+  const placeAbove = placementRef.current === "above";
 
   // Compute final top based on placement
-  let finalTop = placeAbove
+  const finalTop = placeAbove
     ? position.top - gap
-    : position.top + gap + caretOffsetBelow
+    : position.top + gap + caretOffsetBelow;
 
   // Slight left bias to better align with '/'
-  const leftOffset = -4
-  let finalLeft = position.left + leftOffset
+  const leftOffset = -4;
+  let finalLeft = position.left + leftOffset;
 
   // Adjust horizontal overflow
   if (finalLeft + dropdownWidth > window.innerWidth - safeMargin) {
-    finalLeft = window.innerWidth - dropdownWidth - safeMargin
+    finalLeft = window.innerWidth - dropdownWidth - safeMargin;
   }
   if (finalLeft < safeMargin) {
-    finalLeft = safeMargin
+    finalLeft = safeMargin;
   }
 
   // Compute actual maxHeight based on available space on the chosen side
@@ -359,15 +353,15 @@ export const AgentsSlashCommand = memo(function AgentsSlashCommand({
       requestedHeight,
       placeAbove ? availableAbove - gap : availableBelow - gap,
     ),
-  )
-  const transformY = placeAbove ? "translateY(-100%)" : "translateY(0)"
+  );
+  const transformY = placeAbove ? "translateY(-100%)" : "translateY(0)";
 
   // Split options into builtin and repository
-  const builtinOptions = options.filter((o) => o.category === "builtin")
-  const repoOptions = options.filter((o) => o.category === "repository")
+  const builtinOptions = options.filter((o) => o.category === "builtin");
+  const repoOptions = options.filter((o) => o.category === "repository");
 
   // Calculate global index for each item
-  let globalIndex = 0
+  let globalIndex = 0;
 
   return (
     <div
@@ -389,17 +383,17 @@ export const AgentsSlashCommand = memo(function AgentsSlashCommand({
             Commands
           </div>
           {builtinOptions.map((option) => {
-            const currentIndex = globalIndex++
-            const isSelected = selectedIndex === currentIndex
-            const CommandIcon = getCommandIcon(option.name)
+            const currentIndex = globalIndex++;
+            const isSelected = selectedIndex === currentIndex;
+            const CommandIcon = getCommandIcon(option.name);
             return (
               <div
                 key={option.id}
                 data-option-index={currentIndex}
                 onMouseDown={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  handleSelect(option)
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleSelect(option);
                 }}
                 onMouseEnter={() => setSelectedIndex(currentIndex)}
                 className={cn(
@@ -416,14 +410,12 @@ export const AgentsSlashCommand = memo(function AgentsSlashCommand({
                   <span className="shrink-0 whitespace-nowrap font-medium">
                     {option.command}
                   </span>
-                  <span
-                    className="text-muted-foreground flex-1 min-w-0 ml-2 overflow-hidden text-[10px] truncate"
-                  >
+                  <span className="text-muted-foreground flex-1 min-w-0 ml-2 overflow-hidden text-[10px] truncate">
                     {option.description}
                   </span>
                 </span>
               </div>
-            )
+            );
           })}
         </>
       )}
@@ -435,17 +427,17 @@ export const AgentsSlashCommand = memo(function AgentsSlashCommand({
             From repository
           </div>
           {repoOptions.map((option) => {
-            const currentIndex = globalIndex++
-            const isSelected = selectedIndex === currentIndex
-            const CommandIcon = getCommandIcon(option.name)
+            const currentIndex = globalIndex++;
+            const isSelected = selectedIndex === currentIndex;
+            const CommandIcon = getCommandIcon(option.name);
             return (
               <div
                 key={option.id}
                 data-option-index={currentIndex}
                 onMouseDown={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  handleSelect(option)
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleSelect(option);
                 }}
                 onMouseEnter={() => setSelectedIndex(currentIndex)}
                 className={cn(
@@ -462,14 +454,12 @@ export const AgentsSlashCommand = memo(function AgentsSlashCommand({
                   <span className="shrink-0 whitespace-nowrap font-medium">
                     {option.command}
                   </span>
-                  <span
-                    className="text-muted-foreground flex-1 min-w-0 ml-2 overflow-hidden text-[10px] truncate"
-                  >
+                  <span className="text-muted-foreground flex-1 min-w-0 ml-2 overflow-hidden text-[10px] truncate">
                     {option.description}
                   </span>
                 </span>
               </div>
-            )
+            );
           })}
         </>
       )}
@@ -491,5 +481,5 @@ export const AgentsSlashCommand = memo(function AgentsSlashCommand({
         </div>
       )}
     </div>
-  )
-})
+  );
+});

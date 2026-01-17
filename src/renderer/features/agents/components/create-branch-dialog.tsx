@@ -1,45 +1,45 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useMemo } from "react"
-import { toast } from "sonner"
-import { GitBranch, ChevronDown, Check } from "lucide-react"
-import {
-  Dialog,
-  CanvasDialogContent,
-  CanvasDialogHeader,
-  CanvasDialogBody,
-  CanvasDialogFooter,
-  DialogTitle,
-} from "../../../components/ui/dialog"
-import { Button } from "../../../components/ui/button"
-import { Input } from "../../../components/ui/input"
-import { Label } from "../../../components/ui/label"
-import * as PopoverPrimitive from "@radix-ui/react-popover"
+import * as PopoverPrimitive from "@radix-ui/react-popover";
+import { Check, ChevronDown, GitBranch } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+import { Button } from "../../../components/ui/button";
 import {
   Command,
-  CommandInput,
-  CommandList,
   CommandEmpty,
   CommandGroup,
+  CommandInput,
   CommandItem,
-} from "../../../components/ui/command"
-import { IconSpinner } from "../../../components/ui/icons"
-import { trpc } from "../../../lib/trpc"
-import { cn } from "../../../lib/utils"
-import { formatTimeAgo } from "../utils/format-time-ago"
+  CommandList,
+} from "../../../components/ui/command";
+import {
+  CanvasDialogBody,
+  CanvasDialogContent,
+  CanvasDialogFooter,
+  CanvasDialogHeader,
+  Dialog,
+  DialogTitle,
+} from "../../../components/ui/dialog";
+import { IconSpinner } from "../../../components/ui/icons";
+import { Input } from "../../../components/ui/input";
+import { Label } from "../../../components/ui/label";
+import { trpc } from "../../../lib/trpc";
+import { cn } from "../../../lib/utils";
+import { formatTimeAgo } from "../utils/format-time-ago";
 
 interface CreateBranchDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  projectPath: string
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  projectPath: string;
   branches: Array<{
-    name: string
-    isDefault: boolean
-    committedAt: string | null
-    protected?: boolean
-  }>
-  defaultBranch: string
-  onBranchCreated: (branchName: string) => void
+    name: string;
+    isDefault: boolean;
+    committedAt: string | null;
+    protected?: boolean;
+  }>;
+  defaultBranch: string;
+  onBranchCreated: (branchName: string) => void;
 }
 
 export function CreateBranchDialog({
@@ -50,72 +50,72 @@ export function CreateBranchDialog({
   defaultBranch,
   onBranchCreated,
 }: CreateBranchDialogProps) {
-  const [branchName, setBranchName] = useState("")
-  const [baseBranch, setBaseBranch] = useState(defaultBranch)
-  const [baseBranchOpen, setBaseBranchOpen] = useState(false)
-  const [baseBranchSearch, setBaseBranchSearch] = useState("")
+  const [branchName, setBranchName] = useState("");
+  const [baseBranch, setBaseBranch] = useState(defaultBranch);
+  const [baseBranchOpen, setBaseBranchOpen] = useState(false);
+  const [baseBranchSearch, setBaseBranchSearch] = useState("");
 
   // Reset baseBranch when defaultBranch changes
   useEffect(() => {
-    setBaseBranch(defaultBranch)
-  }, [defaultBranch])
+    setBaseBranch(defaultBranch);
+  }, [defaultBranch]);
 
   // Reset search when popover closes
   useEffect(() => {
     if (!baseBranchOpen) {
-      setBaseBranchSearch("")
+      setBaseBranchSearch("");
     }
-  }, [baseBranchOpen])
+  }, [baseBranchOpen]);
 
   // Filter branches based on search (limit to 50 for performance)
   const filteredBaseBranches = useMemo(() => {
-    let filtered = branches
+    let filtered = branches;
     if (baseBranchSearch.trim()) {
-      const search = baseBranchSearch.toLowerCase()
-      filtered = branches.filter((b) => b.name.toLowerCase().includes(search))
+      const search = baseBranchSearch.toLowerCase();
+      filtered = branches.filter((b) => b.name.toLowerCase().includes(search));
     }
-    return filtered.slice(0, 50)
-  }, [branches, baseBranchSearch])
+    return filtered.slice(0, 50);
+  }, [branches, baseBranchSearch]);
 
-  const utils = trpc.useUtils()
+  const utils = trpc.useUtils();
 
   const createBranchMutation = trpc.changes.createBranch.useMutation({
     onSuccess: (data) => {
-      toast.success(`Branch '${data.branchName}' created successfully`)
+      toast.success(`Branch '${data.branchName}' created successfully`);
       // Invalidate branches query to refresh the list
-      utils.changes.getBranches.invalidate({ worktreePath: projectPath })
-      onBranchCreated(data.branchName)
-      onOpenChange(false)
-      setBranchName("")
-      setBaseBranch(defaultBranch)
+      utils.changes.getBranches.invalidate({ worktreePath: projectPath });
+      onBranchCreated(data.branchName);
+      onOpenChange(false);
+      setBranchName("");
+      setBaseBranch(defaultBranch);
     },
     onError: (error) => {
-      toast.error(`Failed to create branch: ${error.message}`)
+      toast.error(`Failed to create branch: ${error.message}`);
     },
-  })
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (!branchName.trim()) {
-      toast.error("Branch name is required")
-      return
+      toast.error("Branch name is required");
+      return;
     }
 
     // Basic validation for branch name
     if (!/^[a-zA-Z0-9._/-]+$/.test(branchName)) {
       toast.error(
         "Branch name can only contain letters, numbers, dots, hyphens, underscores, and slashes",
-      )
-      return
+      );
+      return;
     }
 
     createBranchMutation.mutate({
       projectPath,
       branchName: branchName.trim(),
       baseBranch,
-    })
-  }
+    });
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -141,8 +141,8 @@ export function CreateBranchDialog({
                   branchName.trim() &&
                   !createBranchMutation.isPending
                 ) {
-                  e.preventDefault()
-                  handleSubmit(e)
+                  e.preventDefault();
+                  handleSubmit(e);
                 }
               }}
               autoFocus
@@ -197,13 +197,15 @@ export function CreateBranchDialog({
                             key={branch.name}
                             value={branch.name}
                             onSelect={() => {
-                              setBaseBranch(branch.name)
-                              setBaseBranchOpen(false)
+                              setBaseBranch(branch.name);
+                              setBaseBranchOpen(false);
                             }}
                             className="gap-2 cursor-pointer"
                           >
                             <GitBranch className="h-4 w-4 text-muted-foreground shrink-0" />
-                            <span className="truncate flex-1">{branch.name}</span>
+                            <span className="truncate flex-1">
+                              {branch.name}
+                            </span>
                             {branch.committedAt && (
                               <span className="text-xs text-muted-foreground/70 shrink-0">
                                 {formatTimeAgo(branch.committedAt)}
@@ -251,5 +253,5 @@ export function CreateBranchDialog({
         </CanvasDialogFooter>
       </CanvasDialogContent>
     </Dialog>
-  )
+  );
 }

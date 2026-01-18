@@ -1,6 +1,6 @@
-import { join } from "path";
 import { app } from "electron";
 import { appendFile, mkdir, readdir, stat, unlink } from "fs/promises";
+import { join } from "path";
 
 // Check if logging is enabled (lazy check after app is ready)
 function isEnabled(): boolean {
@@ -125,6 +125,6 @@ export async function logRawClaudeMessage(
  * Get the directory where Claude logs are stored
  * Useful for UI to show "Open Logs" button
  */
-function getLogsDirectory(): string {
+function _getLogsDirectory(): string {
   return join(app.getPath("userData"), "logs", "claude");
 }

@@ -37,7 +37,7 @@ export const SubChatIcon = React.memo(function SubChatIcon({
   onCheckboxClick,
 }: SubChatIconProps) {
   return (
-    <div className="pt-0.5 flex-shrink-0 w-4 h-4 flex items-center justify-center relative">
+    <div className="pt-0.5 shrink-0 w-4 h-4 flex items-center justify-center relative">
       {/* Checkbox - shown in multi-select mode */}
       <div
         className={cn(

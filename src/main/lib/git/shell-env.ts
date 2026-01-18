@@ -107,7 +107,7 @@ export async function checkGitLfsAvailable(
  * Clears the cached shell environment.
  * Useful for testing or when environment changes are expected.
  */
-function clearShellEnvCache(): void {
+function _clearShellEnvCache(): void {
   cachedEnv = null;
   cacheTime = 0;
   isFallbackCache = false;

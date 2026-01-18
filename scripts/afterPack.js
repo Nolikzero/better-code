@@ -90,6 +90,63 @@ exports.default = async function (context) {
   console.log(
     `[afterPack] Removed ${(removedSize / 1024 / 1024).toFixed(1)} MB of unused ripgrep binaries`
   )
+
+  // Clean up better-sqlite3 build artifacts
+  const betterSqlite3Dir = path.join(
+    resourcesDir,
+    "app.asar.unpacked",
+    "node_modules",
+    "better-sqlite3"
+  )
+
+  if (fs.existsSync(betterSqlite3Dir)) {
+    let sqlite3Removed = 0
+
+    // Remove SQLite source files (deps/sqlite3/ contains sqlite3.c ~9.5MB)
+    const depsDir = path.join(betterSqlite3Dir, "deps")
+    if (fs.existsSync(depsDir)) {
+      const size = getDirSize(depsDir)
+      sqlite3Removed += size
+      fs.rmSync(depsDir, { recursive: true, force: true })
+    }
+
+    // Remove build object files (only .node binary is needed)
+    const objDir = path.join(betterSqlite3Dir, "build", "Release", "obj")
+    if (fs.existsSync(objDir)) {
+      const size = getDirSize(objDir)
+      sqlite3Removed += size
+      fs.rmSync(objDir, { recursive: true, force: true })
+    }
+
+    // Remove C source files
+    const srcDir = path.join(betterSqlite3Dir, "src")
+    if (fs.existsSync(srcDir)) {
+      const size = getDirSize(srcDir)
+      sqlite3Removed += size
+      fs.rmSync(srcDir, { recursive: true, force: true })
+    }
+
+    // Remove test_extension.node
+    const testExt = path.join(betterSqlite3Dir, "build", "Release", "test_extension.node")
+    if (fs.existsSync(testExt)) {
+      sqlite3Removed += fs.statSync(testExt).size
+      fs.rmSync(testExt)
+    }
+
+    // Remove node_gyp_bins
+    const nodeGypBins = path.join(betterSqlite3Dir, "build", "node_gyp_bins")
+    if (fs.existsSync(nodeGypBins)) {
+      const size = getDirSize(nodeGypBins)
+      sqlite3Removed += size
+      fs.rmSync(nodeGypBins, { recursive: true, force: true })
+    }
+
+    if (sqlite3Removed > 0) {
+      console.log(
+        `[afterPack] Removed ${(sqlite3Removed / 1024 / 1024).toFixed(1)} MB of better-sqlite3 build artifacts`
+      )
+    }
+  }
 }
 
 function getDirSize(dirPath) {

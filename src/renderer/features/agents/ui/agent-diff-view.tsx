@@ -6,9 +6,9 @@ import { atomWithStorage } from "jotai/utils";
 import {
   Component,
   type ErrorInfo,
-  type ReactNode,
   forwardRef,
   memo,
+  type ReactNode,
   startTransition,
   useCallback,
   useEffect,
@@ -24,6 +24,7 @@ export enum DiffModeEnum {
   Split = 1,
   Unified = 2,
 }
+
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   AlertTriangle,
@@ -46,9 +47,11 @@ import {
   TooltipTrigger,
 } from "../../../components/ui/tooltip";
 import { getFileIconByExtension } from "../mentions";
+
 // e2b API routes are used instead of useSandboxManager for agents
 // import { useIsHydrated } from "@/hooks/use-is-hydrated"
 const useIsHydrated = () => true; // Desktop is always hydrated
+
 import { useCodeTheme } from "../../../lib/hooks/use-code-theme";
 import { trpcClient } from "../../../lib/trpc";
 import { cn } from "../../../lib/utils";
@@ -97,7 +100,7 @@ class DiffErrorBoundary extends Component<
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  componentDidCatch(_error: Error, _errorInfo: ErrorInfo) {
     // Error already captured in state, no need to log
   }
 
@@ -105,7 +108,7 @@ class DiffErrorBoundary extends Component<
     if (this.state.hasError) {
       return (
         <div className="flex items-center gap-2 p-4 text-sm text-yellow-600 dark:text-yellow-500 bg-yellow-50 dark:bg-yellow-950/30 rounded-md">
-          <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+          <AlertTriangle className="h-4 w-4 shrink-0" />
           <span>
             Failed to render diff for this file. The diff format may be
             corrupted or truncated.
@@ -486,7 +489,7 @@ const FileDiffCard = memo(function FileDiffCard({
             </div>
           ) : !file.isValid ? (
             <div className="flex items-center gap-2 px-3 py-2 text-xs text-yellow-600 dark:text-yellow-500 bg-yellow-50 dark:bg-yellow-950/30">
-              <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
               <span>
                 Diff format appears truncated or corrupted. Unable to render
                 this file's changes.
@@ -567,14 +570,14 @@ export const AgentDiffView = forwardRef<AgentDiffViewRef, AgentDiffViewProps>(
       chatId,
       sandboxId,
       worktreePath,
-      repository,
+      repository: _repository,
       onStatsChange,
       initialDiff,
       initialParsedFiles,
       prefetchedFileContents,
-      showFooter = true,
-      onCreatePr: externalOnCreatePr,
-      isCreatingPr: externalIsCreatingPr,
+      showFooter: _showFooter = true,
+      onCreatePr: _externalOnCreatePr,
+      isCreatingPr: _externalIsCreatingPr,
       isMobile = false,
       onClose,
       onCollapsedStateChange,
@@ -626,7 +629,7 @@ export const AgentDiffView = forwardRef<AgentDiffViewRef, AgentDiffViewProps>(
     // Height for collapsed header (file name + stats)
     const COLLAPSED_HEIGHT = 44;
     // Estimated height for expanded diff
-    const EXPANDED_HEIGHT_ESTIMATE = 300;
+    const _EXPANDED_HEIGHT_ESTIMATE = 300;
 
     // Fetch diff on mount (only if initialDiff not provided)
     useEffect(() => {
@@ -1127,7 +1130,7 @@ export const AgentDiffView = forwardRef<AgentDiffViewRef, AgentDiffViewProps>(
         {/* Mobile Header */}
         {isMobile && (
           <div
-            className="flex-shrink-0 bg-background/95 backdrop-blur border-b h-11 min-h-[44px] max-h-[44px]"
+            className="shrink-0 bg-background/95 backdrop-blur border-b h-11 min-h-[44px] max-h-[44px]"
             data-mobile-diff-header
             style={{
               // @ts-expect-error - WebKit-specific property for Electron window dragging
@@ -1146,7 +1149,7 @@ export const AgentDiffView = forwardRef<AgentDiffViewRef, AgentDiffViewProps>(
                 variant="ghost"
                 size="icon"
                 onClick={onClose}
-                className="h-7 w-7 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] flex-shrink-0 rounded-md"
+                className="h-7 w-7 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] shrink-0 rounded-md"
               >
                 <IconChatBubble className="h-4 w-4" />
                 <span className="sr-only">Back to chat</span>

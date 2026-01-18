@@ -125,6 +125,8 @@ export const terminalRouter = router({
   /**
    * Get workspace cwd for terminal initialization
    */
+
+  // biome-ignore lint/correctness/noUnusedFunctionParameters: fix
   getWorkspaceCwd: publicProcedure.input(z.string()).query(({ input }) => {
     // For now, just return null - the workspace path comes from the chat/project
     // In the future this could look up the workspace's root directory

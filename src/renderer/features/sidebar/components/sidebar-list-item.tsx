@@ -131,7 +131,7 @@ export const SidebarListItem = React.memo(function SidebarListItem({
                   onArchive();
                 }}
                 tabIndex={-1}
-                className="flex-shrink-0 text-muted-foreground hover:text-foreground active:text-foreground transition-[opacity,transform,color] duration-150 ease-out opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto active:scale-[0.97]"
+                className="shrink-0 text-muted-foreground hover:text-foreground active:text-foreground transition-[opacity,transform,color] duration-150 ease-out opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto active:scale-[0.97]"
                 aria-label={archiveLabel}
               >
                 <ArchiveIcon className="h-3.5 w-3.5" />

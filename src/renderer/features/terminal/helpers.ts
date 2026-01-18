@@ -3,14 +3,14 @@ import { FitAddon } from "@xterm/addon-fit";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { WebglAddon } from "@xterm/addon-webgl";
-import { Terminal as XTerm } from "xterm";
-import type { ITheme } from "xterm";
+import type { ITheme } from "@xterm/xterm";
+import { Terminal as XTerm } from "@xterm/xterm";
 import {
+  getTerminalTheme,
   RESIZE_DEBOUNCE_MS,
   TERMINAL_OPTIONS,
   TERMINAL_THEME_DARK,
   TERMINAL_THEME_LIGHT,
-  getTerminalTheme,
 } from "./config";
 import { FilePathLinkProvider } from "./link-providers";
 import {

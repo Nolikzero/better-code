@@ -10,7 +10,7 @@
     <title>BetterCode</title>
     <!-- Prevent theme flash: detect system/stored theme before render -->
     <script>
-      (function() {
+      (() => {
         var stored = localStorage.getItem('theme');
         var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         var theme = stored === 'light' ? 'light' : stored === 'dark' ? 'dark' : (prefersDark ? 'dark' : 'light');
@@ -76,9 +76,9 @@
     </div>
     <script>
       console.log("[HTML] Inline script running - scripts work!");
-      window.onerror = function(msg, url, line) {
+      window.onerror = (msg, url, line) => {
         console.error("[HTML] Global error:", msg, "at", url, "line", line);
-        document.getElementById("root").innerHTML = "<pre style='color:red;padding:20px'>Error: " + msg + "</pre>";
+        document.getElementById("root").innerHTML = `<pre style='color:red;padding:20px'>Error: ${msg}</pre>`;
       };
     </script>
     <script type="module" src="./main.tsx"></script>

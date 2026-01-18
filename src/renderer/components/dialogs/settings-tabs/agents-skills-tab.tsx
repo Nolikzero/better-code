@@ -190,7 +190,7 @@ function SkillRow({
       >
         <ChevronRight
           className={cn(
-            "h-4 w-4 text-muted-foreground transition-transform flex-shrink-0",
+            "h-4 w-4 text-muted-foreground transition-transform shrink-0",
             isExpanded && "rotate-90",
           )}
         />

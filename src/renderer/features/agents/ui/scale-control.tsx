@@ -34,7 +34,7 @@ export function ScaleControl({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/[^0-9]/g, "");
     setInputValue(raw);
-    const num = Number.parseInt(raw);
+    const num = Number.parseInt(raw, 10);
     if (
       !Number.isNaN(num) &&
       num >= AGENTS_PREVIEW_CONSTANTS.MIN_SCALE &&
@@ -45,7 +45,7 @@ export function ScaleControl({
   };
 
   const handleCommit = () => {
-    const num = Number.parseInt(inputValue);
+    const num = Number.parseInt(inputValue, 10);
     if (
       !Number.isNaN(num) &&
       num >= AGENTS_PREVIEW_CONSTANTS.MIN_SCALE &&
@@ -108,7 +108,7 @@ export function ScaleControl({
               }
             }}
             onKeyDown={handleKeyDown}
-            className="w-[3ch] text-xs text-muted-foreground bg-transparent border-none outline-none text-right tabular-nums"
+            className="w-[3ch] text-xs text-muted-foreground bg-transparent border-none outline-hidden text-right tabular-nums"
           />
           <span className="text-xs text-muted-foreground">%</span>
         </div>

@@ -4,7 +4,7 @@
  * Extracts terminal colors from VS Code theme and converts to xterm.js ITheme format
  */
 
-import type { ITheme } from "xterm";
+import type { ITheme } from "@xterm/xterm";
 import { isLightColor } from "./vscode-to-css-mapping";
 
 /**
@@ -179,7 +179,7 @@ export function extractTerminalTheme(
 /**
  * Check if a VS Code theme has terminal colors defined
  */
-function hasTerminalColors(themeColors: Record<string, string>): boolean {
+function _hasTerminalColors(themeColors: Record<string, string>): boolean {
   return !!(
     themeColors["terminal.background"] ||
     themeColors["terminal.foreground"] ||

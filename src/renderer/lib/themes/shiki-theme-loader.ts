@@ -1,4 +1,26 @@
-import * as shiki from "shiki";
+import { createHighlighterCore, type HighlighterCore } from "@shikijs/core";
+import { createOnigurumaEngine } from "@shikijs/engine-oniguruma";
+import langBash from "@shikijs/langs/bash";
+import langCss from "@shikijs/langs/css";
+import langGo from "@shikijs/langs/go";
+import langHtml from "@shikijs/langs/html";
+import langJavascript from "@shikijs/langs/javascript";
+import langJson from "@shikijs/langs/json";
+import langJsx from "@shikijs/langs/jsx";
+import langMarkdown from "@shikijs/langs/markdown";
+import langPython from "@shikijs/langs/python";
+import langRust from "@shikijs/langs/rust";
+import langTsx from "@shikijs/langs/tsx";
+// Static imports for languages - only these will be bundled
+import langTypescript from "@shikijs/langs/typescript";
+// Static imports for themes - only these will be bundled
+import themeGithubDark from "@shikijs/themes/github-dark";
+import themeGithubLight from "@shikijs/themes/github-light";
+import themeMinDark from "@shikijs/themes/min-dark";
+import themeMinLight from "@shikijs/themes/min-light";
+import themeVesper from "@shikijs/themes/vesper";
+import themeVitesseDark from "@shikijs/themes/vitesse-dark";
+import themeVitesseLight from "@shikijs/themes/vitesse-light";
 import type { VSCodeFullTheme } from "../atoms";
 import { isBuiltinTheme } from "../vscode-themes";
 import { getBuiltinThemeById } from "./builtin-themes";
@@ -7,30 +29,43 @@ import { getBuiltinThemeById } from "./builtin-themes";
  * Shared Shiki highlighter instance
  * Initialized with default themes, can load additional themes dynamically
  */
-let highlighterPromise: Promise<shiki.Highlighter> | null = null;
+let highlighterPromise: Promise<HighlighterCore> | null = null;
 
 /**
- * Languages supported by the highlighter
+ * Languages supported by the highlighter - static imports for tree-shaking
  */
-const SUPPORTED_LANGUAGES: shiki.BundledLanguage[] = [
-  "typescript",
-  "javascript",
-  "tsx",
-  "jsx",
-  "html",
-  "css",
-  "json",
-  "python",
-  "go",
-  "rust",
-  "bash",
-  "markdown",
+const SUPPORTED_LANGUAGES = [
+  langTypescript,
+  langJavascript,
+  langTsx,
+  langJsx,
+  langHtml,
+  langCss,
+  langJson,
+  langPython,
+  langGo,
+  langRust,
+  langBash,
+  langMarkdown,
 ];
 
 /**
- * Default themes to load initially - include all shiki bundled themes we might need
+ * Default themes to load initially - static imports for tree-shaking
  */
-const DEFAULT_THEMES: shiki.BundledTheme[] = [
+const DEFAULT_THEMES = [
+  themeGithubDark,
+  themeGithubLight,
+  themeVitesseDark,
+  themeVitesseLight,
+  themeMinDark,
+  themeMinLight,
+  themeVesper,
+];
+
+/**
+ * Theme names that are bundled by default
+ */
+const DEFAULT_THEME_NAMES = [
   "github-dark",
   "github-light",
   "vitesse-dark",
@@ -44,7 +79,7 @@ const DEFAULT_THEMES: shiki.BundledTheme[] = [
  * Map our custom theme IDs to Shiki bundled themes for syntax highlighting
  * Only themes WITHOUT tokenColors need mapping - themes with tokenColors use their own
  */
-const THEME_TO_SHIKI_MAP: Record<string, shiki.BundledTheme> = {
+const THEME_TO_SHIKI_MAP: Record<string, string> = {
   // Default themes use GitHub themes (no tokenColors)
   "default-dark": "github-dark",
   "default-light": "github-light",
@@ -66,11 +101,14 @@ const THEME_TO_SHIKI_MAP: Record<string, shiki.BundledTheme> = {
 /**
  * Get or create the Shiki highlighter instance
  */
-async function getHighlighter(): Promise<shiki.Highlighter> {
+async function getHighlighter(): Promise<HighlighterCore> {
   if (!highlighterPromise) {
-    highlighterPromise = shiki.createHighlighter({
+    highlighterPromise = createHighlighterCore({
       themes: DEFAULT_THEMES,
       langs: SUPPORTED_LANGUAGES,
+      engine: createOnigurumaEngine(
+        () => import("@shikijs/engine-oniguruma/wasm-inlined"),
+      ),
     });
   }
   return highlighterPromise;
@@ -113,7 +151,7 @@ async function loadFullTheme(theme: VSCodeFullTheme): Promise<void> {
  */
 function isShikiBundledTheme(themeId: string): boolean {
   // These are the Shiki bundled themes that we load
-  return DEFAULT_THEMES.includes(themeId as shiki.BundledTheme);
+  return DEFAULT_THEME_NAMES.includes(themeId);
 }
 
 /**
@@ -185,7 +223,7 @@ async function ensureThemeLoaded(themeId: string): Promise<void> {
 /**
  * Check if a theme is available (loaded or can be loaded)
  */
-function isThemeAvailable(themeId: string): boolean {
+function _isThemeAvailable(themeId: string): boolean {
   return (
     isShikiBundledTheme(themeId) ||
     fullThemesCache.has(themeId) ||
@@ -212,9 +250,7 @@ export async function highlightCode(
   const shikiTheme = getShikiThemeForHighlighting(themeId);
 
   const loadedLangs = highlighter.getLoadedLanguages();
-  const lang = loadedLangs.includes(language as shiki.BundledLanguage)
-    ? (language as shiki.BundledLanguage)
-    : "plaintext";
+  const lang = loadedLangs.includes(language) ? language : "plaintext";
 
   const html = highlighter.codeToHtml(code, {
     lang,
@@ -229,7 +265,7 @@ export async function highlightCode(
 /**
  * Get all loaded theme IDs
  */
-async function getLoadedThemes(): Promise<string[]> {
+async function _getLoadedThemes(): Promise<string[]> {
   const highlighter = await getHighlighter();
   return highlighter.getLoadedThemes();
 }

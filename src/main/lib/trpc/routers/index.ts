@@ -17,7 +17,7 @@ import { windowRouter } from "./window";
  * Create the main app router
  * Uses getter pattern to avoid stale window references
  */
-export function createAppRouter(getWindow: () => BrowserWindow | null) {
+export function createAppRouter(_getWindow: () => BrowserWindow | null) {
   return router({
     projects: projectsRouter,
     chats: chatsRouter,

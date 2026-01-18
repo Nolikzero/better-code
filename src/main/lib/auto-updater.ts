@@ -1,9 +1,9 @@
-import { type BrowserWindow, app, ipcMain } from "electron";
+import { app, type BrowserWindow, ipcMain } from "electron";
 import log from "electron-log";
 import {
+  autoUpdater,
   type ProgressInfo,
   type UpdateInfo,
-  autoUpdater,
 } from "electron-updater";
 
 /**
@@ -233,7 +233,7 @@ export async function downloadUpdate() {
  * Check for updates when window gains focus
  * This is more natural than checking on an interval
  */
-export function setupFocusUpdateCheck(getWindow: () => BrowserWindow | null) {
+export function setupFocusUpdateCheck(_getWindow: () => BrowserWindow | null) {
   // Listen for window focus events
   app.on("browser-window-focus", () => {
     log.info("[AutoUpdater] Window focused - checking for updates");

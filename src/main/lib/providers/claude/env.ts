@@ -9,7 +9,7 @@ import { app } from "electron";
 let cachedShellEnv: Record<string, string> | null = null;
 
 // Cache for resolved binary path
-let cachedBinaryResult: ClaudeBinaryResult | null | undefined = undefined; // undefined = not checked yet
+let cachedBinaryResult: ClaudeBinaryResult | null | undefined; // undefined = not checked yet
 
 export interface ClaudeBinaryResult {
   path: string;
@@ -235,7 +235,7 @@ export function getClaudeBinaryPath(): ClaudeBinaryResult | null {
 /**
  * Clear cached binary path (useful for testing)
  */
-function clearClaudeBinaryCache(): void {
+function _clearClaudeBinaryCache(): void {
   cachedBinaryResult = undefined;
 }
 
@@ -344,7 +344,7 @@ export function buildClaudeEnv(options?: {
   // 1. Start with shell environment (has HOME, full PATH, etc.)
   try {
     Object.assign(env, getClaudeShellEnvironment());
-  } catch (error) {
+  } catch (_error) {
     console.error("[claude-env] Shell env failed, using process.env");
   }
 
@@ -390,7 +390,7 @@ export function buildClaudeEnv(options?: {
 /**
  * Clear cached shell environment (useful for testing)
  */
-function clearClaudeEnvCache(): void {
+function _clearClaudeEnvCache(): void {
   cachedShellEnv = null;
 }
 

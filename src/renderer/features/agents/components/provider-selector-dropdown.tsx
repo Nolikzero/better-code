@@ -6,7 +6,7 @@ import {
 } from "../../../components/ui/dropdown-menu";
 import { CheckIcon, IconChevronDown } from "../../../components/ui/icons";
 import type { ProviderId } from "../../../lib/atoms";
-import { PROVIDERS, getProviderIcon } from "../ui/provider-icons";
+import { getProviderIcon, PROVIDERS } from "../ui/provider-icons";
 
 interface ProviderSelectorDropdownProps {
   providerId: ProviderId;

@@ -25,7 +25,7 @@ export const terminalCwdAtom = atomWithStorage<Record<string, string>>(
 );
 
 // Terminal search open state - maps paneId to search visibility
-const terminalSearchOpenAtom = atom<Record<string, boolean>>({});
+const _terminalSearchOpenAtom = atom<Record<string, boolean>>({});
 
 // ============================================================================
 // Multi-Terminal State Management

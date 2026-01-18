@@ -33,8 +33,8 @@ import { trpc } from "../../../lib/trpc";
 import { cn } from "../../../lib/utils";
 import { getShortcutKey } from "../../../lib/utils/platform";
 import {
-  agentsSubChatUnseenChangesAtom,
   agentsSubChatsSidebarModeAtom,
+  agentsSubChatUnseenChangesAtom,
   loadingSubChatsAtom,
   pendingUserQuestionsAtom,
 } from "../atoms";
@@ -82,7 +82,7 @@ export function SubChatSelector({
     openSubChatIds,
     pinnedSubChatIds,
     allSubChats,
-    parentChatId,
+    parentChatId: _parentChatId,
     togglePinSubChat,
   } = useAgentSubChatStore(
     useShallow((state) => ({
@@ -97,7 +97,7 @@ export function SubChatSelector({
   const [loadingSubChats] = useAtom(loadingSubChatsAtom);
   const subChatUnseenChanges = useAtomValue(agentsSubChatUnseenChangesAtom);
   const setSubChatUnseenChanges = useSetAtom(agentsSubChatUnseenChangesAtom);
-  const [subChatsSidebarMode, setSubChatsSidebarMode] = useAtom(
+  const [subChatsSidebarMode, _setSubChatsSidebarMode] = useAtom(
     agentsSubChatsSidebarModeAtom,
   );
   const pendingQuestions = useAtomValue(pendingUserQuestionsAtom);
@@ -129,7 +129,7 @@ export function SubChatSelector({
   const textRefs = useRef<Map<string, HTMLSpanElement>>(new Map());
   const [truncatedTabs, setTruncatedTabs] = useState<Set<string>>(new Set());
   const [showLeftGradient, setShowLeftGradient] = useState(false);
-  const [showRightGradient, setShowRightGradient] = useState(false);
+  const [_showRightGradient, setShowRightGradient] = useState(false);
 
   // Map open IDs to metadata and sort: pinned first, then preserve user's tab order
   const openSubChats = useMemo(() => {
@@ -194,17 +194,21 @@ export function SubChatSelector({
   const onCloseOtherTabs = useCallback((subChatId: string) => {
     const state = useAgentSubChatStore.getState();
     const idsToClose = state.openSubChatIds.filter((id) => id !== subChatId);
-    idsToClose.forEach((id) => state.removeFromOpenSubChats(id));
+    for (const id of idsToClose) {
+      state.removeFromOpenSubChats(id);
+    }
     state.setActiveSubChat(subChatId);
   }, []);
 
   const onCloseTabsToRight = useCallback(
-    (subChatId: string, visualIndex: number) => {
+    (_subChatId: string, visualIndex: number) => {
       const state = useAgentSubChatStore.getState();
 
       // Use visual order from sorted openSubChats, not storage order
       const idsToClose = openSubChats.slice(visualIndex + 1).map((sc) => sc.id);
-      idsToClose.forEach((id) => state.removeFromOpenSubChats(id));
+      for (const id of idsToClose) {
+        state.removeFromOpenSubChats(id);
+      }
     },
     [openSubChats],
   );
@@ -377,7 +381,9 @@ export function SubChatSelector({
     checkTruncation();
 
     const resizeObserver = new ResizeObserver(() => checkTruncation());
-    textRefs.current.forEach((el) => el && resizeObserver.observe(el));
+    for (const el of textRefs.current.values()) {
+      if (el) resizeObserver.observe(el);
+    }
 
     return () => resizeObserver.disconnect();
   }, [openSubChats, activeSubChatId]);
@@ -461,7 +467,7 @@ export function SubChatSelector({
           variant="ghost"
           size="icon"
           onClick={onBackToChats}
-          className="h-7 w-7 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] flex-shrink-0"
+          className="h-7 w-7 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] shrink-0"
           aria-label="Back to chats"
           style={{
             // @ts-expect-error - WebKit-specific property
@@ -535,7 +541,7 @@ export function SubChatSelector({
                           }
                         }}
                         className={cn(
-                          "group relative flex items-center text-sm rounded-md transition-colors cursor-pointer h-6 flex-shrink-0",
+                          "group relative flex items-center text-sm rounded-md transition-colors cursor-pointer h-6 shrink-0",
                           "outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70",
                           editingSubChatId === subChat.id
                             ? "overflow-visible px-0"
@@ -547,7 +553,7 @@ export function SubChatSelector({
                       >
                         {/* Icon: question icon (priority) OR loading spinner OR mode icon with badge (hide when editing) */}
                         {editingSubChatId !== subChat.id && (
-                          <div className="flex-shrink-0 w-3.5 h-3.5 flex items-center justify-center relative">
+                          <div className="shrink-0 w-3.5 h-3.5 flex items-center justify-center relative">
                             {hasPendingQuestion ? (
                               // Waiting for user answer: show question icon (highest priority)
                               <QuestionIcon className="w-3.5 h-3.5 text-blue-500" />
@@ -735,7 +741,7 @@ export function SubChatSelector({
               return (
                 <div className="flex items-center gap-2 flex-1 min-w-0">
                   {/* Icon with badge - question icon has priority */}
-                  <div className="flex-shrink-0 w-4 h-4 flex items-center justify-center relative">
+                  <div className="shrink-0 w-4 h-4 flex items-center justify-center relative">
                     {hasPendingQuestion ? (
                       <QuestionIcon className="w-4 h-4 text-blue-500" />
                     ) : isLoading ? (
@@ -774,7 +780,7 @@ export function SubChatSelector({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-6 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] flex-shrink-0 rounded-md flex items-center justify-center"
+                      className="h-6 w-6 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] shrink-0 rounded-md flex items-center justify-center"
                       disabled={allSubChats.length === 0}
                     >
                       <ClockIcon className="h-4 w-4" />
@@ -808,7 +814,7 @@ export function SubChatSelector({
                 onClick={() => onOpenDiff?.()}
                 disabled={!diffStats?.hasChanges || diffStats?.isLoading}
                 className={cn(
-                  "h-6 w-6 p-0 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] flex-shrink-0 rounded-md flex items-center justify-center",
+                  "h-6 w-6 p-0 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] shrink-0 rounded-md flex items-center justify-center",
                   diffStats?.hasChanges && !diffStats?.isLoading
                     ? "hover:bg-foreground/10"
                     : "text-muted-foreground cursor-not-allowed",
@@ -851,7 +857,7 @@ export function SubChatSelector({
             variant="ghost"
             size="icon"
             onClick={onOpenDiff}
-            className="h-7 w-7 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] flex-shrink-0 flex items-center justify-center"
+            className="h-7 w-7 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] shrink-0 flex items-center justify-center"
           >
             <DiffIcon className="h-4 w-4" />
             <span className="sr-only">Open diff</span>
@@ -872,7 +878,7 @@ export function SubChatSelector({
             variant="ghost"
             size="icon"
             onClick={onOpenPreview}
-            className="h-7 w-7 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] flex-shrink-0 flex items-center justify-center"
+            className="h-7 w-7 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] shrink-0 flex items-center justify-center"
           >
             <Play className="h-4 w-4" />
             <span className="sr-only">Open preview</span>

@@ -32,85 +32,81 @@ export {
 
 // App state atoms
 export {
+  createTeamDialogOpenAtom,
   isDesktopAtom,
   isFullscreenAtom,
-  updateStateAtom,
   justUpdatedAtom,
   justUpdatedVersionAtom,
   onboardingCompletedAtom,
   selectedTeamIdAtom,
-  createTeamDialogOpenAtom,
+  updateStateAtom,
 } from "./app.atoms";
-
-// Settings atoms
-export {
-  extendedThinkingEnabledAtom,
-  soundNotificationsEnabledAtom,
-  ctrlTabTargetAtom,
-  vscodeCodeThemeLightAtom,
-  vscodeCodeThemeDarkAtom,
-  selectedFullThemeIdAtom,
-  systemLightThemeIdAtom,
-  systemDarkThemeIdAtom,
-  fullThemeDataAtom,
-  type CtrlTabTarget,
-  type VSCodeFullTheme,
-} from "./settings.atoms";
-
-// Provider atoms
-export {
-  defaultProviderIdAtom,
-  chatProviderOverridesAtom,
-  lastSelectedModelByProviderAtom,
-  codexSandboxModeAtom,
-  codexApprovalPolicyAtom,
-  codexReasoningEffortAtom,
-  PROVIDER_MODELS,
-  PROVIDER_INFO,
-  SANDBOX_MODES,
-  APPROVAL_POLICIES,
-  REASONING_EFFORTS,
-  type ProviderId,
-  type SandboxMode,
-  type ApprovalPolicy,
-  type ReasoningEffort,
-} from "./providers.atoms";
-
 // Dialog atoms
 export {
+  agentsHelpPopoverOpenAtom,
+  agentsLoginModalOpenAtom,
+  agentsQuickSwitchOpenAtom,
+  agentsQuickSwitchSelectedIndexAtom,
   agentsSettingsDialogActiveTabAtom,
   agentsSettingsDialogOpenAtom,
   agentsShortcutsDialogOpenAtom,
-  agentsLoginModalOpenAtom,
-  agentsHelpPopoverOpenAtom,
-  agentsQuickSwitchOpenAtom,
-  agentsQuickSwitchSelectedIndexAtom,
+  type SettingsTab,
   subChatsQuickSwitchOpenAtom,
   subChatsQuickSwitchSelectedIndexAtom,
-  type SettingsTab,
 } from "./dialogs.atoms";
 
+// Provider atoms
+export {
+  APPROVAL_POLICIES,
+  type ApprovalPolicy,
+  chatProviderOverridesAtom,
+  codexApprovalPolicyAtom,
+  codexReasoningEffortAtom,
+  codexSandboxModeAtom,
+  defaultProviderIdAtom,
+  lastSelectedModelByProviderAtom,
+  PROVIDER_INFO,
+  PROVIDER_MODELS,
+  type ProviderId,
+  REASONING_EFFORTS,
+  type ReasoningEffort,
+  SANDBOX_MODES,
+  type SandboxMode,
+} from "./providers.atoms";
 // Selection atoms
 export {
-  selectedAgentChatIdsAtom,
-  isAgentMultiSelectModeAtom,
-  selectedAgentChatsCountAtom,
-  toggleAgentChatSelectionAtom,
-  selectAllAgentChatsAtom,
   clearAgentChatSelectionAtom,
-  selectedSubChatIdsAtom,
-  isSubChatMultiSelectModeAtom,
-  selectedSubChatsCountAtom,
-  toggleSubChatSelectionAtom,
-  selectAllSubChatsAtom,
   clearSubChatSelectionAtom,
+  isAgentMultiSelectModeAtom,
+  isSubChatMultiSelectModeAtom,
+  selectAllAgentChatsAtom,
+  selectAllSubChatsAtom,
+  selectedAgentChatIdsAtom,
+  selectedAgentChatsCountAtom,
+  selectedSubChatIdsAtom,
+  selectedSubChatsCountAtom,
+  toggleAgentChatSelectionAtom,
+  toggleSubChatSelectionAtom,
 } from "./selection.atoms";
-
 // Session atoms
 export {
-  sessionInfoAtom,
   type MCPServerStatus,
+  sessionInfoAtom,
 } from "./session.atoms";
+// Settings atoms
+export {
+  type CtrlTabTarget,
+  ctrlTabTargetAtom,
+  extendedThinkingEnabledAtom,
+  fullThemeDataAtom,
+  selectedFullThemeIdAtom,
+  soundNotificationsEnabledAtom,
+  systemDarkThemeIdAtom,
+  systemLightThemeIdAtom,
+  type VSCodeFullTheme,
+  vscodeCodeThemeDarkAtom,
+  vscodeCodeThemeLightAtom,
+} from "./settings.atoms";
 // ============================================
 // BACKWARD COMPATIBILITY - Re-export ProviderConfig as alias
 // ============================================

@@ -18,9 +18,9 @@ import {
 import { PopoverTrigger } from "../../../components/ui/popover";
 import { SearchCombobox } from "../../../components/ui/search-combobox";
 import {
-  type ProviderId,
   chatProviderOverridesAtom,
   defaultProviderIdAtom,
+  type ProviderId,
 } from "../../../lib/atoms";
 import { cn } from "../../../lib/utils";
 import { loadingSubChatsAtom } from "../atoms";
@@ -136,7 +136,7 @@ export function MobileChatHeader({
           variant="ghost"
           size="icon"
           onClick={onBackToChats}
-          className="h-7 w-7 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] flex-shrink-0 rounded-md"
+          className="h-7 w-7 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] shrink-0 rounded-md"
           aria-label="All projects"
           style={{
             // @ts-expect-error - WebKit-specific property
@@ -197,10 +197,10 @@ export function MobileChatHeader({
               }}
             >
               {/* Provider Icon */}
-              <ProviderIcon className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+              <ProviderIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
 
               {/* Mode Icon */}
-              <div className="flex-shrink-0 w-3.5 h-3.5 flex items-center justify-center">
+              <div className="shrink-0 w-3.5 h-3.5 flex items-center justify-center">
                 {isLoading ? (
                   <IconSpinner className="w-3.5 h-3.5 text-muted-foreground" />
                 ) : mode === "plan" ? (
@@ -216,7 +216,7 @@ export function MobileChatHeader({
               </span>
 
               {/* Chevron */}
-              <ChevronDown className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+              <ChevronDown className="w-3 h-3 text-muted-foreground shrink-0" />
             </button>
           </PopoverTrigger>
         }
@@ -227,7 +227,7 @@ export function MobileChatHeader({
 
       {/* Action buttons - always on the right */}
       <div
-        className="flex items-center gap-0.5 flex-shrink-0"
+        className="flex items-center gap-0.5 shrink-0"
         style={{
           // @ts-expect-error - WebKit-specific property
           WebkitAppRegion: "no-drag",

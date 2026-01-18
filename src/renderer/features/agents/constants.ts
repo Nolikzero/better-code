@@ -38,4 +38,4 @@ export const AGENTS_PREVIEW_CONSTANTS = {
   MAX_SCALE: 200,
 } as const;
 
-type AgentsPreviewConstants = typeof AGENTS_PREVIEW_CONSTANTS;
+export type AgentsPreviewConstants = typeof AGENTS_PREVIEW_CONSTANTS;

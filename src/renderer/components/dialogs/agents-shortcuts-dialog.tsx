@@ -185,7 +185,7 @@ export function AgentsShortcutsDialog({
               onClick={(e) => e.stopPropagation()}
             >
               <div
-                className="bg-background rounded-sm border shadow-2xl overflow-hidden"
+                className="bg-background rounded-xs border shadow-2xl overflow-hidden"
                 data-canvas-dialog
               >
                 <div className="p-6">

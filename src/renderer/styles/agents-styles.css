@@ -60,10 +60,10 @@ body:has([data-agents-page]) [data-sonner-toast] {
 [data-agents-page] .allow-text-selection *,
 [data-agents-page] .allow-text-selection *:before,
 [data-agents-page] .allow-text-selection *:after {
-  user-select: text !important;
-  -webkit-user-select: text !important;
-  -moz-user-select: text !important;
-  -ms-user-select: text !important;
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
 }
 
 /* Custom text selection colors - only background, keep original text color */
@@ -176,19 +176,19 @@ body:has([data-agents-page]) [data-sonner-toast] {
   [data-agents-page] [data-chat-item]:hover,
   [data-agents-page] [data-chat-item]:focus {
     /* Reset hover/focus background - use inherit to match parent or selected state */
-    transition: none !important;
+    transition: none;
   }
-  
+
   /* Override Tailwind hover utilities specifically */
   [data-agents-page] .hover\:bg-foreground\/5:hover,
   [data-agents-page] .hover\:text-foreground:hover,
   [data-agents-page] .hover\:bg-muted\/50:hover,
   [data-agents-page] .hover\:bg-foreground\/10:hover,
   [data-agents-page] .hover\:bg-foreground\/15:hover {
-    background-color: unset !important;
-    color: unset !important;
+    background-color: unset;
+    color: unset;
   }
-  
+
   /* Ensure active state provides immediate feedback */
   [data-agents-page] button:active,
   [data-agents-page] [role="button"]:active,
@@ -215,7 +215,7 @@ body:has([data-agents-page]) .canvas-dialog,
   --tw-ring-opacity: 1;
   --tw-ring-color: rgb(229 231 235 / 0.8);
   /* neutral-200/80 */
-  box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow) !important;
+  box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow);
 }
 
 /* Dark mode ring for all dialogs */

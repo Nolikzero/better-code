@@ -61,7 +61,7 @@ export function ChatInputActions({
         {leftContent}
       </div>
 
-      <div className="flex items-center gap-0.5 ml-auto flex-shrink-0">
+      <div className="flex items-center gap-0.5 ml-auto shrink-0">
         {/* Hidden file input */}
         <input
           type="file"
@@ -82,7 +82,7 @@ export function ChatInputActions({
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7 rounded-sm outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70"
+          className="h-7 w-7 rounded-xs outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70"
           onClick={() => fileInputRef.current?.click()}
           disabled={isAttachDisabled}
         >

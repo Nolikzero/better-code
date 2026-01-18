@@ -381,7 +381,7 @@ function InfoRow({
                 : ""
         }`}
       >
-        {isLoading ? "..." : value ?? "-"}
+        {isLoading ? "..." : (value ?? "-")}
       </span>
     </div>
   );

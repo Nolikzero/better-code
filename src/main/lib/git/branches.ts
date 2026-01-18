@@ -63,7 +63,7 @@ export const createBranchesRouter = () => {
         }),
       )
       .mutation(async ({ input }): Promise<{ success: boolean }> => {
-        const chat = getRegisteredChat(input.worktreePath);
+        const _chat = getRegisteredChat(input.worktreePath);
         await gitSwitchBranch(input.worktreePath, input.branch);
 
         // Update the branch in the chat record

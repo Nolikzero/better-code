@@ -128,7 +128,9 @@ export function useUpdateChecker() {
 
     // Cleanup
     return () => {
-      unsubs.forEach((unsub) => unsub?.());
+      for (const unsub of unsubs) {
+        unsub?.();
+      }
     };
   }, [setState, isDismissed]);
 
@@ -174,14 +176,14 @@ export function useUpdateChecker() {
  * Clear dismissed version from storage
  * Call this after a successful update to reset dismissal state
  */
-function clearDismissedUpdate() {
+function _clearDismissedUpdate() {
   localStorage.removeItem(DISMISSED_KEY);
 }
 
 /**
  * Clear dismiss for a specific version
  */
-function clearDismissedVersion(version: string) {
+function _clearDismissedVersion(version: string) {
   try {
     const dismissed = localStorage.getItem(DISMISSED_KEY);
     if (!dismissed) return;

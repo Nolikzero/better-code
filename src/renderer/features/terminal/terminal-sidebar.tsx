@@ -1,3 +1,8 @@
+import { useAtom, useAtomValue } from "jotai";
+import { AlignJustify } from "lucide-react";
+import { motion } from "motion/react";
+import { useTheme } from "next-themes";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { IconDoubleChevronRight } from "@/components/ui/icons";
 import { Kbd } from "@/components/ui/kbd";
@@ -9,11 +14,6 @@ import {
 } from "@/components/ui/tooltip";
 import { fullThemeDataAtom } from "@/lib/atoms";
 import { trpc } from "@/lib/trpc";
-import { useAtom, useAtomValue } from "jotai";
-import { AlignJustify } from "lucide-react";
-import { motion } from "motion/react";
-import { useTheme } from "next-themes";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   activeTerminalIdAtom,
   terminalCwdAtom,
@@ -351,7 +351,7 @@ export function TerminalSidebar({
       <div className="flex flex-col h-full w-full bg-background">
         {/* Mobile header with back button and tabs */}
         <div
-          className="flex items-center gap-1.5 px-2 py-2 flex-shrink-0 border-b"
+          className="flex items-center gap-1.5 px-2 py-2 shrink-0 border-b"
           style={{
             backgroundColor: terminalBg,
             // @ts-expect-error - WebKit-specific property for Electron window dragging
@@ -364,7 +364,7 @@ export function TerminalSidebar({
             variant="ghost"
             size="icon"
             onClick={handleMobileClose}
-            className="h-7 w-7 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] flex-shrink-0 rounded-md"
+            className="h-7 w-7 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] shrink-0 rounded-md"
             aria-label="Back to chat"
             style={{
               // @ts-expect-error - WebKit-specific property
@@ -445,7 +445,7 @@ export function TerminalSidebar({
       <div className="flex flex-col h-full min-w-0 overflow-hidden">
         {/* Header with tabs */}
         <div
-          className="flex items-center gap-1 pl-1 pr-2 py-1.5 flex-shrink-0"
+          className="flex items-center gap-1 pl-1 pr-2 py-1.5 shrink-0"
           style={{ backgroundColor: terminalBg }}
         >
           {/* Terminal Tabs */}
@@ -466,14 +466,14 @@ export function TerminalSidebar({
           )}
 
           {/* Close button */}
-          <div className="flex items-center gap-1 flex-shrink-0">
+          <div className="flex items-center gap-1 shrink-0">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={closeSidebar}
-                  className="h-6 w-6 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] text-foreground flex-shrink-0 rounded-md"
+                  className="h-6 w-6 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] text-foreground shrink-0 rounded-md"
                   aria-label="Close terminal"
                 >
                   <IconDoubleChevronRight className="h-4 w-4" />

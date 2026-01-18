@@ -2,6 +2,7 @@
 
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useMemo, useRef, useState } from "react";
+
 // import { useSearchParams, useRouter } from "next/navigation" // Desktop doesn't use next/navigation
 // Desktop: mock Next.js navigation hooks
 const useSearchParams = () => ({
@@ -16,6 +17,7 @@ const useRouter = () => ({
 const useUser = () => ({ user: null });
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const useClerk = () => ({ signOut: (_opts?: any) => {} });
+
 import { useShallow } from "zustand/react/shallow";
 import {
   agentsQuickSwitchOpenAtom,
@@ -45,11 +47,14 @@ import {
 } from "../stores/sub-chat-store";
 import { AgentDiffView } from "./agent-diff-view";
 import { AgentPreview } from "./agent-preview";
+
 // import { useClerk, useUser } from "@clerk/nextjs"
 // import { useCombinedAuth } from "@/lib/hooks/use-combined-auth"
 const useCombinedAuth = () => ({ userId: null }); // Desktop mock
+
 import { AgentsQuickSwitchDialog } from "../components/agents-quick-switch-dialog";
 import { SubChatsQuickSwitchDialog } from "../components/subchats-quick-switch-dialog";
+
 // Desktop mock
 const useIsAdmin = () => false;
 
@@ -58,7 +63,7 @@ export function AgentsContent() {
   const [selectedChatId, setSelectedChatId] = useAtom(selectedAgentChatIdAtom);
   const [selectedTeamId] = useAtom(selectedTeamIdAtom);
   const [sidebarOpen, setSidebarOpen] = useAtom(agentsSidebarOpenAtom);
-  const [previewSidebarOpen, setPreviewSidebarOpen] = useAtom(
+  const [_previewSidebarOpen, setPreviewSidebarOpen] = useAtom(
     agentsPreviewSidebarOpenAtom,
   );
   const [mobileViewMode, setMobileViewMode] = useAtom(agentsMobileViewModeAtom);
@@ -112,15 +117,19 @@ export function AgentsContent() {
   subChatQuickSwitchSelectedIndexRef.current = subChatQuickSwitchSelectedIndex;
 
   // Get sub-chats from store with shallow comparison
-  const { allSubChats, openSubChatIds, activeSubChatId, setActiveSubChat } =
-    useAgentSubChatStore(
-      useShallow((state) => ({
-        allSubChats: state.allSubChats,
-        openSubChatIds: state.openSubChatIds,
-        activeSubChatId: state.activeSubChatId,
-        setActiveSubChat: state.setActiveSubChat,
-      })),
-    );
+  const {
+    allSubChats,
+    openSubChatIds,
+    activeSubChatId,
+    setActiveSubChat: _setActiveSubChat,
+  } = useAgentSubChatStore(
+    useShallow((state) => ({
+      allSubChats: state.allSubChats,
+      openSubChatIds: state.openSubChatIds,
+      activeSubChatId: state.activeSubChatId,
+      setActiveSubChat: state.setActiveSubChat,
+    })),
+  );
 
   // Fetch teams for header
   const { data: teams } = api.teams.getUserTeams.useQuery(undefined, {
@@ -150,7 +159,7 @@ export function AgentsContent() {
   );
 
   // Track previous chat ID for navigation after archive
-  const [previousChatId, setPreviousChatId] = useAtom(previousAgentChatIdAtom);
+  const [_previousChatId, setPreviousChatId] = useAtom(previousAgentChatIdAtom);
   const prevSelectedChatIdRef = useRef<string | null>(null);
 
   // Update previousChatId when selectedChatId changes
@@ -755,7 +764,7 @@ export function AgentsContent() {
           <AgentPreview
             chatId={selectedChatId}
             sandboxId={chatData!.sandbox_id!}
-            port={chatMeta?.sandboxConfig?.port!}
+            port={chatMeta?.sandboxConfig?.port ?? 0}
             isMobile={true}
             onClose={() => setMobileViewMode("chat")}
           />
@@ -862,7 +871,7 @@ export function AgentsContent() {
       <AgentsQuickSwitchDialog
         isOpen={quickSwitchOpen}
         chats={
-          quickSwitchOpen ? frozenRecentChatsRef.current ?? [] : recentChats
+          quickSwitchOpen ? (frozenRecentChatsRef.current ?? []) : recentChats
         }
         selectedIndex={quickSwitchSelectedIndex}
         projectsMap={projectsMap}
@@ -873,7 +882,7 @@ export function AgentsContent() {
         isOpen={subChatQuickSwitchOpen}
         subChats={
           subChatQuickSwitchOpen
-            ? frozenSubChatsRef.current ?? []
+            ? (frozenSubChatsRef.current ?? [])
             : recentSubChats
         }
         selectedIndex={subChatQuickSwitchSelectedIndex}

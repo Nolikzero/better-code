@@ -43,7 +43,7 @@ export function DevicePresetsBar({
   };
 
   const handleWidthBlur = () => {
-    const value = Number.parseInt(widthInputValue);
+    const value = Number.parseInt(widthInputValue, 10);
 
     // Apply any valid positive number, clamp to reasonable bounds
     if (!Number.isNaN(value) && value > 0) {

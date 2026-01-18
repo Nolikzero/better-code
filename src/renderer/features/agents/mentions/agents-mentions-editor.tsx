@@ -23,6 +23,7 @@ import type {
   FileMentionOption,
   TriggerPayload,
 } from "./types";
+
 // Re-export types and constants for backward compatibility
 
 type AgentsMentionsEditorProps = {
@@ -587,7 +588,7 @@ export const AgentsMentionsEditor = memo(
             onFocus={onFocus}
             onBlur={onBlur}
             className={cn(
-              "min-h-[24px] outline-none whitespace-pre-wrap break-words text-sm relative",
+              "min-h-[24px] outline-hidden whitespace-pre-wrap break-words text-sm relative",
               disabled && "opacity-50 cursor-not-allowed",
               className,
             )}

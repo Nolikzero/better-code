@@ -10,8 +10,8 @@ import {
 } from "node:fs/promises";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import {
-  PathValidationError,
   assertRegisteredWorktree,
+  PathValidationError,
   resolvePathInWorktree,
 } from "./path-validation";
 

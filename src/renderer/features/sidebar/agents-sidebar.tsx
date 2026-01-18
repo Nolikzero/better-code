@@ -23,12 +23,14 @@ import {
 } from "../../lib/atoms";
 import { cn } from "../../lib/utils";
 import { ArchivePopover } from "../agents/ui/archive-popover";
+
 // import { useRouter } from "next/navigation" // Desktop doesn't use next/navigation
 // import { useCombinedAuth } from "@/lib/hooks/use-combined-auth"
 const useCombinedAuth = () => ({ userId: null, isLoaded: true });
 // import { AuthDialog } from "@/components/auth/auth-dialog"
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const AuthDialog = (_props: any) => null;
+
 import { pluralize } from "@shared/utils";
 import { useHotkeys } from "react-hotkeys-hook";
 import { toast } from "sonner";
@@ -72,7 +74,6 @@ import { TypewriterText } from "../../components/ui/typewriter-text";
 import { trpc } from "../../lib/trpc";
 import { getShortcutKey, isDesktopApp } from "../../lib/utils/platform";
 import {
-  type UndoItem,
   agentsDebugModeAtom,
   agentsUnseenChangesAtom,
   archivePopoverOpenAtom,
@@ -82,6 +83,7 @@ import {
   selectedAgentChatIdAtom,
   selectedDraftIdAtom,
   selectedProjectAtom,
+  type UndoItem,
   undoStackAtom,
 } from "../agents/atoms";
 import { AgentsHelpPopover } from "../agents/components/agents-help-popover";
@@ -202,7 +204,7 @@ export function AgentsSidebar({
 
   // Agent name tooltip via shared hook
   const {
-    tooltip: agentTooltip,
+    tooltip: _agentTooltip,
     nameRefs,
     handleMouseEnter: handleAgentMouseEnter,
     handleMouseLeave: handleAgentMouseLeave,
@@ -211,12 +213,12 @@ export function AgentsSidebar({
 
   const setSettingsDialogOpen = useSetAtom(agentsSettingsDialogOpenAtom);
   const setSettingsActiveTab = useSetAtom(agentsSettingsDialogActiveTabAtom);
-  const { isLoaded: isAuthLoaded } = useCombinedAuth();
+  const { isLoaded: _isAuthLoaded } = useCombinedAuth();
   const [showAuthDialog, setShowAuthDialog] = useState(false);
-  const setCreateTeamDialogOpen = useSetAtom(createTeamDialogOpenAtom);
+  const _setCreateTeamDialogOpen = useSetAtom(createTeamDialogOpenAtom);
 
   // Debug mode for testing first-time user experience
-  const debugMode = useAtomValue(agentsDebugModeAtom);
+  const _debugMode = useAtomValue(agentsDebugModeAtom);
 
   // Desktop: use selectedProject instead of teams
   const [selectedProject] = useAtom(selectedProjectAtom);
@@ -608,7 +610,9 @@ export function AgentsSidebar({
     if (chatIdsToPin.length > 0) {
       setPinnedChatIds((prev) => {
         const next = new Set(prev);
-        chatIdsToPin.forEach((id) => next.add(id));
+        for (const id of chatIdsToPin) {
+          next.add(id);
+        }
         return next;
       });
       clearChatSelection();
@@ -621,7 +625,9 @@ export function AgentsSidebar({
     if (chatIdsToUnpin.length > 0) {
       setPinnedChatIds((prev) => {
         const next = new Set(prev);
-        chatIdsToUnpin.forEach((id) => next.delete(id));
+        for (const id of chatIdsToUnpin) {
+          next.delete(id);
+        }
         return next;
       });
       clearChatSelection();
@@ -629,7 +635,7 @@ export function AgentsSidebar({
   };
 
   // Get clerk username
-  const clerkUsername = clerkUser?.username;
+  const _clerkUsername = clerkUser?.username;
 
   // Filter and separate pinned/unpinned agents
   const { pinnedAgents, unpinnedAgents, filteredChats } = useMemo(() => {
@@ -887,27 +893,23 @@ export function AgentsSidebar({
 
   // Multi-select hotkeys
   // X to toggle selection of hovered or focused chat
-  useHotkeys(
-    "x",
-    () => {
-      if (!filteredChats || filteredChats.length === 0) return;
+  useHotkeys("x", () => {
+    if (!filteredChats || filteredChats.length === 0) return;
 
-      // Prefer hovered, then focused - do NOT fallback to 0 (would conflict with sub-chat sidebar)
-      const targetIndex =
-        hoveredChatIndex >= 0
-          ? hoveredChatIndex
-          : focusedChatIndex >= 0
-            ? focusedChatIndex
-            : -1;
+    // Prefer hovered, then focused - do NOT fallback to 0 (would conflict with sub-chat sidebar)
+    const targetIndex =
+      hoveredChatIndex >= 0
+        ? hoveredChatIndex
+        : focusedChatIndex >= 0
+          ? focusedChatIndex
+          : -1;
 
-      if (targetIndex >= 0 && targetIndex < filteredChats.length) {
-        const chatId = filteredChats[targetIndex]!.id;
-        // Toggle selection (both select and deselect)
-        toggleChatSelection(chatId);
-      }
-    },
-    [filteredChats, hoveredChatIndex, focusedChatIndex, toggleChatSelection],
-  );
+    if (targetIndex >= 0 && targetIndex < filteredChats.length) {
+      const chatId = filteredChats[targetIndex]!.id;
+      // Toggle selection (both select and deselect)
+      toggleChatSelection(chatId);
+    }
+  }, [filteredChats, hoveredChatIndex, focusedChatIndex, toggleChatSelection]);
 
   // Cmd+A / Ctrl+A to select all chats (only when at least one is already selected)
   useHotkeys(
@@ -922,16 +924,12 @@ export function AgentsSidebar({
   );
 
   // Escape to clear selection
-  useHotkeys(
-    "escape",
-    () => {
-      if (isMultiSelectMode) {
-        clearChatSelection();
-        setFocusedChatIndex(-1);
-      }
-    },
-    [isMultiSelectMode, clearChatSelection],
-  );
+  useHotkeys("escape", () => {
+    if (isMultiSelectMode) {
+      clearChatSelection();
+      setFocusedChatIndex(-1);
+    }
+  }, [isMultiSelectMode, clearChatSelection]);
 
   // Cmd+E to archive current workspace (desktop) or Opt+Cmd+E (web)
   useEffect(() => {
@@ -1012,7 +1010,7 @@ export function AgentsSidebar({
       {/* Header area with close button at top-right (next to traffic lights) */}
       {/* This div has its own hover handlers because the drag region blocks events from bubbling to parent */}
       <div
-        className="relative flex-shrink-0"
+        className="relative shrink-0"
         onMouseEnter={() => setIsSidebarHovered(true)}
         onMouseLeave={(e) => {
           // Electron's drag region (WebkitAppRegion: "drag") returns a non-HTMLElement
@@ -1071,7 +1069,7 @@ export function AgentsSidebar({
                     size="icon"
                     onClick={onToggleSidebar}
                     tabIndex={-1}
-                    className="h-6 w-6 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] text-foreground flex-shrink-0 rounded-md"
+                    className="h-6 w-6 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] text-foreground shrink-0 rounded-md"
                     aria-label="Close sidebar"
                   >
                     <IconDoubleChevronLeft className="h-4 w-4" />
@@ -1105,7 +1103,7 @@ export function AgentsSidebar({
                     suppressHydrationWarning
                   >
                     <div className="flex items-center gap-1.5 min-w-0 max-w-full">
-                      <div className="flex items-center justify-center flex-shrink-0">
+                      <div className="flex items-center justify-center shrink-0">
                         <Logo className="w-3.5 h-3.5" />
                       </div>
                       <div className="min-w-0 flex-1 overflow-hidden">
@@ -1115,7 +1113,7 @@ export function AgentsSidebar({
                       </div>
                       <ChevronDown
                         className={cn(
-                          "h-3 text-muted-foreground flex-shrink-0 overflow-hidden",
+                          "h-3 text-muted-foreground shrink-0 overflow-hidden",
                           isDropdownOpen
                             ? "opacity-100 w-3"
                             : "opacity-0 w-0 group-hover/team-button:opacity-100 group-hover/team-button:w-3",
@@ -1136,7 +1134,7 @@ export function AgentsSidebar({
                         <div className="absolute inset-0 bg-popover brightness-110" />
                         <div className="relative pl-2 pt-1.5 pb-2">
                           <div className="flex items-center gap-2 min-w-0">
-                            <div className="w-8 h-8 rounded flex items-center justify-center bg-background flex-shrink-0 overflow-hidden">
+                            <div className="w-8 h-8 rounded flex items-center justify-center bg-background shrink-0 overflow-hidden">
                               <Logo className="w-4 h-4" />
                             </div>
                             <div className="flex-1 min-w-0 overflow-hidden">
@@ -1160,14 +1158,14 @@ export function AgentsSidebar({
                           setSettingsDialogOpen(true);
                         }}
                       >
-                        <SettingsIcon className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                        <SettingsIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                         Settings
                       </DropdownMenuItem>
 
                       {/* Help Submenu */}
                       <DropdownMenuSub>
                         <DropdownMenuSubTrigger className="gap-2">
-                          <QuestionCircleIcon className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                          <QuestionCircleIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                           <span className="flex-1">Help</span>
                         </DropdownMenuSubTrigger>
                         <DropdownMenuSubContent
@@ -1199,7 +1197,7 @@ export function AgentsSidebar({
                           onSelect={() => onSignOut()}
                         >
                           <svg
-                            className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0"
+                            className="h-3.5 w-3.5 text-muted-foreground shrink-0"
                             viewBox="0 0 24 24"
                             fill="none"
                             xmlns="http://www.w3.org/2000/svg"
@@ -1244,7 +1242,7 @@ export function AgentsSidebar({
                             setShowAuthDialog(true);
                           }}
                         >
-                          <ProfileIcon className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                          <ProfileIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                           Login
                         </DropdownMenuItem>
                       </div>
@@ -1254,7 +1252,7 @@ export function AgentsSidebar({
                       {/* Help Submenu */}
                       <DropdownMenuSub>
                         <DropdownMenuSubTrigger className="gap-2">
-                          <QuestionCircleIcon className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                          <QuestionCircleIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                           <span className="flex-1">Help</span>
                         </DropdownMenuSubTrigger>
                         <DropdownMenuSubContent
@@ -1286,7 +1284,7 @@ export function AgentsSidebar({
       </div>
 
       {/* Search and New Workspace */}
-      <div className="px-2 pb-3 flex-shrink-0">
+      <div className="px-2 pb-3 shrink-0">
         <div className="space-y-2">
           {/* Search Input */}
           <div className="relative">
@@ -1421,16 +1419,16 @@ export function AgentsSidebar({
                     >
                       <div className="flex items-start gap-2.5">
                         <div className="pt-0.5">
-                          <div className="relative flex-shrink-0 w-4 h-4">
+                          <div className="relative shrink-0 w-4 h-4">
                             {draft.project?.gitOwner &&
                             draft.project?.gitProvider === "github" ? (
                               <img
                                 src={`https://github.com/${draft.project.gitOwner}.png?size=64`}
                                 alt={draft.project.gitOwner}
-                                className="h-4 w-4 rounded-sm flex-shrink-0"
+                                className="h-4 w-4 rounded-xs shrink-0"
                               />
                             ) : (
-                              <FolderGit2 className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                              <FolderGit2 className="h-4 w-4 shrink-0 text-muted-foreground" />
                             )}
                           </div>
                         </div>
@@ -1448,7 +1446,7 @@ export function AgentsSidebar({
                                   handleDeleteDraft(draft.id);
                                 }}
                                 tabIndex={-1}
-                                className="flex-shrink-0 text-muted-foreground hover:text-foreground active:text-foreground transition-[opacity,transform,color] duration-150 ease-out opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto active:scale-[0.97]"
+                                className="shrink-0 text-muted-foreground hover:text-foreground active:text-foreground transition-[opacity,transform,color] duration-150 ease-out opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto active:scale-[0.97]"
                                 aria-label="Delete draft"
                               >
                                 <TrashIcon className="h-3.5 w-3.5" />
@@ -1464,7 +1462,7 @@ export function AgentsSidebar({
                                   ? ` • ${draft.project.name}`
                                   : ""}
                             </span>
-                            <span className="text-[11px] text-muted-foreground/60 flex-shrink-0">
+                            <span className="text-[11px] text-muted-foreground/60 shrink-0">
                               {formatTime(
                                 new Date(draft.updatedAt).toISOString(),
                               )}
@@ -1489,7 +1487,7 @@ export function AgentsSidebar({
                   isMultiSelectMode={isMultiSelectMode}
                   className="mb-3"
                 >
-                  {pinnedAgents.map((chat, index) => {
+                  {pinnedAgents.map((chat, _index) => {
                     const isLoading = loadingChatIds.has(chat.id);
                     const isSelected = selectedChatId === chat.id;
                     const isPinned = pinnedChatIds.has(chat.id);
@@ -1629,7 +1627,7 @@ export function AgentsSidebar({
                                           });
                                         }}
                                         tabIndex={-1}
-                                        className="flex-shrink-0 text-muted-foreground hover:text-foreground active:text-foreground transition-[opacity,transform,color] duration-150 ease-out opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto active:scale-[0.97]"
+                                        className="shrink-0 text-muted-foreground hover:text-foreground active:text-foreground transition-[opacity,transform,color] duration-150 ease-out opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto active:scale-[0.97]"
                                         aria-label="Archive workspace"
                                       >
                                         <ArchiveIcon className="h-3.5 w-3.5" />
@@ -1640,7 +1638,7 @@ export function AgentsSidebar({
                                   <span className="truncate flex-1 min-w-0">
                                     {displayText}
                                   </span>
-                                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                                  <div className="flex items-center gap-1.5 shrink-0">
                                     {stats &&
                                       (stats.additions > 0 ||
                                         stats.deletions > 0) && (
@@ -1769,7 +1767,7 @@ export function AgentsSidebar({
                   }
                   isMultiSelectMode={isMultiSelectMode}
                 >
-                  {unpinnedAgents.map((chat, index) => {
+                  {unpinnedAgents.map((chat, _index) => {
                     const isLoading = loadingChatIds.has(chat.id);
                     const isSelected = selectedChatId === chat.id;
                     const isPinned = pinnedChatIds.has(chat.id);
@@ -1911,7 +1909,7 @@ export function AgentsSidebar({
                                           });
                                         }}
                                         tabIndex={-1}
-                                        className="flex-shrink-0 text-muted-foreground hover:text-foreground active:text-foreground transition-[opacity,transform,color] duration-150 ease-out opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto active:scale-[0.97]"
+                                        className="shrink-0 text-muted-foreground hover:text-foreground active:text-foreground transition-[opacity,transform,color] duration-150 ease-out opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto active:scale-[0.97]"
                                         aria-label="Archive workspace"
                                       >
                                         <ArchiveIcon className="h-3.5 w-3.5" />
@@ -1923,7 +1921,7 @@ export function AgentsSidebar({
                                   <span className="truncate flex-1 min-w-0">
                                     {displayText}
                                   </span>
-                                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                                  <div className="flex items-center gap-1.5 shrink-0">
                                     {stats &&
                                       (stats.additions > 0 ||
                                         stats.deletions > 0) && (

@@ -119,7 +119,7 @@ export const AGENT_ACTIONS: Record<string, AgentActionDefinition> = {
   "toggle-sidebar": toggleSidebarAction,
 };
 
-function getAgentAction(id: string): AgentActionDefinition | undefined {
+function _getAgentAction(id: string): AgentActionDefinition | undefined {
   return AGENT_ACTIONS[id];
 }
 

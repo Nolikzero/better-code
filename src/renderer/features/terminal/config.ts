@@ -1,5 +1,5 @@
+import type { ITerminalOptions, ITheme } from "@xterm/xterm";
 import { extractTerminalTheme } from "@/lib/themes/terminal-theme-mapper";
-import type { ITerminalOptions, ITheme } from "xterm";
 
 // Geist Mono as primary font, with Nerd Fonts fallback for powerline symbols
 const TERMINAL_FONT_FAMILY = [
@@ -102,7 +102,7 @@ export const TERMINAL_THEME_LIGHT: ITheme = {
 };
 
 /** @deprecated Use TERMINAL_THEME_DARK instead */
-const TERMINAL_THEME = TERMINAL_THEME_DARK;
+const _TERMINAL_THEME = TERMINAL_THEME_DARK;
 
 /**
  * Get terminal theme based on current app theme
@@ -137,8 +137,6 @@ export const TERMINAL_OPTIONS: ITerminalOptions = {
   macOptionIsMeta: true,
   cursorStyle: "block",
   cursorInactiveStyle: "outline",
-  fastScrollModifier: "alt",
-  fastScrollSensitivity: 5,
   // Better letter spacing for code readability
   letterSpacing: 0,
 };

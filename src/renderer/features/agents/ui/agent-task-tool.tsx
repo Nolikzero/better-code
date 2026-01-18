@@ -123,12 +123,12 @@ export const AgentTaskTool = memo(function AgentTaskTool({
               <TextShimmer
                 as="span"
                 duration={1.2}
-                className="font-medium whitespace-nowrap flex-shrink-0"
+                className="font-medium whitespace-nowrap shrink-0"
               >
                 {getTitle()}
               </TextShimmer>
             ) : (
-              <span className="font-medium whitespace-nowrap flex-shrink-0 text-muted-foreground">
+              <span className="font-medium whitespace-nowrap shrink-0 text-muted-foreground">
                 {getTitle()}
               </span>
             )}
@@ -139,14 +139,14 @@ export const AgentTaskTool = memo(function AgentTaskTool({
             )}
             {/* Show elapsed time while running or final time when done */}
             {elapsedTimeDisplay && (
-              <span className="text-muted-foreground/50 tabular-nums flex-shrink-0">
+              <span className="text-muted-foreground/50 tabular-nums shrink-0">
                 {elapsedTimeDisplay}
               </span>
             )}
             {/* Chevron right after text - rotates when expanded */}
             <ChevronRight
               className={cn(
-                "w-3.5 h-3.5 text-muted-foreground/60 transition-transform duration-200 ease-out flex-shrink-0",
+                "w-3.5 h-3.5 text-muted-foreground/60 transition-transform duration-200 ease-out shrink-0",
                 isExpanded && "rotate-90",
                 !isExpanded && "opacity-0 group-hover:opacity-100",
               )}

@@ -19,7 +19,7 @@ export const COMMAND_PROMPTS: Partial<
 /**
  * Check if a command is a prompt-based command
  */
-function isPromptCommand(
+function _isPromptCommand(
   type: BuiltinCommandAction["type"],
 ): type is "review" | "pr-comments" | "release-notes" | "security-review" {
   return type in COMMAND_PROMPTS;

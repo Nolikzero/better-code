@@ -22,7 +22,7 @@ export interface UploadedFile {
 /**
  * Convert a blob URL to base64 data
  */
-async function blobUrlToBase64(blobUrl: string): Promise<string> {
+async function _blobUrlToBase64(blobUrl: string): Promise<string> {
   const response = await fetch(blobUrl);
   const blob = await response.blob();
   return new Promise((resolve, reject) => {

@@ -14,10 +14,10 @@ import { useState } from "react";
 import { Badge } from "../../components/ui/badge";
 import { Logo } from "../../components/ui/logo";
 import {
-  PROVIDER_INFO,
-  type ProviderId,
   defaultProviderIdAtom,
   onboardingCompletedAtom,
+  PROVIDER_INFO,
+  type ProviderId,
 } from "../../lib/atoms";
 import { trpc } from "../../lib/trpc";
 import { cn } from "../../lib/utils";

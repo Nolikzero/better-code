@@ -104,7 +104,7 @@ function MentionChip({ mention }: { mention: ParsedMention }) {
           ? OriginalMCPIcon
           : mention.type === "folder"
             ? FolderOpenIcon
-            : getFileIconByExtension(mention.label) ?? FilesIcon;
+            : (getFileIconByExtension(mention.label) ?? FilesIcon);
 
   const title =
     mention.type === "skill"
@@ -117,14 +117,14 @@ function MentionChip({ mention }: { mention: ParsedMention }) {
 
   return (
     <span
-      className="inline-flex items-center gap-1 px-[6px] rounded-sm text-sm align-middle bg-black/[0.04] dark:bg-white/[0.08] text-foreground/80 select-none"
+      className="inline-flex items-center gap-1 px-[6px] rounded-xs text-sm align-middle bg-black/[0.04] dark:bg-white/[0.08] text-foreground/80 select-none"
       title={title}
     >
       <Icon
         className={
           mention.type === "tool"
-            ? "h-3.5 w-3.5 text-muted-foreground flex-shrink-0"
-            : "h-3 w-3 text-muted-foreground flex-shrink-0"
+            ? "h-3.5 w-3.5 text-muted-foreground shrink-0"
+            : "h-3 w-3 text-muted-foreground shrink-0"
         }
       />
       <span>{mention.label}</span>
@@ -217,7 +217,7 @@ export function RenderFileMentions({
  * Extract all file/folder mentions from text
  * Returns array of parsed mentions
  */
-function extractFileMentions(text: string): ParsedMention[] {
+function _extractFileMentions(text: string): ParsedMention[] {
   const mentions: ParsedMention[] = [];
   const regex = /@\[([^\]]+)\]/g;
   let match: RegExpExecArray | null;
@@ -235,6 +235,6 @@ function extractFileMentions(text: string): ParsedMention[] {
 /**
  * Check if text contains any file, folder, skill, agent, or tool mentions
  */
-function hasFileMentions(text: string): boolean {
+function _hasFileMentions(text: string): boolean {
   return /@\[(file|folder|skill|agent|tool):[^\]]+\]/.test(text);
 }

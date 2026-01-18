@@ -9,25 +9,25 @@
  * - Integrates with Shiki for syntax highlighting
  */
 
+import type { ITheme } from "@xterm/xterm";
 import { useAtom, useAtomValue } from "jotai";
 import { useTheme } from "next-themes";
 import {
-  type ReactNode,
   createContext,
+  type ReactNode,
   useCallback,
   useContext,
   useEffect,
   useMemo,
   useRef,
 } from "react";
-import type { ITheme } from "xterm";
 
 import {
-  type VSCodeFullTheme,
   fullThemeDataAtom,
   selectedFullThemeIdAtom,
   systemDarkThemeIdAtom,
   systemLightThemeIdAtom,
+  type VSCodeFullTheme,
 } from "../atoms";
 import { trpc } from "../trpc";
 import { BUILTIN_THEMES, getBuiltinThemeById } from "./builtin-themes";
@@ -348,7 +348,7 @@ export function VSCodeThemeProvider({ children }: VSCodeThemeProviderProps) {
 /**
  * Hook to get just the terminal theme (for performance)
  */
-function useTerminalTheme(): ITheme {
+function _useTerminalTheme(): ITheme {
   const { terminalTheme } = useVSCodeTheme();
   return terminalTheme;
 }
@@ -356,7 +356,7 @@ function useTerminalTheme(): ITheme {
 /**
  * Hook to get just the Shiki theme name
  */
-function useShikiTheme(): string {
+function _useShikiTheme(): string {
   const { shikiThemeName } = useVSCodeTheme();
   return shikiThemeName;
 }

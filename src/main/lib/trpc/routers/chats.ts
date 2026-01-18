@@ -1,14 +1,14 @@
-import { execSync } from "child_process";
 import { TRPCError } from "@trpc/server";
+import { execSync } from "child_process";
 import { and, desc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import simpleGit from "simple-git";
 import { z } from "zod";
 import { chats, getDatabase, projects, subChats } from "../../db";
 import {
-  type GitProvider,
   createWorktreeForChat,
   fetchGitHostStatus,
   fetchGitHubPRStatus,
+  type GitProvider,
   getMergeCommand,
   getWorktreeDiff,
   removeWorktree,

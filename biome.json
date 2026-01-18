@@ -1,20 +1,34 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
-  "organizeImports": {
-    "enabled": true
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  },
+  "css": {
+    "parser": {
+      "cssModules": true
+    },
+    "linter": {
+      "enabled": false
+    },
+    "formatter": {
+      "enabled": false
+    }
   },
   "files": {
-    "include": [
-      "src",
-      "biome.json"
-    ],
-    "ignore": [
-      "node_modules",
-      "out",
-      "dist",
-      "release",
-      "drizzle",
-      "resources"
+    "includes": [
+      "**/src/**",
+      "**/biome.json",
+      "!**/node_modules",
+      "!**/out",
+      "!**/dist",
+      "!**/release",
+      "!**/drizzle",
+      "!**/resources",
+      "!**/*.css"
     ]
   },
   "linter": {
@@ -26,13 +40,15 @@
         "noExplicitAny": "off",
         "noControlCharactersInRegex": "off",
         "noAssignInExpressions": "off",
-        "noImplicitAnyLet": "off",
-        "noConsoleLog": "off"
+        "noImplicitAnyLet": "off"
       },
       "a11y": {
         "noSvgWithoutTitle": "off",
         "useButtonType": "off",
-        "useKeyWithClickEvents": "off"
+        "useKeyWithClickEvents": "off",
+        "noStaticElementInteractions": "off",
+        "useSemanticElements": "off",
+        "useAriaPropsSupportedByRole": "off"
       },
       "style": {
         "noNonNullAssertion": "off",

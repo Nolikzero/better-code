@@ -37,14 +37,14 @@ export function AgentsQuickSwitchDialog({
   selectedIndex,
   projectsMap,
 }: AgentsQuickSwitchDialogProps) {
-  if (typeof window === "undefined") return null;
-
   // Derive loading parent chat IDs from loadingSubChats Map
   const loadingSubChats = useAtomValue(loadingSubChatsAtom);
   const loadingChatIds = useMemo(
     () => new Set([...loadingSubChats.values()]),
     [loadingSubChats],
   );
+
+  if (typeof window === "undefined") return null;
 
   return createPortal(
     <AnimatePresence>
@@ -59,14 +59,14 @@ export function AgentsQuickSwitchDialog({
               <div className="max-w-5xl mx-auto">
                 {/* Chat List or Empty State */}
                 {chats.length === 0 ? (
-                  <div className="px-4 py-12 text-center bg-background rounded-sm border-[0.5px]">
+                  <div className="px-4 py-12 text-center bg-background rounded-xs border-[0.5px]">
                     <p className="text-sm text-muted-foreground">
                       No recent agents
                     </p>
                   </div>
                 ) : (
                   <div
-                    className="flex gap-3 overflow-x-auto p-3 bg-background rounded-sm border-[0.5px]"
+                    className="flex gap-3 overflow-x-auto p-3 bg-background rounded-xs border-[0.5px]"
                     style={{
                       boxShadow:
                         "0 8px 32px 0 rgba(0,0,0,0.07), 0 0px 16px 0 rgba(0,0,0,0.04), 0 -8px 24px 0 rgba(0,0,0,0.03)",

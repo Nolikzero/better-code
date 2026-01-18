@@ -1,8 +1,13 @@
+import { app, BrowserWindow, clipboard, ipcMain, shell } from "electron";
 import { join } from "path";
-import { BrowserWindow, app, clipboard, ipcMain, shell } from "electron";
 import { createIPCHandler } from "trpc-electron/main";
 import { initLiquidGlass } from "../lib/liquid-glass";
 import { createAppRouter } from "../lib/trpc/routers";
+
+// Type for macOS-specific BrowserWindow methods
+type MacBrowserWindow = BrowserWindow & {
+  setTrafficLightPosition: (position: { x: number; y: number }) => void;
+};
 
 // Register IPC handlers for window operations (only once)
 let ipcHandlersRegistered = false;
@@ -15,7 +20,7 @@ function registerIpcHandlers(getWindow: () => BrowserWindow | null): void {
   ipcMain.handle("app:version", () => app.getVersion());
   // Note: Update checking is now handled by auto-updater module (lib/auto-updater.ts)
   ipcMain.handle("app:set-badge", (_event, count: number | null) => {
-    if (process.platform === "darwin") {
+    if (process.platform === "darwin" && app.dock) {
       app.dock.setBadge(count ? String(count) : "");
     }
   });
@@ -80,16 +85,19 @@ function registerIpcHandlers(getWindow: () => BrowserWindow | null): void {
   );
 
   // Traffic light visibility control (for hybrid native/custom approach)
+  // Note: setWindowButtonVisibility was removed in Electron 40
+  // Traffic lights are now managed via trafficLightPosition in BrowserWindow options
   ipcMain.handle(
     "window:set-traffic-light-visibility",
     (_event, visible: boolean) => {
       const win = getWindow();
       if (win && process.platform === "darwin") {
-        // In fullscreen, always show native traffic lights (don't let React hide them)
-        if (win.isFullScreen()) {
-          win.setWindowButtonVisibility(true);
+        // Move traffic lights off-screen to hide, on-screen to show
+        const macWin = win as MacBrowserWindow;
+        if (visible || win.isFullScreen()) {
+          macWin.setTrafficLightPosition({ x: 15, y: 12 });
         } else {
-          win.setWindowButtonVisibility(visible);
+          macWin.setTrafficLightPosition({ x: -100, y: -100 });
         }
       }
     },
@@ -209,7 +217,7 @@ export function createMainWindow(): BrowserWindow {
     console.log("[Main] Window ready to show");
     // Ensure native traffic lights are visible by default (login page, loading states)
     if (process.platform === "darwin") {
-      window.setWindowButtonVisibility(true);
+      (window as MacBrowserWindow).setTrafficLightPosition({ x: 15, y: 12 });
     }
     window.show();
   });
@@ -218,14 +226,14 @@ export function createMainWindow(): BrowserWindow {
   window.on("enter-full-screen", () => {
     // Always show native traffic lights in fullscreen
     if (process.platform === "darwin") {
-      window.setWindowButtonVisibility(true);
+      (window as MacBrowserWindow).setTrafficLightPosition({ x: 15, y: 12 });
     }
     window.webContents.send("window:fullscreen-change", true);
   });
   window.on("leave-full-screen", () => {
     // Show native traffic lights when exiting fullscreen (TrafficLights component will manage after mount)
     if (process.platform === "darwin") {
-      window.setWindowButtonVisibility(true);
+      (window as MacBrowserWindow).setTrafficLightPosition({ x: 15, y: 12 });
     }
     window.webContents.send("window:fullscreen-change", false);
   });
@@ -264,7 +272,7 @@ export function createMainWindow(): BrowserWindow {
   window.webContents.on("did-finish-load", () => {
     console.log("[Main] Page finished loading");
     if (process.platform === "darwin") {
-      window.setWindowButtonVisibility(true);
+      (window as MacBrowserWindow).setTrafficLightPosition({ x: 15, y: 12 });
     }
 
     // Initialize liquid glass module (macOS 26+ Tahoe)

@@ -1,6 +1,6 @@
 "use client";
 
-import { type RefObject, createContext, useContext } from "react";
+import { createContext, type RefObject, useContext } from "react";
 import type { AgentsMentionsEditorHandle } from "../../mentions";
 
 export interface ImageAttachment {

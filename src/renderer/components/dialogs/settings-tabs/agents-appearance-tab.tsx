@@ -10,11 +10,11 @@ import {
 } from "../../../components/ui/select";
 import { IconSpinner } from "../../../icons";
 import {
-  type VSCodeFullTheme,
   fullThemeDataAtom,
   selectedFullThemeIdAtom,
   systemDarkThemeIdAtom,
   systemLightThemeIdAtom,
+  type VSCodeFullTheme,
 } from "../../../lib/atoms";
 import {
   BUILTIN_THEMES,
@@ -92,15 +92,15 @@ function ThemePreviewBox({
 
   const sizeClasses =
     size === "sm"
-      ? "w-7 h-5 text-[9px] gap-0.5 rounded-sm"
-      : "w-8 h-6 text-[10px] gap-1 rounded-sm";
+      ? "w-7 h-5 text-[9px] gap-0.5 rounded-xs"
+      : "w-8 h-6 text-[10px] gap-1 rounded-xs";
 
   const dotSize = size === "sm" ? "w-1 h-1" : "w-1.5 h-1.5";
 
   return (
     <div
       className={cn(
-        "flex-shrink-0 flex items-center justify-center font-semibold",
+        "shrink-0 flex items-center justify-center font-semibold",
         sizeClasses,
         className,
       )}
@@ -111,7 +111,7 @@ function ThemePreviewBox({
     >
       {/* Accent dot to the left of text */}
       <div
-        className={cn("rounded-full flex-shrink-0", dotSize)}
+        className={cn("rounded-full shrink-0", dotSize)}
         style={{ backgroundColor: accentColor }}
       />
       <span style={{ color: isDark ? "#fff" : "#000", opacity: 0.9 }}>Aa</span>
@@ -335,8 +335,8 @@ export function AgentsAppearanceTab() {
                     <ThemePreviewBox
                       theme={
                         resolvedTheme === "dark"
-                          ? systemDarkTheme ?? null
-                          : systemLightTheme ?? null
+                          ? (systemDarkTheme ?? null)
+                          : (systemLightTheme ?? null)
                       }
                     />
                     <span className="text-xs truncate">System preference</span>
@@ -358,8 +358,8 @@ export function AgentsAppearanceTab() {
                   <ThemePreviewBox
                     theme={
                       resolvedTheme === "dark"
-                        ? systemDarkTheme ?? null
-                        : systemLightTheme ?? null
+                        ? (systemDarkTheme ?? null)
+                        : (systemLightTheme ?? null)
                     }
                     size="sm"
                   />

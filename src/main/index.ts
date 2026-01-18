@@ -1,7 +1,7 @@
+import { app, BrowserWindow, Menu } from "electron";
+import log from "electron-log";
 import { existsSync, readFileSync, readlinkSync, unlinkSync } from "fs";
 import { join } from "path";
-import { BrowserWindow, Menu, app } from "electron";
-import log from "electron-log";
 
 // Redirect console to electron-log in production
 // Logs will be written to ~/Library/Logs/BetterCode/main.log
@@ -9,6 +9,7 @@ if (app.isPackaged) {
   log.transports.file.level = "info";
   Object.assign(console, log.functions);
 }
+
 import {
   checkForUpdates,
   downloadUpdate,

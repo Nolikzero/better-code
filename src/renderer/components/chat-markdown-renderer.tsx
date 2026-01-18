@@ -105,11 +105,11 @@ function CodeBlock({
   // For plaintext/ASCII art, just escape and render directly (no Shiki)
   // For code with syntax highlighting, use Shiki output when available
   const htmlContent = shouldHighlight
-    ? highlightedHtml ?? escapeHtml(children)
+    ? (highlightedHtml ?? escapeHtml(children))
     : escapeHtml(children);
 
   return (
-    <div className="relative mt-2 mb-4 rounded-sm bg-muted/50 overflow-hidden">
+    <div className="relative mt-2 mb-4 rounded-xs bg-muted/50 overflow-hidden">
       <button
         onClick={handleCopy}
         tabIndex={-1}
@@ -339,7 +339,7 @@ export const ChatMarkdownRenderer = memo(function ChatMarkdownRenderer({
               window.desktopApi.openExternal(href);
             }
           }}
-          className="text-blue-600 dark:text-blue-400 no-underline hover:underline hover:decoration-current underline-offset-2 decoration-1 transition-all duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500/30 focus-visible:rounded-sm"
+          className="text-blue-600 dark:text-blue-400 no-underline hover:underline hover:decoration-current underline-offset-2 decoration-1 transition-all duration-150 cursor-pointer focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-blue-500/30 focus-visible:rounded-xs"
           {...props}
         >
           {children}
@@ -394,7 +394,7 @@ export const ChatMarkdownRenderer = memo(function ChatMarkdownRenderer({
         </td>
       ),
       pre: ({ children }: any) => <>{children}</>,
-      code: ({ inline, className, children, ...props }: any) => {
+      code: ({ inline, className, children }: any) => {
         const match = /language-(\w+)/.exec(className || "");
         const language = match ? match[1] : undefined;
         const codeContent = String(children);
@@ -463,7 +463,7 @@ export const ChatMarkdownRenderer = memo(function ChatMarkdownRenderer({
 });
 
 // Convenience exports for specific use cases
-const CompactMarkdownRenderer = memo(function CompactMarkdownRenderer({
+const _CompactMarkdownRenderer = memo(function CompactMarkdownRenderer({
   content,
   className,
   syntaxHighlight = false,
@@ -482,7 +482,7 @@ const CompactMarkdownRenderer = memo(function CompactMarkdownRenderer({
   );
 });
 
-const FullscreenMarkdownRenderer = memo(function FullscreenMarkdownRenderer({
+const _FullscreenMarkdownRenderer = memo(function FullscreenMarkdownRenderer({
   content,
   className,
 }: {

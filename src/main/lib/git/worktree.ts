@@ -227,7 +227,7 @@ export async function removeWorktree(
   }
 }
 
-async function getGitRoot(path: string): Promise<string> {
+async function _getGitRoot(path: string): Promise<string> {
   try {
     const git = simpleGit(path);
     const root = await git.revparse(["--show-toplevel"]);
@@ -237,7 +237,7 @@ async function getGitRoot(path: string): Promise<string> {
   }
 }
 
-async function worktreeExists(
+async function _worktreeExists(
   mainRepoPath: string,
   worktreePath: string,
 ): Promise<boolean> {
@@ -328,7 +328,7 @@ async function getDefaultBranch(mainRepoPath: string): Promise<string> {
   return "main";
 }
 
-async function fetchDefaultBranch(
+async function _fetchDefaultBranch(
   mainRepoPath: string,
   defaultBranch: string,
 ): Promise<string> {
@@ -344,7 +344,7 @@ async function fetchDefaultBranch(
  * @param mainRepoPath - Path to the main repository
  * @returns The current default branch name, or null if unable to determine
  */
-async function refreshDefaultBranch(
+async function _refreshDefaultBranch(
   mainRepoPath: string,
 ): Promise<string | null> {
   const git = simpleGit(mainRepoPath);
@@ -381,7 +381,7 @@ async function refreshDefaultBranch(
   return null;
 }
 
-async function checkNeedsRebase(
+async function _checkNeedsRebase(
   worktreePath: string,
   defaultBranch: string,
 ): Promise<boolean> {
@@ -394,13 +394,13 @@ async function checkNeedsRebase(
   return Number.parseInt(behindCount.trim(), 10) > 0;
 }
 
-async function hasUncommittedChanges(worktreePath: string): Promise<boolean> {
+async function _hasUncommittedChanges(worktreePath: string): Promise<boolean> {
   const git = simpleGit(worktreePath);
   const status = await git.status();
   return !status.isClean();
 }
 
-async function hasUnpushedCommits(worktreePath: string): Promise<boolean> {
+async function _hasUnpushedCommits(worktreePath: string): Promise<boolean> {
   const git = simpleGit(worktreePath);
   try {
     const aheadCount = await git.raw([
@@ -584,7 +584,7 @@ export async function branchExistsOnRemote(
  * Detect which branch a worktree was likely based off of.
  * Uses merge-base to find the closest common ancestor with candidate base branches.
  */
-async function detectBaseBranch(
+async function _detectBaseBranch(
   worktreePath: string,
   currentBranch: string,
   defaultBranch: string,
@@ -638,7 +638,7 @@ async function detectBaseBranch(
  * @param options.fetch - Whether to fetch and prune remote refs first (default: false)
  * @returns Object with local and remote branch arrays
  */
-async function listBranches(
+async function _listBranches(
   repoPath: string,
   options?: { fetch?: boolean },
 ): Promise<{ local: string[]; remote: string[] }> {
@@ -803,7 +803,7 @@ async function checkoutBranch(repoPath: string, branch: string): Promise<void> {
  * @param ref - The ref to check (e.g., "main", "origin/main")
  * @returns true if the ref exists locally, false otherwise
  */
-async function refExistsLocally(
+async function _refExistsLocally(
   repoPath: string,
   ref: string,
 ): Promise<boolean> {
@@ -824,7 +824,7 @@ async function refExistsLocally(
  * @param message - Raw git error message
  * @returns Cleaned message suitable for UI display
  */
-function sanitizeGitError(message: string): string {
+function _sanitizeGitError(message: string): string {
   return message
     .replace(/^fatal:\s*/i, "")
     .replace(/^error:\s*/i, "")
@@ -832,7 +832,7 @@ function sanitizeGitError(message: string): string {
     .trim();
 }
 
-async function safeCheckoutBranch(
+async function _safeCheckoutBranch(
   repoPath: string,
   branch: string,
 ): Promise<void> {
@@ -931,7 +931,7 @@ export async function getWorktreeDiff(
   try {
     const git = simpleGit(worktreePath);
     const status = await git.status();
-    const currentBranch = status.current;
+    const _currentBranch = status.current;
 
     // Has uncommitted changes - diff against HEAD
     if (!status.isClean()) {
@@ -983,7 +983,7 @@ export async function getWorktreeDiff(
 /**
  * Commit all changes in a worktree
  */
-async function commitWorktreeChanges(
+async function _commitWorktreeChanges(
   worktreePath: string,
   message: string,
 ): Promise<{ success: boolean; commitHash?: string; error?: string }> {
@@ -1013,7 +1013,7 @@ async function commitWorktreeChanges(
 /**
  * Merge worktree branch into base branch
  */
-async function mergeWorktreeToMain(
+async function _mergeWorktreeToMain(
   projectPath: string,
   worktreeBranch: string,
   baseBranch: string,
@@ -1043,7 +1043,7 @@ async function mergeWorktreeToMain(
 /**
  * Push worktree branch to remote
  */
-async function pushWorktreeBranch(
+async function _pushWorktreeBranch(
   worktreePath: string,
   branch: string,
 ): Promise<{ success: boolean; error?: string }> {
@@ -1069,7 +1069,7 @@ async function pushWorktreeBranch(
 /**
  * Get current git status summary
  */
-async function getGitStatus(worktreePath: string): Promise<{
+async function _getGitStatus(worktreePath: string): Promise<{
   hasUncommittedChanges: boolean;
   hasUnpushedCommits: boolean;
   currentBranch: string;

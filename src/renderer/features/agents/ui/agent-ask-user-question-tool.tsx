@@ -5,10 +5,10 @@ import { memo } from "react";
 import { QuestionIcon } from "../../../components/ui/icons";
 import { TextShimmer } from "../../../components/ui/text-shimmer";
 import {
-  QUESTIONS_SKIPPED_MESSAGE,
-  QUESTIONS_TIMED_OUT_MESSAGE,
   askUserQuestionResultsAtom,
   pendingUserQuestionsAtom,
+  QUESTIONS_SKIPPED_MESSAGE,
+  QUESTIONS_TIMED_OUT_MESSAGE,
 } from "../atoms";
 
 interface AgentAskUserQuestionToolProps {

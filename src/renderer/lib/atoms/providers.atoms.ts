@@ -6,29 +6,28 @@ import type {
 } from "@shared/types";
 import { atomWithStorage } from "jotai/utils";
 
-// Re-export types from shared for convenience
-export type {
-  ProviderId,
-  SandboxMode,
-  ApprovalPolicy,
-  ReasoningEffort,
-} from "@shared/types";
-
 // Re-export constants from shared
 export {
-  PROVIDER_MODELS,
-  PROVIDER_INFO,
-  SANDBOX_MODES,
   APPROVAL_POLICIES,
+  PROVIDER_INFO,
+  PROVIDER_MODELS,
   REASONING_EFFORTS,
+  SANDBOX_MODES,
 } from "@shared/constants";
+// Re-export types from shared for convenience
+export type {
+  ApprovalPolicy,
+  ProviderId,
+  ReasoningEffort,
+  SandboxMode,
+} from "@shared/types";
 
 // ============================================
 // PROVIDER CONFIG TYPE (UI-specific)
 // ============================================
 
 // Provider configuration (for display in UI, includes runtime availability)
-type ProviderConfigUI = {
+export type ProviderConfigUI = {
   id: ProviderId;
   name: string;
   description: string;

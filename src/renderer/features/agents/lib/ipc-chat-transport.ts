@@ -1,7 +1,6 @@
 import type { ChatTransport, UIMessage } from "ai";
 import { toast } from "sonner";
 import {
-  type ProviderId,
   agentsLoginModalOpenAtom,
   chatProviderOverridesAtom,
   codexApprovalPolicyAtom,
@@ -10,6 +9,7 @@ import {
   defaultProviderIdAtom,
   extendedThinkingEnabledAtom,
   lastSelectedModelByProviderAtom,
+  type ProviderId,
   sessionInfoAtom,
 } from "../../../lib/atoms";
 import { appStore } from "../../../lib/jotai-store";
@@ -19,10 +19,10 @@ import {
   showTimeoutNotification,
 } from "../../sidebar/hooks/use-desktop-notifications";
 import {
-  MODEL_ID_MAP,
   askUserQuestionResultsAtom,
   compactingSubChatsAtom,
   lastSelectedModelIdAtom,
+  MODEL_ID_MAP,
   pendingAuthRetryMessageAtom,
   pendingUserQuestionsAtom,
 } from "../atoms";

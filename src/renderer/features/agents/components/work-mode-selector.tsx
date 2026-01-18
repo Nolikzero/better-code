@@ -72,7 +72,7 @@ export function WorkModeSelector({
                 setOpen(false);
               }}
               className={cn(
-                "flex items-center gap-1.5 min-h-[32px] py-[5px] px-1.5 mx-1 w-[calc(100%-8px)] text-sm text-left rounded-md cursor-default select-none outline-none transition-colors",
+                "flex items-center gap-1.5 min-h-[32px] py-[5px] px-1.5 mx-1 w-[calc(100%-8px)] text-sm text-left rounded-md cursor-default select-none outline-hidden transition-colors",
                 isSelected
                   ? "dark:bg-neutral-800 text-foreground"
                   : "dark:hover:bg-neutral-800 hover:text-foreground",

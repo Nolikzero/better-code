@@ -11,7 +11,7 @@ export function createMentionNode(option: FileMentionOption): HTMLSpanElement {
   span.setAttribute("data-mention-id", option.id);
   span.setAttribute("data-mention-type", option.type || "file");
   span.className =
-    "inline-flex items-center gap-1 px-[6px] py-[1px] rounded-sm text-sm align-middle bg-black/[0.04] dark:bg-white/[0.08] text-foreground/80 [&.mention-selected]:bg-primary/70 [&.mention-selected]:text-primary-foreground";
+    "inline-flex items-center gap-1 px-[6px] py-[1px] rounded-xs text-sm align-middle bg-black/[0.04] dark:bg-white/[0.08] text-foreground/80 [&.mention-selected]:bg-primary/70 [&.mention-selected]:text-primary-foreground";
 
   // Create icon element (pass type for folder icon)
   const iconElement = createFileIconElement(option.label, option.type);

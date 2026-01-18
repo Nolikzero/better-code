@@ -1,6 +1,6 @@
 import os from "node:os";
 import * as pty from "node-pty";
-import { FALLBACK_SHELL, buildTerminalEnv, getDefaultShell } from "./env";
+import { buildTerminalEnv, FALLBACK_SHELL, getDefaultShell } from "./env";
 import type { InternalCreateSessionParams, TerminalSession } from "./types";
 
 const DEFAULT_COLS = 80;

@@ -203,7 +203,7 @@ const TodoStatusIcon = ({
   // During loading, show arrow for in_progress items with foreground background
   if (isPending && status === "in_progress") {
     return (
-      <div className="w-3.5 h-3.5 rounded-full bg-foreground flex items-center justify-center flex-shrink-0">
+      <div className="w-3.5 h-3.5 rounded-full bg-foreground flex items-center justify-center shrink-0">
         <IconArrowRight className="w-2 h-2 text-background" />
       </div>
     );
@@ -213,7 +213,7 @@ const TodoStatusIcon = ({
     case "completed":
       return (
         <div
-          className="w-3.5 h-3.5 rounded-full bg-muted flex items-center justify-center flex-shrink-0"
+          className="w-3.5 h-3.5 rounded-full bg-muted flex items-center justify-center shrink-0"
           style={{ border: "0.5px solid hsl(var(--border))" }}
         >
           <CheckIcon className="w-2 h-2 text-muted-foreground" />
@@ -221,14 +221,14 @@ const TodoStatusIcon = ({
       );
     case "in_progress":
       return (
-        <div className="w-3.5 h-3.5 rounded-full bg-foreground flex items-center justify-center flex-shrink-0">
+        <div className="w-3.5 h-3.5 rounded-full bg-foreground flex items-center justify-center shrink-0">
           <IconArrowRight className="w-2 h-2 text-background" />
         </div>
       );
     default:
       return (
         <div
-          className="w-3.5 h-3.5 rounded-full flex items-center justify-center flex-shrink-0"
+          className="w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0"
           style={{ border: "0.5px solid hsl(var(--muted-foreground) / 0.3)" }}
         />
       );
@@ -334,8 +334,8 @@ export const AgentTodoTool = memo(function AgentTodoTool({
       >
         <div className="rounded-lg border border-border bg-muted/30 px-2.5 py-1.5">
           <div className="flex items-center gap-1.5">
-            <PlanIcon className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-            <span className="text-xs font-medium whitespace-nowrap flex-shrink-0">
+            <PlanIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+            <span className="text-xs font-medium whitespace-nowrap shrink-0">
               {isPending ? (
                 <TextShimmer
                   as="span"
@@ -361,7 +361,7 @@ export const AgentTodoTool = memo(function AgentTodoTool({
       <div className="flex items-start gap-1.5 py-0.5 rounded-md px-2">
         <div className="flex-1 min-w-0 flex items-center gap-1.5">
           <div className="text-xs text-muted-foreground flex items-center gap-1.5 min-w-0">
-            <span className="font-medium whitespace-nowrap flex-shrink-0">
+            <span className="font-medium whitespace-nowrap shrink-0">
               <TextShimmer
                 as="span"
                 duration={1.2}
@@ -426,7 +426,7 @@ export const AgentTodoTool = memo(function AgentTodoTool({
       <div className="flex items-start gap-1.5 py-0.5 rounded-md px-2">
         <div className="flex-1 min-w-0 flex items-center gap-1.5">
           <div className="text-xs text-muted-foreground flex items-center gap-1.5 min-w-0">
-            <span className="font-medium whitespace-nowrap flex-shrink-0">
+            <span className="font-medium whitespace-nowrap shrink-0">
               {isPending ? (
                 <TextShimmer
                   as="span"
@@ -450,10 +450,7 @@ export const AgentTodoTool = memo(function AgentTodoTool({
                       : Circle;
 
                 return (
-                  <div
-                    key={idx}
-                    className="flex items-center gap-1 flex-shrink-0"
-                  >
+                  <div key={idx} className="flex items-center gap-1 shrink-0">
                     <StatusIcon className="w-3 h-3" />
                     <span className="truncate">{c.todo.content}</span>
                     {idx < visibleItems.length - 1 && (
@@ -463,7 +460,7 @@ export const AgentTodoTool = memo(function AgentTodoTool({
                 );
               })}
               {remainingCount > 0 && (
-                <span className="text-muted-foreground/60 whitespace-nowrap flex-shrink-0">
+                <span className="text-muted-foreground/60 whitespace-nowrap shrink-0">
                   +{remainingCount} more
                 </span>
               )}
@@ -489,7 +486,7 @@ export const AgentTodoTool = memo(function AgentTodoTool({
 
   // Find current task index for progress display
   const currentTaskIndex = currentTask
-    ? displayTodos.findIndex((t) => t === currentTask) + 1
+    ? displayTodos.indexOf(currentTask) + 1
     : completedCount;
 
   return (
@@ -529,13 +526,13 @@ export const AgentTodoTool = memo(function AgentTodoTool({
         }}
       >
         <div className="flex items-center gap-1.5">
-          <PlanIcon className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+          <PlanIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
           <span className="text-xs font-medium text-foreground">To-dos</span>
           <span className="text-xs text-muted-foreground truncate flex-1">
             {displayTodos[0]?.content || "Todo List"}
           </span>
           {/* Expand/Collapse icon */}
-          <div className="relative w-4 h-4 flex-shrink-0">
+          <div className="relative w-4 h-4 shrink-0">
             <ExpandIcon
               className={cn(
                 "absolute inset-0 w-4 h-4 text-muted-foreground transition-[opacity,transform] duration-200 ease-out",
@@ -569,7 +566,7 @@ export const AgentTodoTool = memo(function AgentTodoTool({
             {/* Progress circle or checkmark when all completed */}
             {completedCount === totalTodos && totalTodos > 0 ? (
               <div
-                className="w-4 h-4 rounded-full bg-muted flex items-center justify-center flex-shrink-0"
+                className="w-4 h-4 rounded-full bg-muted flex items-center justify-center shrink-0"
                 style={{ border: "0.5px solid hsl(var(--border))" }}
               >
                 <CheckIcon className="w-2.5 h-2.5 text-muted-foreground" />
@@ -579,7 +576,7 @@ export const AgentTodoTool = memo(function AgentTodoTool({
                 completed={completedCount}
                 total={totalTodos}
                 size={16}
-                className="flex-shrink-0"
+                className="shrink-0"
               />
             )}
 
@@ -602,7 +599,7 @@ export const AgentTodoTool = memo(function AgentTodoTool({
             </div>
 
             {/* Right side - task count */}
-            <span className="text-xs text-muted-foreground tabular-nums flex-shrink-0">
+            <span className="text-xs text-muted-foreground tabular-nums shrink-0">
               {currentTaskIndex}/{totalTodos}
             </span>
           </div>

@@ -39,14 +39,14 @@ export const ChatIcon = React.memo(function ChatIcon({
         <img
           src={`https://github.com/${gitOwner}.png?size=64`}
           alt={gitOwner}
-          className="h-4 w-4 rounded-sm flex-shrink-0"
+          className="h-4 w-4 rounded-xs shrink-0"
         />
       );
     }
     return (
       <FolderGit2
         className={cn(
-          "h-4 w-4 flex-shrink-0 transition-colors",
+          "h-4 w-4 shrink-0 transition-colors",
           isSelected ? "text-foreground" : "text-muted-foreground",
         )}
       />
@@ -54,7 +54,7 @@ export const ChatIcon = React.memo(function ChatIcon({
   };
 
   return (
-    <div className="relative flex-shrink-0 w-4 h-4">
+    <div className="relative shrink-0 w-4 h-4">
       {/* Checkbox slides in from left, icon slides out */}
       <div
         className={cn(

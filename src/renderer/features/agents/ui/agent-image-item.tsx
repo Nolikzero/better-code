@@ -137,7 +137,7 @@ export function AgentImageItem({
               <img
                 src={url}
                 alt={filename}
-                className="max-w-72 max-h-72 w-auto h-auto object-contain rounded-sm"
+                className="max-w-72 max-h-72 w-auto h-auto object-contain rounded-xs"
                 onError={handleImageError}
               />
             </HoverCardContent>

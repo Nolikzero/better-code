@@ -70,10 +70,10 @@ export const AgentExploringGroup = memo(function AgentExploringGroup({
       >
         <div className="flex-1 min-w-0 flex items-center gap-1">
           <div className="text-xs flex items-center gap-1.5 min-w-0">
-            <span className="font-medium whitespace-nowrap flex-shrink-0 text-muted-foreground">
+            <span className="font-medium whitespace-nowrap shrink-0 text-muted-foreground">
               {isStreaming ? "Exploring" : "Explored"}
             </span>
-            <span className="text-muted-foreground/60 whitespace-nowrap flex-shrink-0">
+            <span className="text-muted-foreground/60 whitespace-nowrap shrink-0">
               {subtitle}
             </span>
             {/* Chevron right after text - rotates when expanded */}

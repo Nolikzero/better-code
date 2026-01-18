@@ -6,7 +6,7 @@ import { stripVTControlCharacters } from "node:util";
 import { app } from "electron";
 
 // Cache for resolved binary path
-let cachedBinaryResult: CodexBinaryResult | null | undefined = undefined;
+let cachedBinaryResult: CodexBinaryResult | null | undefined;
 
 // Cache the shell environment
 let cachedShellEnv: Record<string, string> | null = null;
@@ -117,7 +117,7 @@ function getCodexShellEnvironment(): Record<string, string> {
 /**
  * Clear cached shell environment (useful for testing)
  */
-function clearCodexEnvCache(): void {
+function _clearCodexEnvCache(): void {
   cachedShellEnv = null;
 }
 
@@ -326,7 +326,7 @@ export function getCodexBinaryPath(): CodexBinaryResult | null {
 /**
  * Clear cached binary path (useful for testing)
  */
-function clearCodexBinaryCache(): void {
+function _clearCodexBinaryCache(): void {
   cachedBinaryResult = undefined;
 }
 
@@ -445,7 +445,7 @@ export function buildCodexEnv(options?: {
   // 1. Start with shell environment (has HOME, full PATH, etc.)
   try {
     Object.assign(env, getCodexShellEnvironment());
-  } catch (error) {
+  } catch (_error) {
     console.error("[codex-env] Shell env failed, using process.env");
   }
 

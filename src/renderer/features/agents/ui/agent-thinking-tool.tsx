@@ -76,7 +76,7 @@ export const AgentThinkingTool = memo(function AgentThinkingTool({
       >
         <div className="flex-1 min-w-0 flex items-center gap-1">
           <div className="text-xs flex items-center gap-1.5 min-w-0">
-            <span className="font-medium whitespace-nowrap flex-shrink-0 text-muted-foreground">
+            <span className="font-medium whitespace-nowrap shrink-0 text-muted-foreground">
               {isStreaming ? "Thinking" : "Thought"}
             </span>
             {/* Preview text when collapsed */}
@@ -88,7 +88,7 @@ export const AgentThinkingTool = memo(function AgentThinkingTool({
             {/* Chevron - rotates when expanded, visible on hover when collapsed */}
             <ChevronRight
               className={cn(
-                "w-3.5 h-3.5 text-muted-foreground/60 transition-transform duration-200 ease-out flex-shrink-0",
+                "w-3.5 h-3.5 text-muted-foreground/60 transition-transform duration-200 ease-out shrink-0",
                 isExpanded && "rotate-90",
                 !isExpanded && "opacity-0 group-hover:opacity-100",
               )}

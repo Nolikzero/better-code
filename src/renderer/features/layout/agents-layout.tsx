@@ -1,8 +1,5 @@
 import { useAtom, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useIsMobile } from "../../lib/hooks/use-mobile";
-import { isDesktopApp } from "../../lib/utils/platform";
-
 import { AgentsSettingsDialog } from "../../components/dialogs/agents-settings-dialog";
 import { AgentsShortcutsDialog } from "../../components/dialogs/agents-shortcuts-dialog";
 import { ClaudeLoginModal } from "../../components/dialogs/claude-login-modal";
@@ -19,9 +16,11 @@ import {
   isFullscreenAtom,
   onboardingCompletedAtom,
 } from "../../lib/atoms";
+import { useIsMobile } from "../../lib/hooks/use-mobile";
 import { useUpdateChecker } from "../../lib/hooks/use-update-checker";
 import { useAgentSubChatStore } from "../../lib/stores/sub-chat-store";
 import { trpc } from "../../lib/trpc";
+import { isDesktopApp } from "../../lib/utils/platform";
 import { selectedAgentChatIdAtom, selectedProjectAtom } from "../agents/atoms";
 import { useAgentsHotkeys } from "../agents/lib/agents-hotkeys-manager";
 import { AgentsContent } from "../agents/ui/agents-content";
@@ -83,7 +82,7 @@ export function AgentsLayout() {
   useUpdateChecker();
 
   const [sidebarOpen, setSidebarOpen] = useAtom(agentsSidebarOpenAtom);
-  const [sidebarWidth, setSidebarWidth] = useAtom(agentsSidebarWidthAtom);
+  const [_sidebarWidth, _setSidebarWidth] = useAtom(agentsSidebarWidthAtom);
   const [settingsOpen, setSettingsOpen] = useAtom(agentsSettingsDialogOpenAtom);
   const setSettingsActiveTab = useSetAtom(agentsSettingsDialogActiveTabAtom);
   const [shortcutsOpen, setShortcutsOpen] = useAtom(

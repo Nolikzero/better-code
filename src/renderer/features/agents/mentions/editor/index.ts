@@ -1,7 +1,7 @@
-export { resolveMention } from "./mention-resolver";
-export { createMentionNode } from "./mention-node";
 export {
-  serializeContent,
   buildContentFromSerialized,
+  serializeContent,
 } from "./content-serializer";
+export { createMentionNode } from "./mention-node";
+export { resolveMention } from "./mention-resolver";
 export { walkTreeOnce } from "./tree-walker";

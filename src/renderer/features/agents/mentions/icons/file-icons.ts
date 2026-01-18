@@ -6,16 +6,16 @@ import { FilesIcon } from "../../../../components/ui/icons";
 import {
   AstroIcon,
   CIcon,
-  CSSIcon,
-  CSharpIcon,
   CppIcon,
+  CSharpIcon,
+  CSSIcon,
   DockerIcon,
   GoIcon,
   GraphQLIcon,
   HTMLIcon,
-  JSONIcon,
   JavaIcon,
   JavaScriptIcon,
+  JSONIcon,
   KotlinIcon,
   MarkdownIcon,
   MarkdownInfoIcon,
@@ -26,8 +26,8 @@ import {
   RubyIcon,
   RustIcon,
   SCSSIcon,
-  SQLIcon,
   ShellIcon,
+  SQLIcon,
   SvelteIcon,
   SwiftIcon,
   TOMLIcon,
@@ -39,7 +39,7 @@ import {
 /**
  * Known file extensions with icons
  */
-const KNOWN_FILE_ICON_EXTENSIONS = new Set([
+const _KNOWN_FILE_ICON_EXTENSIONS = new Set([
   "tsx",
   "ts",
   "js",

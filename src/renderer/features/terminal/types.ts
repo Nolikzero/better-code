@@ -9,7 +9,7 @@ interface TerminalExitEvent {
   signal?: number;
 }
 
-type TerminalEvent = TerminalDataEvent | TerminalExitEvent;
+export type TerminalEvent = TerminalDataEvent | TerminalExitEvent;
 
 export interface TerminalProps {
   paneId: string;

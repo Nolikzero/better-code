@@ -50,7 +50,7 @@ type UpdateInfo = {
   releaseNotes?: string;
 };
 
-const updateInfoAtom = atom<UpdateInfo | null>(null);
+const _updateInfoAtom = atom<UpdateInfo | null>(null);
 
 // ============================================
 // ONBOARDING ATOMS

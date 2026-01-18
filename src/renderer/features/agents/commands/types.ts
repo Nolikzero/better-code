@@ -22,12 +22,6 @@ export interface SlashCommandOption extends SlashCommand {
   command: string;
 }
 
-// Trigger payload for slash command dropdown
-interface SlashTriggerPayload {
-  searchText: string;
-  rect: DOMRect;
-}
-
 // Builtin command action handlers
 export type BuiltinCommandAction =
   | { type: "clear" }
@@ -39,8 +33,3 @@ export type BuiltinCommandAction =
   | { type: "pr-comments" }
   | { type: "release-notes" }
   | { type: "security-review" };
-
-// Result of selecting a slash command
-type SlashCommandSelection =
-  | { category: "builtin"; action: BuiltinCommandAction }
-  | { category: "repository"; prompt: string; name: string };

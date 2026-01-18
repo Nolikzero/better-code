@@ -20,7 +20,7 @@ contextBridge.exposeInMainWorld("desktopApi", {
   onUpdateChecking: (callback: () => void) => {
     const handler = () => callback();
     ipcRenderer.on("update:checking", handler);
-    return () => ipcRenderer.removeListener("update:checking", handler);
+    return () => ipcRenderer.off("update:checking", handler);
   },
   onUpdateAvailable: (
     callback: (info: { version: string; releaseDate?: string }) => void,
@@ -30,12 +30,12 @@ contextBridge.exposeInMainWorld("desktopApi", {
       info: { version: string; releaseDate?: string },
     ) => callback(info);
     ipcRenderer.on("update:available", handler);
-    return () => ipcRenderer.removeListener("update:available", handler);
+    return () => ipcRenderer.off("update:available", handler);
   },
   onUpdateNotAvailable: (callback: () => void) => {
     const handler = () => callback();
     ipcRenderer.on("update:not-available", handler);
-    return () => ipcRenderer.removeListener("update:not-available", handler);
+    return () => ipcRenderer.off("update:not-available", handler);
   },
   onUpdateProgress: (
     callback: (progress: {
@@ -55,23 +55,23 @@ contextBridge.exposeInMainWorld("desktopApi", {
       },
     ) => callback(progress);
     ipcRenderer.on("update:progress", handler);
-    return () => ipcRenderer.removeListener("update:progress", handler);
+    return () => ipcRenderer.off("update:progress", handler);
   },
   onUpdateDownloaded: (callback: (info: { version: string }) => void) => {
     const handler = (_event: unknown, info: { version: string }) =>
       callback(info);
     ipcRenderer.on("update:downloaded", handler);
-    return () => ipcRenderer.removeListener("update:downloaded", handler);
+    return () => ipcRenderer.off("update:downloaded", handler);
   },
   onUpdateError: (callback: (error: string) => void) => {
     const handler = (_event: unknown, error: string) => callback(error);
     ipcRenderer.on("update:error", handler);
-    return () => ipcRenderer.removeListener("update:error", handler);
+    return () => ipcRenderer.off("update:error", handler);
   },
   onUpdateManualCheck: (callback: () => void) => {
     const handler = () => callback();
     ipcRenderer.on("update:manual-check", handler);
-    return () => ipcRenderer.removeListener("update:manual-check", handler);
+    return () => ipcRenderer.off("update:manual-check", handler);
   },
 
   // Window controls
@@ -89,14 +89,13 @@ contextBridge.exposeInMainWorld("desktopApi", {
     const handler = (_event: unknown, isFullscreen: boolean) =>
       callback(isFullscreen);
     ipcRenderer.on("window:fullscreen-change", handler);
-    return () =>
-      ipcRenderer.removeListener("window:fullscreen-change", handler);
+    return () => ipcRenderer.off("window:fullscreen-change", handler);
   },
   onFocusChange: (callback: (isFocused: boolean) => void) => {
     const handler = (_event: unknown, isFocused: boolean) =>
       callback(isFocused);
     ipcRenderer.on("window:focus-change", handler);
-    return () => ipcRenderer.removeListener("window:focus-change", handler);
+    return () => ipcRenderer.off("window:focus-change", handler);
   },
 
   // Zoom controls
@@ -125,7 +124,7 @@ contextBridge.exposeInMainWorld("desktopApi", {
       data: { chatId?: string; subChatId?: string },
     ) => callback(data);
     ipcRenderer.on("notification:clicked", handler);
-    return () => ipcRenderer.removeListener("notification:clicked", handler);
+    return () => ipcRenderer.off("notification:clicked", handler);
   },
   openExternal: (url: string) => ipcRenderer.invoke("shell:open-external", url),
 
@@ -137,7 +136,7 @@ contextBridge.exposeInMainWorld("desktopApi", {
   onShortcutNewAgent: (callback: () => void) => {
     const handler = () => callback();
     ipcRenderer.on("shortcut:new-agent", handler);
-    return () => ipcRenderer.removeListener("shortcut:new-agent", handler);
+    return () => ipcRenderer.off("shortcut:new-agent", handler);
   },
 
   // File change events (from Claude Write/Edit tools)
@@ -153,7 +152,7 @@ contextBridge.exposeInMainWorld("desktopApi", {
       data: { filePath: string; type: string; subChatId: string },
     ) => callback(data);
     ipcRenderer.on("file-changed", handler);
-    return () => ipcRenderer.removeListener("file-changed", handler);
+    return () => ipcRenderer.off("file-changed", handler);
   },
 
   // Auth stubs (auth is handled by Claude Code CLI)

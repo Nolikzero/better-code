@@ -37,7 +37,7 @@ export function MultiSelectFooter({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 8 }}
           transition={{ duration: 0 }}
-          className="flex-shrink-0 p-2 bg-background space-y-2"
+          className="shrink-0 p-2 bg-background space-y-2"
         >
           <div className="flex items-center justify-between px-1">
             <span className="text-xs text-muted-foreground">

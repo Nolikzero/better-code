@@ -55,12 +55,15 @@ interface AgentPlanToolProps {
 const StepStatusIcon = ({
   status,
   isPending,
-}: { status: PlanStep["status"]; isPending?: boolean }) => {
+}: {
+  status: PlanStep["status"];
+  isPending?: boolean;
+}) => {
   // During loading, show spinner for in_progress items
   if (isPending && status === "in_progress") {
     return (
       <div
-        className="w-3.5 h-3.5 rounded-full flex items-center justify-center flex-shrink-0"
+        className="w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0"
         style={{ border: "0.5px solid hsl(var(--muted-foreground) / 0.3)" }}
       >
         <IconSpinner className="w-2.5 h-2.5" />
@@ -72,7 +75,7 @@ const StepStatusIcon = ({
     case "completed":
       return (
         <div
-          className="w-3.5 h-3.5 rounded-full bg-muted flex items-center justify-center flex-shrink-0"
+          className="w-3.5 h-3.5 rounded-full bg-muted flex items-center justify-center shrink-0"
           style={{ border: "0.5px solid hsl(var(--border))" }}
         >
           <CheckIcon className="w-2 h-2 text-muted-foreground" />
@@ -81,7 +84,7 @@ const StepStatusIcon = ({
     case "in_progress":
       return (
         <div
-          className="w-3.5 h-3.5 rounded-full flex items-center justify-center flex-shrink-0"
+          className="w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0"
           style={{ border: "0.5px solid hsl(var(--muted-foreground) / 0.3)" }}
         >
           <IconSpinner className="w-2.5 h-2.5" />
@@ -90,7 +93,7 @@ const StepStatusIcon = ({
     case "skipped":
       return (
         <div
-          className="w-3.5 h-3.5 rounded-full bg-muted flex items-center justify-center flex-shrink-0"
+          className="w-3.5 h-3.5 rounded-full bg-muted flex items-center justify-center shrink-0"
           style={{ border: "0.5px solid hsl(var(--border))" }}
         >
           <SkipForward className="w-2 h-2 text-muted-foreground" />
@@ -99,7 +102,7 @@ const StepStatusIcon = ({
     default:
       return (
         <div
-          className="w-3.5 h-3.5 rounded-full flex items-center justify-center flex-shrink-0"
+          className="w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0"
           style={{ border: "0.5px solid hsl(var(--muted-foreground) / 0.3)" }}
         />
       );
@@ -108,7 +111,9 @@ const StepStatusIcon = ({
 
 const ComplexityBadge = ({
   complexity,
-}: { complexity?: "low" | "medium" | "high" }) => {
+}: {
+  complexity?: "low" | "medium" | "high";
+}) => {
   if (!complexity) return null;
 
   return (
@@ -174,7 +179,7 @@ export const AgentPlanTool = memo(function AgentPlanTool({
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex items-center gap-2 min-w-0 flex-1">
-          <PlanningIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+          <PlanningIcon className="w-4 h-4 text-muted-foreground shrink-0" />
           <div className="flex flex-col min-w-0 flex-1">
             {isPending ? (
               <TextShimmer
@@ -198,7 +203,7 @@ export const AgentPlanTool = memo(function AgentPlanTool({
         </div>
 
         {/* Right side */}
-        <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+        <div className="flex items-center gap-2 shrink-0 ml-2">
           {isPending && <IconSpinner className="w-3 h-3" />}
 
           {/* Progress indicator */}

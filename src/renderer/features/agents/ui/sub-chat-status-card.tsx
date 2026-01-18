@@ -9,10 +9,10 @@ import { useFileChangeListener } from "../../../lib/hooks/use-file-change-listen
 import { trpc } from "../../../lib/trpc";
 import { cn } from "../../../lib/utils";
 import {
-  type SubChatFileChange,
   agentsFocusedDiffFileAtom,
   diffSidebarOpenAtomFamily,
   filteredDiffFilesAtom,
+  type SubChatFileChange,
 } from "../atoms";
 import { getFileIconByExtension } from "../mentions";
 
@@ -173,18 +173,18 @@ export const SubChatStatusCard = memo(function SubChatStatusCard({
                     onClick={handleFileClick}
                     onKeyDown={handleKeyDown}
                     aria-label={`View diff for ${file.displayPath}`}
-                    className="flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-muted/50 transition-colors cursor-pointer focus:outline-none rounded-sm"
+                    className="flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-muted/50 transition-colors cursor-pointer focus:outline-hidden rounded-xs"
                   >
                     {FileIcon && (
-                      <FileIcon className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
+                      <FileIcon className="w-4 h-4 shrink-0 text-muted-foreground" />
                     )}
                     <span className="truncate flex-1 text-foreground">
                       {file.displayPath}
                     </span>
-                    <span className="flex-shrink-0 text-green-600 dark:text-green-400">
+                    <span className="shrink-0 text-green-600 dark:text-green-400">
                       +{file.additions}
                     </span>
-                    <span className="flex-shrink-0 text-red-600 dark:text-red-400">
+                    <span className="shrink-0 text-red-600 dark:text-red-400">
                       -{file.deletions}
                     </span>
                   </div>
@@ -220,7 +220,7 @@ export const SubChatStatusCard = memo(function SubChatStatusCard({
         className={cn(
           "flex items-center justify-between pr-1 pl-3 h-8",
           uncommittedFiles.length > 0 &&
-            "cursor-pointer hover:bg-muted/50 transition-colors duration-150 focus:outline-none rounded-sm",
+            "cursor-pointer hover:bg-muted/50 transition-colors duration-150 focus:outline-hidden rounded-xs",
         )}
       >
         <div className="flex items-center gap-2 text-xs flex-1 min-w-0">
@@ -262,7 +262,7 @@ export const SubChatStatusCard = memo(function SubChatStatusCard({
         </div>
 
         {/* Right side: buttons */}
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           {isStreaming && onStop && (
             <Button
               variant="ghost"

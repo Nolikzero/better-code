@@ -1,11 +1,12 @@
 // Re-export shared types for backward compatibility
 export type {
-  ProviderId,
-  ProviderConfig,
   AuthStatus,
-  ProviderStatus,
+  ProviderConfig,
+  ProviderId,
   ProviderSpecificConfig,
+  ProviderStatus,
 } from "@shared/types";
+
 // Re-export message types
 
 // Import types needed for local interfaces
@@ -18,8 +19,8 @@ import type {
   ProviderSpecificConfig,
   ReasoningEffort,
   SandboxMode,
+  UIMessageChunk,
 } from "@shared/types";
-import type { UIMessageChunk } from "@shared/types";
 
 // Chat session options (provider-agnostic, main-process specific due to AbortController)
 export interface ChatSessionOptions {

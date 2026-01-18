@@ -21,4 +21,4 @@ export function FolderOpenIcon({ className }: { className?: string }) {
 }
 
 // Alias for backwards compatibility
-const FolderIcon = FolderOpenIcon;
+const _FolderIcon = FolderOpenIcon;

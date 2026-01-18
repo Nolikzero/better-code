@@ -33,14 +33,14 @@ export function isMacOS(): boolean {
 /**
  * Check if running on Windows
  */
-function isWindows(): boolean {
+function _isWindows(): boolean {
   return getPlatform() === "win32";
 }
 
 /**
  * Check if running on Linux
  */
-function isLinux(): boolean {
+function _isLinux(): boolean {
   return getPlatform() === "linux";
 }
 
@@ -52,7 +52,7 @@ function isLinux(): boolean {
  * @param webShortcut - Shortcut string for web browser (e.g., "⌥⌘N")
  * @param desktopShortcut - Shortcut string for desktop app (e.g., "⌘N")
  */
-function getShortcutDisplay(
+function _getShortcutDisplay(
   webShortcut: string,
   desktopShortcut: string,
 ): string {
@@ -65,7 +65,7 @@ function getShortcutDisplay(
  * @param webHotkey - Hotkey for web browser (e.g., "opt+cmd+n")
  * @param desktopHotkey - Hotkey for desktop app (e.g., "cmd+n")
  */
-function getHotkey(webHotkey: string, desktopHotkey: string): string {
+function _getHotkey(webHotkey: string, desktopHotkey: string): string {
   return isDesktopApp() ? desktopHotkey : webHotkey;
 }
 
@@ -159,14 +159,14 @@ export function getShortcutKey(key: ShortcutKey): string {
 /**
  * Get hotkey string for the current platform
  */
-function getShortcutHotkey(key: ShortcutKey): string {
+function _getShortcutHotkey(key: ShortcutKey): string {
   return getShortcut(key).hotkey;
 }
 
 /**
  * React hook to get platform-aware shortcut (re-renders on mount)
  */
-function useShortcut(key: ShortcutKey): {
+function _useShortcut(key: ShortcutKey): {
   hotkey: string;
   display: string;
 } {

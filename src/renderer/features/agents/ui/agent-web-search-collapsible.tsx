@@ -65,7 +65,7 @@ export const AgentWebSearchCollapsible = memo(
         >
           <div className="flex-1 min-w-0 flex items-center gap-1">
             <div className="text-xs flex items-center gap-1.5 min-w-0">
-              <span className="font-medium whitespace-nowrap flex-shrink-0 text-muted-foreground">
+              <span className="font-medium whitespace-nowrap shrink-0 text-muted-foreground">
                 {isStreaming ? "Searching web" : "Searched web"}
               </span>
               {/* Query preview when collapsed */}
@@ -74,7 +74,7 @@ export const AgentWebSearchCollapsible = memo(
               </span>
               {/* Result count */}
               {!isStreaming && hasResults && (
-                <span className="text-muted-foreground/60 whitespace-nowrap flex-shrink-0">
+                <span className="text-muted-foreground/60 whitespace-nowrap shrink-0">
                   · {resultCount} {resultCount === 1 ? "result" : "results"}
                 </span>
               )}
@@ -82,7 +82,7 @@ export const AgentWebSearchCollapsible = memo(
               {hasResults && !isPending && (
                 <ChevronRight
                   className={cn(
-                    "w-3.5 h-3.5 text-muted-foreground/60 transition-transform duration-200 ease-out flex-shrink-0",
+                    "w-3.5 h-3.5 text-muted-foreground/60 transition-transform duration-200 ease-out shrink-0",
                     isExpanded && "rotate-90",
                     !isExpanded && "opacity-0 group-hover:opacity-100",
                   )}
@@ -104,7 +104,7 @@ export const AgentWebSearchCollapsible = memo(
                   rel="noopener noreferrer"
                   className="flex items-start gap-1.5 px-2 py-1 rounded hover:bg-muted/50 transition-colors group/link"
                 >
-                  <ExternalLinkIcon className="w-3 h-3 mt-0.5 flex-shrink-0 text-muted-foreground group-hover/link:text-foreground transition-colors" />
+                  <ExternalLinkIcon className="w-3 h-3 mt-0.5 shrink-0 text-muted-foreground group-hover/link:text-foreground transition-colors" />
                   <div className="min-w-0 flex-1">
                     <div className="text-xs text-foreground truncate">
                       {result.title}

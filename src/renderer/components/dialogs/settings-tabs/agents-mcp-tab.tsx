@@ -30,7 +30,7 @@ function StatusDot({ status }: { status: string }) {
   return (
     <span
       className={cn(
-        "w-2 h-2 rounded-full flex-shrink-0",
+        "w-2 h-2 rounded-full shrink-0",
         status === "connected" && "bg-foreground",
         status !== "connected" && "bg-muted-foreground/50",
         status === "pending" && "animate-pulse",
@@ -83,7 +83,7 @@ function ServerRow({ server, tools, isExpanded, onToggle }: ServerRowProps) {
         {/* Expand chevron */}
         <ChevronRight
           className={cn(
-            "h-3.5 w-3.5 text-muted-foreground transition-transform flex-shrink-0",
+            "h-3.5 w-3.5 text-muted-foreground transition-transform shrink-0",
             isExpanded && "rotate-90",
             !hasTools && "opacity-0",
           )}
@@ -112,7 +112,7 @@ function ServerRow({ server, tools, isExpanded, onToggle }: ServerRowProps) {
         </div>
 
         {/* Status / tool count */}
-        <span className="text-xs text-muted-foreground flex-shrink-0">
+        <span className="text-xs text-muted-foreground shrink-0">
           {server.status === "connected" && hasTools
             ? `${tools.length} tool${tools.length !== 1 ? "s" : ""}`
             : getStatusText(server.status)}

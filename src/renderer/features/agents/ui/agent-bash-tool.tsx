@@ -93,7 +93,7 @@ export const AgentBashTool = memo(function AgentBashTool({
       <div className="flex items-start gap-1.5 rounded-md py-0.5 px-2">
         <div className="flex-1 min-w-0 flex items-center gap-1.5">
           <div className="text-xs text-muted-foreground flex items-center gap-1.5 min-w-0">
-            <span className="font-medium whitespace-nowrap flex-shrink-0">
+            <span className="font-medium whitespace-nowrap shrink-0">
               <TextShimmer
                 as="span"
                 duration={1.2}
@@ -133,7 +133,7 @@ export const AgentBashTool = memo(function AgentBashTool({
         </span>
 
         {/* Status and expand button */}
-        <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+        <div className="flex items-center gap-2 shrink-0 ml-2">
           {/* Status - min-width ensures no layout shift */}
           <div className="flex items-center gap-1 text-xs text-muted-foreground min-w-[60px] justify-end">
             {isPending ? (

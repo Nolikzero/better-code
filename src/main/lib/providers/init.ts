@@ -41,13 +41,13 @@ export async function initializeProviders(): Promise<void> {
 /**
  * Check if providers have been initialized
  */
-function isProvidersInitialized(): boolean {
+function _isProvidersInitialized(): boolean {
   return initialized;
 }
 
 /**
  * Reset initialization state (for testing)
  */
-function resetProviderInitialization(): void {
+function _resetProviderInitialization(): void {
   initialized = false;
 }

@@ -9,7 +9,9 @@ import { FolderTree } from "./folder-tree";
  */
 export function MentionTooltipContent({
   option,
-}: { option: FileMentionOption }) {
+}: {
+  option: FileMentionOption;
+}) {
   if (option.type === "folder") {
     return <FolderTree path={option.path} />;
   }

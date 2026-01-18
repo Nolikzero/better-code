@@ -9,9 +9,11 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "../../../components/ui/hover-card";
+
 // import { agentsSettingsDialogOpenAtom, agentsSettingsDialogActiveTabAtom } from "@/lib/atoms/agents-settings-dialog"
 const agentsSettingsDialogOpenAtom = atom(false);
 const agentsSettingsDialogActiveTabAtom = atom<string | null>(null);
+
 import { GitHubIcon } from "../../../icons";
 
 interface PreviewSetupHoverCardProps {

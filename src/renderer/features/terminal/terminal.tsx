@@ -1,13 +1,12 @@
-import { fullThemeDataAtom } from "@/lib/atoms";
-import { trpc } from "@/lib/trpc";
 import type { FitAddon } from "@xterm/addon-fit";
 import type { SearchAddon } from "@xterm/addon-search";
 import type { SerializeAddon } from "@xterm/addon-serialize";
+import type { Terminal as XTerm } from "@xterm/xterm";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useTheme } from "next-themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Terminal as XTerm } from "xterm";
-import { TerminalSearch } from "./TerminalSearch";
+import { fullThemeDataAtom } from "@/lib/atoms";
+import { trpc } from "@/lib/trpc";
 import { terminalCwdAtom } from "./atoms";
 import { sanitizeForTitle } from "./commandBuffer";
 import { getTerminalThemeFromVSCode } from "./config";
@@ -21,9 +20,10 @@ import {
   setupResizeHandlers,
 } from "./helpers";
 import { parseCwd } from "./parseCwd";
+import { TerminalSearch } from "./TerminalSearch";
 import type { TerminalProps, TerminalStreamEvent } from "./types";
 import { shellEscapePaths } from "./utils";
-import "xterm/css/xterm.css";
+import "@xterm/xterm/css/xterm.css";
 
 export function Terminal({
   paneId,

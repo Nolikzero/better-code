@@ -165,7 +165,7 @@ export function ModeToggleDropdown({
           >
             <div
               data-tooltip="true"
-              className="relative rounded-sm bg-popover px-2.5 py-1.5 text-xs text-popover-foreground dark max-w-[150px]"
+              className="relative rounded-xs bg-popover px-2.5 py-1.5 text-xs text-popover-foreground dark max-w-[150px]"
             >
               <span>
                 {modeTooltip.mode === "agent"

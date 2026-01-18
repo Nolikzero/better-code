@@ -4,6 +4,11 @@ import { useEffect, useState } from "react";
 import {
   APPROVAL_POLICIES,
   type ApprovalPolicy,
+  codexApprovalPolicyAtom,
+  codexReasoningEffortAtom,
+  codexSandboxModeAtom,
+  defaultProviderIdAtom,
+  lastSelectedModelByProviderAtom,
   PROVIDER_INFO,
   PROVIDER_MODELS,
   type ProviderId,
@@ -11,11 +16,6 @@ import {
   type ReasoningEffort,
   SANDBOX_MODES,
   type SandboxMode,
-  codexApprovalPolicyAtom,
-  codexReasoningEffortAtom,
-  codexSandboxModeAtom,
-  defaultProviderIdAtom,
-  lastSelectedModelByProviderAtom,
 } from "../../../lib/atoms";
 import { trpc } from "../../../lib/trpc";
 import { Badge } from "../../ui/badge";
@@ -282,7 +282,7 @@ export function AgentsProviderTab() {
                 value={sandboxMode}
                 onValueChange={(value: SandboxMode) => setSandboxMode(value)}
               >
-                <SelectTrigger className="w-[160px] flex-shrink-0">
+                <SelectTrigger className="w-[160px] shrink-0">
                   <span className="text-xs">
                     {SANDBOX_MODES.find((m) => m.id === sandboxMode)?.name}
                   </span>
@@ -305,7 +305,7 @@ export function AgentsProviderTab() {
             {/* Warning for Full Access */}
             {sandboxMode === "danger-full-access" && (
               <div className="flex items-start gap-2 p-2 bg-red-500/10 border border-red-500/20 rounded text-xs text-red-500">
-                <ShieldAlert className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
                 <span>
                   Full access mode allows unrestricted system access. Only use
                   in isolated environments.
@@ -328,7 +328,7 @@ export function AgentsProviderTab() {
                 }
                 disabled
               >
-                <SelectTrigger className="w-[160px] flex-shrink-0" disabled>
+                <SelectTrigger className="w-[160px] shrink-0" disabled>
                   <span className="text-xs">Auto</span>
                 </SelectTrigger>
                 <SelectContent>
@@ -360,7 +360,7 @@ export function AgentsProviderTab() {
                   setReasoningEffort(value)
                 }
               >
-                <SelectTrigger className="w-[160px] flex-shrink-0">
+                <SelectTrigger className="w-[160px] shrink-0">
                   <span className="text-xs">
                     {
                       REASONING_EFFORTS.find((e) => e.id === reasoningEffort)

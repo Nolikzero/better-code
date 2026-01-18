@@ -8,9 +8,9 @@ import { createPortal } from "react-dom";
 import { AgentIcon, IconSpinner, PlanIcon } from "../../../components/ui/icons";
 import { cn } from "../../../lib/utils";
 import {
-  type SubChatFileChange,
   agentsSubChatUnseenChangesAtom,
   loadingSubChatsAtom,
+  type SubChatFileChange,
   subChatFilesAtom,
 } from "../atoms";
 import type { SubChatMeta } from "../stores/sub-chat-store";
@@ -53,13 +53,13 @@ function SubChatCard({
   return (
     <div
       className={cn(
-        "relative rounded-sm overflow-hidden min-w-[160px] max-w-[180px] p-2 cursor-pointer",
+        "relative rounded-xs overflow-hidden min-w-[160px] max-w-[180px] p-2 cursor-pointer",
         isSelected ? "bg-primary shadow-lg" : "bg-transparent",
       )}
     >
       <div className="flex items-start gap-2.5">
         {/* Mode icon with badge */}
-        <div className="pt-0.5 relative flex-shrink-0 h-4 w-4">
+        <div className="pt-0.5 relative shrink-0 h-4 w-4">
           {mode === "plan" ? (
             <PlanIcon
               className={cn(
@@ -179,8 +179,6 @@ export function SubChatsQuickSwitchDialog({
   subChats,
   selectedIndex,
 }: SubChatsQuickSwitchDialogProps) {
-  if (typeof window === "undefined") return null;
-
   // Derive loading sub-chat IDs
   const loadingSubChats = useAtomValue(loadingSubChatsAtom);
   const loadingSubChatIds = useMemo(
@@ -193,6 +191,8 @@ export function SubChatsQuickSwitchDialog({
 
   // File changes per sub-chat
   const subChatFiles = useAtomValue(subChatFilesAtom);
+
+  if (typeof window === "undefined") return null;
 
   return createPortal(
     <AnimatePresence>
@@ -207,14 +207,14 @@ export function SubChatsQuickSwitchDialog({
               <div className="max-w-5xl mx-auto">
                 {/* Sub-chat List or Empty State */}
                 {subChats.length === 0 ? (
-                  <div className="px-4 py-12 text-center bg-background rounded-sm border-[0.5px]">
+                  <div className="px-4 py-12 text-center bg-background rounded-xs border-[0.5px]">
                     <p className="text-sm text-muted-foreground">
                       No chats in this agent
                     </p>
                   </div>
                 ) : (
                   <div
-                    className="flex gap-3 overflow-x-auto p-3 bg-background rounded-sm border-[0.5px]"
+                    className="flex gap-3 overflow-x-auto p-3 bg-background rounded-xs border-[0.5px]"
                     style={{
                       boxShadow:
                         "0 8px 32px 0 rgba(0,0,0,0.07), 0 0px 16px 0 rgba(0,0,0,0.04), 0 -8px 24px 0 rgba(0,0,0,0.03)",

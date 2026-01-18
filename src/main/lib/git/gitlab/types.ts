@@ -62,12 +62,10 @@ export const GLRepoResponseSchema = z.object({
 });
 
 // GitLab CI status response from `glab ci status --json`
-const GLCIStatusSchema = z.object({
+const _GLCIStatusSchema = z.object({
   status: z.string(),
   jobs: z.array(GLPipelineJobSchema).optional(),
 });
 
 export type GLMRResponse = z.infer<typeof GLMRResponseSchema>;
 export type GLPipelineJob = z.infer<typeof GLPipelineJobSchema>;
-type GLPipeline = z.infer<typeof GLPipelineSchema>;
-type GLRepoResponse = z.infer<typeof GLRepoResponseSchema>;

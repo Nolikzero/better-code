@@ -48,7 +48,7 @@ function formatDuration(ms: number): string {
 export const AgentMessageUsage = memo(function AgentMessageUsage({
   metadata,
   isStreaming = false,
-  isMobile = false,
+  isMobile: _isMobile = false,
 }: AgentMessageUsageProps) {
   if (!metadata || isStreaming) return null;
 
@@ -83,7 +83,7 @@ export const AgentMessageUsage = memo(function AgentMessageUsage({
       <HoverCardContent
         sideOffset={4}
         align="end"
-        className="w-auto pt-2 px-2 pb-0 shadow-sm rounded-lg border-border/50 overflow-hidden"
+        className="w-auto pt-2 px-2 pb-0 shadow-xs rounded-lg border-border/50 overflow-hidden"
       >
         <div className="space-y-1.5 pb-2">
           {/* Status & Duration group */}

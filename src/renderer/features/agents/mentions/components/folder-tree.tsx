@@ -27,7 +27,7 @@ export function FolderTree({ path }: { path: string }) {
           >
             <FolderOpenIcon
               className={cn(
-                "h-3.5 w-3.5 flex-shrink-0",
+                "h-3.5 w-3.5 shrink-0",
                 isLast ? "text-foreground/70" : "text-muted-foreground",
               )}
             />

@@ -52,18 +52,16 @@ function ChatIconWithBadge({
         <img
           src={`https://github.com/${gitOwner}.png?size=64`}
           alt={gitOwner}
-          className="h-4 w-4 rounded-sm flex-shrink-0"
+          className="h-4 w-4 rounded-xs shrink-0"
         />
       );
     }
 
-    return (
-      <GitHubLogo className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-    );
+    return <GitHubLogo className="h-4 w-4 shrink-0 text-muted-foreground" />;
   };
 
   return (
-    <div className="relative flex-shrink-0 h-4 w-4">
+    <div className="relative shrink-0 h-4 w-4">
       {renderMainIcon()}
       {/* Badge in bottom-right corner */}
       <div
@@ -132,7 +130,7 @@ export function AgentChatCard({
       <div
         onClick={onClick}
         className={cn(
-          "relative rounded-sm overflow-hidden min-w-[160px] max-w-[180px] p-2 cursor-pointer",
+          "relative rounded-xs overflow-hidden min-w-[160px] max-w-[180px] p-2 cursor-pointer",
           isSelected ? "bg-primary shadow-lg" : "bg-transparent",
         )}
       >

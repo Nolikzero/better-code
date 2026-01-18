@@ -42,7 +42,7 @@ export function createFileIconElement(
           ? ToolIcon
           : type === "folder"
             ? FolderOpenIcon
-            : getFileIconByExtension(filename) ?? FilesIcon;
+            : (getFileIconByExtension(filename) ?? FilesIcon);
   // Note: "category" type will use the default file icon based on filename, which is fine since
   // categories won't be inserted as mentions in the editor (they navigate to subpages)
 
@@ -55,7 +55,7 @@ export function createFileIconElement(
 
   // Create React element
   const iconElement = createElement(IconComponent, {
-    className: "h-3 w-3 text-muted-foreground flex-shrink-0",
+    className: "h-3 w-3 text-muted-foreground shrink-0",
   });
 
   const root = createRoot(container);
@@ -88,8 +88,7 @@ export function createFileIconElement(
     fallbackSvg.setAttribute("stroke-width", "2");
     fallbackSvg.setAttribute("stroke-linecap", "round");
     fallbackSvg.setAttribute("stroke-linejoin", "round");
-    fallbackSvg.className.baseVal =
-      "h-3 w-3 text-muted-foreground flex-shrink-0";
+    fallbackSvg.className.baseVal = "h-3 w-3 text-muted-foreground shrink-0";
 
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
     path.setAttribute(
@@ -110,10 +109,7 @@ export function createFileIconElement(
 
   // Clone the SVG to avoid issues
   const clonedSvg = svgElement.cloneNode(true) as SVGSVGElement;
-  clonedSvg.setAttribute(
-    "class",
-    "h-3 w-3 text-muted-foreground flex-shrink-0",
-  );
+  clonedSvg.setAttribute("class", "h-3 w-3 text-muted-foreground shrink-0");
 
   return clonedSvg;
 }

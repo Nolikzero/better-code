@@ -12,7 +12,11 @@ export type FileStatus =
   | "untracked";
 
 /** Change categories for organizing the sidebar */
-type ChangeCategory = "against-base" | "committed" | "staged" | "unstaged";
+export type ChangeCategory =
+  | "against-base"
+  | "committed"
+  | "staged"
+  | "unstaged";
 
 /** A changed file entry */
 export interface ChangedFile {
@@ -48,17 +52,6 @@ export interface GitChangesStatus {
   pushCount: number; // Commits to push to tracking branch
   pullCount: number; // Commits to pull from tracking branch
   hasUpstream: boolean; // Whether branch has an upstream tracking branch
-}
-
-/** Diff view mode toggle */
-type DiffViewMode = "side-by-side" | "inline";
-
-/** Input for getting file diff */
-interface FileDiffInput {
-  worktreePath: string;
-  filePath: string;
-  category: ChangeCategory;
-  commitHash?: string; // For committed category: which commit to show
 }
 
 /** File contents for Monaco diff editor */

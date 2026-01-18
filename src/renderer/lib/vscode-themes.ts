@@ -75,14 +75,14 @@ const VSCODE_BUILTIN_THEMES: VSCodeTheme[] = [
 /**
  * Get all themes filtered by type
  */
-function getThemesByType(type: "light" | "dark"): VSCodeTheme[] {
+function _getThemesByType(type: "light" | "dark"): VSCodeTheme[] {
   return VSCODE_BUILTIN_THEMES.filter((theme) => theme.type === type);
 }
 
 /**
  * Get theme by ID
  */
-function getThemeById(id: string): VSCodeTheme | undefined {
+function _getThemeById(id: string): VSCodeTheme | undefined {
   return VSCODE_BUILTIN_THEMES.find((theme) => theme.id === id);
 }
 

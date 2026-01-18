@@ -266,12 +266,12 @@ export function ArchivePopover({ trigger }: ArchivePopoverProps) {
                           <img
                             src={avatarUrl}
                             alt={gitOwner || "GitHub"}
-                            className="h-4 w-4 rounded-sm flex-shrink-0"
+                            className="h-4 w-4 rounded-xs shrink-0"
                           />
                         ) : (
                           <GitHubLogo
                             className={cn(
-                              "h-4 w-4 flex-shrink-0 transition-colors duration-150",
+                              "h-4 w-4 shrink-0 transition-colors duration-150",
                               isSelected
                                 ? "text-foreground"
                                 : "text-muted-foreground",
@@ -281,7 +281,7 @@ export function ArchivePopover({ trigger }: ArchivePopoverProps) {
                       ) : (
                         <GitHubLogo
                           className={cn(
-                            "h-4 w-4 flex-shrink-0 transition-colors duration-150",
+                            "h-4 w-4 shrink-0 transition-colors duration-150",
                             isSelected
                               ? "text-foreground"
                               : "text-muted-foreground",
@@ -305,7 +305,7 @@ export function ArchivePopover({ trigger }: ArchivePopoverProps) {
                             e.stopPropagation();
                             restoreMutation.mutate({ id: chat.id });
                           }}
-                          className="flex-shrink-0 text-muted-foreground hover:text-foreground active:text-foreground transition-[color,transform] duration-150 ease-out active:scale-[0.97]"
+                          className="shrink-0 text-muted-foreground hover:text-foreground active:text-foreground transition-[color,transform] duration-150 ease-out active:scale-[0.97]"
                           aria-label="Restore chat"
                         >
                           <IconTextUndo className="h-3 w-3" />
@@ -316,7 +316,7 @@ export function ArchivePopover({ trigger }: ArchivePopoverProps) {
                         <span className="text-[11px] text-muted-foreground/60 truncate">
                           {displayText}
                         </span>
-                        <span className="text-[11px] text-muted-foreground/60 flex-shrink-0">
+                        <span className="text-[11px] text-muted-foreground/60 shrink-0">
                           {formatTime(
                             chat.updatedAt?.toISOString() ??
                               new Date().toISOString(),

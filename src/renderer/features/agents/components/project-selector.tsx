@@ -37,14 +37,12 @@ function ProjectIcon({
       <img
         src={`https://github.com/${gitOwner}.png?size=64`}
         alt={gitOwner}
-        className={`${className} rounded-sm flex-shrink-0`}
+        className={`${className} rounded-xs shrink-0`}
       />
     );
   }
   return (
-    <FolderOpen
-      className={`${className} text-muted-foreground flex-shrink-0`}
-    />
+    <FolderOpen className={`${className} text-muted-foreground shrink-0`} />
   );
 }
 
@@ -224,7 +222,7 @@ export function ProjectSelector() {
             <button
               onClick={handleOpenFolder}
               disabled={openFolder.isPending}
-              className="flex items-center gap-1.5 min-h-[32px] py-[5px] px-1.5 mx-1 w-[calc(100%-8px)] rounded-md text-sm cursor-default select-none outline-none dark:hover:bg-neutral-800 hover:text-foreground transition-colors"
+              className="flex items-center gap-1.5 min-h-[32px] py-[5px] px-1.5 mx-1 w-[calc(100%-8px)] rounded-md text-sm cursor-default select-none outline-hidden dark:hover:bg-neutral-800 hover:text-foreground transition-colors"
             >
               <FolderPlusIcon className="h-4 w-4 text-muted-foreground" />
               <span>

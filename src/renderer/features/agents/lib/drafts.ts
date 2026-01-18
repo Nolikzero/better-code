@@ -29,7 +29,7 @@ export interface NewChatDraft {
 }
 
 // SubChatDraft uses key format: "chatId:subChatId"
-type SubChatDraft = DraftContent;
+export type SubChatDraft = DraftContent;
 
 // Raw drafts from localStorage (mixed format)
 type GlobalDraftsRaw = Record<string, DraftContent | NewChatDraft>;
@@ -73,7 +73,7 @@ function isNewChatDraftKey(key: string): boolean {
 }
 
 // Check if a key is a sub-chat draft (contains :)
-function isSubChatDraftKey(key: string): boolean {
+function _isSubChatDraftKey(key: string): boolean {
   return key.includes(":");
 }
 
@@ -94,7 +94,7 @@ function getNewChatDrafts(): NewChatDraft[] {
 }
 
 // Save a new chat draft
-function saveNewChatDraft(
+function _saveNewChatDraft(
   draftId: string,
   text: string,
   project?: DraftProject,
@@ -242,7 +242,7 @@ export function useSubChatDraftsCache(): Record<string, string> {
 /**
  * Hook to get a specific sub-chat draft
  */
-function useSubChatDraft(
+function _useSubChatDraft(
   parentChatId: string | null,
   subChatId: string,
 ): string | null {

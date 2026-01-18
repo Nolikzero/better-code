@@ -1,3 +1,12 @@
+import { X } from "lucide-react";
+import {
+  forwardRef,
+  memo,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { Button } from "@/components/ui/button";
 import {
   ContextMenu,
@@ -13,15 +22,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { X } from "lucide-react";
-import {
-  forwardRef,
-  memo,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
 import type { TerminalInstance } from "./types";
 
 /**
@@ -154,7 +154,7 @@ const TerminalTab = memo(
             onClick={handleClick}
             onDoubleClick={handleDoubleClick}
             className={cn(
-              "group relative flex items-center text-sm rounded-md transition-colors h-6 flex-shrink-0 select-none",
+              "group relative flex items-center text-sm rounded-md transition-colors h-6 shrink-0 select-none",
               !isOnly ? "cursor-pointer" : "cursor-default",
               "outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70",
               "overflow-hidden px-1.5 py-0.5 whitespace-nowrap min-w-[50px] gap-1.5",
@@ -164,7 +164,7 @@ const TerminalTab = memo(
             )}
           >
             {/* Terminal icon */}
-            <div className="flex-shrink-0 w-3.5 h-3.5 flex items-center justify-center">
+            <div className="shrink-0 w-3.5 h-3.5 flex items-center justify-center">
               <CustomTerminalIcon className="w-3.5 h-3.5 text-muted-foreground" />
             </div>
 
@@ -178,7 +178,7 @@ const TerminalTab = memo(
                 onKeyDown={handleKeyDown}
                 onBlur={handleBlur}
                 onClick={(e) => e.stopPropagation()}
-                className="relative z-0 text-left flex-1 min-w-0 pr-1 bg-transparent outline-none border-none text-sm"
+                className="relative z-0 text-left flex-1 min-w-0 pr-1 bg-transparent outline-hidden border-none text-sm"
               />
             ) : (
               <span
@@ -283,7 +283,7 @@ export const TerminalTabs = memo(function TerminalTabs({
   const textRefs = useRef<Map<string, HTMLSpanElement>>(new Map());
   const [truncatedTabs, setTruncatedTabs] = useState<Set<string>>(new Set());
   const [showLeftGradient, setShowLeftGradient] = useState(false);
-  const [showRightGradient, setShowRightGradient] = useState(false);
+  const [_showRightGradient, setShowRightGradient] = useState(false);
   const [editingTerminalId, setEditingTerminalId] = useState<string | null>(
     null,
   );
@@ -387,7 +387,9 @@ export const TerminalTabs = memo(function TerminalTabs({
     checkTruncation();
 
     const resizeObserver = new ResizeObserver(() => checkTruncation());
-    textRefs.current.forEach((el) => el && resizeObserver.observe(el));
+    for (const el of textRefs.current.values()) {
+      if (el) resizeObserver.observe(el);
+    }
 
     return () => resizeObserver.disconnect();
   }, [terminals, activeTerminalId]);

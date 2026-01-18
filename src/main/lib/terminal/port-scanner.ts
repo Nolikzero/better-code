@@ -191,7 +191,7 @@ function getProcessNameWindows(pid: number): string {
 /**
  * Get process name for a PID (cross-platform)
  */
-function getProcessName(pid: number): string {
+function _getProcessName(pid: number): string {
   const platform = os.platform();
 
   if (platform === "win32") {

@@ -85,7 +85,7 @@ export function TerminalSearch({
         onChange={(e) => setQuery(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="Find..."
-        className="w-40 bg-transparent px-2 py-1 text-sm outline-none placeholder:text-muted-foreground"
+        className="w-40 bg-transparent px-2 py-1 text-sm outline-hidden placeholder:text-muted-foreground"
       />
       {matchCount !== null && (
         <span className="px-1 text-xs text-muted-foreground">

@@ -135,9 +135,9 @@ export function DiffSidebar({
         className="flex flex-col h-full min-w-0 overflow-hidden"
       >
         {/* Header with stats, toggle and close button */}
-        <div className="flex items-center justify-between pl-3 pr-1.5 h-10 bg-background flex-shrink-0 border-b border-border/50 overflow-hidden">
+        <div className="flex items-center justify-between pl-3 pr-1.5 h-10 bg-background shrink-0 border-b border-border/50 overflow-hidden">
           {/* Left: Stats - truncates when space is limited */}
-          <div className="flex items-center gap-2 min-w-0 flex-shrink overflow-hidden">
+          <div className="flex items-center gap-2 min-w-0 shrink overflow-hidden">
             {!diffStats.isLoading && diffStats.hasChanges && (
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground whitespace-nowrap overflow-hidden">
                 <span className="font-mono truncate">
@@ -145,7 +145,7 @@ export function DiffSidebar({
                   {diffStats.fileCount !== 1 ? "s" : ""}
                 </span>
                 {(diffStats.additions > 0 || diffStats.deletions > 0) && (
-                  <span className="flex items-center gap-1.5 flex-shrink-0">
+                  <span className="flex items-center gap-1.5 shrink-0">
                     <span className="text-emerald-600 dark:text-emerald-400">
                       +{diffStats.additions}
                     </span>
@@ -158,7 +158,7 @@ export function DiffSidebar({
             )}
           </div>
           {/* Right: Review (when space) + Create PR + View toggle + More menu + Close button */}
-          <div className="flex items-center gap-1 flex-shrink-0">
+          <div className="flex items-center gap-1 shrink-0">
             {/* Review button - visible when sidebar is wide enough (>=420px) */}
             {diffStats.hasChanges && diffSidebarWidth >= 420 && (
               <Tooltip>
@@ -305,7 +305,7 @@ export function DiffSidebar({
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="h-7 w-7 p-0 hover:bg-muted transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] rounded-md flex-shrink-0"
+                    className="h-7 w-7 p-0 hover:bg-muted transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] rounded-md shrink-0"
                   >
                     <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
                   </Button>
@@ -400,7 +400,7 @@ export function DiffSidebar({
             {/* Close button */}
             <Button
               variant="ghost"
-              className="h-7 w-7 p-0 hover:bg-muted transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] rounded-md flex-shrink-0"
+              className="h-7 w-7 p-0 hover:bg-muted transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] rounded-md shrink-0"
               onClick={onClose}
             >
               <IconCloseSidebarRight className="h-4 w-4 text-muted-foreground" />

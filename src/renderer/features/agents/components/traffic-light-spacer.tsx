@@ -14,7 +14,7 @@ export function TrafficLights({
   isFullscreen = null,
   isDesktop = false,
   className = "",
-  onHoverChange,
+  onHoverChange: _onHoverChange,
 }: {
   isHovered?: boolean;
   isFullscreen?: boolean | null;
@@ -150,7 +150,7 @@ export function TrafficLightSpacer({
 /**
  * Wrapper to make child elements non-draggable within a draggable region
  */
-function NoDrag({ children }: { children: React.ReactNode }) {
+function _NoDrag({ children }: { children: React.ReactNode }) {
   return (
     <div
       style={{

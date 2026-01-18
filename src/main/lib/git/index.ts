@@ -13,20 +13,17 @@ import { createStatusRouter } from "./status";
 
 const execAsync = promisify(exec);
 
-// Re-export worktree utilities
-export * from "./worktree";
-
 // Re-export GitHub utilities
 export * from "./github";
-
 // Re-export GitLab utilities
 export * from "./gitlab";
-
 // Re-export provider utilities (excluding CheckItem to avoid conflict with github/types)
 export {
   fetchGitHostStatus,
   getMergeCommand,
 } from "./providers";
+// Re-export worktree utilities
+export * from "./worktree";
 // Re-export types
 
 /**

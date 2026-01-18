@@ -8,8 +8,8 @@ import {
   useState,
 } from "react";
 import {
-  type ScrollPositionData,
   agentsScrollPositionsAtom,
+  type ScrollPositionData,
   scrollPositionsCacheStore,
 } from "../atoms";
 

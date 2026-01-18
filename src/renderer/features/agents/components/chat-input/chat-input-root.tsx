@@ -122,7 +122,7 @@ export function ChatInputRoot({
         >
           <PromptInput
             className={cn(
-              "border bg-input-background relative z-10 p-2 rounded-sm transition-[border-color] duration-150",
+              "border bg-input-background relative z-10 p-2 rounded-xs transition-[border-color] duration-150",
               isDragOver && "border-dashed border-primary/50",
               isFocused && !isDragOver && "border-dashed border-foreground/30",
               className,

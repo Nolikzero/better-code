@@ -188,7 +188,7 @@ const CommandInput = React.forwardRef<HTMLInputElement, CommandInputProps>(
         <input
           ref={inputRef}
           className={cn(
-            "flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
+            "flex-1 bg-transparent text-sm outline-hidden placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
             className,
           )}
           onChange={(e) => {
@@ -258,12 +258,13 @@ interface CommandItemProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const CommandItem = React.forwardRef<HTMLDivElement, CommandItemProps>(
-  ({ className, onSelect, value, onMouseEnter, ...props }, ref) => {
+  ({ className, onSelect, value, onMouseEnter, ...props }, _ref) => {
     const context = React.useContext(CommandContext);
     const itemRef = React.useRef<HTMLDivElement>(null);
+    const generatedId = React.useId();
 
     // Generate a stable value if not provided
-    const itemValue = value || React.useId();
+    const itemValue = value || generatedId;
 
     // Register this item with the Command
     React.useEffect(() => {

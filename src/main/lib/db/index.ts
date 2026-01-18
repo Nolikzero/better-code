@@ -1,10 +1,10 @@
-import { existsSync, mkdirSync } from "fs";
-import { join } from "path";
 import Database from "better-sqlite3";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { app } from "electron";
+import { existsSync, mkdirSync } from "fs";
+import { join } from "path";
 import { computeAllStats } from "./computed-stats";
 import * as schema from "./schema";
 

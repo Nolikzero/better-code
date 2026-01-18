@@ -1,9 +1,8 @@
 "use client";
 
 import * as SelectPrimitive from "@radix-ui/react-select";
-import * as React from "react";
-
 import { Check, ChevronDown, ChevronUp } from "lucide-react";
+import * as React from "react";
 import {
   overlayAnimation,
   overlayContentBase,
@@ -22,7 +21,7 @@ import { cn } from "../../lib/utils";
 
 const Select = SelectPrimitive.Root;
 
-const SelectGroup = SelectPrimitive.Group;
+const _SelectGroup = SelectPrimitive.Group;
 
 const SelectValue = SelectPrimitive.Value;
 
@@ -33,7 +32,7 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex h-9 w-full items-center justify-between gap-2 rounded-sm border border-input bg-background px-3 py-2 text-start text-sm text-foreground shadow-sm focus:border-foreground/30 focus:outline-none focus:ring-[3px] focus:ring-foreground/10 disabled:cursor-not-allowed disabled:opacity-50 data-[placeholder]:text-muted-foreground/70 [&>span]:min-w-0",
+      "flex h-9 w-full items-center justify-between gap-2 rounded-xs border border-input bg-background px-3 py-2 text-start text-sm text-foreground shadow-xs focus:border-foreground/30 focus:outline-hidden focus:ring-[3px] focus:ring-foreground/10 disabled:cursor-not-allowed disabled:opacity-50 data-[placeholder]:text-muted-foreground/70 [&>span]:min-w-0",
       className,
     )}
     {...props}

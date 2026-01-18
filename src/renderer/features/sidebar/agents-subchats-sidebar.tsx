@@ -3,11 +3,11 @@
 import { formatTimeAgo, pluralize } from "@shared/utils";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import React, {
-  useMemo,
-  useState,
   useCallback,
-  useRef,
   useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { toast } from "sonner";
@@ -58,12 +58,10 @@ import {
   toggleSubChatSelectionAtom,
 } from "../../lib/atoms";
 import { api } from "../../lib/mock-api";
-import { trpc } from "../../lib/trpc";
-import { trpcClient } from "../../lib/trpc";
+import { trpc, trpcClient } from "../../lib/trpc";
 import { cn } from "../../lib/utils";
 import { getShortcutKey } from "../../lib/utils/platform";
 import {
-  type UndoItem,
   agentsSubChatUnseenChangesAtom,
   justCreatedIdsAtom,
   loadingSubChatsAtom,
@@ -71,6 +69,7 @@ import {
   previousAgentChatIdAtom,
   selectedAgentChatIdAtom,
   subChatFilesAtom,
+  type UndoItem,
   undoStackAtom,
 } from "../agents/atoms";
 import { AgentsRenameSubChatDialog } from "../agents/components/agents-rename-subchat-dialog";
@@ -198,7 +197,7 @@ export function AgentsSubChatsSidebar({
     showTopGradient,
     showBottomGradient,
     handleScroll,
-    updateGradients: updateScrollGradients,
+    updateGradients: _updateScrollGradients,
   } = useScrollGradients(scrollContainerRef);
   const [archiveAgentDialogOpen, setArchiveAgentDialogOpen] = useState(false);
   const [subChatToArchive, setSubChatToArchive] = useState<SubChatMeta | null>(
@@ -207,7 +206,7 @@ export function AgentsSubChatsSidebar({
 
   // SubChat name tooltip via shared hook
   const {
-    tooltip: subChatTooltip,
+    tooltip: _subChatTooltip,
     nameRefs: subChatNameRefs,
     handleMouseEnter: handleSubChatMouseEnter,
     handleMouseLeave: handleSubChatMouseLeave,
@@ -395,7 +394,9 @@ export function AgentsSubChatsSidebar({
         .slice(currentIndex + 1)
         .map((c) => c.id);
 
-      idsToClose.forEach((id) => state.removeFromOpenSubChats(id));
+      for (const id of idsToClose) {
+        state.removeFromOpenSubChats(id);
+      }
 
       // Add each to unified undo stack for Cmd+Z
       if (parentChatId) {
@@ -424,7 +425,9 @@ export function AgentsSubChatsSidebar({
     (subChatId: string) => {
       const state = useAgentSubChatStore.getState();
       const idsToClose = state.openSubChatIds.filter((id) => id !== subChatId);
-      idsToClose.forEach((id) => state.removeFromOpenSubChats(id));
+      for (const id of idsToClose) {
+        state.removeFromOpenSubChats(id);
+      }
       state.setActiveSubChat(subChatId);
 
       // Add each to unified undo stack for Cmd+Z
@@ -635,7 +638,9 @@ export function AgentsSubChatsSidebar({
       } else {
         // Some tabs remain - just close selected ones
         const state = useAgentSubChatStore.getState();
-        idsToArchive.forEach((id) => state.removeFromOpenSubChats(id));
+        for (const id of idsToArchive) {
+          state.removeFromOpenSubChats(id);
+        }
         clearSubChatSelection();
 
         // Add each to unified undo stack for Cmd+Z
@@ -737,31 +742,27 @@ export function AgentsSubChatsSidebar({
 
   // Multi-select hotkeys
   // X to toggle selection of hovered or focused chat
-  useHotkeys(
-    "x",
-    () => {
-      if (!filteredSubChats || filteredSubChats.length === 0) return;
+  useHotkeys("x", () => {
+    if (!filteredSubChats || filteredSubChats.length === 0) return;
 
-      // Prefer hovered, then focused
-      const targetIndex =
-        hoveredChatIndex >= 0
-          ? hoveredChatIndex
-          : focusedChatIndex >= 0
-            ? focusedChatIndex
-            : -1;
+    // Prefer hovered, then focused
+    const targetIndex =
+      hoveredChatIndex >= 0
+        ? hoveredChatIndex
+        : focusedChatIndex >= 0
+          ? focusedChatIndex
+          : -1;
 
-      if (targetIndex >= 0 && targetIndex < filteredSubChats.length) {
-        const subChatId = filteredSubChats[targetIndex]!.id;
-        toggleSubChatSelection(subChatId);
-      }
-    },
-    [
-      filteredSubChats,
-      hoveredChatIndex,
-      focusedChatIndex,
-      toggleSubChatSelection,
-    ],
-  );
+    if (targetIndex >= 0 && targetIndex < filteredSubChats.length) {
+      const subChatId = filteredSubChats[targetIndex]!.id;
+      toggleSubChatSelection(subChatId);
+    }
+  }, [
+    filteredSubChats,
+    hoveredChatIndex,
+    focusedChatIndex,
+    toggleSubChatSelection,
+  ]);
 
   // Cmd+A / Ctrl+A to select all sub-chats (only when at least one is already selected)
   useHotkeys(
@@ -776,22 +777,18 @@ export function AgentsSubChatsSidebar({
   );
 
   // Escape to clear selection (but not when dialogs are open)
-  useHotkeys(
-    "escape",
-    () => {
-      if (archiveAgentDialogOpen || renameDialogOpen) return;
-      if (isMultiSelectMode) {
-        clearSubChatSelection();
-        setFocusedChatIndex(-1);
-      }
-    },
-    [
-      isMultiSelectMode,
-      clearSubChatSelection,
-      archiveAgentDialogOpen,
-      renameDialogOpen,
-    ],
-  );
+  useHotkeys("escape", () => {
+    if (archiveAgentDialogOpen || renameDialogOpen) return;
+    if (isMultiSelectMode) {
+      clearSubChatSelection();
+      setFocusedChatIndex(-1);
+    }
+  }, [
+    isMultiSelectMode,
+    clearSubChatSelection,
+    archiveAgentDialogOpen,
+    renameDialogOpen,
+  ]);
 
   // Clear selection when parent chat changes
   useEffect(() => {
@@ -836,7 +833,7 @@ export function AgentsSubChatsSidebar({
           return (
             <div className="flex items-center gap-2 flex-1 min-w-0">
               {/* Icon with badge - question icon has priority */}
-              <div className="flex-shrink-0 w-4 h-4 flex items-center justify-center relative">
+              <div className="shrink-0 w-4 h-4 flex items-center justify-center relative">
                 {hasPendingQuestion ? (
                   <QuestionIcon className="w-4 h-4 text-blue-500" />
                 ) : isLoading ? (
@@ -872,7 +869,7 @@ export function AgentsSubChatsSidebar({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] flex-shrink-0 rounded-md"
+                  className="h-6 w-6 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] shrink-0 rounded-md"
                   disabled={allSubChats.length === 0}
                 >
                   <ClockIcon className="h-4 w-4" />
@@ -890,7 +887,7 @@ export function AgentsSubChatsSidebar({
             size="icon"
             onClick={onClose}
             tabIndex={-1}
-            className="h-6 w-6 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] text-foreground flex-shrink-0 rounded-md"
+            className="h-6 w-6 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] text-foreground shrink-0 rounded-md"
             aria-label="Close sidebar"
           >
             <IconDoubleChevronRight className="h-4 w-4" />
@@ -904,7 +901,7 @@ export function AgentsSubChatsSidebar({
   return (
     <div className="flex flex-col h-full bg-background overflow-hidden relative">
       {/* Header */}
-      <div className="p-2 pb-3 flex-shrink-0">
+      <div className="p-2 pb-3 shrink-0">
         <div className="space-y-2">
           {/* Top row with header buttons */}
           <div className="flex items-center justify-end gap-1 mb-1">
@@ -1017,7 +1014,7 @@ export function AgentsSubChatsSidebar({
                       isMultiSelectMode={isMultiSelectMode}
                       className="mb-3"
                     >
-                      {pinnedChats.map((subChat, index) => {
+                      {pinnedChats.map((subChat, _index) => {
                         const isSubChatLoading = loadingChatIds.has(subChat.id);
                         const isActive = activeSubChatId === subChat.id;
                         const isPinned = pinnedSubChatIds.includes(subChat.id);
@@ -1087,7 +1084,7 @@ export function AgentsSubChatsSidebar({
                                     </span>
                                   ) : (
                                     <>
-                                      <span className="flex-shrink-0">
+                                      <span className="shrink-0">
                                         {timeAgo}
                                       </span>
                                       {stats && (
@@ -1211,7 +1208,7 @@ export function AgentsSubChatsSidebar({
                       title={pinnedChats.length > 0 ? "Recent chats" : "Chats"}
                       isMultiSelectMode={isMultiSelectMode}
                     >
-                      {unpinnedChats.map((subChat, index) => {
+                      {unpinnedChats.map((subChat, _index) => {
                         const isSubChatLoading = loadingChatIds.has(subChat.id);
                         const isActive = activeSubChatId === subChat.id;
                         const isPinned = pinnedSubChatIds.includes(subChat.id);
@@ -1281,7 +1278,7 @@ export function AgentsSubChatsSidebar({
                                     </span>
                                   ) : (
                                     <>
-                                      <span className="flex-shrink-0">
+                                      <span className="shrink-0">
                                         {timeAgo}
                                       </span>
                                       {stats && (

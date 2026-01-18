@@ -34,7 +34,7 @@ export function AgentsHeaderControls({
             variant="ghost"
             size="icon"
             onClick={onToggleSidebar}
-            className="h-6 w-6 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] text-foreground flex-shrink-0 rounded-md relative"
+            className="h-6 w-6 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] text-foreground shrink-0 rounded-md relative"
             aria-label="Open sidebar"
           >
             <AlignJustify className="h-4 w-4" />

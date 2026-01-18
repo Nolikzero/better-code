@@ -1168,7 +1168,7 @@ function MintlifyIcon({ className }: FrameworkIconProps) {
 }
 
 // GitHub icon
-function GitHubIcon({ className }: FrameworkIconProps) {
+function _GitHubIcon({ className }: FrameworkIconProps) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -1181,7 +1181,7 @@ function GitHubIcon({ className }: FrameworkIconProps) {
 }
 
 // Map language/framework to icon component
-function getFrameworkIcon(
+function _getFrameworkIcon(
   language?: string | null,
   repoName?: string,
   topics?: string[],
@@ -1321,7 +1321,7 @@ function getFrameworkIcon(
 
 // Get framework icon based on detected framework (from our detect-framework service)
 // Falls back to language icon if framework is unknown
-function getDetectedFrameworkIcon(
+function _getDetectedFrameworkIcon(
   framework?: string,
   className?: string,
   language?: string,

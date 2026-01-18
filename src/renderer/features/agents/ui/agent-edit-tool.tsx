@@ -210,7 +210,7 @@ export const AgentEditTool = memo(function AgentEditTool({
     part.state === "input-streaming" && chatStatus === "streaming";
 
   const filePath = part.input?.file_path || "";
-  const oldString = part.input?.old_string || "";
+  const _oldString = part.input?.old_string || "";
   const newString = part.input?.new_string || "";
   // For Write mode, content is in input.content
   const writeContent = part.input?.content || "";
@@ -444,7 +444,7 @@ export const AgentEditTool = memo(function AgentEditTool({
           )}
         >
           {FileIcon && (
-            <FileIcon className="w-2.5 h-2.5 flex-shrink-0 text-muted-foreground" />
+            <FileIcon className="w-2.5 h-2.5 shrink-0 text-muted-foreground" />
           )}
           {/* Filename with shimmer during progress */}
           <Tooltip>
@@ -469,7 +469,7 @@ export const AgentEditTool = memo(function AgentEditTool({
         </div>
 
         {/* Status and expand button */}
-        <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+        <div className="flex items-center gap-2 shrink-0 ml-2">
           {/* Diff stats or spinner */}
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             {isPending || isInputStreaming ? (
@@ -548,7 +548,7 @@ export const AgentEditTool = memo(function AgentEditTool({
           {displayLines.length > 0 ? (
             <div
               className={cn(
-                isInputStreaming && shouldAlignBottom && "flex-shrink-0",
+                isInputStreaming && shouldAlignBottom && "shrink-0",
               )}
             >
               {displayLines.map((line: DiffLine, idx: number) => (
@@ -565,7 +565,7 @@ export const AgentEditTool = memo(function AgentEditTool({
             <div
               className={cn(
                 "px-2.5 py-1.5 text-green-700 dark:text-green-300 whitespace-pre-wrap break-all",
-                isInputStreaming && shouldAlignBottom && "flex-shrink-0",
+                isInputStreaming && shouldAlignBottom && "shrink-0",
               )}
             >
               {isInputStreaming && !isOutputExpanded

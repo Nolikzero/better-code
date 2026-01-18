@@ -1,8 +1,8 @@
 import { execSync } from "child_process";
-import os from "os";
-import path from "path";
 import { app } from "electron";
 import * as fs from "fs/promises";
+import os from "os";
+import path from "path";
 import type {
   AIProvider,
   AuthStatus,

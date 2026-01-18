@@ -3,7 +3,7 @@ import type {
   ILink,
   ILinkProvider,
   Terminal as XTerm,
-} from "xterm";
+} from "@xterm/xterm";
 import {
   isModifierPressed,
   removeLinkPopup,
@@ -30,7 +30,7 @@ import {
 // - Relative paths starting with ./ or ../
 // - Optionally followed by :line or :line:column
 const FILE_PATH_PATTERN =
-  /(?:^|[\s'"({\[])((?:\.\.?\/|\/)[^\s:'")\]}>]+?)(?::(\d+))?(?::(\d+))?(?=[\s'")\]}>]|$)/g;
+  /(?:^|[\s'"({[])((?:\.\.?\/|\/)[^\s:'")\]}>]+?)(?::(\d+))?(?::(\d+))?(?=[\s'")\]}>]|$)/g;
 
 /**
  * Get the text content of a buffer line.

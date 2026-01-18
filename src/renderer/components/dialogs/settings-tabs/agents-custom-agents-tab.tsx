@@ -204,7 +204,7 @@ function AgentRow({
       >
         <ChevronRight
           className={cn(
-            "h-4 w-4 text-muted-foreground transition-transform flex-shrink-0",
+            "h-4 w-4 text-muted-foreground transition-transform shrink-0",
             isExpanded && "rotate-90",
           )}
         />
@@ -219,7 +219,7 @@ function AgentRow({
           )}
         </div>
         {agent.model && agent.model !== "inherit" && (
-          <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-muted text-muted-foreground flex-shrink-0">
+          <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-muted text-muted-foreground shrink-0">
             {agent.model}
           </span>
         )}

@@ -93,7 +93,7 @@ export function ChatHeader({
         // Mobile: always flex; Desktop: absolute when sidebar open, flex when closed
         !isMobileFullscreen && isSubChatsSidebarOpen
           ? `absolute top-0 left-0 right-0 ${CHAT_LAYOUT.headerPaddingSidebarOpen}`
-          : `flex-shrink-0 ${CHAT_LAYOUT.headerPaddingSidebarClosed}`,
+          : `shrink-0 ${CHAT_LAYOUT.headerPaddingSidebarClosed}`,
       )}
     >
       {/* Gradient background - only when not absolute */}
@@ -159,7 +159,7 @@ export function ChatHeader({
                   variant="ghost"
                   size="icon"
                   onClick={onOpenPreview}
-                  className="h-6 w-6 p-0 hover:bg-foreground/10 transition-colors text-foreground flex-shrink-0 rounded-md ml-2"
+                  className="h-6 w-6 p-0 hover:bg-foreground/10 transition-colors text-foreground shrink-0 rounded-md ml-2"
                   aria-label="Open preview"
                 >
                   <IconOpenSidebarRight className="h-4 w-4" />
@@ -174,7 +174,7 @@ export function ChatHeader({
                   variant="ghost"
                   size="icon"
                   disabled
-                  className="h-6 w-6 p-0 text-muted-foreground flex-shrink-0 rounded-md cursor-not-allowed pointer-events-none"
+                  className="h-6 w-6 p-0 text-muted-foreground shrink-0 rounded-md cursor-not-allowed pointer-events-none"
                   aria-label="Preview not available"
                 >
                   <IconOpenSidebarRight className="h-4 w-4" />
@@ -190,7 +190,7 @@ export function ChatHeader({
                 variant="ghost"
                 size="icon"
                 onClick={onOpenTerminal}
-                className="h-6 w-6 p-0 hover:bg-foreground/10 transition-colors text-foreground flex-shrink-0 rounded-md ml-2"
+                className="h-6 w-6 p-0 hover:bg-foreground/10 transition-colors text-foreground shrink-0 rounded-md ml-2"
                 aria-label="Open terminal"
               >
                 <TerminalSquare className="h-4 w-4" />
@@ -210,7 +210,7 @@ export function ChatHeader({
                 variant="ghost"
                 size="icon"
                 onClick={onOpenSubChatsSidebar}
-                className="h-6 w-6 p-0 hover:bg-foreground/10 transition-colors text-foreground flex-shrink-0 rounded-md ml-2"
+                className="h-6 w-6 p-0 hover:bg-foreground/10 transition-colors text-foreground shrink-0 rounded-md ml-2"
                 aria-label="Open chats pane"
               >
                 <IconOpenSidebarRight className="h-4 w-4" />
@@ -227,7 +227,7 @@ export function ChatHeader({
                 variant="ghost"
                 onClick={onRestoreWorkspace}
                 disabled={isRestoring}
-                className="h-6 px-2 gap-1.5 hover:bg-foreground/10 transition-colors text-foreground flex-shrink-0 rounded-md ml-2 flex items-center"
+                className="h-6 px-2 gap-1.5 hover:bg-foreground/10 transition-colors text-foreground shrink-0 rounded-md ml-2 flex items-center"
                 aria-label="Restore workspace"
               >
                 <IconTextUndo className="h-4 w-4" />

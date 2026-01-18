@@ -9,8 +9,8 @@ import {
   SlidersFilledIcon,
 } from "../../icons";
 import {
-  type SettingsTab,
   agentsSettingsDialogActiveTabAtom,
+  type SettingsTab,
 } from "../../lib/atoms";
 import { cn } from "../../lib/utils";
 import {
@@ -124,7 +124,7 @@ function TabButton({ tab, isActive, onClick, isNarrow }: TabButtonProps) {
     <button
       onClick={onClick}
       className={cn(
-        "inline-flex items-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-40 cursor-pointer shadow-none w-full justify-start gap-2 text-left px-3 py-1.5 text-sm",
+        "inline-flex items-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-40 cursor-pointer shadow-none w-full justify-start gap-2 text-left px-3 py-1.5 text-sm",
         isNarrow
           ? "h-12 rounded-lg bg-foreground/5 hover:bg-foreground/10"
           : "h-7 rounded-md",
@@ -331,7 +331,7 @@ export function AgentsSettingsDialog({
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="w-[90vw] h-[80vh] max-w-[900px] p-0 flex flex-col rounded-sm bg-background border-none bg-clip-padding shadow-2xl overflow-hidden select-none"
+              className="w-[90vw] h-[80vh] max-w-[900px] p-0 flex flex-col rounded-xs bg-background border-none bg-clip-padding shadow-2xl overflow-hidden select-none"
               role="dialog"
               aria-modal="true"
               aria-labelledby="agents-settings-dialog-title"
@@ -365,7 +365,7 @@ export function AgentsSettingsDialog({
 
                 {/* Right Content Area */}
                 <div className="flex-1 overflow-hidden">
-                  <div className="flex flex-col relative h-full bg-tl-background rounded-sm w-full transition-all duration-300 overflow-y-auto">
+                  <div className="flex flex-col relative h-full bg-tl-background rounded-xs w-full transition-all duration-300 overflow-y-auto">
                     {renderTabContent()}
                   </div>
                 </div>
@@ -375,7 +375,7 @@ export function AgentsSettingsDialog({
               <button
                 type="button"
                 onClick={onClose}
-                className="absolute appearance-none outline-none select-none top-5 right-5 rounded-full cursor-pointer flex items-center justify-center ring-offset-background focus:ring-ring bg-secondary h-7 w-7 text-foreground/70 hover:text-foreground focus:outline-hidden disabled:pointer-events-none active:scale-95 transition-all duration-200 ease-in-out z-[60] focus:outline-none focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2"
+                className="absolute appearance-none outline-hidden select-none top-5 right-5 rounded-full cursor-pointer flex items-center justify-center ring-offset-background focus:ring-ring bg-secondary h-7 w-7 text-foreground/70 hover:text-foreground focus:outline-hidden disabled:pointer-events-none active:scale-95 transition-all duration-200 ease-in-out z-[60] focus:outline-hidden focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2"
               >
                 <X className="h-4 w-4" />
                 <span className="sr-only">Close</span>

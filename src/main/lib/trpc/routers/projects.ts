@@ -1,6 +1,6 @@
-import { basename } from "path";
 import { desc, eq } from "drizzle-orm";
 import { BrowserWindow, dialog } from "electron";
+import { basename } from "path";
 import { z } from "zod";
 import { getDatabase, projects } from "../../db";
 import { getGitRemoteInfo } from "../../git";

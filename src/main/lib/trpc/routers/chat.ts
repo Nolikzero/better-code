@@ -1,21 +1,21 @@
-import { execSync } from "child_process";
-import * as os from "os";
-import path from "path";
 import { TRPCError } from "@trpc/server";
 import { observable } from "@trpc/server/observable";
+import { execSync } from "child_process";
 import { eq } from "drizzle-orm";
-import { BrowserWindow, app } from "electron";
+import { app, BrowserWindow } from "electron";
 import * as fs from "fs/promises";
+import * as os from "os";
+import path from "path";
 import { z } from "zod";
 import { chats, getDatabase, subChats } from "../../db";
 import { computeAllStats } from "../../db/computed-stats";
 import {
-  type UIMessageChunk,
   buildClaudeEnv,
   createTransformer,
   getClaudeBinaryPath,
   logClaudeEnv,
   logRawClaudeMessage,
+  type UIMessageChunk,
 } from "../../providers/claude";
 import { providerRegistry } from "../../providers/registry";
 import type { ProviderId } from "../../providers/types";
@@ -169,8 +169,6 @@ const imageAttachmentSchema = z.object({
   mediaType: z.string(), // e.g. "image/png", "image/jpeg"
   filename: z.string().optional(),
 });
-
-type ImageAttachment = z.infer<typeof imageAttachmentSchema>;
 
 export const chatRouter = router({
   /**
@@ -636,7 +634,7 @@ export const chatRouter = router({
                     `[claude] Symlinked skills: ${skillsTarget} -> ${skillsSource}`,
                   );
                 }
-              } catch (symlinkErr) {
+              } catch (_symlinkErr) {
                 // Ignore symlink errors (might already exist or permission issues)
               }
 
@@ -656,7 +654,7 @@ export const chatRouter = router({
                     `[claude] Symlinked agents: ${agentsTarget} -> ${agentsSource}`,
                   );
                 }
-              } catch (symlinkErr) {
+              } catch (_symlinkErr) {
                 // Ignore symlink errors (might already exist or permission issues)
               }
 
@@ -896,7 +894,7 @@ export const chatRouter = router({
             }
 
             let messageCount = 0;
-            let lastError: Error | null = null;
+            let _lastError: Error | null = null;
             let planCompleted = false; // Flag to stop after ExitPlanMode in plan mode
             let exitPlanModeToolCallId: string | null = null; // Track ExitPlanMode's toolCallId
 
@@ -920,7 +918,7 @@ export const chatRouter = router({
 
                   const sdkError =
                     msgAny.error || msgAny.message || "Unknown SDK error";
-                  lastError = new Error(sdkError);
+                  _lastError = new Error(sdkError);
 
                   // Categorize SDK-level errors
                   let errorCategory = "SDK_ERROR";

@@ -46,4 +46,4 @@ const loggerMiddleware = middleware(async ({ path, type, next }) => {
 /**
  * Procedure with logging
  */
-const loggedProcedure = publicProcedure.use(loggerMiddleware);
+const _loggedProcedure = publicProcedure.use(loggerMiddleware);

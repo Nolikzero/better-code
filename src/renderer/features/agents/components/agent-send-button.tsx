@@ -60,7 +60,7 @@ export function AgentSendButton({
   const getIcon = () => {
     if (isStreaming) {
       return (
-        <div className="w-2.5 h-2.5 bg-current rounded-[2px] flex-shrink-0 mx-auto" />
+        <div className="w-2.5 h-2.5 bg-current rounded-[2px] shrink-0 mx-auto" />
       );
     }
     if (isSubmitting) {

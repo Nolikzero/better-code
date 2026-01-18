@@ -17,7 +17,10 @@ import { FolderOpenIcon } from "./folder-icon";
 function CategoryIcon({
   className,
   categoryId,
-}: { className?: string; categoryId: string }) {
+}: {
+  className?: string;
+  categoryId: string;
+}) {
   if (categoryId === "files") {
     return FilesIcon({ className });
   }

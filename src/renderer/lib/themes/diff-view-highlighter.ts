@@ -53,7 +53,7 @@ const THEME_TO_PIERRE_MAP: Record<string, string> = {
 /**
  * Get the @pierre/diffs theme for a given theme ID
  */
-function getPierreTheme(themeId: string, isDark: boolean): string {
+function _getPierreTheme(themeId: string, isDark: boolean): string {
   if (themeId in THEME_TO_PIERRE_MAP) {
     return THEME_TO_PIERRE_MAP[themeId];
   }
@@ -85,14 +85,14 @@ export function preloadDiffHighlighter(): void {
 }
 
 // Legacy exports for backward compatibility (no-ops)
-function setDiffViewTheme(_themeId: string): void {
+function _setDiffViewTheme(_themeId: string): void {
   // No-op: @pierre/diffs handles themes via props
 }
 
-async function getDiffHighlighter(): Promise<null> {
+async function _getDiffHighlighter(): Promise<null> {
   // No-op: @pierre/diffs handles highlighting internally
   return null;
 }
 
 // Type for backward compatibility
-type DiffHighlighter = null;
+export type DiffHighlighter = null;

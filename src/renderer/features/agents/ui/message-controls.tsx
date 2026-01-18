@@ -19,7 +19,7 @@ export type PlaybackSpeed = (typeof PLAYBACK_SPEEDS)[number];
 // Copy button component with tooltip feedback (matches project style)
 export function CopyButton({
   onCopy,
-  isMobile = false,
+  isMobile: _isMobile = false,
 }: {
   onCopy: () => void;
   isMobile?: boolean;
@@ -121,7 +121,7 @@ export function PlayButton({
     });
   };
 
-  const playWithStreaming = async () => {
+  const _playWithStreaming = async () => {
     const mediaSource = new MediaSource();
     mediaSourceRef.current = mediaSource;
 
@@ -177,7 +177,7 @@ export function PlayButton({
     // Create abort controller for this request
     abortControllerRef.current = new AbortController();
 
-    const fetchStartTime = Date.now();
+    const _fetchStartTime = Date.now();
     // Note: TTS not implemented in desktop - this is a stub
     const response = await fetch("/api/tts", {
       method: "POST",
@@ -260,7 +260,7 @@ export function PlayButton({
     processStream();
   };
 
-  const playWithFallback = async () => {
+  const _playWithFallback = async () => {
     abortControllerRef.current = new AbortController();
 
     // Note: TTS not implemented in desktop - this is a stub

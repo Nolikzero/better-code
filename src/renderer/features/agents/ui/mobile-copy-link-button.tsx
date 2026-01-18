@@ -30,7 +30,7 @@ export function MobileCopyLinkButton({ url }: MobileCopyLinkButtonProps) {
       variant="ghost"
       size="icon"
       onClick={handleCopy}
-      className="h-7 w-7 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] flex-shrink-0 rounded-md"
+      className="h-7 w-7 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] shrink-0 rounded-md"
     >
       <div className="relative w-3.5 h-3.5">
         <LinkIcon

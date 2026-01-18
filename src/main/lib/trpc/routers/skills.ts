@@ -1,7 +1,7 @@
-import * as os from "os";
-import * as path from "path";
 import * as fs from "fs/promises";
 import matter from "gray-matter";
+import * as os from "os";
+import * as path from "path";
 import { z } from "zod";
 import { publicProcedure, router } from "../index";
 
@@ -77,7 +77,7 @@ async function scanSkillsDirectory(
           source,
           path: skillMdPath,
         });
-      } catch (err) {
+      } catch (_err) {
         // Skill directory doesn't have SKILL.md or read failed - skip it
       }
     }

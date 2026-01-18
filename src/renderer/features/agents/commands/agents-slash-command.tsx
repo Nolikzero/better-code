@@ -95,7 +95,7 @@ export const AgentsSlashCommand = memo(function AgentsSlashCommand({
     );
 
   // State for loading command content
-  const [isLoadingContent, setIsLoadingContent] = useState(false);
+  const [_isLoadingContent, setIsLoadingContent] = useState(false);
 
   // tRPC utils for fetching command content
   const utils = api.useUtils();
@@ -366,7 +366,7 @@ export const AgentsSlashCommand = memo(function AgentsSlashCommand({
   return (
     <div
       ref={dropdownRef}
-      className="fixed z-[99999] overflow-hidden rounded-sm border border-border bg-popover py-1 text-xs text-popover-foreground shadow-lg dark"
+      className="fixed z-[99999] overflow-hidden rounded-xs border border-border bg-popover py-1 text-xs text-popover-foreground shadow-lg dark"
       style={{
         top: finalTop,
         left: finalLeft,
@@ -397,7 +397,7 @@ export const AgentsSlashCommand = memo(function AgentsSlashCommand({
                 }}
                 onMouseEnter={() => setSelectedIndex(currentIndex)}
                 className={cn(
-                  "group inline-flex w-[calc(100%-8px)] mx-1 items-center whitespace-nowrap outline-none",
+                  "group inline-flex w-[calc(100%-8px)] mx-1 items-center whitespace-nowrap outline-hidden",
                   "h-7 px-1.5 justify-start text-xs rounded-md",
                   "transition-colors cursor-pointer select-none gap-1.5",
                   isSelected
@@ -405,7 +405,7 @@ export const AgentsSlashCommand = memo(function AgentsSlashCommand({
                     : "text-muted-foreground dark:hover:bg-neutral-800 hover:bg-accent hover:text-foreground",
                 )}
               >
-                <CommandIcon className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                <CommandIcon className="h-3 w-3 text-muted-foreground shrink-0" />
                 <span className="flex items-center gap-1 w-full min-w-0">
                   <span className="shrink-0 whitespace-nowrap font-medium">
                     {option.command}
@@ -441,7 +441,7 @@ export const AgentsSlashCommand = memo(function AgentsSlashCommand({
                 }}
                 onMouseEnter={() => setSelectedIndex(currentIndex)}
                 className={cn(
-                  "group inline-flex w-[calc(100%-8px)] mx-1 items-center whitespace-nowrap outline-none",
+                  "group inline-flex w-[calc(100%-8px)] mx-1 items-center whitespace-nowrap outline-hidden",
                   "h-7 px-1.5 justify-start text-xs rounded-md",
                   "transition-colors cursor-pointer select-none gap-1.5",
                   isSelected
@@ -449,7 +449,7 @@ export const AgentsSlashCommand = memo(function AgentsSlashCommand({
                     : "text-muted-foreground dark:hover:bg-neutral-800 hover:bg-accent hover:text-foreground",
                 )}
               >
-                <CommandIcon className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                <CommandIcon className="h-3 w-3 text-muted-foreground shrink-0" />
                 <span className="flex items-center gap-1 w-full min-w-0">
                   <span className="shrink-0 whitespace-nowrap font-medium">
                     {option.command}

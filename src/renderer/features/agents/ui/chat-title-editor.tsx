@@ -144,7 +144,7 @@ export function ChatTitleEditor({
           disabled={isSaving}
           placeholder={placeholder}
           className={cn(
-            "w-full h-full bg-transparent border-0 outline-none",
+            "w-full h-full bg-transparent border-0 outline-hidden",
             isMobile ? "text-base" : "text-lg",
             "font-medium text-foreground",
           )}

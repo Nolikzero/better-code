@@ -21,11 +21,11 @@ import {
 import { ResizableSidebar } from "../../../components/ui/resizable-sidebar";
 import { getQueryClient } from "../../../contexts/TRPCProvider";
 import {
-  PROVIDER_MODELS,
-  type ProviderId,
   chatProviderOverridesAtom,
   defaultProviderIdAtom,
   lastSelectedModelByProviderAtom,
+  PROVIDER_MODELS,
+  type ProviderId,
   soundNotificationsEnabledAtom,
 } from "../../../lib/atoms";
 import { appStore } from "../../../lib/jotai-store";
@@ -38,12 +38,11 @@ import { useDesktopNotifications } from "../../sidebar/hooks/use-desktop-notific
 import { terminalSidebarOpenAtom } from "../../terminal/atoms";
 import { TerminalSidebar } from "../../terminal/terminal-sidebar";
 import {
-  QUESTIONS_SKIPPED_MESSAGE,
   agentsPreviewSidebarOpenAtom,
   agentsPreviewSidebarWidthAtom,
-  agentsSubChatUnseenChangesAtom,
   agentsSubChatsSidebarModeAtom,
   agentsSubChatsSidebarWidthAtom,
+  agentsSubChatUnseenChangesAtom,
   agentsUnseenChangesAtom,
   clearLoading,
   compactingSubChatsAtom,
@@ -56,6 +55,7 @@ import {
   pendingPrMessageAtom,
   pendingReviewMessageAtom,
   pendingUserQuestionsAtom,
+  QUESTIONS_SKIPPED_MESSAGE,
   selectedAgentChatIdAtom,
   setLoading,
   undoStackAtom,
@@ -112,14 +112,12 @@ import { autoRenameAgentChat } from "../utils/auto-rename";
 import { handlePasteEvent } from "../utils/paste-text";
 import { ChatHeader } from "./chat-header";
 import { ChatMessages } from "./chat-messages";
+
 const clearSubChatSelectionAtom = atom(null, () => {});
 const isSubChatMultiSelectModeAtom = atom(false);
 const selectedSubChatIdsAtom = atom(new Set<string>());
 // import { selectedTeamIdAtom } from "@/lib/atoms/team"
 const selectedTeamIdAtom = atom<string | null>(null);
-// import type { PlanType } from "@/lib/config/subscription-plans"
-type PlanType = string;
-
 // Type for chat list items (from tRPC chats.list)
 type ChatListItem = {
   id: string;
@@ -167,7 +165,7 @@ function getFirstSubChatId(
 // Find the first NEW assistant message after the last known one
 // Used for smart scroll: when returning to a chat where streaming finished,
 // scroll to the start of the new response instead of bottom
-function findFirstNewAssistantMessage(
+function _findFirstNewAssistantMessage(
   messages: Array<{ id: string; role: string }>,
   lastKnownAssistantMsgId?: string,
 ): string | undefined {
@@ -241,7 +239,7 @@ function ChatViewInner({
   const chatContainerRef = useRef<HTMLDivElement | null>(null);
   const editorRef = useRef<AgentsMentionsEditorHandle>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const prevChatKeyRef = useRef<string | null>(null);
+  const _prevChatKeyRef = useRef<string | null>(null);
   const prevSubChatIdRef = useRef<string | null>(null);
 
   // TTS playback rate state (persists across messages and sessions via localStorage)
@@ -384,7 +382,7 @@ function ChatViewInner({
   // Provider & model selection state
   // Per-chat override takes priority, then falls back to global default
   const chatProviderOverrides = useAtomValue(chatProviderOverridesAtom);
-  const [globalDefaultProvider, setGlobalDefaultProvider] = useAtom(
+  const [globalDefaultProvider, _setGlobalDefaultProvider] = useAtom(
     defaultProviderIdAtom,
   );
   const [modelByProvider, setModelByProvider] = useAtom(
@@ -409,7 +407,8 @@ function ChatViewInner({
     modelByProvider[effectiveProvider] || providerModels[0]?.id;
 
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
-  const [shouldOpenClaudeSubmenu, setShouldOpenClaudeSubmenu] = useState(false);
+  const [_shouldOpenClaudeSubmenu, setShouldOpenClaudeSubmenu] =
+    useState(false);
 
   // File/image upload hook
   const {
@@ -463,7 +462,7 @@ function ChatViewInner({
     return () => window.removeEventListener("keydown", handleKeyDown, true);
   }, []);
 
-  const [planApprovalPending, setPlanApprovalPending] = useState<
+  const [_planApprovalPending, setPlanApprovalPending] = useState<
     Record<string, boolean>
   >({});
 
@@ -864,7 +863,7 @@ function ChatViewInner({
     subChatId,
   ]);
 
-  const handlePlanApproval = useCallback(
+  const _handlePlanApproval = useCallback(
     async (toolUseId: string, approved: boolean) => {
       if (!toolUseId) return;
       setPlanApprovalPending((prev) => ({ ...prev, [toolUseId]: true }));
@@ -1369,7 +1368,7 @@ function ChatViewInner({
       {!isMobile && (
         <div
           className={cn(
-            "flex-shrink-0 pb-2",
+            "shrink-0 pb-2",
             isSubChatsSidebarOpen ? "pt-[52px]" : "pt-2",
           )}
         >
@@ -1389,7 +1388,7 @@ function ChatViewInner({
         ref={(el) => {
           chatContainerRef.current = el;
         }}
-        className="flex-1 overflow-y-auto w-full relative allow-text-selection outline-none"
+        className="flex-1 overflow-y-auto w-full relative allow-text-selection outline-hidden"
         tabIndex={-1}
         data-chat-container
       >
@@ -1453,7 +1452,7 @@ function ChatViewInner({
       {/* Input */}
       <div
         className={cn(
-          "px-2 pb-2 shadow-sm shadow-background relative z-10",
+          "px-2 pb-2 shadow-xs shadow-background relative z-10",
           (isStreaming || changedFilesForSubChat.length > 0) &&
             !(pendingQuestions?.subChatId === subChatId) &&
             "-mt-3 pt-3",
@@ -1632,13 +1631,13 @@ export function ChatView({
   chatId,
   isSidebarOpen,
   onToggleSidebar,
-  selectedTeamName,
-  selectedTeamImageUrl,
+  selectedTeamName: _selectedTeamName,
+  selectedTeamImageUrl: _selectedTeamImageUrl,
   isMobileFullscreen = false,
   onBackToChats,
-  onOpenPreview,
-  onOpenDiff,
-  onOpenTerminal,
+  onOpenPreview: _onOpenPreview,
+  onOpenDiff: _onOpenDiff,
+  onOpenTerminal: _onOpenTerminal,
 }: {
   chatId: string;
   isSidebarOpen: boolean;
@@ -1722,7 +1721,7 @@ export function ChatView({
       return prev;
     });
   }, [activeSubChatId, setSubChatUnseenChanges]);
-  const allSubChats = useAgentSubChatStore((state) => state.allSubChats);
+  const _allSubChats = useAgentSubChatStore((state) => state.allSubChats);
 
   // tRPC utils for optimistic cache updates
   const utils = api.useUtils();
@@ -1733,10 +1732,8 @@ export function ChatView({
   const generateSubChatNameMutation =
     api.agents.generateSubChatName.useMutation();
 
-  const { data: agentChat, isLoading } = api.agents.getAgentChat.useQuery(
-    { chatId },
-    { enabled: !!chatId },
-  );
+  const { data: agentChat, isLoading: _isLoading } =
+    api.agents.getAgentChat.useQuery({ chatId }, { enabled: !!chatId });
   const agentSubChats = (agentChat?.subChats ?? []) as Array<{
     id: string;
     name?: string | null;
@@ -1837,7 +1834,7 @@ export function ChatView({
     chatProviderOverrides[chatId] || globalDefaultProvider;
 
   // Get user usage data for credit checks
-  const { data: usageData } = api.usage.getUserUsage.useQuery();
+  const { data: _usageData } = api.usage.getUserUsage.useQuery();
 
   // Desktop: use worktreePath instead of sandbox
   const worktreePath = agentChat?.worktreePath as string | null;
@@ -2595,7 +2592,7 @@ export function ChatView({
                 <div className="w-full max-w-2xl mx-auto">
                   <div className="relative w-full">
                     <PromptInput
-                      className="border bg-input-background relative z-10 p-2 rounded-sm opacity-50 pointer-events-none"
+                      className="border bg-input-background relative z-10 p-2 rounded-xs opacity-50 pointer-events-none"
                       maxHeight={200}
                     >
                       <div className="p-1 text-muted-foreground text-sm">
@@ -2626,13 +2623,13 @@ export function ChatView({
                             <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
                           </button>
                         </div>
-                        <div className="flex items-center gap-0.5 ml-auto flex-shrink-0">
+                        <div className="flex items-center gap-0.5 ml-auto shrink-0">
                           {/* Attach button placeholder */}
                           <Button
                             variant="ghost"
                             size="icon"
                             disabled
-                            className="h-7 w-7 rounded-sm cursor-not-allowed"
+                            className="h-7 w-7 rounded-xs cursor-not-allowed"
                           >
                             <AttachIcon className="h-4 w-4" />
                           </Button>
@@ -2726,7 +2723,7 @@ export function ChatView({
             {isQuickSetup ? (
               <div className="flex flex-col h-full">
                 {/* Header with close button */}
-                <div className="flex items-center justify-end px-3 h-10 bg-tl-background flex-shrink-0 border-b border-border/50">
+                <div className="flex items-center justify-end px-3 h-10 bg-tl-background shrink-0 border-b border-border/50">
                   <Button
                     variant="ghost"
                     className="h-7 w-7 p-0 hover:bg-muted transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] rounded-md"

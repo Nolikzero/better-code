@@ -164,7 +164,7 @@ export const selectedProjectAtom = atomWithStorage<SelectedProject>(
   { getOnInit: true },
 );
 
-const lastSelectedAgentIdAtom = atomWithStorage<string>(
+const _lastSelectedAgentIdAtom = atomWithStorage<string>(
   "agents:lastSelectedAgentId",
   "claude-code",
   undefined,
@@ -324,7 +324,7 @@ export const archivePopoverOpenAtom = atom<boolean>(false);
 export const archiveSearchQueryAtom = atom<string>("");
 
 // Repository filter for archive (null = all repositories)
-const archiveRepositoryFilterAtom = atom<string | null>(null);
+const _archiveRepositoryFilterAtom = atom<string | null>(null);
 
 // Track last used mode (plan/agent) per chat
 // Map<chatId, "plan" | "agent">

@@ -10,11 +10,11 @@ import {
   TooltipTrigger,
 } from "../../../components/ui/tooltip";
 import {
-  PROVIDER_INFO,
-  PROVIDER_MODELS,
   chatProviderOverridesAtom,
   defaultProviderIdAtom,
   lastSelectedModelByProviderAtom,
+  PROVIDER_INFO,
+  PROVIDER_MODELS,
 } from "../../../lib/atoms";
 import { cn } from "../../../lib/utils";
 

@@ -1,9 +1,8 @@
 "use client";
 
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
 // import { selectedTeamIdAtom } from "@/lib/atoms/team"
-import { atom } from "jotai";
+import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { AlignJustify, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../../components/ui/button";
@@ -19,9 +18,9 @@ import {
   PopoverTrigger,
 } from "../../../components/ui/popover";
 import {
-  PROVIDER_MODELS,
   defaultProviderIdAtom,
   lastSelectedModelByProviderAtom,
+  PROVIDER_MODELS,
 } from "../../../lib/atoms";
 import { cn } from "../../../lib/utils";
 import {
@@ -37,10 +36,12 @@ import {
 } from "../atoms";
 import { ProjectSelector } from "../components/project-selector";
 import { WorkModeSelector } from "../components/work-mode-selector";
+
 const selectedTeamIdAtom = atom<string | null>(null);
 // import { agentsSettingsDialogOpenAtom, agentsSettingsDialogActiveTabAtom } from "@/lib/atoms/agents-settings-dialog"
 const agentsSettingsDialogOpenAtom = atom(false);
 const agentsSettingsDialogActiveTabAtom = atom<string | null>(null);
+
 import { formatTimeAgo } from "@shared/utils";
 // Desktop uses real tRPC
 import { toast } from "sonner";
@@ -84,8 +85,6 @@ import {
 import { AgentsHeaderControls } from "../ui/agents-header-controls";
 import { PROVIDERS } from "../ui/provider-icons";
 import { handlePasteEvent } from "../utils/paste-text";
-// import type { PlanType } from "@/lib/config/subscription-plans"
-type PlanType = string;
 
 interface NewChatFormProps {
   isMobileFullscreen?: boolean;
@@ -99,7 +98,7 @@ export function NewChatForm({
   // UNCONTROLLED: just track if editor has content for send button
   const [hasContent, setHasContent] = useState(false);
   const [selectedTeamId] = useAtom(selectedTeamIdAtom);
-  const [selectedChatId, setSelectedChatId] = useAtom(selectedAgentChatIdAtom);
+  const [_selectedChatId, setSelectedChatId] = useAtom(selectedAgentChatIdAtom);
   const [selectedDraftId, setSelectedDraftId] = useAtom(selectedDraftIdAtom);
   const [sidebarOpen, setSidebarOpen] = useAtom(agentsSidebarOpenAtom);
 
@@ -141,13 +140,13 @@ export function NewChatForm({
   );
 
   // Derive current provider and model from global atoms
-  const currentProvider =
+  const _currentProvider =
     PROVIDERS.find((p) => p.id === defaultProvider) || PROVIDERS[0];
   const providerModels =
     PROVIDER_MODELS[defaultProvider] || PROVIDER_MODELS.claude;
   const currentModelId =
     modelByProvider[defaultProvider] || providerModels[0]?.id;
-  const currentModel =
+  const _currentModel =
     providerModels.find((m) => m.id === currentModelId) || providerModels[0];
 
   const [isPlanMode, setIsPlanMode] = useAtom(isPlanModeAtom);
@@ -160,19 +159,19 @@ export function NewChatForm({
   }, [defaultProvider, isPlanMode, setIsPlanMode]);
   const [workMode, setWorkMode] = useAtom(lastSelectedWorkModeAtom);
   const debugMode = useAtomValue(agentsDebugModeAtom);
-  const setSettingsDialogOpen = useSetAtom(agentsSettingsDialogOpenAtom);
-  const setSettingsActiveTab = useSetAtom(agentsSettingsDialogActiveTabAtom);
+  const _setSettingsDialogOpen = useSetAtom(agentsSettingsDialogOpenAtom);
+  const _setSettingsActiveTab = useSetAtom(agentsSettingsDialogActiveTabAtom);
   const setJustCreatedIds = useSetAtom(justCreatedIdsAtom);
-  const [repoSearchQuery, setRepoSearchQuery] = useState("");
+  const [repoSearchQuery, _setRepoSearchQuery] = useState("");
   const [createBranchDialogOpen, setCreateBranchDialogOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   // Parse owner/repo from GitHub URL
-  const parseGitHubUrl = (url: string) => {
-    const match = url.match(/(?:github\.com\/)?([^\/]+)\/([^\/\s#?]+)/);
+  const _parseGitHubUrl = (url: string) => {
+    const match = url.match(/(?:github\.com\/)?([^/]+)\/([^/\s#?]+)/);
     if (!match) return null;
     return `${match[1]}/${match[2].replace(/\.git$/, "")}`;
   };
-  const [repoPopoverOpen, setRepoPopoverOpen] = useState(false);
+  const [_repoPopoverOpen, _setRepoPopoverOpen] = useState(false);
   const [branchPopoverOpen, setBranchPopoverOpen] = useState(false);
   const [lastSelectedBranches, setLastSelectedBranches] = useAtom(
     lastSelectedBranchesAtom,
@@ -249,7 +248,7 @@ export function NewChatForm({
     pushed_at?: string;
   };
   const reposData: { repositories: RepoItem[] } = { repositories: [] };
-  const isLoadingRepos = false;
+  const _isLoadingRepos = false;
 
   // Memoize repos arrays to prevent useEffect from running on every keystroke
   // Apply debug mode simulations
@@ -267,7 +266,7 @@ export function NewChatForm({
     return repos.filter((r) => r.sandbox_status === "ready");
   }, [repos, debugMode.enabled, debugMode.simulateNoReadyRepos]);
 
-  const notReadyRepos = useMemo(
+  const _notReadyRepos = useMemo(
     () => repos.filter((r) => r.sandbox_status !== "ready"),
     [repos],
   );
@@ -543,7 +542,7 @@ export function NewChatForm({
   }, []);
 
   // Filter all repos by search (combined list) and sort by preview status
-  const filteredRepos = repos
+  const _filteredRepos = repos
     .filter(
       (repo) =>
         repo.name.toLowerCase().includes(repoSearchQuery.toLowerCase()) ||
@@ -823,7 +822,7 @@ export function NewChatForm({
   return (
     <div className="flex h-full flex-col">
       {/* Header - Simple burger on mobile, AgentsHeaderControls on desktop */}
-      <div className="flex-shrink-0 flex items-center justify-between">
+      <div className="shrink-0 flex items-center justify-between">
         <div className="flex-1 min-w-0 flex items-center gap-4 px-2 py-2">
           {isMobileFullscreen ? (
             // Simple burger button for mobile - just opens chats list
@@ -831,7 +830,7 @@ export function NewChatForm({
               variant="ghost"
               size="icon"
               onClick={onBackToChats}
-              className="h-7 w-7 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] flex-shrink-0 rounded-md"
+              className="h-7 w-7 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] shrink-0 rounded-md"
               aria-label="All projects"
             >
               <AlignJustify className="h-4 w-4" />
@@ -1012,7 +1011,7 @@ export function NewChatForm({
                           placeholder="Search branches..."
                           value={branchSearch}
                           onChange={(e) => setBranchSearch(e.target.value)}
-                          className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                          className="flex-1 bg-transparent text-sm outline-hidden placeholder:text-muted-foreground"
                         />
                         <Button
                           size="sm"
@@ -1070,7 +1069,7 @@ export function NewChatForm({
                                       setBranchSearch("");
                                     }}
                                     className={cn(
-                                      "flex items-center gap-1.5 w-[calc(100%-8px)] mx-1 px-1.5 text-sm text-left absolute left-0 top-0 rounded-md cursor-default select-none outline-none transition-colors",
+                                      "flex items-center gap-1.5 w-[calc(100%-8px)] mx-1 px-1.5 text-sm text-left absolute left-0 top-0 rounded-md cursor-default select-none outline-hidden transition-colors",
                                       isSelected
                                         ? "dark:bg-neutral-800 text-foreground"
                                         : "dark:hover:bg-neutral-800 hover:text-foreground",

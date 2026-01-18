@@ -1,7 +1,6 @@
 import { EventEmitter } from "node:events";
 import { getListeningPortsForPids, getProcessTree } from "./port-scanner";
-import type { DetectedPort } from "./types";
-import type { TerminalSession } from "./types";
+import type { DetectedPort, TerminalSession } from "./types";
 
 // How often to poll for port changes (in ms)
 const SCAN_INTERVAL_MS = 2500;

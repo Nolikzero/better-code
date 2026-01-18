@@ -4,8 +4,8 @@ import type { FileContents } from "../../../shared/changes-types";
 import { detectLanguage } from "../../../shared/detect-language";
 import { publicProcedure, router } from "../trpc";
 import {
-  PathValidationError,
   assertRegisteredWorktree,
+  PathValidationError,
   secureFs,
 } from "./security";
 

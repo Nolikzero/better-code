@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import React, { useMemo, useState, useEffect, type JSX } from "react";
+import React, { type JSX, useEffect, useMemo, useState } from "react";
 import { cn } from "../../lib/utils";
 
 interface TextShimmerProps {

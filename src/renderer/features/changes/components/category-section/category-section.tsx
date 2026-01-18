@@ -1,5 +1,5 @@
+import { ChevronRight } from "lucide-react";
 import type { ReactNode } from "react";
-import { HiChevronRight } from "react-icons/hi2";
 import {
   Collapsible,
   CollapsibleContent,
@@ -42,7 +42,7 @@ export function CategorySection({
             "hover:bg-accent/30 cursor-pointer transition-colors",
           )}
         >
-          <HiChevronRight
+          <ChevronRight
             className={cn(
               "size-3 text-muted-foreground shrink-0 transition-transform duration-150",
               isExpanded && "rotate-90",

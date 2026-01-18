@@ -1,5 +1,5 @@
+import { ChevronRight } from "lucide-react";
 import type { ReactNode } from "react";
-import { HiChevronRight } from "react-icons/hi2";
 import {
   Collapsible,
   CollapsibleContent,
@@ -42,7 +42,7 @@ export function CollapsibleRow({
         )}
       >
         {showChevron && (
-          <HiChevronRight
+          <ChevronRight
             className={cn(
               "size-2.5 text-muted-foreground shrink-0 transition-transform duration-150",
               isExpanded && "rotate-90",

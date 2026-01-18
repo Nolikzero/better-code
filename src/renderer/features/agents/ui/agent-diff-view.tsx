@@ -1,6 +1,6 @@
 "use client";
 
-import { type DiffFile, DiffModeEnum, DiffView } from "@git-diff-view/react";
+import { PatchDiff } from "@pierre/diffs/react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 import {
@@ -18,7 +18,12 @@ import {
   useState,
 } from "react";
 import { agentsFocusedDiffFileAtom, filteredDiffFilesAtom } from "../atoms";
-import "@git-diff-view/react/styles/diff-view-pure.css";
+
+// Diff mode enum to match the old API
+export enum DiffModeEnum {
+  Split = 1,
+  Unified = 2,
+}
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   AlertTriangle,
@@ -45,13 +50,28 @@ import { getFileIconByExtension } from "../mentions";
 // import { useIsHydrated } from "@/hooks/use-is-hydrated"
 const useIsHydrated = () => true; // Desktop is always hydrated
 import { useCodeTheme } from "../../../lib/hooks/use-code-theme";
-import {
-  type DiffHighlighter,
-  getDiffHighlighter,
-  setDiffViewTheme,
-} from "../../../lib/themes/diff-view-highlighter";
 import { trpcClient } from "../../../lib/trpc";
 import { cn } from "../../../lib/utils";
+
+// Map our custom theme IDs to @pierre/diffs themes
+const THEME_TO_PIERRE_MAP: Record<string, string> = {
+  "default-dark": "github-dark",
+  "default-light": "github",
+  "claude-dark": "github-dark",
+  "claude-light": "github",
+  "vesper-dark": "vesper",
+  "vitesse-dark": "vitesse-dark",
+  "vitesse-light": "vitesse-light",
+  "min-dark": "min-dark",
+  "min-light": "min-light",
+};
+
+function getPierreTheme(themeId: string, isDark: boolean): string {
+  if (themeId in THEME_TO_PIERRE_MAP) {
+    return THEME_TO_PIERRE_MAP[themeId];
+  }
+  return isDark ? "github-dark" : "github";
+}
 
 // Error Boundary for DiffView to catch parsing errors
 interface DiffErrorBoundaryProps {
@@ -107,20 +127,6 @@ export type ParsedDiffFile = {
   additions: number;
   deletions: number;
   isValid?: boolean; // Whether the diff format is valid/complete
-};
-
-type DiffViewData = {
-  oldFile?: {
-    fileName?: string | null;
-    fileLang?: string | null;
-    content?: string | null;
-  };
-  newFile?: {
-    fileName?: string | null;
-    fileLang?: string | null;
-    content?: string | null;
-  };
-  hunks: string[];
 };
 
 export const diffViewModeAtom = atomWithStorage<DiffModeEnum>(
@@ -264,7 +270,6 @@ export const splitUnifiedDiffByFile = (diffText: string): ParsedDiffFile[] => {
 
 interface FileDiffCardProps {
   file: ParsedDiffFile;
-  data: DiffViewData;
   isLight: boolean;
   isCollapsed: boolean;
   toggleCollapsed: (fileKey: string) => void;
@@ -273,7 +278,7 @@ interface FileDiffCardProps {
   hasContent: boolean;
   isLoadingContent: boolean;
   diffMode: DiffModeEnum;
-  shikiHighlighter: Omit<DiffHighlighter, "getHighlighterEngine"> | null;
+  codeThemeId: string;
 }
 
 // Custom comparator to prevent unnecessary re-renders
@@ -290,15 +295,12 @@ const fileDiffCardAreEqual = (
   if (prev.isLoadingContent !== next.isLoadingContent) return false;
   if (prev.diffMode !== next.diffMode) return false;
   if (prev.isLight !== next.isLight) return false;
-  // Highlighter presence
-  if ((prev.shikiHighlighter === null) !== (next.shikiHighlighter === null))
-    return false;
+  if (prev.codeThemeId !== next.codeThemeId) return false;
   return true;
 };
 
 const FileDiffCard = memo(function FileDiffCard({
   file,
-  data,
   isLight,
   isCollapsed,
   toggleCollapsed,
@@ -307,40 +309,15 @@ const FileDiffCard = memo(function FileDiffCard({
   hasContent,
   isLoadingContent,
   diffMode,
-  shikiHighlighter,
+  codeThemeId,
 }: FileDiffCardProps) {
-  const diffViewRef = useRef<{ getDiffFileInstance: () => DiffFile } | null>(
-    null,
-  );
   const diffCardRef = useRef<HTMLDivElement>(null);
-  const prevExpandedRef = useRef(isFullExpanded);
 
-  // Expand/collapse all hunks when button is clicked
-  useEffect(() => {
-    if (prevExpandedRef.current === isFullExpanded) return;
-    prevExpandedRef.current = isFullExpanded;
-
-    const diffFile = diffViewRef.current?.getDiffFileInstance();
-    if (!diffFile) return;
-
-    const mode = diffMode === DiffModeEnum.Split ? "split" : "unified";
-
-    // Use requestAnimationFrame to prevent ResizeObserver loop
-    // The expand/collapse causes layout changes that trigger virtualizer's ResizeObserver
-    requestAnimationFrame(() => {
-      try {
-        if (isFullExpanded) {
-          diffFile.onAllExpand(mode);
-          diffFile.initSyntax();
-          diffFile.notifyAll();
-        } else {
-          diffFile.onAllCollapse(mode);
-        }
-      } catch {
-        /* ignore - library may throw on malformed diffs */
-      }
-    });
-  }, [isFullExpanded, diffMode]);
+  // Get the theme for @pierre/diffs
+  const pierreTheme = useMemo(
+    () => getPierreTheme(codeThemeId, !isLight),
+    [codeThemeId, isLight],
+  );
 
   // Extract filename and directory from path
   const displayPath =
@@ -518,14 +495,16 @@ const FileDiffCard = memo(function FileDiffCard({
           ) : (
             <div className="agent-diff-wrapper">
               <DiffErrorBoundary fileName={file.newPath || file.oldPath}>
-                <DiffView
-                  ref={diffViewRef}
-                  data={data}
-                  diffViewTheme={isLight ? "light" : "dark"}
-                  diffViewMode={diffMode}
-                  diffViewHighlight={!!shikiHighlighter}
-                  diffViewWrap={false}
-                  registerHighlighter={shikiHighlighter ?? undefined}
+                <PatchDiff
+                  patch={file.diffText}
+                  options={{
+                    theme: pierreTheme,
+                    diffStyle:
+                      diffMode === DiffModeEnum.Split ? "split" : "unified",
+                    disableFileHeader: true,
+                    overflow: "scroll",
+                    expandUnchanged: isFullExpanded,
+                  }}
                 />
               </DiffErrorBoundary>
             </div>
@@ -605,34 +584,6 @@ export const AgentDiffView = forwardRef<AgentDiffViewRef, AgentDiffViewProps>(
     const { resolvedTheme } = useTheme();
     const isHydrated = useIsHydrated();
     const codeThemeId = useCodeTheme();
-
-    // Shiki highlighter for syntax highlighting in diff view
-    const [shikiHighlighter, setShikiHighlighter] = useState<Omit<
-      DiffHighlighter,
-      "getHighlighterEngine"
-    > | null>(null);
-
-    // Update diff view theme when code theme changes
-    useEffect(() => {
-      setDiffViewTheme(codeThemeId);
-    }, [codeThemeId]);
-
-    // Load shiki highlighter on mount
-    useEffect(() => {
-      let cancelled = false;
-      getDiffHighlighter()
-        .then((highlighter) => {
-          if (!cancelled) {
-            setShikiHighlighter(highlighter);
-          }
-        })
-        .catch((err) => {
-          console.error("Failed to load diff highlighter:", err);
-        });
-      return () => {
-        cancelled = true;
-      };
-    }, []);
 
     const [diff, setDiff] = useState<string | null>(initialDiff ?? null);
     // Loading if initialDiff not provided, or if it's null AND no parsed files (parent still loading)
@@ -946,50 +897,6 @@ export const AgentDiffView = forwardRef<AgentDiffViewRef, AgentDiffViewProps>(
         }
       }
     }, [fileDiffs]);
-
-    const diffViewDataByKey = useMemo(() => {
-      const langMap: Record<string, string> = {
-        ts: "typescript",
-        tsx: "typescript",
-        js: "javascript",
-        jsx: "javascript",
-        css: "css",
-        json: "json",
-        md: "markdown",
-        html: "html",
-      };
-      const record: Record<string, DiffViewData> = {};
-      for (const file of fileDiffs) {
-        // Handle /dev/null cases (new files or deleted files)
-        const isNewFile = file.oldPath === "/dev/null";
-        const isDeletedFile = file.newPath === "/dev/null";
-
-        const actualPath = isNewFile
-          ? file.newPath
-          : isDeletedFile
-            ? file.oldPath
-            : file.newPath || file.oldPath;
-        const ext = (actualPath || "").split(".").pop()?.toLowerCase() || "";
-        const fileLang = langMap[ext] || ext || null;
-
-        record[file.key] = {
-          oldFile: {
-            fileName: isNewFile ? null : file.oldPath || null,
-            fileLang,
-            // For new files, old content is empty
-            content: isNewFile ? "" : undefined,
-          },
-          newFile: {
-            fileName: isDeletedFile ? null : file.newPath || null,
-            fileLang,
-            // For deleted files, new content is empty
-            content: isDeletedFile ? "" : fileContents[file.key] || null,
-          },
-          hunks: [file.diffText],
-        };
-      }
-      return record;
-    }, [fileDiffs, fileContents]);
 
     // Pre-fetch file contents when diff is loaded (for expand functionality)
     // Delayed to allow UI to render first, then fetch in background
@@ -1363,7 +1270,6 @@ export const AgentDiffView = forwardRef<AgentDiffViewRef, AgentDiffViewProps>(
                     <div className="pb-2">
                       <FileDiffCard
                         file={file}
-                        data={diffViewDataByKey[file.key]!}
                         isLight={isLight}
                         isCollapsed={!!collapsedByFileKey[file.key]}
                         toggleCollapsed={toggleFileCollapsed}
@@ -1372,7 +1278,7 @@ export const AgentDiffView = forwardRef<AgentDiffViewRef, AgentDiffViewProps>(
                         hasContent={!!fileContents[file.key]}
                         isLoadingContent={isLoadingFileContents}
                         diffMode={diffMode}
-                        shikiHighlighter={shikiHighlighter}
+                        codeThemeId={codeThemeId}
                       />
                     </div>
                   </div>

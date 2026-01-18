@@ -1,14 +1,13 @@
-import { useState } from "react";
-import { HiMiniMinus, HiMiniPlus } from "react-icons/hi2";
 import {
-  LuClipboard,
-  LuExternalLink,
-  LuFolderOpen,
-  LuMinus,
-  LuPlus,
-  LuTrash2,
-  LuUndo2,
-} from "react-icons/lu";
+  Clipboard,
+  ExternalLink,
+  FolderOpen,
+  Minus,
+  Plus,
+  Trash2,
+  Undo2,
+} from "lucide-react";
+import { useState } from "react";
 import type { ChangedFile } from "../../../../../shared/changes-types";
 import {
   AlertDialog,
@@ -205,7 +204,7 @@ export function FileItem({
                   }}
                   disabled={isActioning}
                 >
-                  <HiMiniPlus className="size-3" />
+                  <Plus className="size-3" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="right">Stage</TooltipContent>
@@ -224,7 +223,7 @@ export function FileItem({
                   }}
                   disabled={isActioning}
                 >
-                  <HiMiniMinus className="size-3" />
+                  <Minus className="size-3" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="right">Unstage</TooltipContent>
@@ -245,20 +244,20 @@ export function FileItem({
         <ContextMenuTrigger asChild>{fileContent}</ContextMenuTrigger>
         <ContextMenuContent className="w-48">
           <ContextMenuItem onClick={handleCopyPath}>
-            <LuClipboard className="mr-2 size-4" />
+            <Clipboard className="mr-2 size-4" />
             Copy Path
           </ContextMenuItem>
           <ContextMenuItem onClick={handleCopyRelativePath}>
-            <LuClipboard className="mr-2 size-4" />
+            <Clipboard className="mr-2 size-4" />
             Copy Relative Path
           </ContextMenuItem>
           <ContextMenuSeparator />
           <ContextMenuItem onClick={handleRevealInFinder}>
-            <LuFolderOpen className="mr-2 size-4" />
+            <FolderOpen className="mr-2 size-4" />
             Reveal in Finder
           </ContextMenuItem>
           <ContextMenuItem onClick={handleOpenInEditor}>
-            <LuExternalLink className="mr-2 size-4" />
+            <ExternalLink className="mr-2 size-4" />
             Open in Editor
           </ContextMenuItem>
 
@@ -266,14 +265,14 @@ export function FileItem({
 
           {onStage && (
             <ContextMenuItem onClick={onStage} disabled={isActioning}>
-              <LuPlus className="mr-2 size-4" />
+              <Plus className="mr-2 size-4" />
               Stage
             </ContextMenuItem>
           )}
 
           {onUnstage && (
             <ContextMenuItem onClick={onUnstage} disabled={isActioning}>
-              <LuMinus className="mr-2 size-4" />
+              <Minus className="mr-2 size-4" />
               Unstage
             </ContextMenuItem>
           )}
@@ -285,9 +284,9 @@ export function FileItem({
               className="text-destructive focus:text-destructive"
             >
               {isDeleteAction ? (
-                <LuTrash2 className="mr-2 size-4" />
+                <Trash2 className="mr-2 size-4" />
               ) : (
-                <LuUndo2 className="mr-2 size-4" />
+                <Undo2 className="mr-2 size-4" />
               )}
               {discardLabel}
             </ContextMenuItem>

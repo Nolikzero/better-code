@@ -1,7 +1,7 @@
 "use client";
 
 import * as ContextMenuPrimitive from "@radix-ui/react-context-menu";
-import { CheckIcon, DotFilledIcon } from "@radix-ui/react-icons";
+import { Check, Circle } from "lucide-react";
 import * as React from "react";
 import {
   overlayCheckableItem,
@@ -98,7 +98,7 @@ const ContextMenuCheckboxItem = React.forwardRef<
   >
     <span className={overlayItemIndicator}>
       <ContextMenuPrimitive.ItemIndicator>
-        <CheckIcon className="h-4 w-4" />
+        <Check className="h-4 w-4" />
       </ContextMenuPrimitive.ItemIndicator>
     </span>
     {children}
@@ -118,7 +118,7 @@ const ContextMenuRadioItem = React.forwardRef<
   >
     <span className={overlayItemIndicator}>
       <ContextMenuPrimitive.ItemIndicator>
-        <DotFilledIcon className="h-2 w-2 fill-current" />
+        <Circle className="h-2 w-2 fill-current" />
       </ContextMenuPrimitive.ItemIndicator>
     </span>
     {children}

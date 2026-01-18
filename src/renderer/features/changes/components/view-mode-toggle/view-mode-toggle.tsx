@@ -1,4 +1,4 @@
-import { LuFolder, LuFolderTree } from "react-icons/lu";
+import { Folder, FolderTree } from "lucide-react";
 import { Button } from "../../../../components/ui/button";
 import {
   Tooltip,
@@ -31,9 +31,9 @@ export function ViewModeToggle({
           aria-label={viewMode === "grouped" ? "Grouped view" : "Tree view"}
         >
           {viewMode === "grouped" ? (
-            <LuFolder className="size-3.5" />
+            <Folder className="size-3.5" />
           ) : (
-            <LuFolderTree className="size-3.5" />
+            <FolderTree className="size-3.5" />
           )}
         </Button>
       </TooltipTrigger>

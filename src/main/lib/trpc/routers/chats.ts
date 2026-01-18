@@ -99,27 +99,39 @@ export const chatsRouter = router({
     }),
 
   /**
-   * Get a single chat with all sub-chats
+   * Get a single chat with all sub-chats (optimized single query with JOINs)
    */
   get: publicProcedure
     .input(z.object({ id: z.string() }))
     .query(({ input }) => {
       const db = getDatabase();
-      const chat = db.select().from(chats).where(eq(chats.id, input.id)).get();
-      if (!chat) return null;
 
-      const chatSubChats = db
-        .select()
-        .from(subChats)
-        .where(eq(subChats.chatId, input.id))
-        .orderBy(subChats.createdAt)
+      // Single query with JOINs instead of 3 separate queries
+      const rows = db
+        .select({
+          chat: chats,
+          subChat: subChats,
+          project: projects,
+        })
+        .from(chats)
+        .leftJoin(subChats, eq(subChats.chatId, chats.id))
+        .leftJoin(projects, eq(projects.id, chats.projectId))
+        .where(eq(chats.id, input.id))
         .all();
 
-      const project = db
-        .select()
-        .from(projects)
-        .where(eq(projects.id, chat.projectId))
-        .get();
+      if (!rows.length || !rows[0].chat) return null;
+
+      const chat = rows[0].chat;
+      const project = rows[0].project;
+
+      // Collect and sort sub-chats from joined results
+      const chatSubChats = rows
+        .filter((row) => row.subChat !== null)
+        .map((row) => row.subChat!)
+        .sort(
+          (a, b) =>
+            (a.createdAt?.getTime() || 0) - (b.createdAt?.getTime() || 0),
+        );
 
       return { ...chat, subChats: chatSubChats, project };
     }),
@@ -393,35 +405,32 @@ export const chatsRouter = router({
   // ============ Sub-chat procedures ============
 
   /**
-   * Get a single sub-chat
+   * Get a single sub-chat (optimized single query with JOINs)
    */
   getSubChat: publicProcedure
     .input(z.object({ id: z.string() }))
     .query(({ input }) => {
       const db = getDatabase();
-      const subChat = db
-        .select()
+
+      // Single query with JOINs instead of 3 separate queries
+      const row = db
+        .select({
+          subChat: subChats,
+          chat: chats,
+          project: projects,
+        })
         .from(subChats)
+        .leftJoin(chats, eq(chats.id, subChats.chatId))
+        .leftJoin(projects, eq(projects.id, chats.projectId))
         .where(eq(subChats.id, input.id))
         .get();
 
-      if (!subChat) return null;
+      if (!row?.subChat) return null;
 
-      const chat = db
-        .select()
-        .from(chats)
-        .where(eq(chats.id, subChat.chatId))
-        .get();
-
-      const project = chat
-        ? db
-            .select()
-            .from(projects)
-            .where(eq(projects.id, chat.projectId))
-            .get()
-        : null;
-
-      return { ...subChat, chat: chat ? { ...chat, project } : null };
+      return {
+        ...row.subChat,
+        chat: row.chat ? { ...row.chat, project: row.project } : null,
+      };
     }),
 
   /**
@@ -826,9 +835,8 @@ export const chatsRouter = router({
     }),
 
   /**
-   * Get file change stats for all workspaces
-   * Parses messages from all sub-chats and aggregates Edit/Write tool calls
-   * If openSubChatIds provided, only count stats from those sub-chats
+   * Get file change statistics for all non-archived chats.
+   * Uses computed columns instead of parsing messages JSON for performance.
    */
   getFileStats: publicProcedure
     .input(
@@ -840,12 +848,14 @@ export const chatsRouter = router({
         ? new Set(input.openSubChatIds)
         : null;
 
-      // Get all non-archived chats with their sub-chats
-      const allChats = db
+      // Query computed columns directly - no JSON parsing needed
+      const rows = db
         .select({
           chatId: chats.id,
           subChatId: subChats.id,
-          messages: subChats.messages,
+          additions: subChats.fileAdditions,
+          deletions: subChats.fileDeletions,
+          fileCount: subChats.fileCount,
         })
         .from(chats)
         .leftJoin(subChats, eq(subChats.chatId, chats.id))
@@ -865,97 +875,18 @@ export const chatsRouter = router({
         { additions: number; deletions: number; fileCount: number }
       >();
 
-      for (const row of allChats) {
-        if (!row.messages || !row.chatId) continue;
+      for (const row of rows) {
+        if (!row.chatId) continue;
 
-        try {
-          const messages = JSON.parse(row.messages) as Array<{
-            role: string;
-            parts?: Array<{
-              type: string;
-              input?: {
-                file_path?: string;
-                old_string?: string;
-                new_string?: string;
-                content?: string;
-              };
-            }>;
-          }>;
-
-          // Track file states for this sub-chat
-          const fileStates = new Map<
-            string,
-            { originalContent: string | null; currentContent: string }
-          >();
-
-          for (const msg of messages) {
-            if (msg.role !== "assistant") continue;
-            for (const part of msg.parts || []) {
-              if (part.type === "tool-Edit" || part.type === "tool-Write") {
-                const filePath = part.input?.file_path;
-                if (!filePath) continue;
-                // Skip session files
-                if (
-                  filePath.includes("claude-sessions") ||
-                  filePath.includes("Application Support")
-                )
-                  continue;
-
-                const oldString = part.input?.old_string || "";
-                const newString =
-                  part.input?.new_string || part.input?.content || "";
-
-                const existing = fileStates.get(filePath);
-                if (existing) {
-                  existing.currentContent = newString;
-                } else {
-                  fileStates.set(filePath, {
-                    originalContent:
-                      part.type === "tool-Write" ? null : oldString,
-                    currentContent: newString,
-                  });
-                }
-              }
-            }
-          }
-
-          // Calculate stats for this sub-chat and add to workspace total
-          let subChatAdditions = 0;
-          let subChatDeletions = 0;
-          let subChatFileCount = 0;
-
-          for (const [, state] of fileStates) {
-            const original = state.originalContent || "";
-            if (original === state.currentContent) continue;
-
-            const oldLines = original ? original.split("\n").length : 0;
-            const newLines = state.currentContent
-              ? state.currentContent.split("\n").length
-              : 0;
-
-            if (!original) {
-              // New file
-              subChatAdditions += newLines;
-            } else {
-              subChatAdditions += newLines;
-              subChatDeletions += oldLines;
-            }
-            subChatFileCount += 1;
-          }
-
-          // Add to workspace total
-          const existing = statsMap.get(row.chatId) || {
-            additions: 0,
-            deletions: 0,
-            fileCount: 0,
-          };
-          existing.additions += subChatAdditions;
-          existing.deletions += subChatDeletions;
-          existing.fileCount += subChatFileCount;
-          statsMap.set(row.chatId, existing);
-        } catch {
-          // Skip invalid JSON
-        }
+        const existing = statsMap.get(row.chatId) || {
+          additions: 0,
+          deletions: 0,
+          fileCount: 0,
+        };
+        existing.additions += row.additions || 0;
+        existing.deletions += row.deletions || 0;
+        existing.fileCount += row.fileCount || 0;
+        statsMap.set(row.chatId, existing);
       }
 
       // Convert to array for easier consumption
@@ -966,10 +897,8 @@ export const chatsRouter = router({
     }),
 
   /**
-   * Get sub-chats with pending plan approvals
-   * Parses messages to find ExitPlanMode tool calls without subsequent "Implement plan" user message
-   * Logic must match active-chat.tsx hasUnapprovedPlan
-   * If openSubChatIds provided, only check those sub-chats
+   * Get sub-chats with pending plan approvals.
+   * Uses computed column instead of parsing messages JSON for performance.
    */
   getPendingPlanApprovals: publicProcedure
     .input(
@@ -981,80 +910,30 @@ export const chatsRouter = router({
         ? new Set(input.openSubChatIds)
         : null;
 
-      // Get all non-archived chats with their sub-chats
-      const allSubChats = db
+      // Query computed column directly - no JSON parsing needed
+      const rows = db
         .select({
-          chatId: chats.id,
           subChatId: subChats.id,
-          messages: subChats.messages,
+          chatId: subChats.chatId,
+          hasPendingPlanApproval: subChats.hasPendingPlanApproval,
         })
-        .from(chats)
-        .leftJoin(subChats, eq(subChats.chatId, chats.id))
-        .where(isNull(chats.archivedAt))
+        .from(subChats)
+        .innerJoin(chats, eq(chats.id, subChats.chatId))
+        .where(
+          and(
+            eq(subChats.hasPendingPlanApproval, true),
+            isNull(chats.archivedAt),
+          ),
+        )
         .all()
         // Filter by open sub-chats if provided
         .filter(
-          (row) =>
-            !openSubChatIdsSet ||
-            !row.subChatId ||
-            openSubChatIdsSet.has(row.subChatId),
+          (row) => !openSubChatIdsSet || openSubChatIdsSet.has(row.subChatId),
         );
 
-      const pendingApprovals: Array<{ subChatId: string; chatId: string }> = [];
-
-      for (const row of allSubChats) {
-        if (!row.messages || !row.subChatId || !row.chatId) continue;
-
-        try {
-          const messages = JSON.parse(row.messages) as Array<{
-            role: string;
-            content?: string;
-            parts?: Array<{
-              type: string;
-              text?: string;
-            }>;
-          }>;
-
-          // Traverse messages from end to find unapproved ExitPlanMode
-          // Logic matches active-chat.tsx hasUnapprovedPlan
-          let hasUnapprovedPlan = false;
-
-          for (let i = messages.length - 1; i >= 0; i--) {
-            const msg = messages[i];
-            if (!msg) continue;
-
-            // If user message says "Implement plan" (exact match), plan is already approved
-            if (msg.role === "user") {
-              const textPart = msg.parts?.find((p) => p.type === "text");
-              const text = textPart?.text || "";
-              if (text.trim().toLowerCase() === "implement plan") {
-                break; // Plan was approved, stop searching
-              }
-            }
-
-            // If assistant message with ExitPlanMode, we found an unapproved plan
-            if (msg.role === "assistant" && msg.parts) {
-              const exitPlanPart = msg.parts.find(
-                (p) => p.type === "tool-ExitPlanMode",
-              );
-              if (exitPlanPart) {
-                hasUnapprovedPlan = true;
-                break;
-              }
-            }
-          }
-
-          if (hasUnapprovedPlan) {
-            pendingApprovals.push({
-              subChatId: row.subChatId,
-              chatId: row.chatId,
-            });
-          }
-        } catch {
-          // Skip invalid JSON
-        }
-      }
-
-      return pendingApprovals;
+      return rows.map((row) => ({
+        subChatId: row.subChatId,
+        chatId: row.chatId,
+      }));
     }),
 });

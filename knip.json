@@ -1,0 +1,21 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "src/main/index.ts",
+    "src/preload/index.ts",
+    "src/renderer/main.tsx"
+  ],
+  "project": ["src/**/*.{ts,tsx}"],
+  "ignore": [
+    "out/**",
+    "dist/**",
+    "release/**",
+    "drizzle/**",
+    "resources/**"
+  ],
+  "paths": {
+    "@/*": ["./src/renderer/*"],
+    "@shared/*": ["./src/shared/*"],
+    "@main/*": ["./src/main/*"]
+  }
+}

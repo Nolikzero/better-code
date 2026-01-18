@@ -272,21 +272,23 @@ export function AgentsSidebar({
   }, [agentChats, openSubChatsVersion]);
 
   // File changes stats from DB - only for open sub-chats
+  // Reduced polling from 5s to 30s for performance (data is not time-critical)
   const { data: fileStatsData } = trpc.chats.getFileStats.useQuery(
     { openSubChatIds: allOpenSubChatIds },
     {
-      refetchInterval: 5000,
+      refetchInterval: 30000,
       enabled: allOpenSubChatIds.length > 0,
       placeholderData: (prev) => prev,
     },
   );
 
   // Pending plan approvals from DB - only for open sub-chats
+  // Reduced polling from 5s to 30s for performance (data is not time-critical)
   const { data: pendingPlanApprovalsData } =
     trpc.chats.getPendingPlanApprovals.useQuery(
       { openSubChatIds: allOpenSubChatIds },
       {
-        refetchInterval: 5000,
+        refetchInterval: 30000,
         enabled: allOpenSubChatIds.length > 0,
         placeholderData: (prev) => prev,
       },

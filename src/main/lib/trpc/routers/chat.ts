@@ -8,6 +8,7 @@ import { BrowserWindow, app } from "electron";
 import * as fs from "fs/promises";
 import { z } from "zod";
 import { chats, getDatabase, subChats } from "../../db";
+import { computeAllStats } from "../../db/computed-stats";
 import {
   type UIMessageChunk,
   buildClaudeEnv,
@@ -300,11 +301,19 @@ export const chatRouter = router({
               };
               messagesToSave = [...existingMessages, userMessage];
 
+              // Compute stats for computed columns
+              const { fileStats, hasPendingPlanApproval } =
+                computeAllStats(messagesToSave);
+
               db.update(subChats)
                 .set({
                   messages: JSON.stringify(messagesToSave),
                   streamId,
                   updatedAt: new Date(),
+                  hasPendingPlanApproval,
+                  fileAdditions: fileStats.additions,
+                  fileDeletions: fileStats.deletions,
+                  fileCount: fileStats.fileCount,
                 })
                 .where(eq(subChats.id, input.subChatId))
                 .run();
@@ -428,12 +437,20 @@ export const chatRouter = router({
                   };
                   const finalMessages = [...messagesToSave, assistantMessage];
 
+                  // Compute stats for computed columns
+                  const { fileStats, hasPendingPlanApproval } =
+                    computeAllStats(finalMessages);
+
                   db.update(subChats)
                     .set({
                       messages: JSON.stringify(finalMessages),
                       sessionId: providerMetadata.sessionId,
                       streamId: null,
                       updatedAt: new Date(),
+                      hasPendingPlanApproval,
+                      fileAdditions: fileStats.additions,
+                      fileDeletions: fileStats.deletions,
+                      fileCount: fileStats.fileCount,
                     })
                     .where(eq(subChats.id, input.subChatId))
                     .run();
@@ -1205,12 +1222,21 @@ export const chatRouter = router({
                   metadata,
                 };
                 const finalMessages = [...messagesToSave, assistantMessage];
+
+                // Compute stats for computed columns
+                const { fileStats, hasPendingPlanApproval } =
+                  computeAllStats(finalMessages);
+
                 db.update(subChats)
                   .set({
                     messages: JSON.stringify(finalMessages),
                     sessionId: metadata.sessionId,
                     streamId: null,
                     updatedAt: new Date(),
+                    hasPendingPlanApproval,
+                    fileAdditions: fileStats.additions,
+                    fileDeletions: fileStats.deletions,
+                    fileCount: fileStats.fileCount,
                   })
                   .where(eq(subChats.id, input.subChatId))
                   .run();
@@ -1263,12 +1289,20 @@ export const chatRouter = router({
 
               const finalMessages = [...messagesToSave, assistantMessage];
 
+              // Compute stats for computed columns
+              const { fileStats, hasPendingPlanApproval } =
+                computeAllStats(finalMessages);
+
               db.update(subChats)
                 .set({
                   messages: JSON.stringify(finalMessages),
                   sessionId: metadata.sessionId,
                   streamId: null,
                   updatedAt: new Date(),
+                  hasPendingPlanApproval,
+                  fileAdditions: fileStats.additions,
+                  fileDeletions: fileStats.deletions,
+                  fileCount: fileStats.fileCount,
                 })
                 .where(eq(subChats.id, input.subChatId))
                 .run();

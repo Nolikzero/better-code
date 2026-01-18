@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { createId } from "../utils";
 
 // ============ PROJECTS ============
@@ -27,31 +27,38 @@ export const projectsRelations = relations(projects, ({ many }) => ({
 }));
 
 // ============ CHATS ============
-export const chats = sqliteTable("chats", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => createId()),
-  name: text("name"),
-  projectId: text("project_id")
-    .notNull()
-    .references(() => projects.id, { onDelete: "cascade" }),
-  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
-    () => new Date(),
-  ),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(
-    () => new Date(),
-  ),
-  archivedAt: integer("archived_at", { mode: "timestamp" }),
-  // Worktree fields (for git isolation per chat)
-  worktreePath: text("worktree_path"),
-  branch: text("branch"),
-  baseBranch: text("base_branch"),
-  // PR tracking fields
-  prUrl: text("pr_url"),
-  prNumber: integer("pr_number"),
-  // AI provider (claude | codex)
-  providerId: text("provider_id").default("claude"),
-});
+export const chats = sqliteTable(
+  "chats",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    name: text("name"),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
+      () => new Date(),
+    ),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(
+      () => new Date(),
+    ),
+    archivedAt: integer("archived_at", { mode: "timestamp" }),
+    // Worktree fields (for git isolation per chat)
+    worktreePath: text("worktree_path"),
+    branch: text("branch"),
+    baseBranch: text("base_branch"),
+    // PR tracking fields
+    prUrl: text("pr_url"),
+    prNumber: integer("pr_number"),
+    // AI provider (claude | codex)
+    providerId: text("provider_id").default("claude"),
+  },
+  (table) => ({
+    projectIdIdx: index("chats_project_id_idx").on(table.projectId),
+    archivedAtIdx: index("chats_archived_at_idx").on(table.archivedAt),
+  }),
+);
 
 export const chatsRelations = relations(chats, ({ one, many }) => ({
   project: one(projects, {
@@ -62,27 +69,40 @@ export const chatsRelations = relations(chats, ({ one, many }) => ({
 }));
 
 // ============ SUB-CHATS ============
-export const subChats = sqliteTable("sub_chats", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => createId()),
-  name: text("name"),
-  chatId: text("chat_id")
-    .notNull()
-    .references(() => chats.id, { onDelete: "cascade" }),
-  sessionId: text("session_id"), // Claude SDK session ID for resume
-  streamId: text("stream_id"), // Track in-progress streams
-  mode: text("mode").notNull().default("agent"), // "plan" | "agent"
-  messages: text("messages").notNull().default("[]"), // JSON array
-  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
-    () => new Date(),
-  ),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(
-    () => new Date(),
-  ),
-  // AI provider (claude | codex)
-  providerId: text("provider_id").default("claude"),
-});
+export const subChats = sqliteTable(
+  "sub_chats",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    name: text("name"),
+    chatId: text("chat_id")
+      .notNull()
+      .references(() => chats.id, { onDelete: "cascade" }),
+    sessionId: text("session_id"), // Claude SDK session ID for resume
+    streamId: text("stream_id"), // Track in-progress streams
+    mode: text("mode").notNull().default("agent"), // "plan" | "agent"
+    messages: text("messages").notNull().default("[]"), // JSON array
+    createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
+      () => new Date(),
+    ),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(
+      () => new Date(),
+    ),
+    // AI provider (claude | codex)
+    providerId: text("provider_id").default("claude"),
+    // Computed columns for performance (avoid parsing messages JSON on every query)
+    hasPendingPlanApproval: integer("has_pending_plan_approval", {
+      mode: "boolean",
+    }).default(false),
+    fileAdditions: integer("file_additions").default(0),
+    fileDeletions: integer("file_deletions").default(0),
+    fileCount: integer("file_count").default(0),
+  },
+  (table) => ({
+    chatIdIdx: index("sub_chats_chat_id_idx").on(table.chatId),
+  }),
+);
 
 export const subChatsRelations = relations(subChats, ({ one }) => ({
   chat: one(chats, {

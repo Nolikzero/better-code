@@ -1,4 +1,4 @@
-import { LuCircleDot, LuGitMerge, LuGitPullRequest } from "react-icons/lu";
+import { CircleDot, GitMerge, GitPullRequest } from "lucide-react";
 import { cn } from "../../../../lib/utils";
 
 export type PRState = "open" | "merged" | "closed" | "draft";
@@ -26,13 +26,13 @@ export function PRIcon({ state, className }: PRIconProps) {
   const baseClass = cn(stateStyles[state], className);
 
   if (state === "merged") {
-    return <LuGitMerge className={baseClass} />;
+    return <GitMerge className={baseClass} />;
   }
 
   if (state === "closed") {
-    return <LuCircleDot className={baseClass} />;
+    return <CircleDot className={baseClass} />;
   }
 
   // open or draft
-  return <LuGitPullRequest className={baseClass} />;
+  return <GitPullRequest className={baseClass} />;
 }

@@ -116,29 +116,32 @@ if (gotTheLock) {
 
     console.log(`[App] Starting BetterCode${IS_DEV ? " (DEV)" : ""}...`);
 
-    // Get Claude Code version for About panel
-    let claudeCodeVersion = "unknown";
-    try {
-      const isDev = !app.isPackaged;
-      const versionPath = isDev
-        ? join(app.getAppPath(), "resources/bin/VERSION")
-        : join(process.resourcesPath, "bin/VERSION");
+    // Defer About panel setup to avoid blocking startup with VERSION file read
+    // This runs after the critical startup path completes
+    const setupAboutPanel = () => {
+      let claudeCodeVersion = "unknown";
+      try {
+        const isDev = !app.isPackaged;
+        const versionPath = isDev
+          ? join(app.getAppPath(), "resources/bin/VERSION")
+          : join(process.resourcesPath, "bin/VERSION");
 
-      if (existsSync(versionPath)) {
-        const versionContent = readFileSync(versionPath, "utf-8");
-        claudeCodeVersion = versionContent.split("\n")[0]?.trim() || "unknown";
+        if (existsSync(versionPath)) {
+          const versionContent = readFileSync(versionPath, "utf-8");
+          claudeCodeVersion =
+            versionContent.split("\n")[0]?.trim() || "unknown";
+        }
+      } catch (error) {
+        console.warn("[App] Failed to read Claude Code version:", error);
       }
-    } catch (error) {
-      console.warn("[App] Failed to read Claude Code version:", error);
-    }
 
-    // Set About panel options with Claude Code version
-    app.setAboutPanelOptions({
-      applicationName: "BetterCode",
-      applicationVersion: app.getVersion(),
-      version: `Claude Code ${claudeCodeVersion}`,
-      copyright: "Copyright © 2026",
-    });
+      app.setAboutPanelOptions({
+        applicationName: "BetterCode",
+        applicationVersion: app.getVersion(),
+        version: `Claude Code ${claudeCodeVersion}`,
+        copyright: "Copyright © 2026",
+      });
+    };
 
     // Track update availability for menu
     let updateAvailable = false;
@@ -281,15 +284,22 @@ if (gotTheLock) {
     // Create main window
     createMainWindow();
 
+    // Deferred startup tasks (run after window is created to improve perceived startup time)
+    // Use setImmediate to let the event loop process window rendering first
+    setImmediate(() => {
+      setupAboutPanel();
+    });
+
     // Initialize auto-updater (production only)
     if (app.isPackaged) {
       await initAutoUpdater(getWindow);
       // Setup update check on window focus (instead of periodic interval)
       setupFocusUpdateCheck(getWindow);
-      // Check for updates 5 seconds after startup (force to bypass interval check)
+      // Check for updates 30 seconds after startup to let app settle
+      // (increased from 5s to avoid network contention during initial load)
       setTimeout(() => {
         checkForUpdates(true);
-      }, 5000);
+      }, 30000);
     }
 
     // macOS: Re-create window when dock icon is clicked

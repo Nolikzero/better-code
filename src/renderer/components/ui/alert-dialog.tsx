@@ -1,7 +1,7 @@
 "use client";
 
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog";
-import { Cross2Icon } from "@radix-ui/react-icons";
+import { X } from "lucide-react";
 import * as React from "react";
 
 import { cn } from "../../lib/utils";
@@ -49,7 +49,7 @@ const AlertDialogContent = React.forwardRef<
       {children}
       {showCloseButton && (
         <AlertDialogPrimitive.Cancel className="absolute right-3 top-3 h-6 w-6 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors z-10">
-          <Cross2Icon className="h-3.5 w-3.5" />
+          <X className="h-3.5 w-3.5" />
           <span className="sr-only">Close</span>
         </AlertDialogPrimitive.Cancel>
       )}

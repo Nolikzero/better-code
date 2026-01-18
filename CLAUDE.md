@@ -30,15 +30,28 @@ bun run db:push          # Push schema directly (dev only)
 src/
 ├── main/                    # Electron main process
 │   ├── index.ts             # App entry, window lifecycle
-│   ├── auth-manager.ts      # OAuth flow, token refresh
-│   ├── auth-store.ts        # Encrypted credential storage (safeStorage)
 │   ├── windows/main.ts      # Window creation, IPC handlers
 │   └── lib/
 │       ├── db/              # Drizzle + SQLite
 │       │   ├── index.ts     # DB init, auto-migrate on startup
 │       │   ├── schema/      # Drizzle table definitions
 │       │   └── utils.ts     # ID generation
-│       └── trpc/routers/    # tRPC routers (projects, chats, claude)
+│       ├── git/             # Git operations
+│       │   ├── branches.ts, staging.ts, status.ts, worktree.ts
+│       │   ├── github/      # GitHub API integration
+│       │   ├── gitlab/      # GitLab API integration
+│       │   └── providers/   # Git provider abstraction
+│       ├── providers/       # AI provider abstraction
+│       │   ├── claude/      # Claude SDK integration
+│       │   ├── codex/       # OpenAI Codex integration
+│       │   └── registry.ts  # Provider registration
+│       ├── terminal/        # Terminal session management
+│       │   ├── manager.ts   # Terminal lifecycle
+│       │   ├── session.ts   # PTY sessions
+│       │   └── port-manager.ts
+│       ├── trpc/routers/    # tRPC routers (13+ routers)
+│       ├── auto-updater.ts  # Electron auto-update
+│       └── config.ts        # App configuration
 │
 ├── preload/                 # IPC bridge (context isolation)
 │   └── index.ts             # Exposes desktopApi + tRPC bridge
@@ -50,16 +63,23 @@ src/
     │   │   ├── main/        # active-chat.tsx, new-chat-form.tsx
     │   │   ├── ui/          # Tool renderers, preview, diff view
     │   │   ├── commands/    # Slash commands (/plan, /agent, /clear)
-    │   │   ├── atoms/       # Jotai atoms for agent state
+    │   │   ├── atoms/       # Jotai atoms for agent state (50+)
     │   │   └── stores/      # Zustand store for sub-chats
+    │   ├── changes/         # Git diff view, file changes
+    │   ├── terminal/        # Terminal UI (xterm-based)
+    │   ├── onboarding/      # New user onboarding flow
     │   ├── sidebar/         # Chat list, archive, navigation
     │   └── layout/          # Main layout with resizable panels
-    ├── components/ui/       # Radix UI wrappers (button, dialog, etc.)
+    ├── components/
+    │   ├── ui/              # Radix UI wrappers (button, dialog, etc.)
+    │   └── dialogs/         # Modal dialogs
     └── lib/
         ├── atoms/           # Global Jotai atoms
         ├── stores/          # Global Zustand stores
-        ├── trpc.ts          # Real tRPC client
-        └── mock-api.ts      # DEPRECATED - being replaced with real tRPC
+        ├── themes/          # VSCode theme support
+        ├── hooks/           # Shared React hooks
+        ├── utils/           # Utility functions
+        └── trpc.ts          # tRPC client
 ```
 
 ## Database (Drizzle ORM)
@@ -69,10 +89,11 @@ src/
 **Schema:** `src/main/lib/db/schema/index.ts`
 
 ```typescript
-// Three main tables:
-projects    → id, name, path (local folder), timestamps
-chats       → id, name, projectId, worktree fields, timestamps
-sub_chats   → id, name, chatId, sessionId, mode, messages (JSON)
+// Four main tables:
+projects              → id, name, path, gitRemoteUrl, gitProvider, gitOwner, gitRepo, timestamps
+chats                 → id, name, projectId, archivedAt, worktreePath, branch, baseBranch, prUrl, prNumber, providerId, timestamps
+sub_chats             → id, name, chatId, sessionId, streamId, mode, messages (JSON), providerId, timestamps
+claudeCodeCredentials → id, oauthToken, connectedAt, userId
 ```
 
 **Auto-migration:** On app start, `initDatabase()` runs migrations from `drizzle/` folder (dev) or `resources/migrations` (packaged).
@@ -95,26 +116,36 @@ const projectChats = db.select().from(chats).where(eq(chats.projectId, id)).all(
 - Preload exposes `window.desktopApi` for native features (window controls, clipboard, notifications)
 
 ### State Management
-- **Jotai**: UI state (selected chat, sidebar open, preview settings)
-- **Zustand**: Sub-chat tabs and pinned state (persisted to localStorage)
+- **Jotai**: UI state with 50+ atoms across multiple files
+  - Chat/selection atoms (selectedAgentChatIdAtom, previousAgentChatIdAtom)
+  - Preview atoms (previewPathAtomFamily, viewportModeAtomFamily)
+  - Sidebar atoms (agentsSidebarOpenAtom, diffSidebarOpenAtomFamily)
+  - Provider atoms (defaultProviderIdAtom, chatProviderOverridesAtom)
+  - Settings atoms (themes, extended thinking, sound notifications)
+- **Zustand**: Sub-chat tabs, pinned state, git changes view (persisted to localStorage)
 - **React Query**: Server state via tRPC (auto-caching, refetch)
 
-### Claude Integration
-- Dynamic import of `@anthropic-ai/claude-code` SDK
+### AI Provider Integration
+- Multi-provider abstraction layer (`src/main/lib/providers/`)
+- Supported providers: Claude (claude-code SDK), Codex (OpenAI)
 - Two modes: "plan" (read-only) and "agent" (full permissions)
 - Session resume via `sessionId` stored in SubChat
-- Message streaming via tRPC subscription (`claude.onMessage`)
+- Message streaming via Vercel AI SDK (@ai-sdk/react)
 
 ## Tech Stack
 
 | Layer | Tech |
 |-------|------|
-| Desktop | Electron 33.4.5, electron-vite, electron-builder |
+| Desktop | Electron 33.4.5, electron-vite, electron-builder, electron-updater |
 | UI | React 19, TypeScript 5.4.5, Tailwind CSS |
 | Components | Radix UI, Lucide icons, Motion, Sonner |
 | State | Jotai, Zustand, React Query |
 | Backend | tRPC, Drizzle ORM, better-sqlite3 |
-| AI | @anthropic-ai/claude-code |
+| AI | @anthropic-ai/claude-code, @anthropic-ai/claude-agent-sdk, @ai-sdk/react, ai (Vercel) |
+| Terminal | xterm, node-pty |
+| Git | simple-git |
+| Code Highlighting | shiki |
+| Linting/Formatting | Biome |
 | Package Manager | bun |
 
 ## File Naming
@@ -129,9 +160,13 @@ const projectChats = db.select().from(chats).where(eq(chats.projectId, id)).all(
 - `electron.vite.config.ts` - Build config (main/preload/renderer entries)
 - `src/main/lib/db/schema/index.ts` - Drizzle schema (source of truth)
 - `src/main/lib/db/index.ts` - DB initialization + auto-migrate
-- `src/renderer/features/agents/atoms/index.ts` - Agent UI state atoms
+- `src/main/lib/providers/` - AI provider abstraction (Claude, Codex)
+- `src/main/lib/git/` - Git operations, worktrees, GitHub/GitLab integration
+- `src/main/lib/terminal/` - Terminal session management
+- `src/renderer/features/agents/atoms/index.ts` - Agent UI state atoms (50+)
 - `src/renderer/features/agents/main/active-chat.tsx` - Main chat component
-- `src/main/lib/trpc/routers/claude.ts` - Claude SDK integration
+- `src/renderer/features/changes/` - Git diff and changes UI
+- `src/renderer/lib/themes/` - VSCode theme support
 
 ## Debugging First Install Issues
 
@@ -212,18 +247,20 @@ npm version major  # 0.1.0 → 1.0.0
 3. User clicks Download → downloads ZIP in background
 4. User clicks "Restart Now" → installs update and restarts
 
-## Current Status (WIP)
+## Current Status
 
 **Done:**
-- Drizzle ORM setup with schema (projects, chats, sub_chats)
+- Drizzle ORM with schema (projects, chats, sub_chats, credentials)
 - Auto-migration on app startup
-- tRPC routers structure
+- tRPC routers (13+ routers for all features)
+- Git integration with worktree support per chat
+- GitHub/GitLab provider integration
+- Multi-provider AI support (Claude, Codex)
+- Terminal integration with xterm/node-pty
+- Onboarding flow for new users
+- Auto-update system
+- VSCode theme support
 
 **In Progress:**
-- Replacing `mock-api.ts` with real tRPC calls in renderer
-- ProjectSelector component (local folder picker)
-
-**Planned:**
-- Git worktree per chat (isolation)
-- Claude Code execution in worktree path
-- Full feature parity with web app
+- UI polish and refinements
+- Additional AI provider integrations

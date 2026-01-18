@@ -1,6 +1,5 @@
 "use client";
 
-import { DiffModeEnum } from "@git-diff-view/react";
 import { useAtom } from "jotai";
 import {
   Columns2,
@@ -42,6 +41,7 @@ import type { DiffStats, ParsedFileDiff } from "../hooks/use-diff-management";
 import {
   AgentDiffView,
   type AgentDiffViewRef,
+  DiffModeEnum,
   diffViewModeAtom,
 } from "./agent-diff-view";
 import { PrStatusBar } from "./pr-status-bar";

@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
+import { memo, useMemo } from "react";
 import { ChatMarkdownRenderer } from "../../../components/chat-markdown-renderer";
 import { cn } from "../../../lib/utils";
 import {
@@ -49,7 +50,7 @@ export interface AssistantMessageProps {
   onPlaybackRateChange: (rate: PlaybackSpeed) => void;
 }
 
-export function AssistantMessage({
+export const AssistantMessage = memo(function AssistantMessage({
   message: assistantMsg,
   isLastMessage,
   isStreaming,
@@ -77,62 +78,81 @@ export function AssistantMessage({
     (p: any) => p.type === "text" && p.text?.trim(),
   );
 
-  // Build map of nested tools per parent Task
-  const nestedToolsMap = new Map<string, any[]>();
-  const nestedToolIds = new Set<string>();
-  const taskPartIds = new Set(
-    (assistantMsg.parts || [])
-      .filter((p: any) => p.type === "tool-Task" && p.toolCallId)
-      .map((p: any) => p.toolCallId),
-  );
-  const orphanTaskGroups = new Map<
-    string,
-    { parts: any[]; firstToolCallId: string }
-  >();
-  const orphanToolCallIds = new Set<string>();
-  const orphanFirstToolCallIds = new Set<string>();
+  // Memoize expensive nested tools computation
+  const {
+    nestedToolsMap,
+    nestedToolIds,
+    orphanTaskGroups,
+    orphanToolCallIds,
+    orphanFirstToolCallIds,
+  } = useMemo(() => {
+    const nestedToolsMap = new Map<string, any[]>();
+    const nestedToolIds = new Set<string>();
+    const taskPartIds = new Set(
+      (assistantMsg.parts || [])
+        .filter((p: any) => p.type === "tool-Task" && p.toolCallId)
+        .map((p: any) => p.toolCallId),
+    );
+    const orphanTaskGroups = new Map<
+      string,
+      { parts: any[]; firstToolCallId: string }
+    >();
+    const orphanToolCallIds = new Set<string>();
+    const orphanFirstToolCallIds = new Set<string>();
 
-  for (const part of assistantMsg.parts || []) {
-    if (part.toolCallId?.includes(":")) {
-      const parentId = part.toolCallId.split(":")[0];
-      if (taskPartIds.has(parentId)) {
-        if (!nestedToolsMap.has(parentId)) {
-          nestedToolsMap.set(parentId, []);
+    for (const part of assistantMsg.parts || []) {
+      if (part.toolCallId?.includes(":")) {
+        const parentId = part.toolCallId.split(":")[0];
+        if (taskPartIds.has(parentId)) {
+          if (!nestedToolsMap.has(parentId)) {
+            nestedToolsMap.set(parentId, []);
+          }
+          nestedToolsMap.get(parentId)!.push(part);
+          nestedToolIds.add(part.toolCallId);
+        } else {
+          let group = orphanTaskGroups.get(parentId);
+          if (!group) {
+            group = {
+              parts: [],
+              firstToolCallId: part.toolCallId,
+            };
+            orphanTaskGroups.set(parentId, group);
+            orphanFirstToolCallIds.add(part.toolCallId);
+          }
+          group.parts.push(part);
+          orphanToolCallIds.add(part.toolCallId);
         }
-        nestedToolsMap.get(parentId)!.push(part);
-        nestedToolIds.add(part.toolCallId);
-      } else {
-        let group = orphanTaskGroups.get(parentId);
-        if (!group) {
-          group = {
-            parts: [],
-            firstToolCallId: part.toolCallId,
-          };
-          orphanTaskGroups.set(parentId, group);
-          orphanFirstToolCallIds.add(part.toolCallId);
-        }
-        group.parts.push(part);
-        orphanToolCallIds.add(part.toolCallId);
       }
     }
-  }
+
+    return {
+      nestedToolsMap,
+      nestedToolIds,
+      orphanTaskGroups,
+      orphanToolCallIds,
+      orphanFirstToolCallIds,
+    };
+  }, [assistantMsg.parts]);
 
   // Detect final text by structure: last text part after any tool parts
   // This works locally without needing metadata.finalTextId
   const allParts = assistantMsg.parts || [];
 
-  // Find the last tool index and last text index
-  let lastToolIndex = -1;
-  let lastTextIndex = -1;
-  for (let i = 0; i < allParts.length; i++) {
-    const part = allParts[i];
-    if (part.type?.startsWith("tool-")) {
-      lastToolIndex = i;
+  // Memoize last indexes computation
+  const { lastToolIndex, lastTextIndex } = useMemo(() => {
+    let lastToolIndex = -1;
+    let lastTextIndex = -1;
+    for (let i = 0; i < allParts.length; i++) {
+      const part = allParts[i];
+      if (part.type?.startsWith("tool-")) {
+        lastToolIndex = i;
+      }
+      if (part.type === "text" && part.text?.trim()) {
+        lastTextIndex = i;
+      }
     }
-    if (part.type === "text" && part.text?.trim()) {
-      lastTextIndex = i;
-    }
-  }
+    return { lastToolIndex, lastTextIndex };
+  }, [allParts]);
 
   // Final text exists if: there are tools AND the last text comes AFTER the last tool
   // For streaming messages, don't show as final until streaming completes
@@ -498,4 +518,4 @@ export function AssistantMessage({
       )}
     </motion.div>
   );
-}
+});

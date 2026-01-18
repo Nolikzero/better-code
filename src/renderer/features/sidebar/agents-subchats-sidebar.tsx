@@ -159,11 +159,12 @@ export function AgentsSubChatsSidebar({
   const pendingQuestions = useAtomValue(pendingUserQuestionsAtom);
 
   // Pending plan approvals from DB - only for open sub-chats
+  // Reduced polling from 5s to 30s for performance (data is not time-critical)
   const { data: pendingPlanApprovalsData } =
     trpc.chats.getPendingPlanApprovals.useQuery(
       { openSubChatIds },
       {
-        refetchInterval: 5000,
+        refetchInterval: 30000,
         enabled: openSubChatIds.length > 0,
         placeholderData: (prev) => prev,
       },

@@ -1,11 +1,5 @@
+import { Copy, FileOutput, PencilLine, Plus, X } from "lucide-react";
 import type { ReactNode } from "react";
-import {
-  LuCopy,
-  LuFileOutput,
-  LuPencilLine,
-  LuPlus,
-  LuX,
-} from "react-icons/lu";
 import type { FileStatus } from "../../../../shared/changes-types";
 
 export function getStatusColor(status: FileStatus): string {
@@ -31,15 +25,15 @@ export function getStatusIndicator(status: FileStatus): ReactNode {
   switch (status) {
     case "added":
     case "untracked":
-      return <LuPlus className={iconClass} />;
+      return <Plus className={iconClass} />;
     case "modified":
-      return <LuPencilLine className={iconClass} />;
+      return <PencilLine className={iconClass} />;
     case "deleted":
-      return <LuX className={iconClass} />;
+      return <X className={iconClass} />;
     case "renamed":
-      return <LuFileOutput className={iconClass} />;
+      return <FileOutput className={iconClass} />;
     case "copied":
-      return <LuCopy className={iconClass} />;
+      return <Copy className={iconClass} />;
     default:
       return null;
   }

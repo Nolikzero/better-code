@@ -243,14 +243,15 @@ body:has([data-agents-page]) .canvas-dialog,
 }
 
 /* ========================================
-   9. GIT DIFF VIEW STYLES
+   9. GIT DIFF VIEW STYLES (@pierre/diffs)
    ======================================== */
 
 /* Git Diff View Customization - compact 12px font size for diffs */
 .agent-diff-wrapper {
-  /* Set CSS variables that @git-diff-view/react uses */
-  --diff-font-size--: 12px;
-  --diff-line-height--: 1.5;
+  /* Set CSS variables that @pierre/diffs uses */
+  --diffs-font-size: 12px;
+  --diffs-line-height: 1.5;
+  --diffs-font-family: "Geist Mono", ui-monospace, monospace;
   font-size: 12px;
   line-height: 1.5;
   width: 100%;
@@ -258,18 +259,10 @@ body:has([data-agents-page]) .canvas-dialog,
   overflow-y: hidden;
 }
 
-/* Specific elements that need consistent styling */
-.agent-diff-wrapper .diff-line-content-item,
-.agent-diff-wrapper .diff-line-syntax-raw,
-.agent-diff-wrapper .unified-diff-table,
-.agent-diff-wrapper .diff-line-num {
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-/* Monospace font for code elements */
-.agent-diff-wrapper code,
-.agent-diff-wrapper pre {
+/* @pierre/diffs uses shadow DOM, so most styles need to be passed via CSS variables
+   or the unsafeCSS prop. Basic wrapper styles are applied here. */
+.agent-diff-wrapper pre,
+.agent-diff-wrapper code {
   font-size: 12px;
   font-family: "Geist Mono", ui-monospace, monospace;
 }

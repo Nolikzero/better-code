@@ -1,9 +1,5 @@
+import { ExternalLink, Minus, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
-import {
-  HiArrowTopRightOnSquare,
-  HiMiniMinus,
-  HiMiniPlus,
-} from "react-icons/hi2";
 import { toast } from "sonner";
 import type {
   ChangeCategory,
@@ -345,7 +341,7 @@ export function ChangesView({
             className="w-full gap-1.5 h-7 text-xs"
             onClick={() => window.open(prUrl, "_blank")}
           >
-            <HiArrowTopRightOnSquare className="size-4" />
+            <ExternalLink className="size-4" />
             Open Pull Request
           </Button>
         </div>
@@ -420,7 +416,7 @@ export function ChangesView({
                     }
                     disabled={unstageAllMutation.isPending}
                   >
-                    <HiMiniMinus className="w-4 h-4" />
+                    <Minus className="w-4 h-4" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">Unstage all</TooltipContent>
@@ -467,7 +463,7 @@ export function ChangesView({
                     }
                     disabled={stageAllMutation.isPending}
                   >
-                    <HiMiniPlus className="w-4 h-4" />
+                    <Plus className="w-4 h-4" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">Stage all</TooltipContent>

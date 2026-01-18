@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
+import { memo } from "react";
 import { Button } from "../../../components/ui/button";
 import { cn } from "../../../lib/utils";
 import { AgentToolCall } from "./agent-tool-call";
@@ -41,7 +42,7 @@ export interface UserMessageProps {
   isSubChatsSidebarOpen?: boolean;
 }
 
-export function UserMessage({
+export const UserMessage = memo(function UserMessage({
   message: msg,
   isLastUserMessage,
   sandboxSetupStatus,
@@ -139,4 +140,4 @@ export function UserMessage({
       </div>
     </>
   );
-}
+});

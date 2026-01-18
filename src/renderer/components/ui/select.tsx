@@ -3,11 +3,7 @@
 import * as SelectPrimitive from "@radix-ui/react-select";
 import * as React from "react";
 
-import {
-  CheckIcon,
-  ChevronDownIcon,
-  ChevronUpIcon,
-} from "@radix-ui/react-icons";
+import { Check, ChevronDown, ChevronUp } from "lucide-react";
 import {
   overlayAnimation,
   overlayContentBase,
@@ -44,7 +40,7 @@ const SelectTrigger = React.forwardRef<
   >
     {children}
     <SelectPrimitive.Icon asChild>
-      <ChevronDownIcon
+      <ChevronDown
         width={16}
         height={16}
         strokeWidth={2}
@@ -67,7 +63,7 @@ const SelectScrollUpButton = React.forwardRef<
     )}
     {...props}
   >
-    <ChevronUpIcon
+    <ChevronUp
       width={16}
       height={16}
       strokeWidth={2}
@@ -89,7 +85,7 @@ const SelectScrollDownButton = React.forwardRef<
     )}
     {...props}
   >
-    <ChevronDownIcon
+    <ChevronDown
       width={16}
       height={16}
       strokeWidth={2}
@@ -175,7 +171,7 @@ const SelectItem = React.forwardRef<
     >
       <span className={cn(overlayItemIndicator, hasDescription && "mt-0.5")}>
         <SelectPrimitive.ItemIndicator>
-          <CheckIcon
+          <Check
             width={16}
             height={16}
             strokeWidth={2}

@@ -1,12 +1,12 @@
-import { useState } from "react";
 import {
-  HiArrowDown,
-  HiArrowTopRightOnSquare,
-  HiArrowUp,
-  HiArrowsUpDown,
-  HiCheck,
-  HiChevronDown,
-} from "react-icons/hi2";
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  Check,
+  ChevronDown,
+  ExternalLink,
+} from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "../../../../components/ui/button";
 import { ButtonGroup } from "../../../../components/ui/button-group";
@@ -149,7 +149,7 @@ export function CommitInput({
       return {
         action: "commit",
         label: "Commit",
-        icon: <HiCheck className="size-4" />,
+        icon: <Check className="size-4" />,
         handler: handleCommit,
         disabled: isPending,
         tooltip: "Commit staged changes",
@@ -159,7 +159,7 @@ export function CommitInput({
       return {
         action: "sync",
         label: "Sync",
-        icon: <HiArrowsUpDown className="size-4" />,
+        icon: <ArrowUpDown className="size-4" />,
         handler: handleSync,
         disabled: isPending,
         tooltip: `Pull ${pullCount}, push ${pushCount}`,
@@ -169,7 +169,7 @@ export function CommitInput({
       return {
         action: "push",
         label: "Push",
-        icon: <HiArrowUp className="size-4" />,
+        icon: <ArrowUp className="size-4" />,
         handler: handlePush,
         disabled: isPending,
         tooltip: `Push ${pushCount} commit${pushCount !== 1 ? "s" : ""}`,
@@ -179,7 +179,7 @@ export function CommitInput({
       return {
         action: "pull",
         label: "Pull",
-        icon: <HiArrowDown className="size-4" />,
+        icon: <ArrowDown className="size-4" />,
         handler: handlePull,
         disabled: isPending,
         tooltip: `Pull ${pullCount} commit${pullCount !== 1 ? "s" : ""}`,
@@ -190,7 +190,7 @@ export function CommitInput({
       return {
         action: "push",
         label: "Publish Branch",
-        icon: <HiArrowUp className="size-4" />,
+        icon: <ArrowUp className="size-4" />,
         handler: handlePush,
         disabled: isPending,
         tooltip: "Publish branch to remote",
@@ -199,7 +199,7 @@ export function CommitInput({
     return {
       action: "commit",
       label: "Commit",
-      icon: <HiCheck className="size-4" />,
+      icon: <Check className="size-4" />,
       handler: handleCommit,
       disabled: true,
       tooltip: hasStagedChanges ? "Enter a message" : "No staged changes",
@@ -255,7 +255,7 @@ export function CommitInput({
               disabled={isPending}
               className="h-7 px-1.5"
             >
-              <HiChevronDown className="size-3.5" />
+              <ChevronDown className="size-3.5" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48 text-xs">
@@ -265,7 +265,7 @@ export function CommitInput({
               disabled={!canCommit}
               className="text-xs"
             >
-              <HiCheck className="size-3.5" />
+              <Check className="size-3.5" />
               Commit
             </DropdownMenuItem>
             <DropdownMenuItem
@@ -273,7 +273,7 @@ export function CommitInput({
               disabled={!canCommit}
               className="text-xs"
             >
-              <HiArrowUp className="size-3.5" />
+              <ArrowUp className="size-3.5" />
               Commit & Push
             </DropdownMenuItem>
             {!hasExistingPR && (
@@ -282,7 +282,7 @@ export function CommitInput({
                 disabled={!canCommit}
                 className="text-xs"
               >
-                <HiArrowTopRightOnSquare className="size-3.5" />
+                <ExternalLink className="size-3.5" />
                 Commit, Push & Create PR
               </DropdownMenuItem>
             )}
@@ -294,7 +294,7 @@ export function CommitInput({
               disabled={pushCount === 0 && hasUpstream}
               className="text-xs"
             >
-              <HiArrowUp className="size-3.5" />
+              <ArrowUp className="size-3.5" />
               <span className="flex-1">
                 {hasUpstream ? "Push" : "Publish Branch"}
               </span>
@@ -309,7 +309,7 @@ export function CommitInput({
               disabled={pullCount === 0}
               className="text-xs"
             >
-              <HiArrowDown className="size-3.5" />
+              <ArrowDown className="size-3.5" />
               <span className="flex-1">Pull</span>
               {pullCount > 0 && (
                 <span className="text-[10px] text-muted-foreground">
@@ -322,7 +322,7 @@ export function CommitInput({
               disabled={pushCount === 0 && pullCount === 0}
               className="text-xs"
             >
-              <HiArrowsUpDown className="size-3.5" />
+              <ArrowUpDown className="size-3.5" />
               Sync
             </DropdownMenuItem>
 
@@ -330,12 +330,12 @@ export function CommitInput({
 
             {hasExistingPR ? (
               <DropdownMenuItem onClick={handleOpenPR} className="text-xs">
-                <HiArrowTopRightOnSquare className="size-3.5" />
+                <ExternalLink className="size-3.5" />
                 Open Pull Request
               </DropdownMenuItem>
             ) : (
               <DropdownMenuItem onClick={handleCreatePR} className="text-xs">
-                <HiArrowTopRightOnSquare className="size-3.5" />
+                <ExternalLink className="size-3.5" />
                 Create Pull Request
               </DropdownMenuItem>
             )}

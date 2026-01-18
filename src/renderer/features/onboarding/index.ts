@@ -1,2 +1,2 @@
-export { AnthropicOnboardingPage } from "./anthropic-onboarding-page";
+export { OnboardingPage } from "./onboarding-page";
 export { SelectRepoPage } from "./select-repo-page";

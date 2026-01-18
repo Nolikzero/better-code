@@ -1,4 +1,6 @@
 import { GitPullRequest } from "lucide-react";
+import type { GitHubStatus } from "../../../../main/lib/git/github/types";
+import type { GitHostStatus } from "../../../../main/lib/git/providers/types";
 import { IconSpinner } from "../../../components/ui/icons";
 import { trpc } from "../../../lib/trpc";
 
@@ -10,6 +12,7 @@ interface PrStatusBarProps {
 
 type PrState = "open" | "draft" | "merged" | "closed";
 type ReviewDecision = "approved" | "changes_requested" | "pending";
+type GitProvider = "github" | "gitlab" | "bitbucket" | null;
 
 function getStatusLabel(
   state: PrState,
@@ -36,13 +39,21 @@ export function PrStatusBar({ chatId, prUrl, prNumber }: PrStatusBarProps) {
     { refetchInterval: 30000 },
   );
 
+  // Handle both GitHubStatus (legacy) and GitHostStatus (new) response formats
+  const provider: GitProvider =
+    (status as unknown as GitHostStatus)?.provider ?? "github";
+  const pr =
+    (status as unknown as GitHostStatus)?.mergeRequest ??
+    (status as GitHubStatus | undefined)?.pr ??
+    null;
+  const prLabel = provider === "gitlab" ? "MR" : "PR";
+
   console.log("[PrStatusBar] Query state:", {
     isLoading,
     status,
-    pr: status?.pr,
+    pr,
+    provider,
   });
-
-  const pr = status?.pr;
 
   const handleOpenPr = () => {
     window.desktopApi.openExternal(prUrl);
@@ -56,7 +67,9 @@ export function PrStatusBar({ chatId, prUrl, prNumber }: PrStatusBarProps) {
         className="flex items-center gap-1.5 text-sm font-medium hover:underline text-foreground cursor-pointer"
       >
         <GitPullRequest className="h-4 w-4" />
-        <span>PR #{prNumber}</span>
+        <span>
+          {prLabel} #{prNumber}
+        </span>
       </button>
 
       {/* Status */}

@@ -40,7 +40,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "../../../components/ui/tooltip";
-import { getFileIconByExtension } from "../mentions/agents-file-mention";
+import { getFileIconByExtension } from "../mentions";
 // e2b API routes are used instead of useSandboxManager for agents
 // import { useIsHydrated } from "@/hooks/use-is-hydrated"
 const useIsHydrated = () => true; // Desktop is always hydrated

@@ -20,11 +20,11 @@ import { useFileChangeListener } from "../../lib/hooks/use-file-change-listener"
 import { useChangesStore } from "../../lib/stores/changes-store";
 import { trpc } from "../../lib/trpc";
 
-import { CategorySection } from "./components/CategorySection";
-import { ChangesHeader } from "./components/ChangesHeader";
-import { CommitInput } from "./components/CommitInput";
-import { CommitItem } from "./components/CommitItem";
-import { FileList } from "./components/FileList";
+import { CategorySection } from "./components/category-section";
+import { ChangesHeader } from "./components/changes-header";
+import { CommitInput } from "./components/commit-input";
+import { CommitItem } from "./components/commit-item";
+import { FileList } from "./components/file-list";
 
 interface ChangesViewProps {
   /** Worktree path for the current chat */

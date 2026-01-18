@@ -220,8 +220,14 @@ export const api = {
       useMutation: () => {
         const mutation = trpc.chats.generateSubChatName.useMutation();
         return {
-          mutateAsync: async (args: { userMessage: string }) => {
-            return mutation.mutateAsync({ userMessage: args.userMessage });
+          mutateAsync: async (args: {
+            userMessage: string;
+            providerId?: "claude" | "codex";
+          }) => {
+            return mutation.mutateAsync({
+              userMessage: args.userMessage,
+              providerId: args.providerId,
+            });
           },
           isPending: mutation.isPending,
         };
@@ -370,8 +376,18 @@ export const api = {
   },
   // Stubs for features not needed in desktop
   teams: {
-    getUserTeams: { useQuery: (_args?: AnyObj, _opts?: AnyObj) => ({ data: [], isLoading: false }) },
-    getTeam: { useQuery: (_args?: AnyObj, _opts?: AnyObj) => ({ data: null, isLoading: false }) },
+    getUserTeams: {
+      useQuery: (_args?: AnyObj, _opts?: AnyObj) => ({
+        data: [],
+        isLoading: false,
+      }),
+    },
+    getTeam: {
+      useQuery: (_args?: AnyObj, _opts?: AnyObj) => ({
+        data: null,
+        isLoading: false,
+      }),
+    },
     updateTeam: {
       useMutation: () => ({
         mutate: () => {},

@@ -4,6 +4,8 @@ import { z } from "zod";
 import { publicProcedure, router } from "../trpc";
 import { isUpstreamMissingError } from "./git-utils";
 import { fetchGitHubPRStatus } from "./github";
+import type { GitProvider } from "./index";
+import { fetchGitHostStatus, getCompareUrl } from "./providers";
 import { assertRegisteredWorktree } from "./security";
 
 export { isUpstreamMissingError };
@@ -121,6 +123,11 @@ export const createGitOperationsRouter = () => {
       .input(
         z.object({
           worktreePath: z.string(),
+          provider: z
+            .enum(["github", "gitlab", "bitbucket"])
+            .nullable()
+            .optional(),
+          baseBranch: z.string().optional().default("main"),
         }),
       )
       .mutation(
@@ -139,14 +146,55 @@ export const createGitOperationsRouter = () => {
             await git.push();
           }
 
-          // Get the remote URL to construct the GitHub compare URL
+          // Get the remote URL
           const remoteUrl = (await git.remote(["get-url", "origin"])) || "";
+          const provider = input.provider as GitProvider;
+
+          // Use provider-aware URL generation if provider is known
+          if (provider && provider !== "bitbucket") {
+            // Extract repo URL from remote
+            let repoUrl: string | null = null;
+
+            if (provider === "github") {
+              const match = remoteUrl
+                .trim()
+                .match(/github\.com[:/](.+?)(?:\.git)?$/);
+              if (match) {
+                repoUrl = `https://github.com/${match[1].replace(/\.git$/, "")}`;
+              }
+            } else if (provider === "gitlab") {
+              const match = remoteUrl
+                .trim()
+                .match(/gitlab\.com[:/](.+?)(?:\.git)?$/);
+              if (match) {
+                repoUrl = `https://gitlab.com/${match[1].replace(/\.git$/, "")}`;
+              }
+            }
+
+            if (repoUrl) {
+              const url = getCompareUrl(
+                provider,
+                repoUrl,
+                branch,
+                input.baseBranch,
+              );
+              if (url) {
+                await shell.openExternal(url);
+                await git.fetch();
+                return { success: true, url };
+              }
+            }
+          }
+
+          // Fallback to GitHub-only logic for backwards compatibility
           const repoMatch = remoteUrl
             .trim()
             .match(/github\.com[:/](.+?)(?:\.git)?$/);
 
           if (!repoMatch) {
-            throw new Error("Could not determine GitHub repository URL");
+            throw new Error(
+              "Could not determine repository URL. Ensure the remote is configured for GitHub or GitLab.",
+            );
           }
 
           const repo = repoMatch[1].replace(/\.git$/, "");
@@ -159,6 +207,7 @@ export const createGitOperationsRouter = () => {
         },
       ),
 
+    // Legacy GitHub-only status (kept for backwards compatibility)
     getGitHubStatus: publicProcedure
       .input(
         z.object({
@@ -168,6 +217,27 @@ export const createGitOperationsRouter = () => {
       .query(async ({ input }) => {
         assertRegisteredWorktree(input.worktreePath);
         return await fetchGitHubPRStatus(input.worktreePath);
+      }),
+
+    // Provider-aware git host status
+    getGitHostStatus: publicProcedure
+      .input(
+        z.object({
+          worktreePath: z.string(),
+          provider: z
+            .enum(["github", "gitlab", "bitbucket"])
+            .nullable()
+            .optional(),
+        }),
+      )
+      .query(async ({ input }) => {
+        assertRegisteredWorktree(input.worktreePath);
+        const provider = input.provider as GitProvider;
+        if (!provider) {
+          // Default to GitHub for backwards compatibility
+          return await fetchGitHubPRStatus(input.worktreePath);
+        }
+        return await fetchGitHostStatus(input.worktreePath, provider);
       }),
   });
 };

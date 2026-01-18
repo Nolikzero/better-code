@@ -234,10 +234,12 @@ export function VSCodeThemeProvider({ children }: VSCodeThemeProviderProps) {
     if (hasVibrancy && vibrancyChanged) {
       // Enable or update vibrancy/liquid glass
       if (platform === "darwin") {
+        const forceAppearance = fullThemeData.vibrancy?.forceAppearance;
         setLiquidGlass.mutate(
           {
             enabled: true,
             options: fullThemeData.vibrancy?.liquidGlass,
+            forceAppearance,
           },
           {
             onSuccess: (result) => {
@@ -249,6 +251,7 @@ export function VSCodeThemeProvider({ children }: VSCodeThemeProviderProps) {
                 setVibrancy.mutate({
                   type: fullThemeData.vibrancy?.type ?? "under-window",
                   visualEffectState: fullThemeData.vibrancy?.visualEffectState,
+                  forceAppearance,
                 });
                 liquidGlassActiveRef.current = false;
               } else {

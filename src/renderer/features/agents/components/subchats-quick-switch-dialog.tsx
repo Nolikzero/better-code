@@ -1,5 +1,6 @@
 "use client";
 
+import { formatTimeAgo } from "@shared/utils";
 import { useAtomValue } from "jotai";
 import { AnimatePresence } from "motion/react";
 import { useMemo } from "react";
@@ -13,7 +14,6 @@ import {
   subChatFilesAtom,
 } from "../atoms";
 import type { SubChatMeta } from "../stores/sub-chat-store";
-import { formatTimeAgo } from "../utils/format-time-ago";
 
 interface SubChatsQuickSwitchDialogProps {
   isOpen: boolean;

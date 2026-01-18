@@ -15,9 +15,9 @@ import {
   agentsShortcutsDialogOpenAtom,
   agentsSidebarOpenAtom,
   agentsSidebarWidthAtom,
-  anthropicOnboardingCompletedAtom,
   isDesktopAtom,
   isFullscreenAtom,
+  onboardingCompletedAtom,
 } from "../../lib/atoms";
 import { useUpdateChecker } from "../../lib/hooks/use-update-checker";
 import { useAgentSubChatStore } from "../../lib/stores/sub-chat-store";
@@ -91,9 +91,7 @@ export function AgentsLayout() {
   );
   const [selectedChatId, setSelectedChatId] = useAtom(selectedAgentChatIdAtom);
   const [selectedProject, setSelectedProject] = useAtom(selectedProjectAtom);
-  const setAnthropicOnboardingCompleted = useSetAtom(
-    anthropicOnboardingCompletedAtom,
-  );
+  const setOnboardingCompleted = useSetAtom(onboardingCompletedAtom);
 
   // Fetch projects to validate selectedProject exists
   const { data: projects, isLoading: isLoadingProjects } =
@@ -180,14 +178,14 @@ export function AgentsLayout() {
 
   // Handle sign out
   const handleSignOut = useCallback(async () => {
-    // Clear selected project and anthropic onboarding on logout
+    // Clear selected project and onboarding on logout
     setSelectedProject(null);
     setSelectedChatId(null);
-    setAnthropicOnboardingCompleted(false);
+    setOnboardingCompleted(false);
     if (window.desktopApi?.logout) {
       await window.desktopApi.logout();
     }
-  }, [setSelectedProject, setSelectedChatId, setAnthropicOnboardingCompleted]);
+  }, [setSelectedProject, setSelectedChatId, setOnboardingCompleted]);
 
   // Initialize sub-chats when chat is selected
   useEffect(() => {
@@ -207,6 +205,30 @@ export function AgentsLayout() {
     setShortcutsDialogOpen: setShortcutsOpen,
     selectedChatId,
   });
+
+  // Handle notification clicks - navigate to the chat/subchat
+  const setActiveSubChat = useAgentSubChatStore(
+    (state) => state.setActiveSubChat,
+  );
+  const addToOpenSubChats = useAgentSubChatStore(
+    (state) => state.addToOpenSubChats,
+  );
+
+  useEffect(() => {
+    if (!isDesktop || !window.desktopApi?.onNotificationClicked) return;
+
+    const unsubscribe = window.desktopApi.onNotificationClicked((data) => {
+      if (data.chatId) {
+        setSelectedChatId(data.chatId);
+      }
+      if (data.subChatId) {
+        addToOpenSubChats(data.subChatId);
+        setActiveSubChat(data.subChatId);
+      }
+    });
+
+    return unsubscribe;
+  }, [isDesktop, setSelectedChatId, setActiveSubChat, addToOpenSubChats]);
 
   const handleCloseSidebar = useCallback(() => {
     setSidebarOpen(false);

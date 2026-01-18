@@ -6,8 +6,8 @@ import { TooltipProvider } from "./components/ui/tooltip";
 import { TRPCProvider } from "./contexts/TRPCProvider";
 import { selectedProjectAtom } from "./features/agents/atoms";
 import { AgentsLayout } from "./features/layout/agents-layout";
-import { AnthropicOnboardingPage, SelectRepoPage } from "./features/onboarding";
-import { anthropicOnboardingCompletedAtom } from "./lib/atoms";
+import { OnboardingPage, SelectRepoPage } from "./features/onboarding";
+import { onboardingCompletedAtom } from "./lib/atoms";
 import { appStore } from "./lib/jotai-store";
 import { VSCodeThemeProvider } from "./lib/themes/theme-provider";
 import { trpc } from "./lib/trpc";
@@ -31,9 +31,7 @@ function ThemedToaster() {
  * Main content router - decides which page to show based on onboarding state
  */
 function AppContent() {
-  const anthropicOnboardingCompleted = useAtomValue(
-    anthropicOnboardingCompletedAtom,
-  );
+  const onboardingCompleted = useAtomValue(onboardingCompletedAtom);
   const selectedProject = useAtomValue(selectedProjectAtom);
 
   // Fetch projects to validate selectedProject exists
@@ -52,11 +50,11 @@ function AppContent() {
   }, [selectedProject, projects, isLoadingProjects]);
 
   // Determine which page to show:
-  // 1. Anthropic onboarding not completed -> AnthropicOnboardingPage
+  // 1. Onboarding not completed -> OnboardingPage
   // 2. No valid project selected -> SelectRepoPage
   // 3. Otherwise -> AgentsLayout
-  if (!anthropicOnboardingCompleted) {
-    return <AnthropicOnboardingPage />;
+  if (!onboardingCompleted) {
+    return <OnboardingPage />;
   }
 
   if (!validatedProject && !isLoadingProjects) {

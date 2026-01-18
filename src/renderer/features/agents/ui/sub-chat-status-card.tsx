@@ -14,7 +14,7 @@ import {
   diffSidebarOpenAtomFamily,
   filteredDiffFilesAtom,
 } from "../atoms";
-import { getFileIconByExtension } from "../mentions/agents-file-mention";
+import { getFileIconByExtension } from "../mentions";
 
 // Animated dots component that cycles through ., .., ...
 function AnimatedDots() {

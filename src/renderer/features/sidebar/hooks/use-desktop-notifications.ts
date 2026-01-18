@@ -80,7 +80,7 @@ export function useDesktopNotifications() {
    * Only shows if window is not focused (in desktop app)
    */
   const notifyAgentComplete = useCallback(
-    (agentName: string) => {
+    (agentName: string, chatId?: string, subChatId?: string) => {
       if (!isDesktopApp() || typeof window === "undefined") return;
 
       // Only notify if window is not focused
@@ -92,6 +92,67 @@ export function useDesktopNotifications() {
         window.desktopApi?.showNotification({
           title: "Agent finished",
           body: `${agentName} completed the task`,
+          chatId,
+          subChatId,
+        });
+      }
+    },
+    [setPendingCount],
+  );
+
+  /**
+   * Show a notification for plan completion
+   * Only shows if window is not focused (in desktop app)
+   */
+  const notifyPlanComplete = useCallback(
+    (chatName: string, chatId?: string, subChatId?: string) => {
+      if (!isDesktopApp() || typeof window === "undefined") return;
+
+      if (!isWindowFocused) {
+        setPendingCount((prev) => prev + 1);
+
+        window.desktopApi?.showNotification({
+          title: "Plan ready",
+          body: `${chatName} - Review the proposed changes`,
+          chatId,
+          subChatId,
+        });
+      }
+    },
+    [setPendingCount],
+  );
+
+  /**
+   * Show a notification for errors (auth, rate limit, etc.)
+   * Only shows if window is not focused (in desktop app)
+   */
+  const notifyError = useCallback((title: string, body: string) => {
+    if (!isDesktopApp() || typeof window === "undefined") return;
+
+    if (!isWindowFocused) {
+      window.desktopApi?.showNotification({
+        title,
+        body,
+      });
+    }
+  }, []);
+
+  /**
+   * Show a notification when input is needed but timed out
+   * Only shows if window is not focused (in desktop app)
+   */
+  const notifyTimeout = useCallback(
+    (chatName: string, chatId?: string, subChatId?: string) => {
+      if (!isDesktopApp() || typeof window === "undefined") return;
+
+      if (!isWindowFocused) {
+        setPendingCount((prev) => prev + 1);
+
+        window.desktopApi?.showNotification({
+          title: "Input needed",
+          body: `${chatName} is waiting for your response`,
+          chatId,
+          subChatId,
         });
       }
     },
@@ -107,6 +168,9 @@ export function useDesktopNotifications() {
 
   return {
     notifyAgentComplete,
+    notifyPlanComplete,
+    notifyError,
+    notifyTimeout,
     isAppFocused,
     pendingCount,
     clearBadge: () => {
@@ -119,7 +183,11 @@ export function useDesktopNotifications() {
 /**
  * Standalone function to show notification (for use outside React components)
  */
-export function showAgentNotification(agentName: string) {
+export function showAgentNotification(
+  agentName: string,
+  chatId?: string,
+  subChatId?: string,
+) {
   if (!isDesktopApp() || typeof window === "undefined") return;
 
   // Only notify if window is not focused
@@ -127,6 +195,44 @@ export function showAgentNotification(agentName: string) {
     window.desktopApi?.showNotification({
       title: "Agent finished",
       body: `${agentName} completed the task`,
+      chatId,
+      subChatId,
+    });
+  }
+}
+
+/**
+ * Standalone function to show error notification (for use outside React components)
+ */
+export function showErrorNotification(title: string, body: string) {
+  if (!isDesktopApp() || typeof window === "undefined") return;
+
+  // Only notify if window is not focused
+  if (!document.hasFocus()) {
+    window.desktopApi?.showNotification({
+      title,
+      body,
+    });
+  }
+}
+
+/**
+ * Standalone function to show timeout notification (for use outside React components)
+ */
+export function showTimeoutNotification(
+  chatName: string,
+  chatId?: string,
+  subChatId?: string,
+) {
+  if (!isDesktopApp() || typeof window === "undefined") return;
+
+  // Only notify if window is not focused
+  if (!document.hasFocus()) {
+    window.desktopApi?.showNotification({
+      title: "Input needed",
+      body: `${chatName} is waiting for your response`,
+      chatId,
+      subChatId,
     });
   }
 }

@@ -1,15 +1,26 @@
+export type GitProvider = "github" | "gitlab" | "bitbucket" | null;
+
 export interface PrContext {
   branch: string;
   baseBranch: string;
   uncommittedCount: number;
   hasUpstream: boolean;
+  provider?: GitProvider;
 }
 
 /**
- * Generates a message for Claude to create a PR
+ * Generates a message for Claude to create a PR/MR
  */
 export function generatePrMessage(context: PrContext): string {
-  const { branch, baseBranch, uncommittedCount, hasUpstream } = context;
+  const { branch, baseBranch, uncommittedCount, hasUpstream, provider } =
+    context;
+
+  // Provider-specific terminology
+  const isGitLab = provider === "gitlab";
+  const prLabel = isGitLab ? "MR" : "PR";
+  const createCommand = isGitLab
+    ? `glab mr create --target-branch ${baseBranch}`
+    : `gh pr create --base ${baseBranch}`;
 
   const lines = [
     uncommittedCount > 0
@@ -20,9 +31,9 @@ export function generatePrMessage(context: PrContext): string {
     hasUpstream
       ? "The branch is already pushed to remote."
       : "There is no upstream branch yet.",
-    "The user requested a PR.",
+    `The user requested a ${prLabel}.`,
     "",
-    "Follow these exact steps to create a PR:",
+    `Follow these exact steps to create a ${prLabel}:`,
     "",
   ];
 
@@ -37,9 +48,11 @@ export function generatePrMessage(context: PrContext): string {
     steps.push("Push to origin");
   }
 
-  steps.push(`Use git diff origin/${baseBranch}... to review the PR diff`);
   steps.push(
-    `Use gh pr create --base ${baseBranch} to create a PR. Keep the title under 80 characters and description under five sentences.`,
+    `Use git diff origin/${baseBranch}... to review the ${prLabel} diff`,
+  );
+  steps.push(
+    `Use ${createCommand} to create a ${prLabel}. Keep the title under 80 characters and description under five sentences.`,
   );
   steps.push("If any of these steps fail, ask the user for help.");
 
@@ -52,23 +65,26 @@ export function generatePrMessage(context: PrContext): string {
 }
 
 /**
- * Generates a message for Claude to commit and push changes to an existing PR
+ * Generates a message for Claude to commit and push changes to an existing PR/MR
  */
 export function generateCommitToPrMessage(context: PrContext): string {
-  const { branch, baseBranch, uncommittedCount } = context;
+  const { branch, baseBranch, uncommittedCount, provider } = context;
+
+  const isGitLab = provider === "gitlab";
+  const prLabel = isGitLab ? "MR" : "PR";
 
   if (uncommittedCount === 0) {
     return `All changes are already committed. The branch ${branch} is up to date.`;
   }
 
   return `There are ${uncommittedCount} uncommitted changes on branch ${branch}.
-The PR already exists and targets origin/${baseBranch}.
+The ${prLabel} already exists and targets origin/${baseBranch}.
 
-Please commit and push these changes to update the PR:
+Please commit and push these changes to update the ${prLabel}:
 
 1. Run git diff to review uncommitted changes
 2. Commit them with a clear, concise commit message
-3. Push to origin to update the PR
+3. Push to origin to update the ${prLabel}
 4. If any of these steps fail, ask the user for help.`;
 }
 
@@ -76,7 +92,10 @@ Please commit and push these changes to update the PR:
  * Generates a message for Claude to perform a code review
  */
 export function generateReviewMessage(context: PrContext): string {
-  const { branch, baseBranch } = context;
+  const { branch, baseBranch, provider } = context;
+
+  const isGitLab = provider === "gitlab";
+  const prLabel = isGitLab ? "MR" : "PR";
 
   return `You are performing a code review on the changes in the current branch.
 
@@ -84,7 +103,7 @@ The current branch is ${branch}, and the target branch is origin/${baseBranch}.
 
 ## Code Review Instructions
 
-When reviewing the diff:
+When reviewing the diff for this ${prLabel}:
 1. **Focus on logic and correctness** - Check for bugs, edge cases, and potential issues.
 2. **Consider readability** - Is the code clear and maintainable?
 3. **Evaluate performance** - Are there obvious performance concerns?

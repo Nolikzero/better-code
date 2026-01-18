@@ -371,10 +371,33 @@ html.vibrancy-active [data-radix-popper-content-wrapper] > * {
   -webkit-backdrop-filter: saturate(180%) blur(20px);
 }
 
+/* Make dialogs/modals more opaque for better readability */
+/* Dark theme dialogs */
+html.vibrancy-active.dark [data-radix-portal] [role="dialog"],
+html.vibrancy-active.dark [data-canvas-dialog] {
+  background-color: hsl(0 0% 10% / 0.92) !important;
+}
+
+/* Light theme dialogs (Liquid Glass Light) */
+html.vibrancy-active:not(.dark) [data-radix-portal] [role="dialog"],
+html.vibrancy-active:not(.dark) [data-canvas-dialog] {
+  background-color: hsl(0 0% 100% / 0.85) !important;
+}
+
+/* Dark vibrancy popovers/dropdowns */
+html.vibrancy-active.dark [data-radix-popper-content-wrapper] > * {
+  background-color: hsl(0 0% 12% / 0.9) !important;
+}
+
 /* Toast notifications */
 html.vibrancy-active [data-sonner-toast] {
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+
+/* Dark vibrancy toasts */
+html.vibrancy-active.dark [data-sonner-toast] {
+  background-color: hsl(0 0% 12% / 0.9) !important;
 }
 
 /* ========================================
@@ -434,4 +457,49 @@ html.vibrancy-active [data-sonner-toast] {
     -webkit-backdrop-filter: none !important;
     background: hsl(var(--popover)) !important;
   }
+}
+
+/* ========================================
+   LIQUID GLASS LIGHT THEME ADJUSTMENTS
+   Override dark mode variables for light vibrancy theme
+   ======================================== */
+
+/* Light vibrancy theme - override all dark variables */
+html.vibrancy-active:not(.dark),
+html.vibrancy-active:not(.dark) body {
+  --background: 0 0% 100%;
+  --foreground: 220 9% 46%;
+  --card: 0 0% 100%;
+  --card-foreground: 220 9% 46%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 220 9% 46%;
+  --primary: 220 9% 46%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 96%;
+  --secondary-foreground: 220 9% 46%;
+  --muted: 0 0% 90%;
+  --muted-foreground: 220 9% 55%;
+  --accent: 0 0% 96%;
+  --accent-foreground: 220 9% 46%;
+  --border: 0 0% 0% / 0.06;
+  --input: 0 0% 0% / 0.08;
+  --input-background: 0 0% 100%;
+  --ring: 220 9% 60%;
+  --selection: 0 0% 0% / 0.07;
+}
+
+/* Light vibrancy agents page overrides */
+html.vibrancy-active:not(.dark) [data-agents-page] {
+  --muted: 0 0% 90%;
+  --muted-foreground: 220 9% 55%;
+}
+
+/* Light vibrancy popovers/dropdowns */
+html.vibrancy-active:not(.dark) [data-radix-popper-content-wrapper] > * {
+  background-color: hsl(0 0% 100% / 0.9) !important;
+}
+
+/* Light vibrancy toasts */
+html.vibrancy-active:not(.dark) [data-sonner-toast] {
+  background-color: hsl(0 0% 100% / 0.9) !important;
 }

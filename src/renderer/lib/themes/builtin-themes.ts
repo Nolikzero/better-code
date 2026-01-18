@@ -588,25 +588,26 @@ const CLAUDE_DARK: VSCodeFullTheme = {
 /**
  * Liquid Glass - Transparent theme with macOS vibrancy
  * Uses semi-transparent backgrounds for native blur effect
- * Available for both light and dark system preferences
+ * Forces dark appearance regardless of system theme setting
  */
 const LIQUID_GLASS_DARK: VSCodeFullTheme = {
   id: "liquid-glass-dark",
-  name: "Liquid Glass",
+  name: "Liquid Glass Dark",
   type: "dark",
   source: "builtin",
   vibrancy: {
     enabled: true,
     type: "under-window",
     visualEffectState: "followWindow",
+    forceAppearance: "dark", // Always use dark appearance regardless of system theme
     liquidGlass: {
       cornerRadius: 12,
-      tintColor: "#00000020", // subtle dark tint
+      tintColor: "#00000001", // subtle dark tint
     },
   },
   colors: {
     // Semi-transparent backgrounds - slightly more opaque for better layering
-    "editor.background": "#18181890", // ~56% opacity (was #12121280)
+    "editor.background": "#181818DB", // ~86% opacity (was #12121280)
     "editorPane.background": "#18181890",
     "sideBar.background": "#12121270", // ~44% opacity (was #0d0d0d60)
     "sideBar.foreground": "#ededed",
@@ -663,78 +664,80 @@ const LIQUID_GLASS_DARK: VSCodeFullTheme = {
 };
 
 /**
- * Liquid Glass (Light mode variant) - Same dark glass styling for light system preference
- * Uses the same semi-transparent dark backgrounds as LIQUID_GLASS_DARK
+ * Liquid Glass Light - Transparent light theme with macOS vibrancy
+ * Uses semi-transparent white backgrounds for native blur effect
+ * White text for a frosted glass appearance
  */
 const LIQUID_GLASS_LIGHT: VSCodeFullTheme = {
   id: "liquid-glass-light",
-  name: "Liquid Glass",
+  name: "Liquid Glass Light",
   type: "light",
   source: "builtin",
   vibrancy: {
     enabled: true,
     type: "under-window",
     visualEffectState: "followWindow",
+    forceAppearance: "light",
     liquidGlass: {
       cornerRadius: 12,
-      tintColor: "#00000020", // same dark tint as dark variant
+      tintColor: "#FFFFFF20",
     },
   },
   colors: {
-    // Same semi-transparent backgrounds as dark variant
-    "editor.background": "#18181890",
-    "editorPane.background": "#18181890",
-    "sideBar.background": "#12121270",
-    "sideBar.foreground": "#ededed",
-    "sideBar.border": "#ffffff20",
-    "activityBar.background": "#12121270",
-    "activityBar.foreground": "#ededed",
-    "panel.background": "#12121270",
-    "panel.border": "#ffffff20",
-    "tab.activeBackground": "#1c1c1c90",
-    "tab.inactiveBackground": "#0d0d0d50",
-    "tab.inactiveForeground": "#a0a0a0",
-    "editorGroupHeader.tabsBackground": "#12121270",
-    "dropdown.background": "#1c1c1ca0",
-    "dropdown.foreground": "#ededed",
-    "input.background": "#1c1c1c90",
-    "input.border": "#ffffff30",
-    "input.foreground": "#ededed",
-    // Same foreground colors
-    "editor.foreground": "#ededed",
-    foreground: "#ededed",
-    focusBorder: "#ffffff50",
-    "textLink.foreground": "#ededed",
-    "textLink.activeForeground": "#ffffff",
-    "list.activeSelectionBackground": "#ffffff30",
-    "list.hoverBackground": "#ffffff20",
-    "editor.selectionBackground": "#ffffff35",
-    "editorLineNumber.foreground": "#606060",
-    descriptionForeground: "#a0a0a0",
-    errorForeground: "#ef4444",
-    "button.background": "#ffffff35",
-    "button.foreground": "#ededed",
-    "button.secondaryBackground": "#ffffff25",
-    "button.secondaryForeground": "#ededed",
-    // Same terminal colors
-    "terminal.background": "#12121270",
-    "terminal.foreground": "#ededed",
-    "terminal.ansiBlack": "#1f1f1f",
-    "terminal.ansiRed": "#ef4444",
-    "terminal.ansiGreen": "#22c55e",
-    "terminal.ansiYellow": "#eab308",
-    "terminal.ansiBlue": "#a0a0a0",
-    "terminal.ansiMagenta": "#a855f7",
-    "terminal.ansiCyan": "#808080",
-    "terminal.ansiWhite": "#ededed",
-    "terminal.ansiBrightBlack": "#71717a",
-    "terminal.ansiBrightRed": "#f87171",
-    "terminal.ansiBrightGreen": "#4ade80",
-    "terminal.ansiBrightYellow": "#facc15",
-    "terminal.ansiBrightBlue": "#b0b0b0",
-    "terminal.ansiBrightMagenta": "#c084fc",
-    "terminal.ansiBrightCyan": "#a0a0a0",
-    "terminal.ansiBrightWhite": "#fafafa",
+    // Semi-transparent white/light backgrounds
+    "editor.background": "#FFFFFFD8",
+    "editorPane.background": "#FFFFFF90",
+    "sideBar.background": "#FFFFFF70",
+    "sideBar.foreground": "#7B8794",
+    "sideBar.border": "#00000010",
+    "activityBar.background": "#FFFFFF70",
+    "activityBar.foreground": "#7B8794",
+    "panel.background": "#FFFFFF70",
+    "panel.border": "#00000010",
+    "tab.activeBackground": "#FFFFFF90",
+    "tab.inactiveBackground": "#FFFFFF50",
+    "tab.inactiveForeground": "#9CA3AF",
+    "editorGroupHeader.tabsBackground": "#FFFFFF70",
+    "dropdown.background": "#FFFFFFA0",
+    "dropdown.foreground": "#7B8794",
+    "input.background": "#FFFFFF90",
+    "input.border": "#00000015",
+    "input.foreground": "#7B8794",
+    // Medium gray foreground colors
+    "editor.foreground": "#7B8794",
+    foreground: "#7B8794",
+    focusBorder: "#9CA3AF80",
+    "textLink.foreground": "#8B95A1",
+    "textLink.activeForeground": "#9CA3AF",
+    "list.activeSelectionBackground": "#00000012",
+    "list.hoverBackground": "#00000008",
+    "editor.selectionBackground": "#00000012",
+    "editorLineNumber.foreground": "#9CA3AF",
+    descriptionForeground: "#9CA3AF",
+    errorForeground: "#EF4444",
+    "button.background": "#00000015",
+    "button.foreground": "#7B8794",
+    "button.secondaryBackground": "#00000010",
+    "button.secondaryForeground": "#8B95A1",
+    // Terminal colors (medium gray text theme)
+    "terminal.background": "#FFFFFF70",
+    "terminal.foreground": "#7B8794",
+    "terminal.ansiBlack": "#4B5563",
+    "terminal.ansiRed": "#EF4444",
+    "terminal.ansiGreen": "#22C55E",
+    "terminal.ansiYellow": "#F59E0B",
+    "terminal.ansiBlue": "#3B82F6",
+    "terminal.ansiMagenta": "#A855F7",
+    "terminal.ansiCyan": "#06B6D4",
+    "terminal.ansiWhite": "#D1D5DB",
+    "terminal.ansiBrightBlack": "#6B7280",
+    "terminal.ansiBrightRed": "#F87171",
+    "terminal.ansiBrightGreen": "#4ADE80",
+    "terminal.ansiBrightYellow": "#FBBF24",
+    "terminal.ansiBrightBlue": "#60A5FA",
+    "terminal.ansiBrightMagenta": "#C084FC",
+    "terminal.ansiBrightCyan": "#22D3EE",
+    "terminal.ansiBrightWhite": "#E5E7EB",
   },
 };
 
@@ -781,6 +784,7 @@ export function getBuiltinThemesByType(
 
 /**
  * Default theme IDs for light/dark modes
+ * Uses Liquid Glass themes by default for glassmorphism effect
  */
-export const DEFAULT_LIGHT_THEME_ID = "default-light";
-export const DEFAULT_DARK_THEME_ID = "default-dark";
+export const DEFAULT_LIGHT_THEME_ID = "liquid-glass-light";
+export const DEFAULT_DARK_THEME_ID = "liquid-glass-dark";

@@ -53,7 +53,6 @@ src/
     │   │   ├── atoms/       # Jotai atoms for agent state
     │   │   └── stores/      # Zustand store for sub-chats
     │   ├── sidebar/         # Chat list, archive, navigation
-    │   ├── sub-chats/       # Tab/sidebar sub-chat management
     │   └── layout/          # Main layout with resizable panels
     ├── components/ui/       # Radix UI wrappers (button, dialog, etc.)
     └── lib/

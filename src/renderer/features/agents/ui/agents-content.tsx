@@ -4,16 +4,19 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useMemo, useRef, useState } from "react";
 // import { useSearchParams, useRouter } from "next/navigation" // Desktop doesn't use next/navigation
 // Desktop: mock Next.js navigation hooks
-const useSearchParams = () => ({ get: (_key: string) => null as string | null });
+const useSearchParams = () => ({
+  get: (_key: string) => null as string | null,
+});
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const useRouter = () => ({ push: (_url: string) => {}, replace: (_url: string, _opts?: any) => {} });
+const useRouter = () => ({
+  push: (_url: string) => {},
+  replace: (_url: string, _opts?: any) => {},
+});
 // Desktop: mock Clerk hooks
 const useUser = () => ({ user: null });
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const useClerk = () => ({ signOut: (_opts?: any) => {} });
 import { useShallow } from "zustand/react/shallow";
-// import { ResizableSidebar } from "@/app/(alpha)/canvas/[id]/{components}/resizable-sidebar"
-import { ResizableSidebar } from "../../../components/ui/resizable-sidebar";
 import {
   agentsQuickSwitchOpenAtom,
   agentsQuickSwitchSelectedIndexAtom,
@@ -26,14 +29,11 @@ import { useIsMobile } from "../../../lib/hooks/use-mobile";
 import { api } from "../../../lib/mock-api";
 import { trpc } from "../../../lib/trpc";
 import { AgentsSidebar } from "../../sidebar/agents-sidebar";
-import { AgentsSubChatsSidebar } from "../../sidebar/agents-subchats-sidebar";
 import { TerminalSidebar, terminalSidebarOpenAtom } from "../../terminal";
 import {
   agentsMobileViewModeAtom,
   agentsPreviewSidebarOpenAtom,
   agentsSidebarOpenAtom,
-  agentsSubChatsSidebarModeAtom,
-  agentsSubChatsSidebarWidthAtom,
   previousAgentChatIdAtom,
   selectedAgentChatIdAtom,
 } from "../atoms";
@@ -62,15 +62,8 @@ export function AgentsContent() {
     agentsPreviewSidebarOpenAtom,
   );
   const [mobileViewMode, setMobileViewMode] = useAtom(agentsMobileViewModeAtom);
-  const [subChatsSidebarMode, setSubChatsSidebarMode] = useAtom(
-    agentsSubChatsSidebarModeAtom,
-  );
   const setTerminalSidebarOpen = useSetAtom(terminalSidebarOpenAtom);
 
-  const hasOpenedSubChatsSidebar = useRef(false);
-  const wasSubChatsSidebarOpen = useRef(false);
-  const [shouldAnimateSubChatsSidebar, setShouldAnimateSubChatsSidebar] =
-    useState(subChatsSidebarMode !== "sidebar");
   const searchParams = useSearchParams();
   const router = useRouter();
   const isInitialized = useRef(false);
@@ -260,7 +253,8 @@ export function AgentsContent() {
   const sortedChats = agentChats
     ? [...agentChats].sort(
         (a, b) =>
-          new Date(b.updatedAt ?? 0).getTime() - new Date(a.updatedAt ?? 0).getTime(),
+          new Date(b.updatedAt ?? 0).getTime() -
+          new Date(a.updatedAt ?? 0).getTime(),
       )
     : [];
 
@@ -716,43 +710,6 @@ export function AgentsContent() {
     }
   };
 
-  // Check if sub-chats data is loaded (use separate selectors to avoid object creation)
-  const subChatsStoreChatId = useAgentSubChatStore((state) => state.chatId);
-  const subChatsCount = useAgentSubChatStore(
-    (state) => state.allSubChats.length,
-  );
-
-  // Check if sub-chats are still loading (store not yet initialized for this chat)
-  const isLoadingSubChats =
-    selectedChatId !== null &&
-    (subChatsStoreChatId !== selectedChatId || subChatsCount === 0);
-
-  // Track sub-chats sidebar open state for animation control
-  // Now renders even while loading to show spinner (mobile always uses tabs)
-  const isSubChatsSidebarOpen =
-    selectedChatId && subChatsSidebarMode === "sidebar" && !isMobile;
-
-  useEffect(() => {
-    // When sidebar closes, reset for animation on next open
-    if (!isSubChatsSidebarOpen && wasSubChatsSidebarOpen.current) {
-      hasOpenedSubChatsSidebar.current = false;
-      setShouldAnimateSubChatsSidebar(true);
-    }
-    wasSubChatsSidebarOpen.current = !!isSubChatsSidebarOpen;
-
-    // Mark as opened after animation completes
-    if (isSubChatsSidebarOpen && !hasOpenedSubChatsSidebar.current) {
-      const timer = setTimeout(() => {
-        hasOpenedSubChatsSidebar.current = true;
-        setShouldAnimateSubChatsSidebar(false);
-      }, 150 + 50); // 150ms duration + 50ms buffer
-      return () => clearTimeout(timer);
-    }
-    if (isSubChatsSidebarOpen && hasOpenedSubChatsSidebar.current) {
-      setShouldAnimateSubChatsSidebar(false);
-    }
-  }, [isSubChatsSidebarOpen]);
-
   // Check if chat has sandbox with port for preview
   const chatMeta = chatData?.meta as
     | {
@@ -878,58 +835,27 @@ export function AgentsContent() {
   // Desktop layout
   return (
     <>
-      <div className="flex h-full">
-        {/* Sub-chats sidebar - only show in sidebar mode when viewing a chat */}
-        <ResizableSidebar
-          isOpen={!!isSubChatsSidebarOpen}
-          onClose={() => {
-            setShouldAnimateSubChatsSidebar(true);
-            setSubChatsSidebarMode("tabs");
-          }}
-          widthAtom={agentsSubChatsSidebarWidthAtom}
-          minWidth={160}
-          maxWidth={300}
-          side="left"
-          animationDuration={0}
-          initialWidth={0}
-          exitWidth={0}
-          disableClickToClose={true}
-        >
-          <AgentsSubChatsSidebar
-            onClose={() => {
-              setShouldAnimateSubChatsSidebar(true);
-              setSubChatsSidebarMode("tabs");
-            }}
-            isMobile={isMobile}
-            isSidebarOpen={sidebarOpen}
-            onBackToChats={() => setSidebarOpen((prev) => !prev)}
-            isLoading={isLoadingSubChats}
-            agentName={chatData?.name ?? undefined}
-          />
-        </ResizableSidebar>
-
-        {/* Main content */}
-        <div
-          className="flex-1 min-w-0 overflow-hidden"
-          style={{ minWidth: "350px" }}
-        >
-          {selectedChatId ? (
-            <div className="h-full flex flex-col relative overflow-hidden">
-              <ChatView
-                key={selectedChatId}
-                chatId={selectedChatId}
-                isSidebarOpen={sidebarOpen}
-                onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
-                selectedTeamName={selectedTeam?.name}
-                selectedTeamImageUrl={selectedTeam?.image_url}
-              />
-            </div>
-          ) : (
-            <div className="h-full flex flex-col relative overflow-hidden">
-              <NewChatForm key={`new-chat-${newChatFormKeyRef.current}`} />
-            </div>
-          )}
-        </div>
+      {/* Main content */}
+      <div
+        className="flex-1 min-w-0 overflow-hidden"
+        style={{ minWidth: "350px" }}
+      >
+        {selectedChatId ? (
+          <div className="h-full flex flex-col relative overflow-hidden">
+            <ChatView
+              key={selectedChatId}
+              chatId={selectedChatId}
+              isSidebarOpen={sidebarOpen}
+              onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
+              selectedTeamName={selectedTeam?.name}
+              selectedTeamImageUrl={selectedTeam?.image_url}
+            />
+          </div>
+        ) : (
+          <div className="h-full flex flex-col relative overflow-hidden">
+            <NewChatForm key={`new-chat-${newChatFormKeyRef.current}`} />
+          </div>
+        )}
       </div>
 
       {/* Quick-switch dialog - Agents (Opt+Ctrl+Tab) */}

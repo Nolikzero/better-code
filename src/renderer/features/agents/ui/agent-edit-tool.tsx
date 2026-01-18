@@ -17,7 +17,7 @@ import { useCodeTheme } from "../../../lib/hooks/use-code-theme";
 import { highlightCode } from "../../../lib/themes/shiki-theme-loader";
 import { cn } from "../../../lib/utils";
 import { agentsDiffSidebarOpenAtom, agentsFocusedDiffFileAtom } from "../atoms";
-import { getFileIconByExtension } from "../mentions/agents-file-mention";
+import { getFileIconByExtension } from "../mentions";
 import { AgentToolInterrupted } from "./agent-tool-interrupted";
 import { getToolStatus } from "./agent-tool-registry";
 

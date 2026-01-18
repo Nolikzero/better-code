@@ -21,9 +21,35 @@ function registerIpcHandlers(getWindow: () => BrowserWindow | null): void {
   });
   ipcMain.handle(
     "app:show-notification",
-    (_event, options: { title: string; body: string }) => {
+    (
+      _event,
+      options: {
+        title: string;
+        body: string;
+        chatId?: string;
+        subChatId?: string;
+      },
+    ) => {
       const { Notification } = require("electron");
-      new Notification(options).show();
+      const notification = new Notification({
+        title: options.title,
+        body: options.body,
+      });
+
+      notification.on("click", () => {
+        const win = getWindow();
+        if (win) {
+          win.focus();
+          if (options.chatId || options.subChatId) {
+            win.webContents.send("notification:clicked", {
+              chatId: options.chatId,
+              subChatId: options.subChatId,
+            });
+          }
+        }
+      });
+
+      notification.show();
     },
   );
 

@@ -111,8 +111,22 @@ contextBridge.exposeInMainWorld("desktopApi", {
   // Native features
   setBadge: (count: number | null) =>
     ipcRenderer.invoke("app:set-badge", count),
-  showNotification: (options: { title: string; body: string }) =>
-    ipcRenderer.invoke("app:show-notification", options),
+  showNotification: (options: {
+    title: string;
+    body: string;
+    chatId?: string;
+    subChatId?: string;
+  }) => ipcRenderer.invoke("app:show-notification", options),
+  onNotificationClicked: (
+    callback: (data: { chatId?: string; subChatId?: string }) => void,
+  ) => {
+    const handler = (
+      _event: unknown,
+      data: { chatId?: string; subChatId?: string },
+    ) => callback(data);
+    ipcRenderer.on("notification:clicked", handler);
+    return () => ipcRenderer.removeListener("notification:clicked", handler);
+  },
   openExternal: (url: string) => ipcRenderer.invoke("shell:open-external", url),
 
   // Clipboard
@@ -195,7 +209,15 @@ export interface DesktopApi {
   getZoom: () => Promise<number>;
   toggleDevTools: () => Promise<void>;
   setBadge: (count: number | null) => Promise<void>;
-  showNotification: (options: { title: string; body: string }) => Promise<void>;
+  showNotification: (options: {
+    title: string;
+    body: string;
+    chatId?: string;
+    subChatId?: string;
+  }) => Promise<void>;
+  onNotificationClicked: (
+    callback: (data: { chatId?: string; subChatId?: string }) => void,
+  ) => () => void;
   openExternal: (url: string) => Promise<void>;
   clipboardWrite: (text: string) => Promise<void>;
   clipboardRead: () => Promise<string>;

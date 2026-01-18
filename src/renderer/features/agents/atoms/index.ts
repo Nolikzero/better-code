@@ -268,10 +268,10 @@ export const agentsSubChatsSidebarModeAtom = atomWithStorage<
   "tabs" | "sidebar"
 >("agents-subchats-mode", "tabs", undefined, { getOnInit: true });
 
-// Sub-chats sidebar width (left side of chat area)
+// Sub-chats sidebar width (right side of chat area)
 export const agentsSubChatsSidebarWidthAtom = atomWithStorage<number>(
   "agents-subchats-sidebar-width",
-  200,
+  230,
   undefined,
   { getOnInit: true },
 );

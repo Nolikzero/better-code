@@ -1,8 +1,7 @@
 "use client";
 
+import { formatTimeAgo, pluralize } from "@shared/utils";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { AlignJustify } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
 import React, {
   useMemo,
   useState,
@@ -10,7 +9,6 @@ import React, {
   useRef,
   useEffect,
 } from "react";
-import { createPortal } from "react-dom";
 import { useHotkeys } from "react-hotkeys-hook";
 import { toast } from "sonner";
 import { useShallow } from "zustand/react/shallow";
@@ -25,7 +23,6 @@ import {
   AlertDialogTitle,
 } from "../../components/ui/alert-dialog";
 import { Button } from "../../components/ui/button";
-import { Checkbox } from "../../components/ui/checkbox";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -37,9 +34,8 @@ import {
   AgentIcon,
   ArchiveIcon,
   ClockIcon,
-  IconDoubleChevronLeft,
+  IconDoubleChevronRight,
   IconSpinner,
-  LoadingDot,
   PlanIcon,
   QuestionIcon,
 } from "../../components/ui/icons";
@@ -52,11 +48,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "../../components/ui/tooltip";
-import { TypewriterText } from "../../components/ui/typewriter-text";
 import {
   clearSubChatSelectionAtom,
-  isDesktopAtom,
-  isFullscreenAtom,
   isSubChatMultiSelectModeAtom,
   selectAllSubChatsAtom,
   selectedSubChatIdsAtom,
@@ -81,7 +74,6 @@ import {
   undoStackAtom,
 } from "../agents/atoms";
 import { AgentsRenameSubChatDialog } from "../agents/components/agents-rename-subchat-dialog";
-import { TrafficLightSpacer } from "../agents/components/traffic-light-spacer";
 import {
   getSubChatDraftKey,
   useSubChatDraftsCache,
@@ -91,23 +83,22 @@ import {
   useAgentSubChatStore,
 } from "../agents/stores/sub-chat-store";
 import { SubChatContextMenu } from "../agents/ui/sub-chat-context-menu";
-import { formatTimeAgo } from "../agents/utils/format-time-ago";
-import { pluralize } from "../agents/utils/pluralize";
+import {
+  MultiSelectFooter,
+  SidebarListItem,
+  SidebarListSection,
+  SubChatIcon,
+} from "./components";
+import { useScrollGradients, useTruncatedTooltip } from "./hooks";
 
 interface AgentsSubChatsSidebarProps {
   onClose?: () => void;
-  isMobile?: boolean;
-  onBackToChats?: () => void;
-  isSidebarOpen?: boolean;
   isLoading?: boolean;
   agentName?: string;
 }
 
 export function AgentsSubChatsSidebar({
   onClose,
-  isMobile = false,
-  onBackToChats,
-  isSidebarOpen = false,
   isLoading = false,
   agentName,
 }: AgentsSubChatsSidebarProps) {
@@ -199,24 +190,28 @@ export function AgentsSubChatsSidebar({
     null,
   );
   const [renameLoading, setRenameLoading] = useState(false);
-  const [showTopGradient, setShowTopGradient] = useState(false);
-  const [showBottomGradient, setShowBottomGradient] = useState(false);
   const [hoveredChatIndex, setHoveredChatIndex] = useState<number>(-1);
+
+  // Scroll gradients via shared hook
+  const {
+    showTopGradient,
+    showBottomGradient,
+    handleScroll,
+    updateGradients: updateScrollGradients,
+  } = useScrollGradients(scrollContainerRef);
   const [archiveAgentDialogOpen, setArchiveAgentDialogOpen] = useState(false);
   const [subChatToArchive, setSubChatToArchive] = useState<SubChatMeta | null>(
     null,
   );
 
-  // SubChat name tooltip state (for truncated names)
-  const [subChatTooltip, setSubChatTooltip] = useState<{
-    visible: boolean;
-    position: { top: number; left: number };
-    name: string;
-  } | null>(null);
-  const subChatNameRefs = useRef<Map<string, HTMLSpanElement>>(new Map());
-  const subChatTooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
+  // SubChat name tooltip via shared hook
+  const {
+    tooltip: subChatTooltip,
+    nameRefs: subChatNameRefs,
+    handleMouseEnter: handleSubChatMouseEnter,
+    handleMouseLeave: handleSubChatMouseLeave,
+    TooltipPortal: SubChatTooltipPortal,
+  } = useTruncatedTooltip();
 
   // Multi-select state
   const [selectedSubChatIds, setSelectedSubChatIds] = useAtom(
@@ -227,10 +222,6 @@ export function AgentsSubChatsSidebar({
   const toggleSubChatSelection = useSetAtom(toggleSubChatSelectionAtom);
   const selectAllSubChats = useSetAtom(selectAllSubChatsAtom);
   const clearSubChatSelection = useSetAtom(clearSubChatSelectionAtom);
-
-  // Global desktop/fullscreen state from atoms (initialized in AgentsLayout)
-  const isDesktop = useAtomValue(isDesktopAtom);
-  const isFullscreen = useAtomValue(isFullscreenAtom);
 
   // Map open IDs to metadata and sort by updated_at (most recent first)
   const openSubChats = useMemo(() => {
@@ -287,48 +278,6 @@ export function AgentsSubChatsSidebar({
       }
     }
   }, [focusedChatIndex, filteredSubChats.length]);
-
-  // Unified scroll handler for gradients (works with both event and direct calls)
-  const updateScrollGradients = useCallback((element?: HTMLDivElement) => {
-    const container = element || scrollContainerRef.current;
-    if (!container) return;
-
-    const { scrollTop, scrollHeight, clientHeight } = container;
-    const isScrollable = scrollHeight > clientHeight;
-
-    if (!isScrollable) {
-      setShowBottomGradient(false);
-      setShowTopGradient(false);
-      return;
-    }
-
-    const threshold = 5;
-    const isAtTop = scrollTop <= threshold;
-    const isAtBottom = scrollTop + clientHeight >= scrollHeight - threshold;
-
-    setShowTopGradient(!isAtTop);
-    setShowBottomGradient(!isAtBottom);
-  }, []);
-
-  // Handler for React onScroll event
-  const handleScroll = useCallback(
-    (e: React.UIEvent<HTMLDivElement>) => {
-      updateScrollGradients(e.currentTarget);
-    },
-    [updateScrollGradients],
-  );
-
-  // Initialize gradients on mount and observe container size changes
-  React.useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-
-    updateScrollGradients();
-    const resizeObserver = new ResizeObserver(() => updateScrollGradients());
-    resizeObserver.observe(container);
-
-    return () => resizeObserver.disconnect();
-  }, [filteredSubChats, updateScrollGradients]);
 
   // Hotkey: / to focus search input (only when sidebar is visible and input not focused)
   React.useEffect(() => {
@@ -431,46 +380,6 @@ export function AgentsSubChatsSidebar({
     setArchiveAgentDialogOpen(false);
     setSubChatToArchive(null);
   }, [parentChatId, archiveChatMutation]);
-
-  // Handle sub-chat card hover for truncated name tooltip (1s delay)
-  const handleSubChatMouseEnter = useCallback(
-    (subChatId: string, name: string, cardElement: HTMLElement) => {
-      // Clear any existing timer
-      if (subChatTooltipTimerRef.current) {
-        clearTimeout(subChatTooltipTimerRef.current);
-      }
-
-      const nameEl = subChatNameRefs.current.get(subChatId);
-      if (!nameEl) return;
-
-      // Check if name is truncated
-      const isTruncated = nameEl.scrollWidth > nameEl.clientWidth;
-      if (!isTruncated) return;
-
-      // Show tooltip after 1 second delay
-      subChatTooltipTimerRef.current = setTimeout(() => {
-        const rect = cardElement.getBoundingClientRect();
-        setSubChatTooltip({
-          visible: true,
-          position: {
-            top: rect.top + rect.height / 2,
-            left: rect.right + 8,
-          },
-          name,
-        });
-      }, 1000);
-    },
-    [],
-  );
-
-  const handleSubChatMouseLeave = useCallback(() => {
-    // Clear timer if hovering ends before delay
-    if (subChatTooltipTimerRef.current) {
-      clearTimeout(subChatTooltipTimerRef.current);
-      subChatTooltipTimerRef.current = null;
-    }
-    setSubChatTooltip(null);
-  }, []);
 
   const handleArchiveAllBelow = useCallback(
     (subChatId: string) => {
@@ -647,18 +556,6 @@ export function AgentsSubChatsSidebar({
       }),
     [allSubChats],
   );
-
-  // Update gradients when filtered chats change or on resize
-  useEffect(() => {
-    updateScrollGradients();
-  }, [filteredSubChats, updateScrollGradients]);
-
-  // Update gradients on window resize
-  useEffect(() => {
-    const handleResize = () => updateScrollGradients();
-    window.addEventListener("resize", handleResize, { passive: true });
-    return () => window.removeEventListener("resize", handleResize);
-  }, [updateScrollGradients]);
 
   // Check if all selected sub-chats are pinned
   const areAllSelectedPinned = useMemo(() => {
@@ -995,7 +892,7 @@ export function AgentsSubChatsSidebar({
             className="h-6 w-6 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] text-foreground flex-shrink-0 rounded-md"
             aria-label="Close sidebar"
           >
-            <IconDoubleChevronLeft className="h-4 w-4" />
+            <IconDoubleChevronRight className="h-4 w-4" />
           </Button>
         </TooltipTrigger>
         <TooltipContent side="bottom">Close chats pane</TooltipContent>
@@ -1004,82 +901,14 @@ export function AgentsSubChatsSidebar({
   );
 
   return (
-    <div
-      className="flex flex-col h-full bg-background border-r overflow-hidden relative"
-      style={{ borderRightWidth: "0.5px" }}
-    >
-      {/* Spacer for macOS traffic lights - only when agents sidebar is open */}
-      {isSidebarOpen && (
-        <TrafficLightSpacer isDesktop={isDesktop} isFullscreen={isFullscreen} />
-      )}
-
-      {/* Header buttons - absolutely positioned when agents sidebar is open */}
-      {isSidebarOpen && (
-        <div
-          className="absolute right-2 top-2 z-20"
-          style={{
-            // @ts-expect-error - WebKit-specific property
-            WebkitAppRegion: "no-drag",
-          }}
-        >
-          {headerButtons}
-        </div>
-      )}
-
+    <div className="flex flex-col h-full bg-background overflow-hidden relative">
       {/* Header */}
       <div className="p-2 pb-3 flex-shrink-0">
         <div className="space-y-2">
-          {/* Top row - different layout based on agents sidebar state */}
-          {isSidebarOpen ? (
-            <div
-              className="h-6"
-              style={{
-                // @ts-expect-error - WebKit-specific property for Electron window dragging
-                WebkitAppRegion:
-                  isDesktop && !isFullscreen ? "drag" : undefined,
-              }}
-            />
-          ) : (
-            <div
-              className="flex items-center justify-between gap-1 mb-1"
-              style={{
-                // @ts-expect-error - WebKit-specific property for Electron window dragging
-                WebkitAppRegion:
-                  isDesktop && !isFullscreen ? "drag" : undefined,
-              }}
-            >
-              {onBackToChats && (
-                <Tooltip delayDuration={500}>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={onBackToChats}
-                      tabIndex={-1}
-                      className="h-6 w-6 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] flex-shrink-0 rounded-md"
-                      aria-label="Toggle agents sidebar"
-                      style={{
-                        // @ts-expect-error - WebKit-specific property
-                        WebkitAppRegion: "no-drag",
-                      }}
-                    >
-                      <AlignJustify className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Open chats sidebar</TooltipContent>
-                </Tooltip>
-              )}
-              <div className="flex-1" />
-              <div
-                style={{
-                  // @ts-expect-error - WebKit-specific property
-                  WebkitAppRegion: "no-drag",
-                }}
-              >
-                {headerButtons}
-              </div>
-            </div>
-          )}
+          {/* Top row with header buttons */}
+          <div className="flex items-center justify-end gap-1 mb-1">
+            {headerButtons}
+          </div>
           {/* Search Input */}
           <div className="relative">
             <Input
@@ -1182,596 +1011,391 @@ export function AgentsSubChatsSidebar({
                 >
                   {/* Pinned section */}
                   {pinnedChats.length > 0 && (
-                    <>
-                      <div
-                        className={cn(
-                          "flex items-center h-4 mb-1",
-                          isMultiSelectMode ? "pl-3" : "pl-2",
-                        )}
-                      >
-                        <h3 className="text-xs font-medium text-muted-foreground whitespace-nowrap">
-                          Pinned Chats
-                        </h3>
-                      </div>
-                      <div className="list-none p-0 m-0 mb-3">
-                        {pinnedChats.map((subChat, index) => {
-                          const isSubChatLoading = loadingChatIds.has(
-                            subChat.id,
-                          );
-                          const isActive = activeSubChatId === subChat.id;
-                          const isPinned = pinnedSubChatIds.includes(
-                            subChat.id,
-                          );
-                          const globalIndex = filteredSubChats.findIndex(
-                            (c) => c.id === subChat.id,
-                          );
-                          const isFocused =
-                            focusedChatIndex === globalIndex &&
-                            focusedChatIndex >= 0;
-                          const hasUnseen = subChatUnseenChanges.has(
-                            subChat.id,
-                          );
-                          const timeAgo = formatTimeAgo(
-                            subChat.updated_at || subChat.created_at,
-                          );
-                          const mode = subChat.mode || "agent";
-                          const isChecked = selectedSubChatIds.has(subChat.id);
-                          const draftText = getDraftText(subChat.id);
-                          const hasPendingQuestion =
-                            pendingQuestions?.subChatId === subChat.id;
-                          const hasPendingPlan = pendingPlanApprovals.has(
-                            subChat.id,
-                          );
-                          const fileChanges =
-                            subChatFiles.get(subChat.id) || [];
-                          const stats =
-                            fileChanges.length > 0
-                              ? fileChanges.reduce(
-                                  (acc, f) => ({
-                                    fileCount: acc.fileCount + 1,
-                                    additions: acc.additions + f.additions,
-                                    deletions: acc.deletions + f.deletions,
-                                  }),
-                                  { fileCount: 0, additions: 0, deletions: 0 },
-                                )
-                              : null;
+                    <SidebarListSection
+                      title="Pinned Chats"
+                      isMultiSelectMode={isMultiSelectMode}
+                      className="mb-3"
+                    >
+                      {pinnedChats.map((subChat, index) => {
+                        const isSubChatLoading = loadingChatIds.has(subChat.id);
+                        const isActive = activeSubChatId === subChat.id;
+                        const isPinned = pinnedSubChatIds.includes(subChat.id);
+                        const globalIndex = filteredSubChats.findIndex(
+                          (c) => c.id === subChat.id,
+                        );
+                        const isFocused =
+                          focusedChatIndex === globalIndex &&
+                          focusedChatIndex >= 0;
+                        const hasUnseen = subChatUnseenChanges.has(subChat.id);
+                        const timeAgo = formatTimeAgo(
+                          subChat.updated_at || subChat.created_at,
+                        );
+                        const mode = subChat.mode || "agent";
+                        const isChecked = selectedSubChatIds.has(subChat.id);
+                        const draftText = getDraftText(subChat.id);
+                        const hasPendingQuestion =
+                          pendingQuestions?.subChatId === subChat.id;
+                        const hasPendingPlan = pendingPlanApprovals.has(
+                          subChat.id,
+                        );
+                        const fileChanges = subChatFiles.get(subChat.id) || [];
+                        const stats =
+                          fileChanges.length > 0
+                            ? fileChanges.reduce(
+                                (acc, f) => ({
+                                  fileCount: acc.fileCount + 1,
+                                  additions: acc.additions + f.additions,
+                                  deletions: acc.deletions + f.deletions,
+                                }),
+                                { fileCount: 0, additions: 0, deletions: 0 },
+                              )
+                            : null;
 
-                          return (
-                            <ContextMenu key={subChat.id}>
-                              <ContextMenuTrigger asChild>
-                                <div
-                                  data-subchat-index={globalIndex}
-                                  onClick={(e) =>
+                        return (
+                          <ContextMenu key={subChat.id}>
+                            <ContextMenuTrigger asChild>
+                              <SidebarListItem
+                                id={subChat.id}
+                                name={subChat.name}
+                                icon={
+                                  <SubChatIcon
+                                    mode={mode}
+                                    isActive={isActive}
+                                    isLoading={isSubChatLoading}
+                                    hasUnseenChanges={hasUnseen}
+                                    hasPendingPlan={hasPendingPlan}
+                                    hasPendingQuestion={hasPendingQuestion}
+                                    isMultiSelectMode={isMultiSelectMode}
+                                    isChecked={isChecked}
+                                    onCheckboxClick={(e) =>
+                                      handleCheckboxClick(e, subChat.id)
+                                    }
+                                  />
+                                }
+                                isSelected={isActive}
+                                isFocused={isFocused}
+                                isChecked={isChecked}
+                                isMultiSelectMode={isMultiSelectMode}
+                                metadata={
+                                  draftText ? (
+                                    <span className="truncate">
+                                      <span className="text-blue-500">
+                                        Draft:
+                                      </span>{" "}
+                                      {draftText}
+                                    </span>
+                                  ) : (
+                                    <>
+                                      <span className="flex-shrink-0">
+                                        {timeAgo}
+                                      </span>
+                                      {stats && (
+                                        <>
+                                          <span className="text-muted-foreground/40">
+                                            ·
+                                          </span>
+                                          <span>
+                                            {stats.fileCount}{" "}
+                                            {stats.fileCount === 1
+                                              ? "file"
+                                              : "files"}
+                                          </span>
+                                          {(stats.additions > 0 ||
+                                            stats.deletions > 0) && (
+                                            <>
+                                              <span className="text-green-600 dark:text-green-400">
+                                                +{stats.additions}
+                                              </span>
+                                              <span className="text-red-600 dark:text-red-400">
+                                                -{stats.deletions}
+                                              </span>
+                                            </>
+                                          )}
+                                        </>
+                                      )}
+                                    </>
+                                  )
+                                }
+                                onArchive={() =>
+                                  handleArchiveSubChat(subChat.id)
+                                }
+                                archiveLabel="Archive agent"
+                                onClick={(e) =>
+                                  handleSubChatItemClick(
+                                    subChat.id,
+                                    e,
+                                    globalIndex,
+                                  )
+                                }
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault();
                                     handleSubChatItemClick(
                                       subChat.id,
-                                      e,
+                                      undefined,
                                       globalIndex,
-                                    )
-                                  }
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter" || e.key === " ") {
-                                      e.preventDefault();
-                                      handleSubChatItemClick(
-                                        subChat.id,
-                                        undefined,
-                                        globalIndex,
-                                      );
-                                    }
-                                  }}
-                                  onMouseEnter={(e) => {
-                                    setHoveredChatIndex(globalIndex);
-                                    handleSubChatMouseEnter(
-                                      subChat.id,
-                                      subChat.name || "New Chat",
-                                      e.currentTarget,
                                     );
-                                  }}
-                                  onMouseLeave={() => {
-                                    setHoveredChatIndex(-1);
-                                    handleSubChatMouseLeave();
-                                  }}
-                                  className={cn(
-                                    "w-full text-left py-1.5 transition-colors duration-150 cursor-pointer group relative",
-                                    "outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70",
-                                    isMultiSelectMode ? "px-3" : "pl-2 pr-2",
-                                    isMultiSelectMode ? "" : "rounded-md",
-                                    isActive
-                                      ? "bg-foreground/5 text-foreground"
-                                      : isChecked
-                                        ? "bg-foreground/5 text-foreground"
-                                        : isFocused
-                                          ? "bg-foreground/5 text-foreground"
-                                          : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground",
-                                  )}
-                                >
-                                  <div className="flex items-start gap-2.5">
-                                    {/* Icon/Checkbox container */}
-                                    <div className="pt-0.5 flex-shrink-0 w-4 h-4 flex items-center justify-center relative">
-                                      {/* Checkbox - shown in multi-select mode */}
-                                      <div
-                                        className={cn(
-                                          "absolute inset-0 flex items-center justify-center transition-[opacity,transform] duration-150 ease-out",
-                                          isMultiSelectMode
-                                            ? "opacity-100 scale-100"
-                                            : "opacity-0 scale-95 pointer-events-none",
-                                        )}
-                                        onClick={(e) =>
-                                          handleCheckboxClick(e, subChat.id)
-                                        }
-                                      >
-                                        <Checkbox
-                                          checked={isChecked}
-                                          className="cursor-pointer h-4 w-4"
-                                          tabIndex={isMultiSelectMode ? 0 : -1}
-                                        />
-                                      </div>
-                                      {/* Mode icon or Question icon - hidden in multi-select mode */}
-                                      <div
-                                        className={cn(
-                                          "transition-[opacity,transform] duration-150 ease-out",
-                                          isMultiSelectMode
-                                            ? "opacity-0 scale-95 pointer-events-none"
-                                            : "opacity-100 scale-100",
-                                        )}
-                                      >
-                                        {hasPendingQuestion ? (
-                                          <QuestionIcon className="w-4 h-4 text-blue-500" />
-                                        ) : mode === "plan" ? (
-                                          <PlanIcon className="w-4 h-4 text-muted-foreground" />
-                                        ) : (
-                                          <AgentIcon className="w-4 h-4 text-muted-foreground" />
-                                        )}
-                                      </div>
-                                      {/* Badge in bottom-right corner - hidden in multi-select mode and when pending question */}
-                                      {(isSubChatLoading ||
-                                        hasUnseen ||
-                                        hasPendingPlan) &&
-                                        !isMultiSelectMode &&
-                                        !hasPendingQuestion && (
-                                          <div
-                                            className={cn(
-                                              "absolute -bottom-1 -right-1 w-3 h-3 rounded-full flex items-center justify-center",
-                                              isActive
-                                                ? "bg-[#E8E8E8] dark:bg-[#1B1B1B]"
-                                                : "bg-[#F4F4F4] group-hover:bg-[#E8E8E8] dark:bg-[#101010] dark:group-hover:bg-[#1B1B1B]",
-                                            )}
-                                          >
-                                            {/* Priority: loader > amber dot (pending plan) > blue dot (unseen) */}
-                                            {isSubChatLoading ? (
-                                              <LoadingDot
-                                                isLoading={true}
-                                                className="w-2.5 h-2.5 text-muted-foreground"
-                                              />
-                                            ) : hasPendingPlan ? (
-                                              <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                                            ) : (
-                                              <LoadingDot
-                                                isLoading={false}
-                                                className="w-2.5 h-2.5 text-muted-foreground"
-                                              />
-                                            )}
-                                          </div>
-                                        )}
-                                    </div>
-                                    <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-                                      <div className="flex items-center gap-1">
-                                        <span
-                                          ref={(el) => {
-                                            if (el)
-                                              subChatNameRefs.current.set(
-                                                subChat.id,
-                                                el,
-                                              );
-                                          }}
-                                          className="truncate block text-sm leading-tight flex-1"
-                                        >
-                                          <TypewriterText
-                                            text={subChat.name || ""}
-                                            placeholder="New Chat"
-                                            id={subChat.id}
-                                            isJustCreated={justCreatedIds.has(
-                                              subChat.id,
-                                            )}
-                                            showPlaceholder={true}
-                                          />
-                                        </span>
-                                        {!isMultiSelectMode && (
-                                          <button
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleArchiveSubChat(subChat.id);
-                                            }}
-                                            tabIndex={-1}
-                                            className="flex-shrink-0 text-muted-foreground hover:text-foreground active:text-foreground transition-[opacity,transform,color] duration-150 ease-out opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto active:scale-[0.97]"
-                                            aria-label="Archive agent"
-                                          >
-                                            <ArchiveIcon className="h-3.5 w-3.5" />
-                                          </button>
-                                        )}
-                                      </div>
-                                      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground/60 min-w-0">
-                                        {draftText ? (
-                                          <span className="truncate">
-                                            <span className="text-blue-500">
-                                              Draft:
-                                            </span>{" "}
-                                            {draftText}
-                                          </span>
-                                        ) : (
-                                          <span className="flex-shrink-0">
-                                            {timeAgo}
-                                          </span>
-                                        )}
-                                        {!draftText && stats && (
-                                          <>
-                                            <span className="text-muted-foreground/40">
-                                              ·
-                                            </span>
-                                            <span>
-                                              {stats.fileCount}{" "}
-                                              {stats.fileCount === 1
-                                                ? "file"
-                                                : "files"}
-                                            </span>
-                                            {(stats.additions > 0 ||
-                                              stats.deletions > 0) && (
-                                              <>
-                                                <span className="text-green-600 dark:text-green-400">
-                                                  +{stats.additions}
-                                                </span>
-                                                <span className="text-red-600 dark:text-red-400">
-                                                  -{stats.deletions}
-                                                </span>
-                                              </>
-                                            )}
-                                          </>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              </ContextMenuTrigger>
-                              {/* Multi-select context menu */}
-                              {isMultiSelectMode &&
-                              selectedSubChatIds.has(subChat.id) ? (
-                                <ContextMenuContent className="w-48">
-                                  {canShowPinOption && (
-                                    <>
-                                      <ContextMenuItem
-                                        onClick={
-                                          areAllSelectedPinned
-                                            ? handleBulkUnpin
-                                            : handleBulkPin
-                                        }
-                                      >
-                                        {areAllSelectedPinned
-                                          ? `Unpin ${selectedSubChatIds.size} ${pluralize(selectedSubChatIds.size, "chat")}`
-                                          : `Pin ${selectedSubChatIds.size} ${pluralize(selectedSubChatIds.size, "chat")}`}
-                                      </ContextMenuItem>
-                                      <ContextMenuSeparator />
-                                    </>
-                                  )}
-                                  <ContextMenuItem onClick={handleBulkArchive}>
-                                    Archive {selectedSubChatIds.size}{" "}
-                                    {pluralize(selectedSubChatIds.size, "chat")}
-                                  </ContextMenuItem>
-                                </ContextMenuContent>
-                              ) : (
-                                <SubChatContextMenu
-                                  subChat={subChat}
-                                  isPinned={isPinned}
-                                  onTogglePin={togglePinSubChat}
-                                  onRename={handleRenameClick}
-                                  onArchive={handleArchiveSubChat}
-                                  onArchiveAllBelow={handleArchiveAllBelow}
-                                  onArchiveOthers={onCloseOtherChats}
-                                  isOnlyChat={openSubChats.length === 1}
-                                  currentIndex={globalIndex}
-                                  totalCount={filteredSubChats.length}
-                                />
-                              )}
-                            </ContextMenu>
-                          );
-                        })}
-                      </div>
-                    </>
+                                  }
+                                }}
+                                onMouseEnter={(e) => {
+                                  setHoveredChatIndex(globalIndex);
+                                  handleSubChatMouseEnter(
+                                    subChat.id,
+                                    subChat.name || "New Chat",
+                                    e.currentTarget,
+                                  );
+                                }}
+                                onMouseLeave={() => {
+                                  setHoveredChatIndex(-1);
+                                  handleSubChatMouseLeave();
+                                }}
+                                isJustCreated={justCreatedIds.has(subChat.id)}
+                                placeholder="New Chat"
+                                nameRefCallback={(el) => {
+                                  if (el)
+                                    subChatNameRefs.current.set(subChat.id, el);
+                                }}
+                                dataIndex={globalIndex}
+                                dataAttribute="data-subchat-index"
+                              />
+                            </ContextMenuTrigger>
+                            {/* Multi-select context menu */}
+                            {isMultiSelectMode &&
+                            selectedSubChatIds.has(subChat.id) ? (
+                              <ContextMenuContent className="w-48">
+                                {canShowPinOption && (
+                                  <>
+                                    <ContextMenuItem
+                                      onClick={
+                                        areAllSelectedPinned
+                                          ? handleBulkUnpin
+                                          : handleBulkPin
+                                      }
+                                    >
+                                      {areAllSelectedPinned
+                                        ? `Unpin ${selectedSubChatIds.size} ${pluralize(selectedSubChatIds.size, "chat")}`
+                                        : `Pin ${selectedSubChatIds.size} ${pluralize(selectedSubChatIds.size, "chat")}`}
+                                    </ContextMenuItem>
+                                    <ContextMenuSeparator />
+                                  </>
+                                )}
+                                <ContextMenuItem onClick={handleBulkArchive}>
+                                  Archive {selectedSubChatIds.size}{" "}
+                                  {pluralize(selectedSubChatIds.size, "chat")}
+                                </ContextMenuItem>
+                              </ContextMenuContent>
+                            ) : (
+                              <SubChatContextMenu
+                                subChat={subChat}
+                                isPinned={isPinned}
+                                onTogglePin={togglePinSubChat}
+                                onRename={handleRenameClick}
+                                onArchive={handleArchiveSubChat}
+                                onArchiveAllBelow={handleArchiveAllBelow}
+                                onArchiveOthers={onCloseOtherChats}
+                                isOnlyChat={openSubChats.length === 1}
+                                currentIndex={globalIndex}
+                                totalCount={filteredSubChats.length}
+                              />
+                            )}
+                          </ContextMenu>
+                        );
+                      })}
+                    </SidebarListSection>
                   )}
 
                   {/* Unpinned section */}
                   {unpinnedChats.length > 0 && (
-                    <>
-                      <div
-                        className={cn(
-                          "flex items-center h-4 mb-1",
-                          isMultiSelectMode ? "pl-3" : "pl-2",
-                        )}
-                      >
-                        <h3 className="text-xs font-medium text-muted-foreground whitespace-nowrap">
-                          {pinnedChats.length > 0 ? "Recent chats" : "Chats"}
-                        </h3>
-                      </div>
-                      <div className="list-none p-0 m-0">
-                        {unpinnedChats.map((subChat, index) => {
-                          const isSubChatLoading = loadingChatIds.has(
-                            subChat.id,
-                          );
-                          const isActive = activeSubChatId === subChat.id;
-                          const isPinned = pinnedSubChatIds.includes(
-                            subChat.id,
-                          );
-                          const globalIndex = filteredSubChats.findIndex(
-                            (c) => c.id === subChat.id,
-                          );
-                          const isFocused =
-                            focusedChatIndex === globalIndex &&
-                            focusedChatIndex >= 0;
-                          const hasUnseen = subChatUnseenChanges.has(
-                            subChat.id,
-                          );
-                          const timeAgo = formatTimeAgo(
-                            subChat.updated_at || subChat.created_at,
-                          );
-                          const mode = subChat.mode || "agent";
-                          const isChecked = selectedSubChatIds.has(subChat.id);
-                          const draftText = getDraftText(subChat.id);
-                          const hasPendingQuestion =
-                            pendingQuestions?.subChatId === subChat.id;
-                          const hasPendingPlan = pendingPlanApprovals.has(
-                            subChat.id,
-                          );
-                          const fileChanges =
-                            subChatFiles.get(subChat.id) || [];
-                          const stats =
-                            fileChanges.length > 0
-                              ? fileChanges.reduce(
-                                  (acc, f) => ({
-                                    fileCount: acc.fileCount + 1,
-                                    additions: acc.additions + f.additions,
-                                    deletions: acc.deletions + f.deletions,
-                                  }),
-                                  { fileCount: 0, additions: 0, deletions: 0 },
-                                )
-                              : null;
+                    <SidebarListSection
+                      title={pinnedChats.length > 0 ? "Recent chats" : "Chats"}
+                      isMultiSelectMode={isMultiSelectMode}
+                    >
+                      {unpinnedChats.map((subChat, index) => {
+                        const isSubChatLoading = loadingChatIds.has(subChat.id);
+                        const isActive = activeSubChatId === subChat.id;
+                        const isPinned = pinnedSubChatIds.includes(subChat.id);
+                        const globalIndex = filteredSubChats.findIndex(
+                          (c) => c.id === subChat.id,
+                        );
+                        const isFocused =
+                          focusedChatIndex === globalIndex &&
+                          focusedChatIndex >= 0;
+                        const hasUnseen = subChatUnseenChanges.has(subChat.id);
+                        const timeAgo = formatTimeAgo(
+                          subChat.updated_at || subChat.created_at,
+                        );
+                        const mode = subChat.mode || "agent";
+                        const isChecked = selectedSubChatIds.has(subChat.id);
+                        const draftText = getDraftText(subChat.id);
+                        const hasPendingQuestion =
+                          pendingQuestions?.subChatId === subChat.id;
+                        const hasPendingPlan = pendingPlanApprovals.has(
+                          subChat.id,
+                        );
+                        const fileChanges = subChatFiles.get(subChat.id) || [];
+                        const stats =
+                          fileChanges.length > 0
+                            ? fileChanges.reduce(
+                                (acc, f) => ({
+                                  fileCount: acc.fileCount + 1,
+                                  additions: acc.additions + f.additions,
+                                  deletions: acc.deletions + f.deletions,
+                                }),
+                                { fileCount: 0, additions: 0, deletions: 0 },
+                              )
+                            : null;
 
-                          return (
-                            <ContextMenu key={subChat.id}>
-                              <ContextMenuTrigger asChild>
-                                <div
-                                  data-subchat-index={globalIndex}
-                                  onClick={(e) =>
+                        return (
+                          <ContextMenu key={subChat.id}>
+                            <ContextMenuTrigger asChild>
+                              <SidebarListItem
+                                id={subChat.id}
+                                name={subChat.name}
+                                icon={
+                                  <SubChatIcon
+                                    mode={mode}
+                                    isActive={isActive}
+                                    isLoading={isSubChatLoading}
+                                    hasUnseenChanges={hasUnseen}
+                                    hasPendingPlan={hasPendingPlan}
+                                    hasPendingQuestion={hasPendingQuestion}
+                                    isMultiSelectMode={isMultiSelectMode}
+                                    isChecked={isChecked}
+                                    onCheckboxClick={(e) =>
+                                      handleCheckboxClick(e, subChat.id)
+                                    }
+                                  />
+                                }
+                                isSelected={isActive}
+                                isFocused={isFocused}
+                                isChecked={isChecked}
+                                isMultiSelectMode={isMultiSelectMode}
+                                metadata={
+                                  draftText ? (
+                                    <span className="truncate">
+                                      <span className="text-blue-500">
+                                        Draft:
+                                      </span>{" "}
+                                      {draftText}
+                                    </span>
+                                  ) : (
+                                    <>
+                                      <span className="flex-shrink-0">
+                                        {timeAgo}
+                                      </span>
+                                      {stats && (
+                                        <>
+                                          <span className="text-muted-foreground/40">
+                                            ·
+                                          </span>
+                                          <span>
+                                            {stats.fileCount}{" "}
+                                            {stats.fileCount === 1
+                                              ? "file"
+                                              : "files"}
+                                          </span>
+                                          {(stats.additions > 0 ||
+                                            stats.deletions > 0) && (
+                                            <>
+                                              <span className="text-green-600 dark:text-green-400">
+                                                +{stats.additions}
+                                              </span>
+                                              <span className="text-red-600 dark:text-red-400">
+                                                -{stats.deletions}
+                                              </span>
+                                            </>
+                                          )}
+                                        </>
+                                      )}
+                                    </>
+                                  )
+                                }
+                                onArchive={() =>
+                                  handleArchiveSubChat(subChat.id)
+                                }
+                                archiveLabel="Archive agent"
+                                onClick={(e) =>
+                                  handleSubChatItemClick(
+                                    subChat.id,
+                                    e,
+                                    globalIndex,
+                                  )
+                                }
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault();
                                     handleSubChatItemClick(
                                       subChat.id,
-                                      e,
+                                      undefined,
                                       globalIndex,
-                                    )
-                                  }
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter" || e.key === " ") {
-                                      e.preventDefault();
-                                      handleSubChatItemClick(
-                                        subChat.id,
-                                        undefined,
-                                        globalIndex,
-                                      );
-                                    }
-                                  }}
-                                  onMouseEnter={(e) => {
-                                    setHoveredChatIndex(globalIndex);
-                                    handleSubChatMouseEnter(
-                                      subChat.id,
-                                      subChat.name || "New Chat",
-                                      e.currentTarget,
                                     );
-                                  }}
-                                  onMouseLeave={() => {
-                                    setHoveredChatIndex(-1);
-                                    handleSubChatMouseLeave();
-                                  }}
-                                  className={cn(
-                                    "w-full text-left py-1.5 transition-colors duration-150 cursor-pointer group relative",
-                                    "outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70",
-                                    isMultiSelectMode ? "px-3" : "pl-2 pr-2",
-                                    isMultiSelectMode ? "" : "rounded-md",
-                                    isActive
-                                      ? "bg-foreground/5 text-foreground"
-                                      : isChecked
-                                        ? "bg-foreground/5 text-foreground"
-                                        : isFocused
-                                          ? "bg-foreground/5 text-foreground"
-                                          : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground",
-                                  )}
-                                >
-                                  <div className="flex items-start gap-2.5">
-                                    {/* Icon/Checkbox container */}
-                                    <div className="pt-0.5 flex-shrink-0 w-4 h-4 flex items-center justify-center relative">
-                                      {/* Checkbox - shown in multi-select mode */}
-                                      <div
-                                        className={cn(
-                                          "absolute inset-0 flex items-center justify-center transition-[opacity,transform] duration-150 ease-out",
-                                          isMultiSelectMode
-                                            ? "opacity-100 scale-100"
-                                            : "opacity-0 scale-95 pointer-events-none",
-                                        )}
-                                        onClick={(e) =>
-                                          handleCheckboxClick(e, subChat.id)
-                                        }
-                                      >
-                                        <Checkbox
-                                          checked={isChecked}
-                                          className="cursor-pointer h-4 w-4"
-                                          tabIndex={isMultiSelectMode ? 0 : -1}
-                                        />
-                                      </div>
-                                      {/* Mode icon or Question icon - hidden in multi-select mode */}
-                                      <div
-                                        className={cn(
-                                          "transition-[opacity,transform] duration-150 ease-out",
-                                          isMultiSelectMode
-                                            ? "opacity-0 scale-95 pointer-events-none"
-                                            : "opacity-100 scale-100",
-                                        )}
-                                      >
-                                        {hasPendingQuestion ? (
-                                          <QuestionIcon className="w-4 h-4 text-blue-500" />
-                                        ) : mode === "plan" ? (
-                                          <PlanIcon className="w-4 h-4 text-muted-foreground" />
-                                        ) : (
-                                          <AgentIcon className="w-4 h-4 text-muted-foreground" />
-                                        )}
-                                      </div>
-                                      {/* Badge - hidden in multi-select mode and when pending question */}
-                                      {(isSubChatLoading ||
-                                        hasUnseen ||
-                                        hasPendingPlan) &&
-                                        !isMultiSelectMode &&
-                                        !hasPendingQuestion && (
-                                          <div
-                                            className={cn(
-                                              "absolute -bottom-1 -right-1 w-3 h-3 rounded-full flex items-center justify-center",
-                                              isActive
-                                                ? "bg-[#E8E8E8] dark:bg-[#1B1B1B]"
-                                                : "bg-[#F4F4F4] group-hover:bg-[#E8E8E8] dark:bg-[#101010] dark:group-hover:bg-[#1B1B1B]",
-                                            )}
-                                          >
-                                            {/* Priority: loader > amber dot (pending plan) > blue dot (unseen) */}
-                                            {isSubChatLoading ? (
-                                              <LoadingDot
-                                                isLoading={true}
-                                                className="w-2.5 h-2.5 text-muted-foreground"
-                                              />
-                                            ) : hasPendingPlan ? (
-                                              <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                                            ) : (
-                                              <LoadingDot
-                                                isLoading={false}
-                                                className="w-2.5 h-2.5 text-muted-foreground"
-                                              />
-                                            )}
-                                          </div>
-                                        )}
-                                    </div>
-                                    <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-                                      <div className="flex items-center gap-1">
-                                        <span
-                                          ref={(el) => {
-                                            if (el)
-                                              subChatNameRefs.current.set(
-                                                subChat.id,
-                                                el,
-                                              );
-                                          }}
-                                          className="truncate block text-sm leading-tight flex-1"
-                                        >
-                                          <TypewriterText
-                                            text={subChat.name || ""}
-                                            placeholder="New Chat"
-                                            id={subChat.id}
-                                            isJustCreated={justCreatedIds.has(
-                                              subChat.id,
-                                            )}
-                                            showPlaceholder={true}
-                                          />
-                                        </span>
-                                        {!isMultiSelectMode && (
-                                          <button
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleArchiveSubChat(subChat.id);
-                                            }}
-                                            tabIndex={-1}
-                                            className="flex-shrink-0 text-muted-foreground hover:text-foreground active:text-foreground transition-[opacity,transform,color] duration-150 ease-out opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto active:scale-[0.97]"
-                                            aria-label="Archive agent"
-                                          >
-                                            <ArchiveIcon className="h-3.5 w-3.5" />
-                                          </button>
-                                        )}
-                                      </div>
-                                      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground/60 min-w-0">
-                                        {draftText ? (
-                                          <span className="truncate">
-                                            <span className="text-blue-500">
-                                              Draft:
-                                            </span>{" "}
-                                            {draftText}
-                                          </span>
-                                        ) : (
-                                          <span className="flex-shrink-0">
-                                            {timeAgo}
-                                          </span>
-                                        )}
-                                        {!draftText && stats && (
-                                          <>
-                                            <span className="text-muted-foreground/40">
-                                              ·
-                                            </span>
-                                            <span>
-                                              {stats.fileCount}{" "}
-                                              {stats.fileCount === 1
-                                                ? "file"
-                                                : "files"}
-                                            </span>
-                                            {(stats.additions > 0 ||
-                                              stats.deletions > 0) && (
-                                              <>
-                                                <span className="text-green-600 dark:text-green-400">
-                                                  +{stats.additions}
-                                                </span>
-                                                <span className="text-red-600 dark:text-red-400">
-                                                  -{stats.deletions}
-                                                </span>
-                                              </>
-                                            )}
-                                          </>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              </ContextMenuTrigger>
-                              {/* Multi-select context menu */}
-                              {isMultiSelectMode &&
-                              selectedSubChatIds.has(subChat.id) ? (
-                                <ContextMenuContent className="w-48">
-                                  {canShowPinOption && (
-                                    <>
-                                      <ContextMenuItem
-                                        onClick={
-                                          areAllSelectedPinned
-                                            ? handleBulkUnpin
-                                            : handleBulkPin
-                                        }
-                                      >
-                                        {areAllSelectedPinned
-                                          ? `Unpin ${selectedSubChatIds.size} ${pluralize(selectedSubChatIds.size, "chat")}`
-                                          : `Pin ${selectedSubChatIds.size} ${pluralize(selectedSubChatIds.size, "chat")}`}
-                                      </ContextMenuItem>
-                                      <ContextMenuSeparator />
-                                    </>
-                                  )}
-                                  <ContextMenuItem onClick={handleBulkArchive}>
-                                    Archive {selectedSubChatIds.size}{" "}
-                                    {pluralize(selectedSubChatIds.size, "chat")}
-                                  </ContextMenuItem>
-                                </ContextMenuContent>
-                              ) : (
-                                <SubChatContextMenu
-                                  subChat={subChat}
-                                  isPinned={isPinned}
-                                  onTogglePin={togglePinSubChat}
-                                  onRename={handleRenameClick}
-                                  onArchive={handleArchiveSubChat}
-                                  onArchiveAllBelow={handleArchiveAllBelow}
-                                  onArchiveOthers={onCloseOtherChats}
-                                  isOnlyChat={openSubChats.length === 1}
-                                  currentIndex={globalIndex}
-                                  totalCount={filteredSubChats.length}
-                                />
-                              )}
-                            </ContextMenu>
-                          );
-                        })}
-                      </div>
-                    </>
+                                  }
+                                }}
+                                onMouseEnter={(e) => {
+                                  setHoveredChatIndex(globalIndex);
+                                  handleSubChatMouseEnter(
+                                    subChat.id,
+                                    subChat.name || "New Chat",
+                                    e.currentTarget,
+                                  );
+                                }}
+                                onMouseLeave={() => {
+                                  setHoveredChatIndex(-1);
+                                  handleSubChatMouseLeave();
+                                }}
+                                isJustCreated={justCreatedIds.has(subChat.id)}
+                                placeholder="New Chat"
+                                nameRefCallback={(el) => {
+                                  if (el)
+                                    subChatNameRefs.current.set(subChat.id, el);
+                                }}
+                                dataIndex={globalIndex}
+                                dataAttribute="data-subchat-index"
+                              />
+                            </ContextMenuTrigger>
+                            {/* Multi-select context menu */}
+                            {isMultiSelectMode &&
+                            selectedSubChatIds.has(subChat.id) ? (
+                              <ContextMenuContent className="w-48">
+                                {canShowPinOption && (
+                                  <>
+                                    <ContextMenuItem
+                                      onClick={
+                                        areAllSelectedPinned
+                                          ? handleBulkUnpin
+                                          : handleBulkPin
+                                      }
+                                    >
+                                      {areAllSelectedPinned
+                                        ? `Unpin ${selectedSubChatIds.size} ${pluralize(selectedSubChatIds.size, "chat")}`
+                                        : `Pin ${selectedSubChatIds.size} ${pluralize(selectedSubChatIds.size, "chat")}`}
+                                    </ContextMenuItem>
+                                    <ContextMenuSeparator />
+                                  </>
+                                )}
+                                <ContextMenuItem onClick={handleBulkArchive}>
+                                  Archive {selectedSubChatIds.size}{" "}
+                                  {pluralize(selectedSubChatIds.size, "chat")}
+                                </ContextMenuItem>
+                              </ContextMenuContent>
+                            ) : (
+                              <SubChatContextMenu
+                                subChat={subChat}
+                                isPinned={isPinned}
+                                onTogglePin={togglePinSubChat}
+                                onRename={handleRenameClick}
+                                onArchive={handleArchiveSubChat}
+                                onArchiveAllBelow={handleArchiveAllBelow}
+                                onArchiveOthers={onCloseOtherChats}
+                                isOnlyChat={openSubChats.length === 1}
+                                currentIndex={globalIndex}
+                                totalCount={filteredSubChats.length}
+                              />
+                            )}
+                          </ContextMenu>
+                        );
+                      })}
+                    </SidebarListSection>
                   )}
                 </div>
               ) : searchQuery.trim() ? (
@@ -1790,42 +1414,18 @@ export function AgentsSubChatsSidebar({
       </div>
 
       {/* Multi-select Footer Toolbar */}
-      <AnimatePresence mode="wait">
-        {isMultiSelectMode && (
-          <motion.div
-            key="multiselect-footer"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
-            transition={{ duration: 0 }}
-            className="flex-shrink-0 p-2 bg-background space-y-2"
-          >
-            <div className="flex items-center justify-between px-1">
-              <span className="text-xs text-muted-foreground">
-                {selectedSubChatsCount} selected
-              </span>
-              <button
-                onClick={clearSubChatSelection}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-
-            <div className="flex items-center gap-1.5">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleBulkArchive}
-                className="flex-1 h-8 gap-1.5 text-xs rounded-lg"
-              >
-                <ArchiveIcon className="h-3.5 w-3.5" />
-                Archive
-              </Button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <MultiSelectFooter
+        isVisible={isMultiSelectMode}
+        selectedCount={selectedSubChatsCount}
+        onCancel={clearSubChatSelection}
+        actions={[
+          {
+            label: "Archive",
+            icon: <ArchiveIcon className="h-3.5 w-3.5" />,
+            onClick: handleBulkArchive,
+          },
+        ]}
+      />
 
       {/* Rename Dialog */}
       <AgentsRenameSubChatDialog
@@ -1870,23 +1470,7 @@ export function AgentsSubChatsSidebar({
       </AlertDialog>
 
       {/* SubChat name tooltip portal */}
-      {subChatTooltip?.visible &&
-        typeof document !== "undefined" &&
-        createPortal(
-          <div
-            className="fixed z-[100000] max-w-xs px-2 py-1 text-xs bg-popover border border-border rounded-md shadow-lg dark pointer-events-none"
-            style={{
-              top: subChatTooltip.position.top,
-              left: subChatTooltip.position.left,
-              transform: "translateY(-50%)",
-            }}
-          >
-            <div className="text-foreground/90 whitespace-nowrap">
-              {subChatTooltip.name}
-            </div>
-          </div>,
-          document.body,
-        )}
+      <SubChatTooltipPortal />
     </div>
   );
 }

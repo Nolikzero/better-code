@@ -12,6 +12,12 @@ export default defineConfig({
         exclude: ["superjson", "trpc-electron", "gray-matter"],
       }),
     ],
+    resolve: {
+      alias: {
+        "@shared": resolve(__dirname, "src/shared"),
+        "@main": resolve(__dirname, "src/main"),
+      },
+    },
     build: {
       lib: {
         entry: resolve(__dirname, "src/main/index.ts"),
@@ -35,6 +41,11 @@ export default defineConfig({
         exclude: ["trpc-electron"],
       }),
     ],
+    resolve: {
+      alias: {
+        "@shared": resolve(__dirname, "src/shared"),
+      },
+    },
     build: {
       lib: {
         entry: resolve(__dirname, "src/preload/index.ts"),
@@ -52,6 +63,8 @@ export default defineConfig({
     resolve: {
       alias: {
         "@": resolve(__dirname, "src/renderer"),
+        "@shared": resolve(__dirname, "src/shared"),
+        "@main": resolve(__dirname, "src/main"),
       },
     },
     build: {

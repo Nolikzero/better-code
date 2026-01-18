@@ -11,6 +11,9 @@ import { publicProcedure, router } from "../index";
 // Store current vibrancy state
 let currentVibrancy: string | null = null;
 
+// Store original theme source to restore when disabling vibrancy
+let originalThemeSource: "system" | "light" | "dark" | null = null;
+
 /**
  * Vibrancy types supported by Electron on macOS
  */
@@ -36,6 +39,7 @@ export const windowRouter = router({
         visualEffectState: z
           .enum(["followWindow", "active", "inactive"])
           .optional(),
+        forceAppearance: z.enum(["dark", "light"]).optional(),
       }),
     )
     .mutation(({ input, ctx }) => {
@@ -54,14 +58,35 @@ export const windowRouter = router({
 
       try {
         if (input.type === null) {
-          // Disable vibrancy - restore solid background
+          // Disable vibrancy - restore solid background and theme source
           win.setVibrancy(null as any);
           win.setBackgroundColor(
             nativeTheme.shouldUseDarkColors ? "#09090b" : "#ffffff",
           );
           currentVibrancy = null;
+
+          // Restore original theme source
+          if (originalThemeSource !== null) {
+            nativeTheme.themeSource = originalThemeSource;
+            originalThemeSource = null;
+            console.log(
+              "[Window] Theme source restored to:",
+              nativeTheme.themeSource,
+            );
+          }
           console.log("[Window] Vibrancy disabled");
         } else {
+          // Force appearance if requested
+          if (input.forceAppearance) {
+            if (originalThemeSource === null) {
+              originalThemeSource = nativeTheme.themeSource;
+            }
+            nativeTheme.themeSource = input.forceAppearance;
+            console.log(
+              `[Window] Forced theme source to: ${input.forceAppearance}`,
+            );
+          }
+
           // Enable vibrancy - must set transparent background first
           win.setBackgroundColor("#00000000");
           win.setVibrancy(input.type as any);
@@ -101,6 +126,7 @@ export const windowRouter = router({
             opaque: z.boolean().optional(),
           })
           .optional(),
+        forceAppearance: z.enum(["dark", "light"]).optional(),
       }),
     )
     .mutation(({ input, ctx }) => {
@@ -120,6 +146,17 @@ export const windowRouter = router({
 
       try {
         if (input.enabled) {
+          // Force appearance if requested
+          if (input.forceAppearance) {
+            if (originalThemeSource === null) {
+              originalThemeSource = nativeTheme.themeSource;
+            }
+            nativeTheme.themeSource = input.forceAppearance;
+            console.log(
+              `[Window] Forced theme source to: ${input.forceAppearance}`,
+            );
+          }
+
           // Set transparent background before enabling (required for glass effect)
           win.setBackgroundColor("#00000000");
           const glassId = enableLiquidGlass(win, input.options);
@@ -134,6 +171,16 @@ export const windowRouter = router({
         win.setBackgroundColor(
           nativeTheme.shouldUseDarkColors ? "#09090b" : "#ffffff",
         );
+
+        // Restore original theme source
+        if (originalThemeSource !== null) {
+          nativeTheme.themeSource = originalThemeSource;
+          originalThemeSource = null;
+          console.log(
+            "[Window] Theme source restored to:",
+            nativeTheme.themeSource,
+          );
+        }
         console.log("[Window] Liquid glass disabled");
         return { success: true };
       } catch (error) {

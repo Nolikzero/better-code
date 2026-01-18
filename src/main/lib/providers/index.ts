@@ -17,9 +17,24 @@ export type {
   AIProvider,
 } from "./types";
 
+// Codex-specific types (re-export for convenience)
+export type {
+  SandboxMode,
+  ApprovalPolicy,
+  ReasoningEffort,
+} from "./types";
+
 // Registry
 export { ProviderRegistry, providerRegistry } from "./registry";
 
-// Providers
-export { ClaudeProvider, type ClaudeSessionOptions } from "./claude-provider";
-export { CodexProvider, type CodexSessionOptions } from "./codex-provider";
+// Claude provider
+export { ClaudeProvider, type ClaudeSessionOptions } from "./claude";
+export type {
+  UIMessageChunk,
+  MessageMetadata,
+  MCPServer,
+  MCPServerStatus,
+} from "./claude/types";
+
+// Codex provider
+export { CodexProvider, type CodexSessionOptions } from "./codex";

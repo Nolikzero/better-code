@@ -1,5 +1,6 @@
 "use client";
 
+import { formatTimeAgo } from "@shared/utils";
 import { useAtomValue } from "jotai";
 import { AlignJustify, ChevronDown, Play, Plus } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
@@ -27,7 +28,6 @@ import {
   type SubChatMeta,
   useAgentSubChatStore,
 } from "../stores/sub-chat-store";
-import { formatTimeAgo } from "../utils/format-time-ago";
 
 interface DiffStats {
   fileCount: number;

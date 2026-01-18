@@ -1,15 +1,15 @@
 "use client";
 
 import { Check, Terminal } from "lucide-react";
-import { trpc } from "../../../../lib/trpc";
 import { IconSpinner } from "../../../../components/ui/icons";
+import { trpc } from "../../../../lib/trpc";
 
 export function AgentsClaudeCodeTab() {
   const {
-    data: integration,
+    data: status,
     isLoading,
     error,
-  } = trpc.claudeCode.getIntegration.useQuery();
+  } = trpc.providers.isReady.useQuery({ providerId: "claude" });
 
   if (isLoading) {
     return (
@@ -30,7 +30,7 @@ export function AgentsClaudeCodeTab() {
     );
   }
 
-  const isConnected = integration?.isConnected;
+  const isConnected = status?.ready;
 
   return (
     <div className="p-6 space-y-6">

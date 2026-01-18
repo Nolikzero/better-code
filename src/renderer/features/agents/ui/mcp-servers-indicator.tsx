@@ -1,5 +1,6 @@
 "use client";
 
+import type { ProviderId } from "@shared/types";
 import { useAtom } from "jotai";
 import { ChevronRight, Loader2 } from "lucide-react";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
@@ -21,6 +22,7 @@ import { cn } from "../../../lib/utils";
 
 interface McpServersIndicatorProps {
   projectPath?: string;
+  providerId?: ProviderId;
 }
 
 /**
@@ -34,12 +36,13 @@ interface McpServersIndicatorProps {
  */
 export const McpServersIndicator = memo(function McpServersIndicator({
   projectPath,
+  providerId = "claude",
 }: McpServersIndicatorProps) {
   const [sessionInfo, setSessionInfo] = useAtom(sessionInfoAtom);
 
   // Fetch MCP config on mount if we have projectPath and no session info yet
-  const { data: mcpConfig } = trpc.claude.getMcpConfig.useQuery(
-    { projectPath: projectPath! },
+  const { data: mcpConfig } = trpc.chat.getMcpConfig.useQuery(
+    { projectPath: projectPath!, providerId },
     {
       enabled: !!projectPath && !sessionInfo?.mcpServers?.length,
       staleTime: 5 * 60 * 1000, // 5 minutes
@@ -376,9 +379,22 @@ export const McpServersIndicator = memo(function McpServersIndicator({
 
         {/* Footer with config hint */}
         <div className="border-t px-3 py-2 text-xs text-muted-foreground">
-          Configure in{" "}
-          <code className="bg-muted px-1 py-0.5 rounded">~/.claude.json</code>{" "}
-          or <code className="bg-muted px-1 py-0.5 rounded">.mcp.json</code>
+          {providerId === "codex" ? (
+            <>
+              Configure in{" "}
+              <code className="bg-muted px-1 py-0.5 rounded">
+                ~/.codex/config.toml
+              </code>
+            </>
+          ) : (
+            <>
+              Configure in{" "}
+              <code className="bg-muted px-1 py-0.5 rounded">
+                ~/.claude.json
+              </code>{" "}
+              or <code className="bg-muted px-1 py-0.5 rounded">.mcp.json</code>
+            </>
+          )}
         </div>
       </PopoverContent>
     </Popover>

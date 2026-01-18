@@ -51,7 +51,7 @@ const DropdownMenuSubContent = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DropdownMenuPrimitive.SubContent
     ref={ref}
-    className={cn(overlayContent, "min-w-[8rem] py-1 dark", className)}
+    className={cn(overlayContent, "min-w-[8rem] py-1", className)}
     {...props}
   />
 ));
@@ -66,7 +66,7 @@ const DropdownMenuContent = React.forwardRef<
     <DropdownMenuPrimitive.Content
       ref={ref}
       sideOffset={sideOffset}
-      className={cn(overlayContent, "min-w-[8rem] py-1 dark", className)}
+      className={cn(overlayContent, "min-w-[8rem] py-1", className)}
       data-dropdown="true"
       {...props}
     />

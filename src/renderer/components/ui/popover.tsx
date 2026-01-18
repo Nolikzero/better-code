@@ -22,7 +22,13 @@ const PopoverContent = React.forwardRef<
   }
 >(
   (
-    { className, align = "center", sideOffset = 4, forceDark = true, ...props },
+    {
+      className,
+      align = "center",
+      sideOffset = 4,
+      forceDark = false,
+      ...props
+    },
     ref,
   ) => (
     <PopoverPrimitive.Portal>
@@ -36,7 +42,6 @@ const PopoverContent = React.forwardRef<
           overlayAnimation,
           overlaySlideIn,
           "min-w-[200px] py-1",
-          forceDark && "dark",
           className,
         )}
         data-popover="true"

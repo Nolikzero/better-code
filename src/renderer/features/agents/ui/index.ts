@@ -1,6 +1,9 @@
 // Agent UI Components
 // All components are designed to work with mocked data for parallel development
 
+// Provider icons
+export { CodexIcon, getProviderIcon, PROVIDERS } from "./provider-icons";
+
 // Chat components
 export { AgentSendButton } from "./agent-send-button";
 export { AgentUserMessageBubble } from "./agent-user-message-bubble";
@@ -24,6 +27,16 @@ export { AgentExploringGroup } from "./agent-exploring-group";
 
 // Thinking component (Extended Thinking)
 export { AgentThinkingTool } from "./agent-thinking-tool";
+
+// Message controls
+export { CopyButton, PlayButton, PLAYBACK_SPEEDS } from "./message-controls";
+export type { PlaybackSpeed } from "./message-controls";
+
+// Message components
+export { AssistantMessage } from "./assistant-message";
+export type { AssistantMessageProps } from "./assistant-message";
+export { UserMessage, CHAT_LAYOUT } from "./user-message";
+export type { UserMessageProps } from "./user-message";
 
 // Main components
 export { ChatView } from "../main/active-chat";

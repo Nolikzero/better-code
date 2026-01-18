@@ -52,7 +52,7 @@ const ContextMenuSubContent = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <ContextMenuPrimitive.SubContent
     ref={ref}
-    className={cn(overlayContent, "min-w-[200px] py-1 dark", className)}
+    className={cn(overlayContent, "min-w-[200px] py-1", className)}
     {...props}
   />
 ));
@@ -65,7 +65,7 @@ const ContextMenuContent = React.forwardRef<
   <ContextMenuPrimitive.Portal>
     <ContextMenuPrimitive.Content
       ref={ref}
-      className={cn(overlayContent, "min-w-[200px] py-1 dark", className)}
+      className={cn(overlayContent, "min-w-[200px] py-1", className)}
       {...props}
     />
   </ContextMenuPrimitive.Portal>

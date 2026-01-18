@@ -6,22 +6,11 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { atom } from "jotai";
 import { AlignJustify, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { Button } from "../../../components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "../../../components/ui/dropdown-menu";
-import {
-  AgentIcon,
-  AttachIcon,
   BranchIcon,
   CheckIcon,
-  ClaudeCodeIcon,
   IconChevronDown,
-  PlanIcon,
   SearchIcon,
 } from "../../../components/ui/icons";
 import {
@@ -31,7 +20,6 @@ import {
 } from "../../../components/ui/popover";
 import {
   PROVIDER_MODELS,
-  type ProviderId,
   defaultProviderIdAtom,
   lastSelectedModelByProviderAtom,
 } from "../../../lib/atoms";
@@ -53,14 +41,11 @@ const selectedTeamIdAtom = atom<string | null>(null);
 // import { agentsSettingsDialogOpenAtom, agentsSettingsDialogActiveTabAtom } from "@/lib/atoms/agents-settings-dialog"
 const agentsSettingsDialogOpenAtom = atom(false);
 const agentsSettingsDialogActiveTabAtom = atom<string | null>(null);
+import { formatTimeAgo } from "@shared/utils";
 // Desktop uses real tRPC
 import { toast } from "sonner";
+import SiriOrb from "../../../components/ui/siri-orb";
 // import { CreateBranchDialog } from "@/app/(alpha)/agents/{components}/create-branch-dialog"
-import {
-  PromptInput,
-  PromptInputActions,
-  PromptInputContextItems,
-} from "../../../components/ui/prompt-input";
 import { trpc } from "../../../lib/trpc";
 import { agentsSidebarOpenAtom, agentsUnseenChangesAtom } from "../atoms";
 import {
@@ -69,9 +54,20 @@ import {
   type SlashCommandOption,
 } from "../commands";
 import { AgentSendButton } from "../components/agent-send-button";
+import {
+  ChatInputActions,
+  ChatInputAttachments,
+  ChatInputEditor,
+  ChatInputRoot,
+} from "../components/chat-input";
 import { CreateBranchDialog } from "../components/create-branch-dialog";
+import { ModeToggleDropdown } from "../components/mode-toggle-dropdown";
+import { ModelSelectorDropdown } from "../components/model-selector-dropdown";
+import { ProviderSelectorDropdown } from "../components/provider-selector-dropdown";
 import { useAgentsFileUpload } from "../hooks/use-agents-file-upload";
 import { useFocusInputOnEnter } from "../hooks/use-focus-input-on-enter";
+import { useMentionDropdown } from "../hooks/use-mention-dropdown";
+import { useSlashCommandDropdown } from "../hooks/use-slash-command-dropdown";
 import { useToggleFocusOnCmdEsc } from "../hooks/use-toggle-focus-on-cmd-esc";
 import {
   deleteNewChatDraft,
@@ -82,29 +78,14 @@ import {
 } from "../lib/drafts";
 import {
   AgentsFileMention,
-  AgentsMentionsEditor,
   type AgentsMentionsEditorHandle,
   type FileMentionOption,
 } from "../mentions";
-import { AgentImageItem } from "../ui/agent-image-item";
 import { AgentsHeaderControls } from "../ui/agents-header-controls";
-import { formatTimeAgo } from "../utils/format-time-ago";
+import { PROVIDERS } from "../ui/provider-icons";
 import { handlePasteEvent } from "../utils/paste-text";
 // import type { PlanType } from "@/lib/config/subscription-plans"
 type PlanType = string;
-
-// Codex icon (OpenAI style)
-const CodexIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
-    <path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 7.896a4.485 4.485 0 0 1 2.366-1.973V11.6a.766.766 0 0 0 .388.676l5.815 3.355-2.02 1.168a.076.076 0 0 1-.071 0l-4.83-2.786A4.504 4.504 0 0 1 2.34 7.872zm16.597 3.855l-5.833-3.387L15.119 7.2a.076.076 0 0 1 .071 0l4.83 2.791a4.494 4.494 0 0 1-.676 8.105v-5.678a.79.79 0 0 0-.407-.667zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 0 0-.785 0L9.409 9.23V6.897a.066.066 0 0 1 .028-.061l4.83-2.787a4.5 4.5 0 0 1 6.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 0 1-.038-.057V6.075a4.5 4.5 0 0 1 7.375-3.453l-.142.08-4.778 2.758a.795.795 0 0 0-.393.681zm1.097-2.365l2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z" />
-  </svg>
-);
-
-// Provider definitions for UI
-const PROVIDERS: { id: ProviderId; name: string; hasModels: boolean }[] = [
-  { id: "claude", name: "Claude Code", hasModels: true },
-  { id: "codex", name: "OpenAI Codex", hasModels: true },
-];
 
 interface NewChatFormProps {
   isMobileFullscreen?: boolean;
@@ -170,6 +151,13 @@ export function NewChatForm({
     providerModels.find((m) => m.id === currentModelId) || providerModels[0];
 
   const [isPlanMode, setIsPlanMode] = useAtom(isPlanModeAtom);
+
+  // Reset to agent mode when switching to Codex provider (Codex doesn't support plan mode)
+  useEffect(() => {
+    if (defaultProvider === "codex" && isPlanMode) {
+      setIsPlanMode(false);
+    }
+  }, [defaultProvider, isPlanMode, setIsPlanMode]);
   const [workMode, setWorkMode] = useAtom(lastSelectedWorkModeAtom);
   const debugMode = useAtomValue(agentsDebugModeAtom);
   const setSettingsDialogOpen = useSetAtom(agentsSettingsDialogOpenAtom);
@@ -177,6 +165,7 @@ export function NewChatForm({
   const setJustCreatedIds = useSetAtom(justCreatedIdsAtom);
   const [repoSearchQuery, setRepoSearchQuery] = useState("");
   const [createBranchDialogOpen, setCreateBranchDialogOpen] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
   // Parse owner/repo from GitHub URL
   const parseGitHubUrl = (url: string) => {
     const match = url.match(/(?:github\.com\/)?([^\/]+)\/([^\/\s#?]+)/);
@@ -218,31 +207,28 @@ export function NewChatForm({
     isUploading,
   } = useAgentsFileUpload();
 
-  // Mention dropdown state
-  const [showMentionDropdown, setShowMentionDropdown] = useState(false);
-  const [mentionSearchText, setMentionSearchText] = useState("");
-  const [mentionPosition, setMentionPosition] = useState({ top: 0, left: 0 });
+  // Mention dropdown state (from hook)
+  const {
+    showMentionDropdown,
+    mentionSearchText,
+    mentionPosition,
+    showingFilesList,
+    showingSkillsList,
+    showingAgentsList,
+    showingToolsList,
+    openMention,
+    closeMention,
+    handleMentionSelect: handleMentionSelectBase,
+  } = useMentionDropdown();
 
-  // Mention subpage navigation state
-  const [showingFilesList, setShowingFilesList] = useState(false);
-  const [showingSkillsList, setShowingSkillsList] = useState(false);
-  const [showingAgentsList, setShowingAgentsList] = useState(false);
-  const [showingToolsList, setShowingToolsList] = useState(false);
-
-  // Slash command dropdown state
-  const [showSlashDropdown, setShowSlashDropdown] = useState(false);
-  const [slashSearchText, setSlashSearchText] = useState("");
-  const [slashPosition, setSlashPosition] = useState({ top: 0, left: 0 });
-
-  // Mode tooltip state (floating tooltip like canvas)
-  const [modeTooltip, setModeTooltip] = useState<{
-    visible: boolean;
-    position: { top: number; left: number };
-    mode: "agent" | "plan";
-  } | null>(null);
-  const tooltipTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const hasShownTooltipRef = useRef(false);
-  const [modeDropdownOpen, setModeDropdownOpen] = useState(false);
+  // Slash command dropdown state (from hook)
+  const {
+    showSlashDropdown,
+    slashSearchText,
+    slashPosition,
+    openSlash: handleSlashTrigger,
+    closeSlash: handleCloseSlashTrigger,
+  } = useSlashCommandDropdown();
 
   // Shift+Tab handler for mode switching (now handled inside input component via onShiftTab prop)
 
@@ -467,6 +453,40 @@ export function NewChatForm({
     return () => clearTimeout(timeoutId);
   }, [isMobileFullscreen]); // Run on mount and when mobile state changes
 
+  // Detect dark mode for SiriOrb colors
+  useEffect(() => {
+    const checkTheme = () => {
+      setIsDarkMode(document.documentElement.classList.contains("dark"));
+    };
+    checkTheme();
+    // Listen for theme changes via class attribute
+    const observer = new MutationObserver(checkTheme);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+    return () => observer.disconnect();
+  }, []);
+
+  // SiriOrb colors adapted for light/dark theme
+  const orbColors = useMemo(
+    () =>
+      isDarkMode
+        ? {
+            bg: "oklch(20% 0.02 264.695)",
+            c1: "oklch(70% 0.22 350)", // Brighter pink for dark mode
+            c2: "oklch(75% 0.2 200)", // Brighter blue for dark mode
+            c3: "oklch(72% 0.22 280)", // Brighter purple for dark mode
+          }
+        : {
+            bg: "oklch(95% 0.02 264.695)",
+            c1: "oklch(75% 0.15 350)", // Pastel pink
+            c2: "oklch(80% 0.12 200)", // Pastel blue
+            c3: "oklch(78% 0.14 280)", // Pastel purple/lavender
+          },
+    [isDarkMode],
+  );
+
   // Track last saved text to avoid unnecessary updates
   const lastSavedTextRef = useRef<string>("");
 
@@ -605,17 +625,6 @@ export function NewChatForm({
     await openFolder.mutateAsync();
   };
 
-  const getProviderIcon = (providerId: ProviderId, className?: string) => {
-    switch (providerId) {
-      case "claude":
-        return <ClaudeCodeIcon className={className} />;
-      case "codex":
-        return <CodexIcon className={className} />;
-      default:
-        return <ClaudeCodeIcon className={className} />;
-    }
-  };
-
   const handleSend = useCallback(() => {
     // Get value from uncontrolled editor
     const message = editorRef.current?.getValue() || "";
@@ -662,6 +671,7 @@ export function NewChatForm({
         workMode === "worktree" ? selectedBranch || undefined : undefined,
       useWorktree: workMode === "worktree",
       mode: isPlanMode ? "plan" : "agent",
+      providerId: defaultProvider,
     });
     // Editor and images are cleared in onSuccess callback
   }, [
@@ -672,38 +682,18 @@ export function NewChatForm({
     workMode,
     images,
     isPlanMode,
+    defaultProvider,
   ]);
 
-  const handleMentionSelect = useCallback((mention: FileMentionOption) => {
-    // Category navigation - enter subpage instead of inserting mention
-    if (mention.type === "category") {
-      if (mention.id === "files") {
-        setShowingFilesList(true);
-        return;
-      }
-      if (mention.id === "skills") {
-        setShowingSkillsList(true);
-        return;
-      }
-      if (mention.id === "agents") {
-        setShowingAgentsList(true);
-        return;
-      }
-      if (mention.id === "tools") {
-        setShowingToolsList(true);
-        return;
-      }
-    }
-
-    // Otherwise: insert mention as normal
-    editorRef.current?.insertMention(mention);
-    setShowMentionDropdown(false);
-    // Reset subpage state
-    setShowingFilesList(false);
-    setShowingSkillsList(false);
-    setShowingAgentsList(false);
-    setShowingToolsList(false);
-  }, []);
+  // Wrap the base mention select handler to pass in the editor insert function
+  const handleMentionSelect = useCallback(
+    (mention: FileMentionOption) => {
+      handleMentionSelectBase(mention, (m) =>
+        editorRef.current?.insertMention(m),
+      );
+    },
+    [handleMentionSelectBase],
+  );
 
   // Save draft to localStorage when content changes
   const handleContentChange = useCallback(
@@ -761,47 +751,18 @@ export function NewChatForm({
   const handleMentionTrigger = useCallback(
     ({ searchText, rect }: { searchText: string; rect: DOMRect }) => {
       if (validatedProject) {
-        setMentionSearchText(searchText);
-        setMentionPosition({ top: rect.top, left: rect.left });
-        // Reset subpage state when opening dropdown
-        setShowingFilesList(false);
-        setShowingSkillsList(false);
-        setShowingAgentsList(false);
-        setShowingToolsList(false);
-        setShowMentionDropdown(true);
+        openMention(searchText, rect);
       }
     },
-    [validatedProject],
+    [validatedProject, openMention],
   );
 
-  const handleCloseTrigger = useCallback(() => {
-    setShowMentionDropdown(false);
-    // Reset subpage state when closing
-    setShowingFilesList(false);
-    setShowingSkillsList(false);
-    setShowingAgentsList(false);
-    setShowingToolsList(false);
-  }, []);
-
-  // Slash command handlers
-  const handleSlashTrigger = useCallback(
-    ({ searchText, rect }: { searchText: string; rect: DOMRect }) => {
-      setSlashSearchText(searchText);
-      setSlashPosition({ top: rect.top, left: rect.left });
-      setShowSlashDropdown(true);
-    },
-    [],
-  );
-
-  const handleCloseSlashTrigger = useCallback(() => {
-    setShowSlashDropdown(false);
-  }, []);
-
+  // Slash command select handler (handleSlashTrigger and handleCloseSlashTrigger come from hook)
   const handleSlashSelect = useCallback(
     (command: SlashCommandOption) => {
       // Clear the slash command text from editor
       editorRef.current?.clearSlashCommand();
-      setShowSlashDropdown(false);
+      handleCloseSlashTrigger();
 
       // Handle builtin commands
       if (command.category === "builtin") {
@@ -843,7 +804,7 @@ export function NewChatForm({
         setTimeout(() => handleSend(), 0);
       }
     },
-    [isPlanMode, setIsPlanMode, handleSend],
+    [isPlanMode, setIsPlanMode, handleSend, handleCloseSlashTrigger],
   );
 
   // Paste handler for images and plain text
@@ -853,85 +814,17 @@ export function NewChatForm({
     [handleAddAttachments],
   );
 
-  // Drag and drop handlers
-  const [isDragOver, setIsDragOver] = useState(false);
-
-  // Focus state for ring
-  const [isFocused, setIsFocused] = useState(false);
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(true);
-  }, []);
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-  }, []);
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      setIsDragOver(false);
-      const files = Array.from(e.dataTransfer.files).filter((f) =>
-        f.type.startsWith("image/"),
-      );
-      handleAddAttachments(files);
-      // Focus after state update - use double rAF to wait for React render
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          editorRef.current?.focus();
-        });
-      });
-    },
-    [handleAddAttachments],
+  // Filter dropped files to images only (for new-chat-form)
+  const filterImagesOnly = useCallback(
+    (files: File[]) => files.filter((f) => f.type.startsWith("image/")),
+    [],
   );
-
-  // Context items for images
-  const contextItems =
-    images.length > 0 ? (
-      <div className="flex flex-wrap gap-[6px]">
-        {(() => {
-          // Build allImages array for gallery navigation
-          const allImages = images
-            .filter((img) => img.url && !img.isLoading)
-            .map((img) => ({
-              id: img.id,
-              filename: img.filename,
-              url: img.url,
-            }));
-
-          return images.map((img, idx) => (
-            <AgentImageItem
-              key={img.id}
-              id={img.id}
-              filename={img.filename}
-              url={img.url}
-              isLoading={img.isLoading}
-              onRemove={() => removeImage(img.id)}
-              allImages={allImages}
-              imageIndex={idx}
-            />
-          ));
-        })()}
-      </div>
-    ) : null;
-
-  // Handle container click to focus editor
-  const handleContainerClick = useCallback((e: React.MouseEvent) => {
-    if (
-      e.target === e.currentTarget ||
-      !(e.target as HTMLElement).closest("button, [contenteditable]")
-    ) {
-      editorRef.current?.focus();
-    }
-  }, []);
 
   return (
     <div className="flex h-full flex-col">
       {/* Header - Simple burger on mobile, AgentsHeaderControls on desktop */}
-      <div className="flex-shrink-0 flex items-center justify-between bg-background p-1.5">
-        <div className="flex-1 min-w-0 flex items-center gap-2">
+      <div className="flex-shrink-0 flex items-center justify-between">
+        <div className="flex-1 min-w-0 flex items-center gap-4 px-2 py-2">
           {isMobileFullscreen ? (
             // Simple burger button for mobile - just opens chats list
             <Button
@@ -955,11 +848,18 @@ export function NewChatForm({
 
       <div className="flex flex-1 items-center justify-center overflow-y-auto relative">
         <div className="w-full max-w-2xl space-y-4 md:space-y-6 relative z-10 px-4">
-          {/* Title - only show when project is selected */}
+          {/* SiriOrb - only show when project is selected */}
           {validatedProject && (
-            <div className="text-center">
+            <div className="space-y-4 text-center mb-2 md:mb-4">
+              <div className="flex justify-center">
+                <SiriOrb
+                  size="180px"
+                  colors={orbColors}
+                  animationDuration={20}
+                />
+              </div>
               <h1 className="text-2xl md:text-4xl font-medium tracking-tight">
-                What do you want to get done?
+                What would you like to do?
               </h1>
             </div>
           )}
@@ -978,503 +878,278 @@ export function NewChatForm({
             </div>
           ) : (
             // Project selected - show input form
-            <div
-              className="relative w-full"
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-            >
-              <div
-                className="relative w-full cursor-text"
-                onClick={handleContainerClick}
-              >
-                <PromptInput
-                  className={cn(
-                    "border bg-input-background relative z-10 p-2 rounded-sm transition-[border-color] duration-150",
-                    isDragOver && "border-dashed border-primary/50",
-                    isFocused &&
-                      !isDragOver &&
-                      "border-dashed border-foreground/30",
-                  )}
-                  maxHeight={240}
-                  onSubmit={handleSend}
-                  contextItems={contextItems}
-                >
-                  <PromptInputContextItems />
-                  <div className="relative">
-                    <AgentsMentionsEditor
-                      ref={editorRef}
-                      onTrigger={handleMentionTrigger}
-                      onCloseTrigger={handleCloseTrigger}
-                      onSlashTrigger={handleSlashTrigger}
-                      onCloseSlashTrigger={handleCloseSlashTrigger}
-                      onContentChange={handleContentChange}
-                      onSubmit={handleSend}
-                      onShiftTab={() => setIsPlanMode((prev) => !prev)}
-                      placeholder="Plan, @ for context, / for commands"
-                      className={cn(
-                        "bg-transparent max-h-[240px] overflow-y-auto p-1",
-                        isMobileFullscreen ? "min-h-[56px]" : "min-h-[44px]",
-                      )}
-                      onPaste={handlePaste}
-                      disabled={createChatMutation.isPending}
-                      onFocus={() => setIsFocused(true)}
-                      onBlur={() => setIsFocused(false)}
+            <>
+              <ChatInputRoot
+                maxHeight={240}
+                onSubmit={handleSend}
+                contextItems={
+                  images.length > 0 ? (
+                    <ChatInputAttachments
+                      images={images}
+                      onRemoveImage={removeImage}
                     />
-                  </div>
-                  <PromptInputActions className="w-full">
-                    <div className="flex items-center gap-0.5 flex-1 min-w-0">
-                      {/* Mode toggle (Agent/Plan) */}
-                      <DropdownMenu
-                        open={modeDropdownOpen}
-                        onOpenChange={(open) => {
-                          setModeDropdownOpen(open);
-                          if (!open) {
-                            if (tooltipTimeoutRef.current) {
-                              clearTimeout(tooltipTimeoutRef.current);
-                              tooltipTimeoutRef.current = null;
-                            }
-                            setModeTooltip(null);
-                            hasShownTooltipRef.current = false;
-                          }
-                        }}
-                      >
-                        <DropdownMenuTrigger className="flex items-center gap-1.5 px-2 py-1 text-sm text-muted-foreground hover:text-foreground transition-[background-color,color] duration-150 ease-out rounded-md hover:bg-muted/50 outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70">
-                          {isPlanMode ? (
-                            <PlanIcon className="h-3.5 w-3.5" />
-                          ) : (
-                            <AgentIcon className="h-3.5 w-3.5" />
-                          )}
-                          <span>{isPlanMode ? "Plan" : "Agent"}</span>
-                          <IconChevronDown className="h-3 w-3 shrink-0 opacity-50" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="start"
-                          sideOffset={6}
-                          className="!min-w-[116px] !w-[116px]"
-                          onCloseAutoFocus={(e) => e.preventDefault()}
-                        >
-                          <DropdownMenuItem
-                            onClick={() => {
-                              // Clear tooltip before closing dropdown (onMouseLeave won't fire)
-                              if (tooltipTimeoutRef.current) {
-                                clearTimeout(tooltipTimeoutRef.current);
-                                tooltipTimeoutRef.current = null;
-                              }
-                              setModeTooltip(null);
-                              setIsPlanMode(false);
-                              setModeDropdownOpen(false);
-                            }}
-                            className="justify-between gap-2"
-                            onMouseEnter={(e) => {
-                              if (tooltipTimeoutRef.current) {
-                                clearTimeout(tooltipTimeoutRef.current);
-                                tooltipTimeoutRef.current = null;
-                              }
-                              const rect =
-                                e.currentTarget.getBoundingClientRect();
-                              const showTooltip = () => {
-                                setModeTooltip({
-                                  visible: true,
-                                  position: {
-                                    top: rect.top,
-                                    left: rect.right + 8,
-                                  },
-                                  mode: "agent",
-                                });
-                                hasShownTooltipRef.current = true;
-                                tooltipTimeoutRef.current = null;
-                              };
-                              if (hasShownTooltipRef.current) {
-                                showTooltip();
-                              } else {
-                                tooltipTimeoutRef.current = setTimeout(
-                                  showTooltip,
-                                  1000,
-                                );
-                              }
-                            }}
-                            onMouseLeave={() => {
-                              if (tooltipTimeoutRef.current) {
-                                clearTimeout(tooltipTimeoutRef.current);
-                                tooltipTimeoutRef.current = null;
-                              }
-                              setModeTooltip(null);
-                            }}
-                          >
-                            <div className="flex items-center gap-2">
-                              <AgentIcon className="w-4 h-4 text-muted-foreground" />
-                              <span>Agent</span>
-                            </div>
-                            {!isPlanMode && (
-                              <CheckIcon className="h-3.5 w-3.5 ml-auto shrink-0" />
-                            )}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => {
-                              // Clear tooltip before closing dropdown (onMouseLeave won't fire)
-                              if (tooltipTimeoutRef.current) {
-                                clearTimeout(tooltipTimeoutRef.current);
-                                tooltipTimeoutRef.current = null;
-                              }
-                              setModeTooltip(null);
-                              setIsPlanMode(true);
-                              setModeDropdownOpen(false);
-                            }}
-                            className="justify-between gap-2"
-                            onMouseEnter={(e) => {
-                              if (tooltipTimeoutRef.current) {
-                                clearTimeout(tooltipTimeoutRef.current);
-                                tooltipTimeoutRef.current = null;
-                              }
-                              const rect =
-                                e.currentTarget.getBoundingClientRect();
-                              const showTooltip = () => {
-                                setModeTooltip({
-                                  visible: true,
-                                  position: {
-                                    top: rect.top,
-                                    left: rect.right + 8,
-                                  },
-                                  mode: "plan",
-                                });
-                                hasShownTooltipRef.current = true;
-                                tooltipTimeoutRef.current = null;
-                              };
-                              if (hasShownTooltipRef.current) {
-                                showTooltip();
-                              } else {
-                                tooltipTimeoutRef.current = setTimeout(
-                                  showTooltip,
-                                  1000,
-                                );
-                              }
-                            }}
-                            onMouseLeave={() => {
-                              if (tooltipTimeoutRef.current) {
-                                clearTimeout(tooltipTimeoutRef.current);
-                                tooltipTimeoutRef.current = null;
-                              }
-                              setModeTooltip(null);
-                            }}
-                          >
-                            <div className="flex items-center gap-2">
-                              <PlanIcon className="w-4 h-4 text-muted-foreground" />
-                              <span>Plan</span>
-                            </div>
-                            {isPlanMode && (
-                              <CheckIcon className="h-3.5 w-3.5 ml-auto shrink-0" />
-                            )}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                        {modeTooltip?.visible &&
-                          createPortal(
-                            <div
-                              className="fixed z-[100000]"
-                              style={{
-                                top: modeTooltip.position.top + 14,
-                                left: modeTooltip.position.left,
-                                transform: "translateY(-50%)",
-                              }}
-                            >
-                              <div
-                                data-tooltip="true"
-                                className="relative rounded-sm bg-popover px-2.5 py-1.5 text-xs text-popover-foreground dark max-w-[150px]"
-                              >
-                                <span>
-                                  {modeTooltip.mode === "agent"
-                                    ? "Apply changes directly without a plan"
-                                    : "Create a plan before making changes"}
-                                </span>
-                              </div>
-                            </div>,
-                            document.body,
-                          )}
-                      </DropdownMenu>
+                  ) : undefined
+                }
+                onAddAttachments={handleAddAttachments}
+                filterDroppedFiles={filterImagesOnly}
+                editorRef={editorRef}
+                fileInputRef={fileInputRef}
+                hasContent={hasContent}
+                isSubmitting={createChatMutation.isPending}
+                isUploading={isUploading}
+                disabled={createChatMutation.isPending}
+              >
+                <ChatInputEditor
+                  onTrigger={handleMentionTrigger}
+                  onCloseTrigger={closeMention}
+                  onSlashTrigger={({ searchText, rect }) =>
+                    handleSlashTrigger(searchText, rect)
+                  }
+                  onCloseSlashTrigger={handleCloseSlashTrigger}
+                  onContentChange={handleContentChange}
+                  onSubmit={handleSend}
+                  onShiftTab={() => {
+                    if (defaultProvider !== "codex") {
+                      setIsPlanMode((prev) => !prev);
+                    }
+                  }}
+                  onPaste={handlePaste}
+                  isMobile={isMobileFullscreen}
+                />
+                <ChatInputActions
+                  leftContent={
+                    <>
+                      {/* Mode toggle (Agent/Plan) - hidden for Codex which doesn't support plan mode */}
+                      {defaultProvider !== "codex" && (
+                        <ModeToggleDropdown
+                          isPlanMode={isPlanMode}
+                          onModeChange={setIsPlanMode}
+                        />
+                      )}
+
+                      {/* Provider selector */}
+                      <ProviderSelectorDropdown
+                        providerId={defaultProvider}
+                        onProviderChange={setDefaultProvider}
+                      />
 
                       {/* Model selector */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button className="flex items-center gap-1.5 px-2 py-1 text-sm text-muted-foreground hover:text-foreground transition-[background-color,color] duration-150 ease-out rounded-md hover:bg-muted/50 outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70">
-                            {getProviderIcon(defaultProvider, "h-3.5 w-3.5")}
-                            <span>
-                              {currentModel?.displayName || currentModel?.name}
-                            </span>
-                            <IconChevronDown className="h-3 w-3 shrink-0 opacity-50" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="start"
-                          className="w-[180px]"
-                        >
-                          {providerModels.map((model) => {
-                            const isSelected = currentModelId === model.id;
-                            return (
-                              <DropdownMenuItem
-                                key={model.id}
-                                onClick={() => {
-                                  setModelByProvider({
-                                    ...modelByProvider,
-                                    [defaultProvider]: model.id,
-                                  });
-                                }}
-                                className="gap-2 justify-between"
-                              >
-                                <div className="flex items-center gap-1.5">
-                                  {getProviderIcon(
-                                    defaultProvider,
-                                    "h-3.5 w-3.5 text-muted-foreground shrink-0",
-                                  )}
-                                  <span>{model.displayName || model.name}</span>
-                                </div>
-                                {isSelected && (
-                                  <CheckIcon className="h-3.5 w-3.5 shrink-0" />
-                                )}
-                              </DropdownMenuItem>
-                            );
-                          })}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-
-                    <div className="flex items-center gap-0.5 ml-auto flex-shrink-0">
-                      {/* Hidden file input */}
-                      <input
-                        type="file"
-                        ref={fileInputRef}
-                        hidden
-                        accept="image/jpeg,image/png"
-                        multiple
-                        onChange={(e) => {
-                          const files = Array.from(e.target.files || []);
-                          handleAddAttachments(files);
-                          e.target.value = ""; // Reset to allow same file selection
+                      <ModelSelectorDropdown
+                        providerId={defaultProvider}
+                        models={providerModels}
+                        currentModelId={currentModelId}
+                        onModelChange={(modelId) => {
+                          setModelByProvider({
+                            ...modelByProvider,
+                            [defaultProvider]: modelId,
+                          });
                         }}
                       />
-                      {/* Attachment button */}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 rounded-sm outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={images.length >= 5}
-                      >
-                        <AttachIcon className="h-4 w-4" />
-                      </Button>
-                      <div className="ml-1">
-                        <AgentSendButton
-                          isStreaming={false}
-                          isSubmitting={
-                            createChatMutation.isPending || isUploading
-                          }
-                          disabled={Boolean(
-                            !hasContent || !selectedProject || isUploading,
-                          )}
-                          onClick={handleSend}
-                          isPlanMode={isPlanMode}
-                        />
-                      </div>
-                    </div>
-                  </PromptInputActions>
-                </PromptInput>
-
-                {/* Project, Work Mode, and Branch selectors - directly under input */}
-                <div className="mt-1.5 md:mt-2 ml-[5px] flex items-center gap-2">
-                  <ProjectSelector />
-
-                  {/* Work mode selector - between project and branch */}
-                  {validatedProject && (
-                    <WorkModeSelector
-                      value={workMode}
-                      onChange={setWorkMode}
-                      disabled={createChatMutation.isPending}
+                    </>
+                  }
+                  acceptedFileTypes="image/jpeg,image/png"
+                  onAddAttachments={handleAddAttachments}
+                  maxImages={5}
+                  imageCount={images.length}
+                  actionButton={
+                    <AgentSendButton
+                      isStreaming={false}
+                      isSubmitting={createChatMutation.isPending || isUploading}
+                      disabled={Boolean(
+                        !hasContent || !selectedProject || isUploading,
+                      )}
+                      onClick={handleSend}
+                      isPlanMode={isPlanMode}
                     />
-                  )}
+                  }
+                />
+              </ChatInputRoot>
 
-                  {/* Branch selector - only visible when worktree mode is selected */}
-                  {validatedProject && workMode === "worktree" && (
-                    <Popover
-                      open={branchPopoverOpen}
-                      onOpenChange={(open) => {
-                        if (!open) {
-                          setBranchSearch(""); // Clear search on close
-                        }
-                        setBranchPopoverOpen(open);
-                      }}
-                    >
-                      <PopoverTrigger asChild>
-                        <button
-                          className="flex items-center gap-1.5 px-2 py-1 text-sm text-muted-foreground hover:text-foreground transition-[background-color,color] duration-150 ease-out rounded-md hover:bg-muted/50 outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70"
-                          disabled={branchesQuery.isLoading}
-                        >
-                          <BranchIcon className="w-4 h-4" />
-                          <span className="truncate max-w-[100px]">
-                            {selectedBranch ||
-                              branchesQuery.data?.defaultBranch ||
-                              "main"}
-                          </span>
-                          <IconChevronDown className="w-3 h-3 opacity-50" />
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-80 p-0" align="start">
-                        {/* Search input with Create button */}
-                        <div className="flex items-center gap-1.5 h-7 px-1.5 mx-1 my-1 rounded-md bg-muted/50">
-                          <SearchIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
-                          <input
-                            type="text"
-                            placeholder="Search branches..."
-                            value={branchSearch}
-                            onChange={(e) => setBranchSearch(e.target.value)}
-                            className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                          />
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-6 px-1.5 flex items-center gap-1 text-xs shrink-0"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setCreateBranchDialogOpen(true);
-                              setBranchPopoverOpen(false);
-                            }}
-                          >
-                            <Plus className="h-3 w-3" />
-                            Create
-                          </Button>
-                        </div>
+              {/* Project, Work Mode, and Branch selectors - directly under input */}
+              <div className="mt-1.5 md:mt-2 ml-[5px] flex items-center gap-2">
+                <ProjectSelector />
 
-                        {/* Virtualized branch list */}
-                        {filteredBranches.length === 0 ? (
-                          <div className="py-6 text-center text-sm text-muted-foreground">
-                            No branches found.
-                          </div>
-                        ) : (
-                          <div
-                            ref={branchListRef}
-                            className="overflow-auto py-1 scrollbar-hide"
-                            style={{
-                              height: Math.min(
-                                filteredBranches.length * 32 + 8,
-                                300,
-                              ),
-                            }}
-                          >
-                            <div
-                              style={{
-                                height: `${branchVirtualizer.getTotalSize()}px`,
-                                width: "100%",
-                                position: "relative",
-                              }}
-                            >
-                              {branchVirtualizer
-                                .getVirtualItems()
-                                .map((virtualItem) => {
-                                  const branch =
-                                    filteredBranches[virtualItem.index];
-                                  const isSelected =
-                                    selectedBranch === branch.name ||
-                                    (!selectedBranch && branch.isDefault);
-                                  return (
-                                    <button
-                                      key={branch.name}
-                                      onClick={() => {
-                                        setSelectedBranch(branch.name);
-                                        setBranchPopoverOpen(false);
-                                        setBranchSearch("");
-                                      }}
-                                      className={cn(
-                                        "flex items-center gap-1.5 w-[calc(100%-8px)] mx-1 px-1.5 text-sm text-left absolute left-0 top-0 rounded-md cursor-default select-none outline-none transition-colors",
-                                        isSelected
-                                          ? "dark:bg-neutral-800 text-foreground"
-                                          : "dark:hover:bg-neutral-800 hover:text-foreground",
-                                      )}
-                                      style={{
-                                        height: `${virtualItem.size}px`,
-                                        transform: `translateY(${virtualItem.start}px)`,
-                                      }}
-                                    >
-                                      <BranchIcon className="h-4 w-4 text-muted-foreground shrink-0" />
-                                      <span className="truncate flex-1">
-                                        {branch.name}
-                                      </span>
-                                      {branch.committedAt && (
-                                        <span className="text-xs text-muted-foreground/70 shrink-0">
-                                          {formatRelativeTime(
-                                            branch.committedAt,
-                                          )}
-                                        </span>
-                                      )}
-                                      {branch.isDefault && (
-                                        <span className="text-[10px] text-muted-foreground/70 bg-muted px-1.5 py-0.5 rounded shrink-0">
-                                          default
-                                        </span>
-                                      )}
-                                      {isSelected && (
-                                        <CheckIcon className="h-4 w-4 shrink-0 ml-auto" />
-                                      )}
-                                    </button>
-                                  );
-                                })}
-                            </div>
-                          </div>
-                        )}
-                      </PopoverContent>
-                    </Popover>
-                  )}
+                {/* Work mode selector - between project and branch */}
+                {validatedProject && (
+                  <WorkModeSelector
+                    value={workMode}
+                    onChange={setWorkMode}
+                    disabled={createChatMutation.isPending}
+                  />
+                )}
 
-                  {/* Create Branch Dialog */}
-                  {validatedProject && (
-                    <CreateBranchDialog
-                      open={createBranchDialogOpen}
-                      onOpenChange={setCreateBranchDialogOpen}
-                      projectPath={validatedProject.path}
-                      branches={branches}
-                      defaultBranch={
-                        branchesQuery.data?.defaultBranch || "main"
+                {/* Branch selector - only visible when worktree mode is selected */}
+                {validatedProject && workMode === "worktree" && (
+                  <Popover
+                    open={branchPopoverOpen}
+                    onOpenChange={(open) => {
+                      if (!open) {
+                        setBranchSearch(""); // Clear search on close
                       }
-                      onBranchCreated={(branchName) => {
-                        setSelectedBranch(branchName);
-                      }}
-                    />
-                  )}
-                </div>
+                      setBranchPopoverOpen(open);
+                    }}
+                  >
+                    <PopoverTrigger asChild>
+                      <button
+                        className="flex items-center gap-1.5 px-2 py-1 text-sm text-muted-foreground hover:text-foreground transition-[background-color,color] duration-150 ease-out rounded-md hover:bg-muted/50 outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70"
+                        disabled={branchesQuery.isLoading}
+                      >
+                        <BranchIcon className="w-4 h-4" />
+                        <span className="truncate max-w-[100px]">
+                          {selectedBranch ||
+                            branchesQuery.data?.defaultBranch ||
+                            "main"}
+                        </span>
+                        <IconChevronDown className="w-3 h-3 opacity-50" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80 p-0" align="start">
+                      {/* Search input with Create button */}
+                      <div className="flex items-center gap-1.5 h-7 px-1.5 mx-1 my-1 rounded-md bg-muted/50">
+                        <SearchIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <input
+                          type="text"
+                          placeholder="Search branches..."
+                          value={branchSearch}
+                          onChange={(e) => setBranchSearch(e.target.value)}
+                          className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                        />
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 px-1.5 flex items-center gap-1 text-xs shrink-0"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setCreateBranchDialogOpen(true);
+                            setBranchPopoverOpen(false);
+                          }}
+                        >
+                          <Plus className="h-3 w-3" />
+                          Create
+                        </Button>
+                      </div>
 
-                {/* File mention dropdown */}
-                {/* Desktop: use projectPath for local file search */}
-                <AgentsFileMention
-                  isOpen={showMentionDropdown && !!validatedProject}
-                  onClose={() => {
-                    setShowMentionDropdown(false);
-                    // Reset subpage state when dropdown closes
-                    setShowingFilesList(false);
-                    setShowingSkillsList(false);
-                    setShowingAgentsList(false);
-                    setShowingToolsList(false);
-                  }}
-                  onSelect={handleMentionSelect}
-                  searchText={mentionSearchText}
-                  position={mentionPosition}
-                  projectPath={validatedProject?.path}
-                  showingFilesList={showingFilesList}
-                  showingSkillsList={showingSkillsList}
-                  showingAgentsList={showingAgentsList}
-                  showingToolsList={showingToolsList}
-                />
+                      {/* Virtualized branch list */}
+                      {filteredBranches.length === 0 ? (
+                        <div className="py-6 text-center text-sm text-muted-foreground">
+                          No branches found.
+                        </div>
+                      ) : (
+                        <div
+                          ref={branchListRef}
+                          className="overflow-auto py-1 scrollbar-hide"
+                          style={{
+                            height: Math.min(
+                              filteredBranches.length * 32 + 8,
+                              300,
+                            ),
+                          }}
+                        >
+                          <div
+                            style={{
+                              height: `${branchVirtualizer.getTotalSize()}px`,
+                              width: "100%",
+                              position: "relative",
+                            }}
+                          >
+                            {branchVirtualizer
+                              .getVirtualItems()
+                              .map((virtualItem) => {
+                                const branch =
+                                  filteredBranches[virtualItem.index];
+                                const isSelected =
+                                  selectedBranch === branch.name ||
+                                  (!selectedBranch && branch.isDefault);
+                                return (
+                                  <button
+                                    key={branch.name}
+                                    onClick={() => {
+                                      setSelectedBranch(branch.name);
+                                      setBranchPopoverOpen(false);
+                                      setBranchSearch("");
+                                    }}
+                                    className={cn(
+                                      "flex items-center gap-1.5 w-[calc(100%-8px)] mx-1 px-1.5 text-sm text-left absolute left-0 top-0 rounded-md cursor-default select-none outline-none transition-colors",
+                                      isSelected
+                                        ? "dark:bg-neutral-800 text-foreground"
+                                        : "dark:hover:bg-neutral-800 hover:text-foreground",
+                                    )}
+                                    style={{
+                                      height: `${virtualItem.size}px`,
+                                      transform: `translateY(${virtualItem.start}px)`,
+                                    }}
+                                  >
+                                    <BranchIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+                                    <span className="truncate flex-1">
+                                      {branch.name}
+                                    </span>
+                                    {branch.committedAt && (
+                                      <span className="text-xs text-muted-foreground/70 shrink-0">
+                                        {formatRelativeTime(branch.committedAt)}
+                                      </span>
+                                    )}
+                                    {branch.isDefault && (
+                                      <span className="text-[10px] text-muted-foreground/70 bg-muted px-1.5 py-0.5 rounded shrink-0">
+                                        default
+                                      </span>
+                                    )}
+                                    {isSelected && (
+                                      <CheckIcon className="h-4 w-4 shrink-0 ml-auto" />
+                                    )}
+                                  </button>
+                                );
+                              })}
+                          </div>
+                        </div>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                )}
 
-                {/* Slash command dropdown */}
-                <AgentsSlashCommand
-                  isOpen={showSlashDropdown}
-                  onClose={handleCloseSlashTrigger}
-                  onSelect={handleSlashSelect}
-                  searchText={slashSearchText}
-                  position={slashPosition}
-                  teamId={selectedTeamId || undefined}
-                  repository={resolvedRepo?.full_name}
-                  isPlanMode={isPlanMode}
-                  disabledCommands={["clear"]}
-                />
+                {/* Create Branch Dialog */}
+                {validatedProject && (
+                  <CreateBranchDialog
+                    open={createBranchDialogOpen}
+                    onOpenChange={setCreateBranchDialogOpen}
+                    projectPath={validatedProject.path}
+                    branches={branches}
+                    defaultBranch={branchesQuery.data?.defaultBranch || "main"}
+                    onBranchCreated={(branchName) => {
+                      setSelectedBranch(branchName);
+                    }}
+                  />
+                )}
               </div>
-            </div>
+
+              {/* File mention dropdown */}
+              {/* Desktop: use projectPath for local file search */}
+              <AgentsFileMention
+                isOpen={showMentionDropdown && !!validatedProject}
+                onClose={closeMention}
+                onSelect={handleMentionSelect}
+                searchText={mentionSearchText}
+                position={mentionPosition}
+                projectPath={validatedProject?.path}
+                showingFilesList={showingFilesList}
+                showingSkillsList={showingSkillsList}
+                showingAgentsList={showingAgentsList}
+                showingToolsList={showingToolsList}
+              />
+
+              {/* Slash command dropdown */}
+              <AgentsSlashCommand
+                isOpen={showSlashDropdown}
+                onClose={handleCloseSlashTrigger}
+                onSelect={handleSlashSelect}
+                searchText={slashSearchText}
+                position={slashPosition}
+                teamId={selectedTeamId || undefined}
+                repository={resolvedRepo?.full_name}
+                isPlanMode={isPlanMode}
+                disabledCommands={["clear"]}
+              />
+            </>
           )}
         </div>
       </div>

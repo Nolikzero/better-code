@@ -1,51 +1,39 @@
-import type { UIMessageChunk } from "../claude/types";
+// Re-export shared types for backward compatibility
+export type {
+  ProviderId,
+  SandboxMode,
+  ApprovalPolicy,
+  ReasoningEffort,
+  ProviderModel,
+  ProviderConfig,
+  ImageAttachment,
+  AuthStatus,
+  ProviderStatus,
+  ProviderSpecificConfig,
+} from "@shared/types";
 
-// Provider identification
-export type ProviderId = "claude" | "codex";
+// Re-export message types
+export type {
+  UIMessageChunk,
+  MCPServer,
+  MCPServerStatus,
+  MessageMetadata,
+} from "@shared/types";
 
-// Codex-specific types
-export type SandboxMode =
-  | "read-only"
-  | "workspace-write"
-  | "danger-full-access";
-export type ApprovalPolicy =
-  | "never"
-  | "on-request"
-  | "untrusted"
-  | "on-failure";
-export type ReasoningEffort =
-  | "none"
-  | "minimal"
-  | "low"
-  | "medium"
-  | "high"
-  | "xhigh";
+// Import types needed for local interfaces
+import type {
+  ApprovalPolicy,
+  AuthStatus,
+  ImageAttachment,
+  ProviderConfig,
+  ProviderId,
+  ProviderSpecificConfig,
+  ReasoningEffort,
+  SandboxMode,
+} from "@shared/types";
+import type { UIMessageChunk } from "@shared/types";
 
-// Model definition
-export interface ProviderModel {
-  id: string;
-  name: string;
-  displayName: string;
-}
-
-// Provider configuration
-export interface ProviderConfig {
-  id: ProviderId;
-  name: string;
-  description: string;
-  models: ProviderModel[];
-  authType: "oauth" | "api-key" | "both";
-  binaryName?: string;
-}
-
-// Image attachment for multimodal input
-export interface ImageAttachment {
-  base64Data: string;
-  mediaType: string;
-  filename?: string;
-}
-
-// Chat session options (provider-agnostic)
+// Chat session options (provider-agnostic, main-process specific due to AbortController)
 export interface ChatSessionOptions {
   subChatId: string;
   chatId: string;
@@ -64,24 +52,24 @@ export interface ChatSessionOptions {
   reasoningEffort?: ReasoningEffort;
 }
 
-// Authentication status
-export interface AuthStatus {
-  authenticated: boolean;
-  method?: "oauth" | "api-key";
-  error?: string;
-}
-
-// Provider status (runtime)
-export interface ProviderStatus {
-  config: ProviderConfig;
-  available: boolean;
-  authStatus: AuthStatus;
-}
-
 // Provider interface - must be implemented by all providers
 export interface AIProvider {
   readonly id: ProviderId;
   readonly config: ProviderConfig;
+
+  // ===== Lifecycle methods (optional) =====
+
+  /**
+   * Initialize the provider (called once during startup)
+   */
+  initialize?(): Promise<void>;
+
+  /**
+   * Shutdown the provider (called during app quit)
+   */
+  shutdown?(): Promise<void>;
+
+  // ===== Status methods =====
 
   /**
    * Check if provider is available (binary installed, SDK accessible)
@@ -92,6 +80,16 @@ export interface AIProvider {
    * Get authentication status
    */
   getAuthStatus(): Promise<AuthStatus>;
+
+  /**
+   * Get provider-specific configuration for a project (optional)
+   * Used for MCP servers, agents, etc.
+   */
+  getProviderConfig?(
+    projectPath: string,
+  ): Promise<ProviderSpecificConfig | null>;
+
+  // ===== Chat operations =====
 
   /**
    * Start a chat session, returns async generator of UIMessageChunk

@@ -1,6 +1,14 @@
 import { existsSync, readFileSync, readlinkSync, unlinkSync } from "fs";
 import { join } from "path";
 import { BrowserWindow, Menu, app } from "electron";
+import log from "electron-log";
+
+// Redirect console to electron-log in production
+// Logs will be written to ~/Library/Logs/BetterCode/main.log
+if (app.isPackaged) {
+  log.transports.file.level = "info";
+  Object.assign(console, log.functions);
+}
 import {
   checkForUpdates,
   downloadUpdate,
@@ -8,6 +16,7 @@ import {
   setupFocusUpdateCheck,
 } from "./lib/auto-updater";
 import { closeDatabase, initDatabase } from "./lib/db";
+import { initializeProviders } from "./lib/providers/init";
 import { createMainWindow, getWindow } from "./windows/main";
 
 // Dev mode detection
@@ -259,6 +268,14 @@ if (gotTheLock) {
       console.log("[App] Database initialized");
     } catch (error) {
       console.error("[App] Failed to initialize database:", error);
+    }
+
+    // Initialize providers
+    try {
+      await initializeProviders();
+      console.log("[App] Providers initialized");
+    } catch (error) {
+      console.error("[App] Failed to initialize providers:", error);
     }
 
     // Create main window

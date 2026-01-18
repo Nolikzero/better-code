@@ -4,7 +4,7 @@ import { useAtomValue } from "jotai";
 import { ChevronRight } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
-import { sessionInfoAtom } from "../../../lib/atoms";
+import { defaultProviderIdAtom, sessionInfoAtom } from "../../../lib/atoms";
 import { cn } from "../../../lib/utils";
 import { OriginalMCPIcon } from "../../ui/icons";
 
@@ -151,8 +151,27 @@ export function AgentsMcpTab() {
   const [expandedServer, setExpandedServer] = useState<string | null>(null);
 
   const sessionInfo = useAtomValue(sessionInfoAtom);
-  const mcpServers = sessionInfo?.mcpServers || [];
-  const tools = sessionInfo?.tools || [];
+  const defaultProvider = useAtomValue(defaultProviderIdAtom);
+
+  // Check if sessionInfo is from a different provider
+  const sessionProvider = sessionInfo?.providerId;
+  const providerMismatch =
+    sessionProvider && sessionProvider !== defaultProvider;
+
+  // Only show MCP servers if they're from the current provider
+  const mcpServers = providerMismatch ? [] : sessionInfo?.mcpServers || [];
+  const tools = providerMismatch ? [] : sessionInfo?.tools || [];
+
+  // Determine config file path based on provider
+  const configFilePath =
+    defaultProvider === "codex" ? "~/.codex/config.toml" : "~/.claude.json";
+  const configFileDescription =
+    defaultProvider === "codex"
+      ? "Add MCP server configuration to ~/.codex/config.toml"
+      : "Add MCP server configuration to ~/.claude.json under your project path.";
+
+  // Provider display names
+  const providerName = defaultProvider === "codex" ? "Codex" : "Claude";
 
   // Group tools by server
   const toolsByServer = mcpServers.reduce(
@@ -177,7 +196,11 @@ export function AgentsMcpTab() {
         <div className="flex flex-col space-y-1.5 text-center sm:text-left">
           <h3 className="text-sm font-semibold text-foreground">MCP Servers</h3>
           <a
-            href="https://docs.anthropic.com/en/docs/claude-code/mcp"
+            href={
+              defaultProvider === "codex"
+                ? "https://github.com/openai/codex#mcp-servers"
+                : "https://docs.anthropic.com/en/docs/claude-code/mcp"
+            }
             target="_blank"
             rel="noopener noreferrer"
             className="text-xs text-muted-foreground hover:text-foreground underline transition-colors"
@@ -192,15 +215,32 @@ export function AgentsMcpTab() {
         {mcpServers.length === 0 ? (
           <div className="bg-background rounded-lg border border-border p-6 text-center">
             <OriginalMCPIcon className="h-8 w-8 text-muted-foreground/50 mx-auto mb-3" />
-            <p className="text-sm text-muted-foreground mb-2">
-              No MCP servers configured
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Add servers to{" "}
-              <code className="px-1 py-0.5 bg-muted rounded">
-                ~/.claude.json
-              </code>
-            </p>
+            {providerMismatch ? (
+              <>
+                <p className="text-sm text-muted-foreground mb-2">
+                  MCP servers will appear after starting a new {providerName}{" "}
+                  chat
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Configure servers in{" "}
+                  <code className="px-1 py-0.5 bg-muted rounded">
+                    {configFilePath}
+                  </code>
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground mb-2">
+                  No MCP servers configured
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Add servers to{" "}
+                  <code className="px-1 py-0.5 bg-muted rounded">
+                    {configFilePath}
+                  </code>
+                </p>
+              </>
+            )}
           </div>
         ) : (
           <div className="bg-background rounded-lg border border-border overflow-hidden">
@@ -236,9 +276,7 @@ export function AgentsMcpTab() {
             Configuring Servers
           </h4>
           <p className="text-xs text-muted-foreground">
-            Add MCP server configuration to{" "}
-            <code className="px-1 py-0.5 bg-muted rounded">~/.claude.json</code>{" "}
-            under your project path.
+            {configFileDescription}
           </p>
         </div>
       </div>

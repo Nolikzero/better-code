@@ -2,9 +2,8 @@ import type { BrowserWindow } from "electron";
 import { createGitRouter } from "../../git";
 import { router } from "../index";
 import { agentsRouter } from "./agents";
+import { chatRouter } from "./chat";
 import { chatsRouter } from "./chats";
-import { claudeRouter } from "./claude";
-import { claudeCodeRouter } from "./claude-code";
 import { debugRouter } from "./debug";
 import { externalRouter } from "./external";
 import { filesRouter } from "./files";
@@ -22,8 +21,7 @@ export function createAppRouter(getWindow: () => BrowserWindow | null) {
   return router({
     projects: projectsRouter,
     chats: chatsRouter,
-    claude: claudeRouter,
-    claudeCode: claudeCodeRouter,
+    chat: chatRouter,
     terminal: terminalRouter,
     external: externalRouter,
     files: filesRouter,

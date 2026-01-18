@@ -3,15 +3,18 @@ import { TRPCError } from "@trpc/server";
 import { and, desc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import simpleGit from "simple-git";
 import { z } from "zod";
-import { buildClaudeEnv, getClaudeBinaryPath } from "../../claude";
 import { chats, getDatabase, projects, subChats } from "../../db";
 import {
+  type GitProvider,
   createWorktreeForChat,
+  fetchGitHostStatus,
   fetchGitHubPRStatus,
+  getMergeCommand,
   getWorktreeDiff,
   removeWorktree,
 } from "../../git";
 import { execWithShellEnv } from "../../git/shell-env";
+import { buildClaudeEnv, getClaudeBinaryPath } from "../../providers/claude";
 import { publicProcedure, router } from "../index";
 
 // Dynamic import for ESM module
@@ -149,6 +152,7 @@ export const chatsRouter = router({
         baseBranch: z.string().optional(), // Branch to base the worktree off
         useWorktree: z.boolean().default(true), // If false, work directly in project dir
         mode: z.enum(["plan", "agent"]).default("agent"),
+        providerId: z.enum(["claude", "codex"]).optional().default("claude"),
       }),
     )
     .mutation(async ({ input }) => {
@@ -167,7 +171,11 @@ export const chatsRouter = router({
       // Create chat (fast path)
       const chat = db
         .insert(chats)
-        .values({ name: input.name, projectId: input.projectId })
+        .values({
+          name: input.name,
+          projectId: input.projectId,
+          providerId: input.providerId,
+        })
         .returning()
         .get();
       console.log("[chats.create] created chat:", chat);
@@ -200,6 +208,7 @@ export const chatsRouter = router({
           chatId: chat.id,
           mode: input.mode,
           messages: initialMessages,
+          providerId: input.providerId,
         })
         .returning()
         .get();
@@ -312,6 +321,26 @@ export const chatsRouter = router({
         .update(chats)
         .set({ archivedAt: null })
         .where(eq(chats.id, input.id))
+        .returning()
+        .get();
+    }),
+
+  /**
+   * Update the provider for a chat
+   */
+  updateProvider: publicProcedure
+    .input(
+      z.object({
+        chatId: z.string(),
+        providerId: z.enum(["claude", "codex"]),
+      }),
+    )
+    .mutation(({ input }) => {
+      const db = getDatabase();
+      return db
+        .update(chats)
+        .set({ providerId: input.providerId, updatedAt: new Date() })
+        .where(eq(chats.id, input.chatId))
         .returning()
         .get();
     }),
@@ -528,8 +557,19 @@ export const chatsRouter = router({
    * Uses Claude SDK to generate a concise name, falls back to truncated message
    */
   generateSubChatName: publicProcedure
-    .input(z.object({ userMessage: z.string() }))
+    .input(
+      z.object({
+        userMessage: z.string(),
+        providerId: z.enum(["claude", "codex"]).optional().default("claude"),
+      }),
+    )
     .mutation(async ({ input }) => {
+      // Only use AI generation for Claude provider
+      // Other providers fallback to truncated message
+      if (input.providerId !== "claude") {
+        return { name: getFallbackName(input.userMessage) };
+      }
+
       try {
         const claudeQuery = await getClaudeQuery();
         const claudeEnv = buildClaudeEnv();
@@ -642,11 +682,18 @@ export const chatsRouter = router({
           hasUpstream = false;
         }
 
+        const project = db
+          .select()
+          .from(projects)
+          .where(eq(projects.id, chat.projectId))
+          .get();
+
         return {
           branch: chat.branch || status.current || "unknown",
           baseBranch: chat.baseBranch || "main",
           uncommittedCount: status.files.length,
           hasUpstream,
+          provider: project?.gitProvider as GitProvider | null,
         };
       } catch (error) {
         console.error("[getPrContext] Error:", error);
@@ -680,7 +727,7 @@ export const chatsRouter = router({
     }),
 
   /**
-   * Get PR status from GitHub (via gh CLI)
+   * Get PR/MR status from GitHub or GitLab (provider-aware)
    */
   getPrStatus: publicProcedure
     .input(z.object({ chatId: z.string() }))
@@ -696,11 +743,26 @@ export const chatsRouter = router({
         return null;
       }
 
+      // Get project to determine git provider
+      const project = db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, chat.projectId))
+        .get();
+
+      const provider = (project?.gitProvider as GitProvider) || null;
+
+      // Use provider-aware fetch if provider is known
+      if (provider) {
+        return await fetchGitHostStatus(chat.worktreePath, provider);
+      }
+
+      // Fallback to GitHub for backwards compatibility
       return await fetchGitHubPRStatus(chat.worktreePath);
     }),
 
   /**
-   * Merge PR via gh CLI
+   * Merge PR/MR via gh or glab CLI (provider-aware)
    */
   mergePr: publicProcedure
     .input(
@@ -718,26 +780,47 @@ export const chatsRouter = router({
         .get();
 
       if (!chat?.worktreePath || !chat?.prNumber) {
-        throw new Error("No PR to merge");
+        throw new Error("No PR/MR to merge");
       }
 
+      // Get project to determine git provider
+      const project = db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, chat.projectId))
+        .get();
+
+      const provider = (project?.gitProvider as GitProvider) || null;
+
       try {
-        await execWithShellEnv(
-          "gh",
-          [
-            "pr",
-            "merge",
-            String(chat.prNumber),
-            `--${input.method}`,
-            "--delete-branch",
-          ],
-          { cwd: chat.worktreePath },
-        );
+        // Use provider-aware merge command if available
+        const mergeCmd = provider
+          ? getMergeCommand(provider, chat.prNumber, input.method)
+          : null;
+
+        if (mergeCmd) {
+          await execWithShellEnv(mergeCmd.command, mergeCmd.args, {
+            cwd: chat.worktreePath,
+          });
+        } else {
+          // Fallback to GitHub CLI for backwards compatibility
+          await execWithShellEnv(
+            "gh",
+            [
+              "pr",
+              "merge",
+              String(chat.prNumber),
+              `--${input.method}`,
+              "--delete-branch",
+            ],
+            { cwd: chat.worktreePath },
+          );
+        }
         return { success: true };
       } catch (error) {
         console.error("[mergePr] Error:", error);
         throw new Error(
-          error instanceof Error ? error.message : "Failed to merge PR",
+          error instanceof Error ? error.message : "Failed to merge PR/MR",
         );
       }
     }),

@@ -15,6 +15,10 @@ import {
 import { appStore } from "../../../lib/jotai-store";
 import { trpcClient } from "../../../lib/trpc";
 import {
+  showErrorNotification,
+  showTimeoutNotification,
+} from "../../sidebar/hooks/use-desktop-notifications";
+import {
   MODEL_ID_MAP,
   askUserQuestionResultsAtom,
   compactingSubChatsAtom,
@@ -190,7 +194,7 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
         // Track stream state to prevent operations on closed stream
         let streamClosed = false;
 
-        const sub = trpcClient.claude.chat.subscribe(
+        const sub = trpcClient.chat.chat.subscribe(
           {
             subChatId: this.config.subChatId,
             chatId: this.config.chatId,
@@ -228,6 +232,17 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
                 if (pending && pending.toolUseId === chunk.toolUseId) {
                   appStore.set(pendingUserQuestionsAtom, null);
                 }
+                // Show desktop notification for timeout (user attention needed)
+                const subChatName =
+                  useAgentSubChatStore
+                    .getState()
+                    .allSubChats.find((sc) => sc.id === this.config.subChatId)
+                    ?.name || "Chat";
+                showTimeoutNotification(
+                  subChatName,
+                  this.config.chatId,
+                  this.config.subChatId,
+                );
               }
 
               // Handle AskUserQuestion result - store for real-time updates
@@ -259,6 +274,7 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
                   mcpServers: chunk.mcpServers,
                   plugins: chunk.plugins,
                   skills: chunk.skills?.length,
+                  providerId: effectiveProvider,
                   // Debug: show all tools to check for MCP tools (format: mcp__servername__toolname)
                   allTools: chunk.tools,
                 });
@@ -267,6 +283,7 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
                   mcpServers: chunk.mcpServers,
                   plugins: chunk.plugins,
                   skills: chunk.skills,
+                  providerId: effectiveProvider,
                 });
               }
 
@@ -325,12 +342,18 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
                         }
                       : undefined,
                   });
+                  // Also show desktop notification if window is unfocused
+                  showErrorNotification(config.title, config.description);
                 } else {
-                  toast.error("Something went wrong", {
-                    description:
-                      chunk.errorText || "An unexpected error occurred",
+                  const errorTitle = "Something went wrong";
+                  const errorDescription =
+                    chunk.errorText || "An unexpected error occurred";
+                  toast.error(errorTitle, {
+                    description: errorDescription,
                     duration: 8000,
                   });
+                  // Also show desktop notification if window is unfocused
+                  showErrorNotification(errorTitle, errorDescription);
                 }
               }
 
@@ -393,7 +416,7 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
             `[SD] R:ABORT sub=${subId} n=${chunkCount} last=${lastChunkType}`,
           );
           sub.unsubscribe();
-          trpcClient.claude.cancel.mutate({ subChatId: this.config.subChatId });
+          trpcClient.chat.cancel.mutate({ subChatId: this.config.subChatId });
           if (streamClosed) return;
           streamClosed = true;
           try {

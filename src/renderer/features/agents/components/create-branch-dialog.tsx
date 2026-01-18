@@ -1,6 +1,7 @@
 "use client";
 
 import * as PopoverPrimitive from "@radix-ui/react-popover";
+import { formatTimeAgo } from "@shared/utils";
 import { Check, ChevronDown, GitBranch } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -26,7 +27,6 @@ import { Input } from "../../../components/ui/input";
 import { Label } from "../../../components/ui/label";
 import { trpc } from "../../../lib/trpc";
 import { cn } from "../../../lib/utils";
-import { formatTimeAgo } from "../utils/format-time-ago";
 
 interface CreateBranchDialogProps {
   open: boolean;

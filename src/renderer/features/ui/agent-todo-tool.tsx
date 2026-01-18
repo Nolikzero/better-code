@@ -198,7 +198,12 @@ export const AgentTodoTool = memo(function AgentTodoTool({
         creationToolCallId: syncedTodos.creationToolCallId || part.toolCallId,
       });
     }
-  }, [newTodos, setSyncedTodos, syncedTodos.creationToolCallId, part.toolCallId]);
+  }, [
+    newTodos,
+    setSyncedTodos,
+    syncedTodos.creationToolCallId,
+    part.toolCallId,
+  ]);
 
   // Auto-expand on creation
   useEffect(() => {

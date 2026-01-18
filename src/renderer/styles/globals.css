@@ -1,8 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "./agents-styles.css";
-
 @custom-variant dark (&:is(.dark *));
+
 @config "../../../tailwind.config.js";
 
 @layer base {
@@ -291,20 +291,20 @@
   position: absolute;
   bottom: 12px;
   right: 8px;
-  background: transparent;
-  color: hsl(var(--foreground));
+  background: transparent !important;
+  color: hsl(var(--foreground)) !important;
   font-weight: 500;
   font-size: 13px;
   padding: 4px 12px;
   height: auto;
-  border: 1px solid hsl(var(--border));
+  border: 1px solid hsl(var(--border)) !important;
   border-radius: 2px;
-  margin: 0;
+  margin: 0 !important;
   transition: background-color 150ms ease-out, transform 150ms ease-out;
 }
 
 [data-sonner-toast][data-styled="true"] [data-button]:hover {
-  background: hsl(var(--foreground) / 0.1);
+  background: hsl(var(--foreground) / 0.1) !important;
 }
 
 [data-sonner-toast][data-styled="true"] [data-button]:active {
@@ -318,14 +318,14 @@
 
 /* Close button - inside toast, top right corner */
 [data-sonner-toast] [data-close-button] {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  left: unset;
-  transform: none;
-  background: transparent;
-  border: none;
-  border-radius: 2px;
+  position: absolute !important;
+  top: 8px !important;
+  right: 8px !important;
+  left: unset !important;
+  transform: none !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 2px !important;
   color: hsl(var(--muted-foreground));
   width: 20px;
   height: 20px;
@@ -333,7 +333,7 @@
 
 [data-sonner-toast] [data-close-button]:hover {
   color: hsl(var(--foreground));
-  background: hsl(var(--accent));
+  background: hsl(var(--accent)) !important;
 }
 
 /* Terminal link popup */
@@ -370,8 +370,8 @@ html.vibrancy-active,
 html.vibrancy-active body,
 html.vibrancy-active #root,
 html.vibrancy-active .loading-container {
-  background: transparent;
-  background-color: transparent;
+  background: transparent !important;
+  background-color: transparent !important;
 }
 
 /*
@@ -380,17 +380,19 @@ html.vibrancy-active .loading-container {
  * Only the actual content containers should have the glass tint.
  */
 html.vibrancy-active [data-agents-page] {
-  background-color: transparent;
+  background-color: transparent !important;
 }
 
 /* The main flex container inside [data-agents-page] */
 html.vibrancy-active [data-agents-page] > div.flex {
-  background: transparent;
+  background-color: transparent !important;
+  background: transparent !important;
 }
 
 /* The content flex container */
 html.vibrancy-active [data-agents-page] > div > div.flex-1 {
-  background: transparent;
+  background-color: transparent !important;
+  background: transparent !important;
 }
 
 /* Popovers and dialogs get subtle backdrop blur for better layering */
@@ -404,18 +406,18 @@ html.vibrancy-active [data-radix-popper-content-wrapper] > * {
 /* Dark theme dialogs */
 html.vibrancy-active.dark [data-radix-portal] [role="dialog"],
 html.vibrancy-active.dark [data-canvas-dialog] {
-  background-color: hsl(0 0% 10% / 0.92);
+  background-color: hsl(0 0% 10% / 0.92) !important;
 }
 
 /* Light theme dialogs (Liquid Glass Light) */
 html.vibrancy-active:not(.dark) [data-radix-portal] [role="dialog"],
 html.vibrancy-active:not(.dark) [data-canvas-dialog] {
-  background-color: hsl(0 0% 100% / 0.85);
+  background-color: hsl(0 0% 100% / 0.85) !important;
 }
 
 /* Dark vibrancy popovers/dropdowns */
 html.vibrancy-active.dark [data-radix-popper-content-wrapper] > * {
-  background-color: hsl(0 0% 12% / 0.9);
+  background-color: hsl(0 0% 12% / 0.9) !important;
 }
 
 /* Toast notifications */
@@ -426,7 +428,7 @@ html.vibrancy-active [data-sonner-toast] {
 
 /* Dark vibrancy toasts */
 html.vibrancy-active.dark [data-sonner-toast] {
-  background-color: hsl(0 0% 12% / 0.9);
+  background-color: hsl(0 0% 12% / 0.9) !important;
 }
 
 /* ========================================
@@ -437,20 +439,20 @@ html.vibrancy-active.dark [data-sonner-toast] {
 /* Fallback: use CSS backdrop-filter where supported */
 .vibrancy-fallback:not(.vibrancy-active) body {
   /* Slight transparency on body */
-  background: hsl(var(--background) / 0.95);
+  background: hsl(var(--background) / 0.95) !important;
 }
 
 /* Sidebar gets blur effect */
 .vibrancy-fallback:not(.vibrancy-active) [data-sidebar] {
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  background: hsl(var(--card) / 0.85);
+  background: hsl(var(--card) / 0.85) !important;
 }
 
 /* For browsers that don't support backdrop-filter */
 @supports not (backdrop-filter: blur(10px)) {
   .vibrancy-fallback:not(.vibrancy-active) [data-sidebar] {
-    background: hsl(var(--card) / 0.95);
+    background: hsl(var(--card) / 0.95) !important;
   }
 }
 
@@ -464,27 +466,27 @@ html.vibrancy-active.dark [data-sonner-toast] {
   html.vibrancy-active,
   html.vibrancy-active body,
   html.vibrancy-active #root {
-    background: hsl(var(--background));
+    background: hsl(var(--background)) !important;
   }
 
   /* Make sidebar opaque */
   html.vibrancy-active [data-sidebar] {
-    background: hsl(var(--card) / 0.95);
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
+    background: hsl(var(--card) / 0.95) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
 
   /* Make panels and containers more opaque */
   html.vibrancy-active [data-agents-page] {
-    background: hsl(var(--background));
+    background: hsl(var(--background)) !important;
   }
 
   /* Disable backdrop blur on dialogs/popovers */
   html.vibrancy-active [data-radix-portal] [role="dialog"],
   html.vibrancy-active [data-radix-popper-content-wrapper] > * {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    background: hsl(var(--popover));
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: hsl(var(--popover)) !important;
   }
 }
 
@@ -531,45 +533,4 @@ html.vibrancy-active:not(.dark) [data-radix-popper-content-wrapper] > * {
 /* Light vibrancy toasts */
 html.vibrancy-active:not(.dark) [data-sonner-toast] {
   background-color: hsl(0 0% 100% / 0.9);
-}
-
-@theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 12px);
-  --radius-4xl: calc(var(--radius) + 16px);
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
 }

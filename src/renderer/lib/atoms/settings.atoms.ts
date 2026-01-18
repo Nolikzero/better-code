@@ -66,7 +66,7 @@ export const vscodeCodeThemeDarkAtom = atomWithStorage<string>(
 /**
  * Liquid Glass options for macOS 26+ (Tahoe)
  */
-export type LiquidGlassOptions = {
+type LiquidGlassOptions = {
   cornerRadius?: number;
   tintColor?: string; // RGBA hex (e.g., '#44000010')
   opaque?: boolean;
@@ -143,7 +143,7 @@ export const fullThemeDataAtom = atom<VSCodeFullTheme | null>(null);
  * All available full themes (built-in + imported + discovered)
  * This is a derived atom that combines all theme sources
  */
-export const allFullThemesAtom = atom<VSCodeFullTheme[]>((_get) => {
+const allFullThemesAtom = atom<VSCodeFullTheme[]>((_get) => {
   // This will be populated by the theme provider
   // For now, return empty - will be set imperatively
   return [];

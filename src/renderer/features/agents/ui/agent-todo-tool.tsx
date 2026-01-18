@@ -18,7 +18,7 @@ import { currentTodosAtomFamily } from "../atoms";
 import { AgentToolCall } from "./agent-tool-call";
 import { getToolStatus } from "./agent-tool-registry";
 
-export interface TodoItem {
+interface TodoItem {
   content: string;
   status: "pending" | "in_progress" | "completed";
   activeForm?: string;

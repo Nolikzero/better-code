@@ -118,7 +118,7 @@ class DiffErrorBoundary extends Component<
   }
 }
 
-export type ParsedDiffFile = {
+type ParsedDiffFile = {
   key: string;
   oldPath: string;
   newPath: string;
@@ -515,7 +515,7 @@ const FileDiffCard = memo(function FileDiffCard({
   );
 }, fileDiffCardAreEqual);
 
-export interface DiffStats {
+interface DiffStats {
   fileCount: number;
   additions: number;
   deletions: number;

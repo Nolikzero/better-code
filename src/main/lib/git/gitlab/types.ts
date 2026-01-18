@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 // GitLab pipeline job schema
-export const GLPipelineJobSchema = z.object({
+const GLPipelineJobSchema = z.object({
   name: z.string(),
   status: z.enum([
     "success",
@@ -17,7 +17,7 @@ export const GLPipelineJobSchema = z.object({
 });
 
 // GitLab pipeline schema (head_pipeline in MR response)
-export const GLPipelineSchema = z.object({
+const GLPipelineSchema = z.object({
   id: z.number(),
   status: z.enum([
     "success",
@@ -62,12 +62,12 @@ export const GLRepoResponseSchema = z.object({
 });
 
 // GitLab CI status response from `glab ci status --json`
-export const GLCIStatusSchema = z.object({
+const GLCIStatusSchema = z.object({
   status: z.string(),
   jobs: z.array(GLPipelineJobSchema).optional(),
 });
 
 export type GLMRResponse = z.infer<typeof GLMRResponseSchema>;
 export type GLPipelineJob = z.infer<typeof GLPipelineJobSchema>;
-export type GLPipeline = z.infer<typeof GLPipelineSchema>;
-export type GLRepoResponse = z.infer<typeof GLRepoResponseSchema>;
+type GLPipeline = z.infer<typeof GLPipelineSchema>;
+type GLRepoResponse = z.infer<typeof GLRepoResponseSchema>;

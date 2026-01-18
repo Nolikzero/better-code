@@ -2,7 +2,7 @@
  * Agents feature constants
  */
 
-export type DevicePreset = {
+type DevicePreset = {
   name: string;
   width: number;
   height: number;
@@ -23,7 +23,7 @@ export const DEVICE_PRESETS: DevicePreset[] = [
 ] as const;
 
 // Scale presets for preview
-export const SCALE_PRESETS = [50, 75, 100, 125, 150] as const;
+const SCALE_PRESETS = [50, 75, 100, 125, 150] as const;
 
 export const AGENTS_PREVIEW_CONSTANTS = {
   DEVICE_PRESETS,
@@ -38,4 +38,4 @@ export const AGENTS_PREVIEW_CONSTANTS = {
   MAX_SCALE: 200,
 } as const;
 
-export type AgentsPreviewConstants = typeof AGENTS_PREVIEW_CONSTANTS;
+type AgentsPreviewConstants = typeof AGENTS_PREVIEW_CONSTANTS;

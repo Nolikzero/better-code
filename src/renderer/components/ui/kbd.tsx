@@ -2,7 +2,7 @@ import * as React from "react";
 import { cn } from "../../lib/utils";
 import { CmdIcon, EnterIcon, OptionIcon, ShiftIcon } from "./icons";
 
-export interface KbdProps extends React.HTMLAttributes<HTMLElement> {}
+interface KbdProps extends React.HTMLAttributes<HTMLElement> {}
 
 /** Parse shortcut string and replace modifier symbols with icons */
 function renderShortcut(children: React.ReactNode): React.ReactNode {

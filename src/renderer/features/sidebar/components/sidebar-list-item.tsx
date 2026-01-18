@@ -3,7 +3,7 @@ import { ArchiveIcon } from "../../../components/ui/icons";
 import { TypewriterText } from "../../../components/ui/typewriter-text";
 import { cn } from "../../../lib/utils";
 
-export interface SidebarListItemProps {
+interface SidebarListItemProps {
   id: string;
   name: string | null;
   icon: React.ReactNode;

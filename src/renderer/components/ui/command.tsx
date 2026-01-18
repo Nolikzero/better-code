@@ -315,5 +315,4 @@ export {
   CommandEmpty,
   CommandGroup,
   CommandItem,
-  CommandSeparator,
 };

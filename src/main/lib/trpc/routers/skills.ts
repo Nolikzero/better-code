@@ -5,7 +5,7 @@ import matter from "gray-matter";
 import { z } from "zod";
 import { publicProcedure, router } from "../index";
 
-export interface FileSkill {
+interface FileSkill {
   name: string;
   description: string;
   source: "user" | "project";

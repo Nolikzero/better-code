@@ -4,7 +4,7 @@ import { stripEmojis } from "../../../components/chat-markdown-renderer";
  * Tool types that are grouped together when appearing consecutively.
  * When 3+ of these tools appear in a row, they're collapsed into an "exploring-group".
  */
-export const EXPLORING_TOOLS = new Set([
+const EXPLORING_TOOLS = new Set([
   "tool-Read",
   "tool-Grep",
   "tool-Glob",

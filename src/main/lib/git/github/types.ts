@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 // Zod schemas for gh CLI output validation
-export const GHCheckContextSchema = z.object({
+const GHCheckContextSchema = z.object({
   name: z.string().optional(),
   context: z.string().optional(), // StatusContext uses 'context' instead of 'name'
   state: z.enum(["SUCCESS", "FAILURE", "PENDING", "ERROR"]).optional(),

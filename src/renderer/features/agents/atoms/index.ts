@@ -130,7 +130,7 @@ export const clearLoading = (
 };
 
 // Persisted preferences for agents page
-export type SavedRepo = {
+type SavedRepo = {
   id: string;
   name: string;
   full_name: string;
@@ -147,7 +147,7 @@ export const lastSelectedRepoAtom = atomWithStorage<SavedRepo>(
 );
 
 // Selected local project (persisted)
-export type SelectedProject = {
+type SelectedProject = {
   id: string;
   name: string;
   path: string;
@@ -164,7 +164,7 @@ export const selectedProjectAtom = atomWithStorage<SelectedProject>(
   { getOnInit: true },
 );
 
-export const lastSelectedAgentIdAtom = atomWithStorage<string>(
+const lastSelectedAgentIdAtom = atomWithStorage<string>(
   "agents:lastSelectedAgentId",
   "claude-code",
   undefined,
@@ -324,7 +324,7 @@ export const archivePopoverOpenAtom = atom<boolean>(false);
 export const archiveSearchQueryAtom = atom<string>("");
 
 // Repository filter for archive (null = all repositories)
-export const archiveRepositoryFilterAtom = atom<string | null>(null);
+const archiveRepositoryFilterAtom = atom<string | null>(null);
 
 // Track last used mode (plan/agent) per chat
 // Map<chatId, "plan" | "agent">
@@ -333,12 +333,7 @@ export const lastChatModesAtom = atom<Map<string, "plan" | "agent">>(
 );
 
 // Mobile view mode - chat (default, shows NewChatForm), chats list, preview, diff, or terminal
-export type AgentsMobileViewMode =
-  | "chats"
-  | "chat"
-  | "preview"
-  | "diff"
-  | "terminal";
+type AgentsMobileViewMode = "chats" | "chat" | "preview" | "diff" | "terminal";
 export const agentsMobileViewModeAtom = atom<AgentsMobileViewMode>("chat");
 
 // Scroll position persistence per sub-chat
@@ -379,7 +374,7 @@ export const scrollPositionsCacheStore = {
 
 // Debug mode for testing first-time user experience
 // Only works in development mode
-export interface AgentsDebugMode {
+interface AgentsDebugMode {
   enabled: boolean;
   simulateNoTeams: boolean; // Simulate no teams available
   simulateNoRepos: boolean; // Simulate no repositories connected
@@ -443,7 +438,7 @@ export const pendingReviewMessageAtom = atom<string | null>(null);
 
 // Pending auth retry - stores failed message when auth-error occurs
 // After successful OAuth flow, this triggers automatic retry of the message
-export type PendingAuthRetryMessage = {
+type PendingAuthRetryMessage = {
   subChatId: string; // Required: only retry in the correct chat
   prompt: string;
   images?: Array<{

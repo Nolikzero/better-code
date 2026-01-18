@@ -5,7 +5,7 @@ import superjson from "superjson";
 /**
  * Context passed to all tRPC procedures
  */
-export interface Context {
+interface Context {
   getWindow: () => BrowserWindow | null;
 }
 
@@ -30,12 +30,12 @@ const t = initTRPC.context<Context>().create({
  */
 export const router = t.router;
 export const publicProcedure = t.procedure;
-export const middleware = t.middleware;
+const middleware = t.middleware;
 
 /**
  * Middleware to log procedure calls
  */
-export const loggerMiddleware = middleware(async ({ path, type, next }) => {
+const loggerMiddleware = middleware(async ({ path, type, next }) => {
   const start = Date.now();
   const result = await next();
   const duration = Date.now() - start;
@@ -46,4 +46,4 @@ export const loggerMiddleware = middleware(async ({ path, type, next }) => {
 /**
  * Procedure with logging
  */
-export const loggedProcedure = publicProcedure.use(loggerMiddleware);
+const loggedProcedure = publicProcedure.use(loggerMiddleware);

@@ -3,7 +3,9 @@
   "entry": [
     "src/main/index.ts",
     "src/preload/index.ts",
-    "src/renderer/main.tsx"
+    "src/renderer/main.tsx",
+    "scripts/*.{js,mjs}",
+    "electron.vite.config.ts"
   ],
   "project": ["src/**/*.{ts,tsx}"],
   "ignore": [
@@ -17,5 +19,8 @@
     "@/*": ["./src/renderer/*"],
     "@shared/*": ["./src/shared/*"],
     "@main/*": ["./src/main/*"]
-  }
+  },
+  "ignoreDependencies": [
+    "electron-rebuild"
+  ]
 }

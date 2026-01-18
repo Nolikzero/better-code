@@ -102,7 +102,7 @@ export const TERMINAL_THEME_LIGHT: ITheme = {
 };
 
 /** @deprecated Use TERMINAL_THEME_DARK instead */
-export const TERMINAL_THEME = TERMINAL_THEME_DARK;
+const TERMINAL_THEME = TERMINAL_THEME_DARK;
 
 /**
  * Get terminal theme based on current app theme

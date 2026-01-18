@@ -42,7 +42,7 @@ export function getDefaultShell(): string {
   return "/bin/zsh";
 }
 
-export function getLocale(baseEnv: Record<string, string>): string {
+function getLocale(baseEnv: Record<string, string>): string {
   if (baseEnv.LANG?.includes("UTF-8")) {
     return baseEnv.LANG;
   }
@@ -66,7 +66,7 @@ export function getLocale(baseEnv: Record<string, string>): string {
   return "en_US.UTF-8";
 }
 
-export function sanitizeEnv(
+function sanitizeEnv(
   env: NodeJS.ProcessEnv,
 ): Record<string, string> | undefined {
   const sanitized: Record<string, string> = {};
@@ -265,7 +265,7 @@ function hasAllowedPrefix(key: string, isWindows: boolean): boolean {
  * Build a safe environment by only including allowlisted variables.
  * This prevents app secrets and build-time config from leaking to terminals.
  */
-export function buildSafeEnv(
+function buildSafeEnv(
   env: Record<string, string>,
   options?: { platform?: NodeJS.Platform },
 ): Record<string, string> {

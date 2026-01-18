@@ -31,11 +31,6 @@ export interface TriggerPayload {
 }
 
 /**
- * Alias for slash command triggers
- */
-export type SlashTriggerPayload = TriggerPayload;
-
-/**
  * Ref handle for AgentsMentionsEditor
  */
 export interface AgentsMentionsEditorHandle {

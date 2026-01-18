@@ -68,7 +68,7 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 /**
  * Hook to access the theme context
  */
-export function useVSCodeTheme(): ThemeContextValue {
+function useVSCodeTheme(): ThemeContextValue {
   const context = useContext(ThemeContext);
   if (!context) {
     throw new Error("useVSCodeTheme must be used within a VSCodeThemeProvider");
@@ -348,7 +348,7 @@ export function VSCodeThemeProvider({ children }: VSCodeThemeProviderProps) {
 /**
  * Hook to get just the terminal theme (for performance)
  */
-export function useTerminalTheme(): ITheme {
+function useTerminalTheme(): ITheme {
   const { terminalTheme } = useVSCodeTheme();
   return terminalTheme;
 }
@@ -356,7 +356,7 @@ export function useTerminalTheme(): ITheme {
 /**
  * Hook to get just the Shiki theme name
  */
-export function useShikiTheme(): string {
+function useShikiTheme(): string {
   const { shikiThemeName } = useVSCodeTheme();
   return shikiThemeName;
 }

@@ -57,7 +57,7 @@ function parseEnvOutput(output: string): Record<string, string> {
  * This captures PATH, HOME, and all shell profile configurations.
  * Results are cached for the lifetime of the process.
  */
-export function getCodexShellEnvironment(): Record<string, string> {
+function getCodexShellEnvironment(): Record<string, string> {
   if (cachedShellEnv !== null) {
     return { ...cachedShellEnv };
   }
@@ -117,14 +117,14 @@ export function getCodexShellEnvironment(): Record<string, string> {
 /**
  * Clear cached shell environment (useful for testing)
  */
-export function clearCodexEnvCache(): void {
+function clearCodexEnvCache(): void {
   cachedShellEnv = null;
 }
 
 /**
  * Get path to the bundled Codex binary (if we choose to bundle it)
  */
-export function getBundledCodexBinaryPath(): string {
+function getBundledCodexBinaryPath(): string {
   const isDev = !app.isPackaged;
   const platform = process.platform;
   const arch = process.arch;
@@ -326,7 +326,7 @@ export function getCodexBinaryPath(): CodexBinaryResult | null {
 /**
  * Clear cached binary path (useful for testing)
  */
-export function clearCodexBinaryCache(): void {
+function clearCodexBinaryCache(): void {
   cachedBinaryResult = undefined;
 }
 

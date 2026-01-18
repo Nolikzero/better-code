@@ -30,7 +30,7 @@ interface Message {
  * Compute file change statistics from messages.
  * Extracts file edit/write operations and calculates line additions/deletions.
  */
-export function computeFileStats(messages: Message[]): FileStats {
+function computeFileStats(messages: Message[]): FileStats {
   // Track file states to calculate final diff
   const fileStates = new Map<
     string,
@@ -99,7 +99,7 @@ export function computeFileStats(messages: Message[]): FileStats {
  * a subsequent "Implement plan" user message.
  * Logic matches active-chat.tsx hasUnapprovedPlan.
  */
-export function computeHasPendingPlan(messages: Message[]): boolean {
+function computeHasPendingPlan(messages: Message[]): boolean {
   // Traverse messages from end to find unapproved ExitPlanMode
   for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i];

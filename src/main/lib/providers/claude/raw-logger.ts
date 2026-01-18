@@ -43,7 +43,7 @@ async function shouldRotateLog(file: string): Promise<boolean> {
  * Clean up old log files (older than LOG_RETENTION_DAYS)
  * Called periodically to prevent disk space issues
  */
-export async function cleanupOldLogs(): Promise<void> {
+async function cleanupOldLogs(): Promise<void> {
   if (!isEnabled()) return;
 
   try {
@@ -125,6 +125,6 @@ export async function logRawClaudeMessage(
  * Get the directory where Claude logs are stored
  * Useful for UI to show "Open Logs" button
  */
-export function getLogsDirectory(): string {
+function getLogsDirectory(): string {
   return join(app.getPath("userData"), "logs", "claude");
 }

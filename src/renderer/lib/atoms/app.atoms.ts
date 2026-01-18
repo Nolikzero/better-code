@@ -16,7 +16,7 @@ export const isFullscreenAtom = atom<boolean | null>(null);
 // UPDATE ATOMS
 // ============================================
 
-export type UpdateStatus =
+type UpdateStatus =
   | "idle"
   | "checking"
   | "available"
@@ -24,7 +24,7 @@ export type UpdateStatus =
   | "ready"
   | "error";
 
-export type UpdateState = {
+type UpdateState = {
   status: UpdateStatus;
   version?: string;
   progress?: number; // 0-100
@@ -44,13 +44,13 @@ export const justUpdatedAtom = atom<boolean>(false);
 export const justUpdatedVersionAtom = atom<string | null>(null);
 
 // Legacy atom for backwards compatibility (deprecated)
-export type UpdateInfo = {
+type UpdateInfo = {
   version: string;
   downloadUrl: string;
   releaseNotes?: string;
 };
 
-export const updateInfoAtom = atom<UpdateInfo | null>(null);
+const updateInfoAtom = atom<UpdateInfo | null>(null);
 
 // ============================================
 // ONBOARDING ATOMS

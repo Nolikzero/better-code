@@ -1,15 +1,15 @@
-export interface TerminalDataEvent {
+interface TerminalDataEvent {
   type: "data";
   data: string;
 }
 
-export interface TerminalExitEvent {
+interface TerminalExitEvent {
   type: "exit";
   exitCode: number;
   signal?: number;
 }
 
-export type TerminalEvent = TerminalDataEvent | TerminalExitEvent;
+type TerminalEvent = TerminalDataEvent | TerminalExitEvent;
 
 export interface TerminalProps {
   paneId: string;

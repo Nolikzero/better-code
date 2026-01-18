@@ -112,7 +112,7 @@ function isEnoent(error: unknown): boolean {
   );
 }
 
-export function generateBranchName(): string {
+function generateBranchName(): string {
   const name = uniqueNamesGenerator({
     dictionaries: [adjectives, animals],
     separator: "-",
@@ -124,7 +124,7 @@ export function generateBranchName(): string {
   return `${name}-${suffix}`;
 }
 
-export async function createWorktree(
+async function createWorktree(
   mainRepoPath: string,
   branch: string,
   worktreePath: string,
@@ -227,7 +227,7 @@ export async function removeWorktree(
   }
 }
 
-export async function getGitRoot(path: string): Promise<string> {
+async function getGitRoot(path: string): Promise<string> {
   try {
     const git = simpleGit(path);
     const root = await git.revparse(["--show-toplevel"]);
@@ -237,7 +237,7 @@ export async function getGitRoot(path: string): Promise<string> {
   }
 }
 
-export async function worktreeExists(
+async function worktreeExists(
   mainRepoPath: string,
   worktreePath: string,
 ): Promise<boolean> {
@@ -254,7 +254,7 @@ export async function worktreeExists(
   }
 }
 
-export async function hasOriginRemote(mainRepoPath: string): Promise<boolean> {
+async function hasOriginRemote(mainRepoPath: string): Promise<boolean> {
   try {
     const git = simpleGit(mainRepoPath);
     const remotes = await git.getRemotes();
@@ -264,7 +264,7 @@ export async function hasOriginRemote(mainRepoPath: string): Promise<boolean> {
   }
 }
 
-export async function getDefaultBranch(mainRepoPath: string): Promise<string> {
+async function getDefaultBranch(mainRepoPath: string): Promise<string> {
   const git = simpleGit(mainRepoPath);
 
   // First check if we have an origin remote
@@ -328,7 +328,7 @@ export async function getDefaultBranch(mainRepoPath: string): Promise<string> {
   return "main";
 }
 
-export async function fetchDefaultBranch(
+async function fetchDefaultBranch(
   mainRepoPath: string,
   defaultBranch: string,
 ): Promise<string> {
@@ -344,7 +344,7 @@ export async function fetchDefaultBranch(
  * @param mainRepoPath - Path to the main repository
  * @returns The current default branch name, or null if unable to determine
  */
-export async function refreshDefaultBranch(
+async function refreshDefaultBranch(
   mainRepoPath: string,
 ): Promise<string | null> {
   const git = simpleGit(mainRepoPath);
@@ -381,7 +381,7 @@ export async function refreshDefaultBranch(
   return null;
 }
 
-export async function checkNeedsRebase(
+async function checkNeedsRebase(
   worktreePath: string,
   defaultBranch: string,
 ): Promise<boolean> {
@@ -394,17 +394,13 @@ export async function checkNeedsRebase(
   return Number.parseInt(behindCount.trim(), 10) > 0;
 }
 
-export async function hasUncommittedChanges(
-  worktreePath: string,
-): Promise<boolean> {
+async function hasUncommittedChanges(worktreePath: string): Promise<boolean> {
   const git = simpleGit(worktreePath);
   const status = await git.status();
   return !status.isClean();
 }
 
-export async function hasUnpushedCommits(
-  worktreePath: string,
-): Promise<boolean> {
+async function hasUnpushedCommits(worktreePath: string): Promise<boolean> {
   const git = simpleGit(worktreePath);
   try {
     const aheadCount = await git.raw([
@@ -588,7 +584,7 @@ export async function branchExistsOnRemote(
  * Detect which branch a worktree was likely based off of.
  * Uses merge-base to find the closest common ancestor with candidate base branches.
  */
-export async function detectBaseBranch(
+async function detectBaseBranch(
   worktreePath: string,
   currentBranch: string,
   defaultBranch: string,
@@ -642,7 +638,7 @@ export async function detectBaseBranch(
  * @param options.fetch - Whether to fetch and prune remote refs first (default: false)
  * @returns Object with local and remote branch arrays
  */
-export async function listBranches(
+async function listBranches(
   repoPath: string,
   options?: { fetch?: boolean },
 ): Promise<{ local: string[]; remote: string[] }> {
@@ -675,9 +671,7 @@ export async function listBranches(
  * @param repoPath - Path to the repository
  * @returns The current branch name, or null if in detached HEAD state
  */
-export async function getCurrentBranch(
-  repoPath: string,
-): Promise<string | null> {
+async function getCurrentBranch(repoPath: string): Promise<string | null> {
   const git = simpleGit(repoPath);
   try {
     const branch = await git.revparse(["--abbrev-ref", "HEAD"]);
@@ -692,7 +686,7 @@ export async function getCurrentBranch(
 /**
  * Result of pre-checkout safety checks
  */
-export interface CheckoutSafetyResult {
+interface CheckoutSafetyResult {
   safe: boolean;
   error?: string;
   hasUncommittedChanges?: boolean;
@@ -707,7 +701,7 @@ export interface CheckoutSafetyResult {
  * @param repoPath - Path to the repository
  * @returns Safety check result indicating if checkout is safe
  */
-export async function checkBranchCheckoutSafety(
+async function checkBranchCheckoutSafety(
   repoPath: string,
 ): Promise<CheckoutSafetyResult> {
   const git = simpleGit(repoPath);
@@ -772,10 +766,7 @@ export async function checkBranchCheckoutSafety(
  * @param repoPath - Path to the repository
  * @param branch - The branch name to checkout
  */
-export async function checkoutBranch(
-  repoPath: string,
-  branch: string,
-): Promise<void> {
+async function checkoutBranch(repoPath: string, branch: string): Promise<void> {
   const git = simpleGit(repoPath);
 
   // Check if branch exists locally
@@ -812,7 +803,7 @@ export async function checkoutBranch(
  * @param ref - The ref to check (e.g., "main", "origin/main")
  * @returns true if the ref exists locally, false otherwise
  */
-export async function refExistsLocally(
+async function refExistsLocally(
   repoPath: string,
   ref: string,
 ): Promise<boolean> {
@@ -833,7 +824,7 @@ export async function refExistsLocally(
  * @param message - Raw git error message
  * @returns Cleaned message suitable for UI display
  */
-export function sanitizeGitError(message: string): string {
+function sanitizeGitError(message: string): string {
   return message
     .replace(/^fatal:\s*/i, "")
     .replace(/^error:\s*/i, "")
@@ -841,7 +832,7 @@ export function sanitizeGitError(message: string): string {
     .trim();
 }
 
-export async function safeCheckoutBranch(
+async function safeCheckoutBranch(
   repoPath: string,
   branch: string,
 ): Promise<void> {
@@ -992,7 +983,7 @@ export async function getWorktreeDiff(
 /**
  * Commit all changes in a worktree
  */
-export async function commitWorktreeChanges(
+async function commitWorktreeChanges(
   worktreePath: string,
   message: string,
 ): Promise<{ success: boolean; commitHash?: string; error?: string }> {
@@ -1022,7 +1013,7 @@ export async function commitWorktreeChanges(
 /**
  * Merge worktree branch into base branch
  */
-export async function mergeWorktreeToMain(
+async function mergeWorktreeToMain(
   projectPath: string,
   worktreeBranch: string,
   baseBranch: string,
@@ -1052,7 +1043,7 @@ export async function mergeWorktreeToMain(
 /**
  * Push worktree branch to remote
  */
-export async function pushWorktreeBranch(
+async function pushWorktreeBranch(
   worktreePath: string,
   branch: string,
 ): Promise<{ success: boolean; error?: string }> {
@@ -1078,7 +1069,7 @@ export async function pushWorktreeBranch(
 /**
  * Get current git status summary
  */
-export async function getGitStatus(worktreePath: string): Promise<{
+async function getGitStatus(worktreePath: string): Promise<{
   hasUncommittedChanges: boolean;
   hasUnpushedCommits: boolean;
   currentBranch: string;

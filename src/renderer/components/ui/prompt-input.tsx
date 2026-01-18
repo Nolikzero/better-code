@@ -97,7 +97,7 @@ function PromptInput({
   );
 }
 
-export type PromptInputTextareaProps = {
+type PromptInputTextareaProps = {
   disableAutosize?: boolean;
 } & React.ComponentProps<typeof Textarea>;
 
@@ -277,11 +277,4 @@ function PromptInputVariantContext() {
   );
 }
 
-export {
-  PromptInput,
-  PromptInputTextarea,
-  PromptInputActions,
-  PromptInputAction,
-  PromptInputContextItems,
-  PromptInputVariantContext,
-};
+export { PromptInput, PromptInputActions, PromptInputContextItems };

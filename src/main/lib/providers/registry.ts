@@ -4,7 +4,7 @@ import type { AIProvider, ProviderId, ProviderStatus } from "./types";
  * Registry for managing AI providers.
  * Singleton that holds all registered providers and provides lookup methods.
  */
-export class ProviderRegistry {
+class ProviderRegistry {
   private providers = new Map<ProviderId, AIProvider>();
   private defaultProviderId: ProviderId = "claude";
 

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export interface SubChatMeta {
+interface SubChatMeta {
   id: string;
   name: string;
   created_at?: string;

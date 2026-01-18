@@ -183,7 +183,7 @@ export function useDesktopNotifications() {
 /**
  * Standalone function to show notification (for use outside React components)
  */
-export function showAgentNotification(
+function showAgentNotification(
   agentName: string,
   chatId?: string,
   subChatId?: string,

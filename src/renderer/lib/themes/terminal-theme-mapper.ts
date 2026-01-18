@@ -179,9 +179,7 @@ export function extractTerminalTheme(
 /**
  * Check if a VS Code theme has terminal colors defined
  */
-export function hasTerminalColors(
-  themeColors: Record<string, string>,
-): boolean {
+function hasTerminalColors(themeColors: Record<string, string>): boolean {
   return !!(
     themeColors["terminal.background"] ||
     themeColors["terminal.foreground"] ||

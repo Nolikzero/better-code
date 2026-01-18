@@ -4,7 +4,6 @@ export type {
   SandboxMode,
   ApprovalPolicy,
   ReasoningEffort,
-  ProviderModel,
   ProviderConfig,
   ImageAttachment,
   AuthStatus,

@@ -31,7 +31,7 @@ type UserMessageType = {
   parts?: any[];
 };
 
-export interface UserMessageProps {
+interface UserMessageProps {
   message: UserMessageType;
   isLastUserMessage: boolean;
   sandboxSetupStatus: "cloning" | "ready" | "error";

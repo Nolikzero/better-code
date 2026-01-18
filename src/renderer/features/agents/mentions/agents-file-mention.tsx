@@ -24,20 +24,14 @@ import { trpc } from "../../../lib/trpc";
 import { cn } from "../../../lib/utils";
 import { MentionTooltipContent } from "./components";
 import { CATEGORY_OPTIONS, MENTION_PREFIXES } from "./constants";
-import {
-  createFileIconElement,
-  getFileIconByExtension,
-  getOptionIcon,
-} from "./icons";
+import { getOptionIcon } from "./icons";
 import type { FileMentionOption } from "./types";
 import {
   formatToolName,
   matchesMultiWordSearch,
   sortFilesByRelevance,
 } from "./utils";
-
 // Re-export icon utilities for backward compatibility
-export { getFileIconByExtension, createFileIconElement, getOptionIcon };
 
 interface ChangedFile {
   filePath: string;

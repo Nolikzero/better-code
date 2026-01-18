@@ -155,7 +155,7 @@ function renderTextWithUltrathink(text: string): React.ReactNode {
  * Hook to render text with file/folder mentions and ultrathink highlighting
  * Returns array of React nodes with mentions rendered as chips
  */
-export function useRenderFileMentions(text: string): React.ReactNode[] {
+function useRenderFileMentions(text: string): React.ReactNode[] {
   return useMemo(() => {
     const nodes: React.ReactNode[] = [];
     const regex = /@\[([^\]]+)\]/g;
@@ -217,7 +217,7 @@ export function RenderFileMentions({
  * Extract all file/folder mentions from text
  * Returns array of parsed mentions
  */
-export function extractFileMentions(text: string): ParsedMention[] {
+function extractFileMentions(text: string): ParsedMention[] {
   const mentions: ParsedMention[] = [];
   const regex = /@\[([^\]]+)\]/g;
   let match: RegExpExecArray | null;
@@ -235,6 +235,6 @@ export function extractFileMentions(text: string): ParsedMention[] {
 /**
  * Check if text contains any file, folder, skill, agent, or tool mentions
  */
-export function hasFileMentions(text: string): boolean {
+function hasFileMentions(text: string): boolean {
   return /@\[(file|folder|skill|agent|tool):[^\]]+\]/.test(text);
 }

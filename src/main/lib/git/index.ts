@@ -24,26 +24,10 @@ export * from "./gitlab";
 
 // Re-export provider utilities (excluding CheckItem to avoid conflict with github/types)
 export {
-  type GitHostStatus,
-  type GitHostProvider,
-  type MergeRequestState,
-  type ReviewDecision,
-  type ChecksStatus,
-  getGitHostProvider,
   fetchGitHostStatus,
-  getCompareUrl,
   getMergeCommand,
-  githubAdapter,
-  gitlabAdapter,
 } from "./providers";
-
 // Re-export types
-export type {
-  GitChangesStatus,
-  ChangedFile,
-  CommitInfo,
-  FileContents,
-} from "../../../shared/changes-types";
 
 /**
  * Combined git router with flattened procedures

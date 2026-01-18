@@ -132,7 +132,7 @@ export interface ValidatePathOptions {
  *
  * @throws PathValidationError if path is invalid
  */
-export function validateRelativePath(
+function validateRelativePath(
   filePath: string,
   options: ValidatePathOptions = {},
 ): void {

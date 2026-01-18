@@ -11,7 +11,7 @@ interface FrameworkIconProps {
 }
 
 // Next.js - Black circle with N arrow
-export function NextjsIcon({ className }: FrameworkIconProps) {
+function NextjsIcon({ className }: FrameworkIconProps) {
   return (
     <svg viewBox="0 0 180 180" className={cn("w-4 h-4", className)}>
       <mask
@@ -68,7 +68,7 @@ export function NextjsIcon({ className }: FrameworkIconProps) {
 }
 
 // Vite - Cyan to purple gradient with yellow lightning
-export function ViteIcon({ className }: FrameworkIconProps) {
+function ViteIcon({ className }: FrameworkIconProps) {
   return (
     <svg
       viewBox="0 0 256 257"
@@ -158,7 +158,7 @@ export function VueIcon({ className }: FrameworkIconProps) {
 }
 
 // Angular - Red/Purple gradient
-export function AngularIcon({ className }: FrameworkIconProps) {
+function AngularIcon({ className }: FrameworkIconProps) {
   return (
     <svg viewBox="0 0 242 256" className={cn("w-4 h-4", className)} fill="none">
       <defs>
@@ -234,7 +234,7 @@ export function AstroIcon({ className }: FrameworkIconProps) {
 }
 
 // Remix - Dark R shape
-export function RemixIcon({ className }: FrameworkIconProps) {
+function RemixIcon({ className }: FrameworkIconProps) {
   return (
     <svg viewBox="0 0 256 297" className={cn("w-4 h-4", className)}>
       <path
@@ -246,7 +246,7 @@ export function RemixIcon({ className }: FrameworkIconProps) {
 }
 
 // Gatsby - Purple #64328B
-export function GatsbyIcon({ className }: FrameworkIconProps) {
+function GatsbyIcon({ className }: FrameworkIconProps) {
   return (
     <svg viewBox="0 0 128 128" className={cn("w-4 h-4", className)}>
       <path
@@ -258,7 +258,7 @@ export function GatsbyIcon({ className }: FrameworkIconProps) {
 }
 
 // Nuxt - Green #00DC82
-export function NuxtIcon({ className }: FrameworkIconProps) {
+function NuxtIcon({ className }: FrameworkIconProps) {
   return (
     <svg
       viewBox="0 0 256 168"
@@ -274,7 +274,7 @@ export function NuxtIcon({ className }: FrameworkIconProps) {
 }
 
 // Turbo/Turborepo - Black with gradient
-export function TurboIcon({ className }: FrameworkIconProps) {
+function TurboIcon({ className }: FrameworkIconProps) {
   return (
     <svg viewBox="0 0 100 100" className={cn("w-4 h-4", className)} fill="none">
       <path
@@ -1148,7 +1148,7 @@ export function RubyIcon({ className }: FrameworkIconProps) {
 }
 
 // Mintlify - Documentation platform
-export function MintlifyIcon({ className }: FrameworkIconProps) {
+function MintlifyIcon({ className }: FrameworkIconProps) {
   return (
     <svg viewBox="0 0 19 19" className={cn("w-4 h-4", className)} fill="none">
       <path
@@ -1168,7 +1168,7 @@ export function MintlifyIcon({ className }: FrameworkIconProps) {
 }
 
 // GitHub icon
-export function GitHubIcon({ className }: FrameworkIconProps) {
+function GitHubIcon({ className }: FrameworkIconProps) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -1181,7 +1181,7 @@ export function GitHubIcon({ className }: FrameworkIconProps) {
 }
 
 // Map language/framework to icon component
-export function getFrameworkIcon(
+function getFrameworkIcon(
   language?: string | null,
   repoName?: string,
   topics?: string[],
@@ -1321,7 +1321,7 @@ export function getFrameworkIcon(
 
 // Get framework icon based on detected framework (from our detect-framework service)
 // Falls back to language icon if framework is unknown
-export function getDetectedFrameworkIcon(
+function getDetectedFrameworkIcon(
   framework?: string,
   className?: string,
   language?: string,
@@ -1381,7 +1381,7 @@ export function getDetectedFrameworkIcon(
 }
 
 // Default/Unknown - BetterCode logo (same as canvas sidebar placeholder)
-export function CodeIcon({ className }: FrameworkIconProps) {
+function CodeIcon({ className }: FrameworkIconProps) {
   return (
     <svg
       viewBox="30 110 452 292"

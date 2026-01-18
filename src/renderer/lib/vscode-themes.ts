@@ -3,7 +3,7 @@
  * These themes are bundled with Shiki and can be used directly
  */
 
-export interface VSCodeTheme {
+interface VSCodeTheme {
   id: string;
   name: string;
   type: "light" | "dark";
@@ -15,7 +15,7 @@ export interface VSCodeTheme {
  * Built-in VS Code themes available in Shiki
  * These are the themes that come pre-bundled with Shiki
  */
-export const VSCODE_BUILTIN_THEMES: VSCodeTheme[] = [
+const VSCODE_BUILTIN_THEMES: VSCodeTheme[] = [
   {
     id: "dark-plus",
     name: "Dark+ (default dark)",
@@ -75,14 +75,14 @@ export const VSCODE_BUILTIN_THEMES: VSCodeTheme[] = [
 /**
  * Get all themes filtered by type
  */
-export function getThemesByType(type: "light" | "dark"): VSCodeTheme[] {
+function getThemesByType(type: "light" | "dark"): VSCodeTheme[] {
   return VSCODE_BUILTIN_THEMES.filter((theme) => theme.type === type);
 }
 
 /**
  * Get theme by ID
  */
-export function getThemeById(id: string): VSCodeTheme | undefined {
+function getThemeById(id: string): VSCodeTheme | undefined {
   return VSCODE_BUILTIN_THEMES.find((theme) => theme.id === id);
 }
 

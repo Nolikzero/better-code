@@ -19,7 +19,7 @@ export const COMMAND_PROMPTS: Partial<
 /**
  * Check if a command is a prompt-based command
  */
-export function isPromptCommand(
+function isPromptCommand(
   type: BuiltinCommandAction["type"],
 ): type is "review" | "pr-comments" | "release-notes" | "security-review" {
   return type in COMMAND_PROMPTS;
@@ -28,7 +28,7 @@ export function isPromptCommand(
 /**
  * Built-in slash commands that are handled client-side
  */
-export const BUILTIN_SLASH_COMMANDS: SlashCommandOption[] = [
+const BUILTIN_SLASH_COMMANDS: SlashCommandOption[] = [
   {
     id: "builtin:clear",
     name: "clear",

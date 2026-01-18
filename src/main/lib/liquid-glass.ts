@@ -66,7 +66,7 @@ export function isLiquidGlassSupported(): boolean {
 /**
  * Get initialization error if any
  */
-export function getLiquidGlassError(): string | null {
+function getLiquidGlassError(): string | null {
   return initializationError;
 }
 
@@ -139,7 +139,7 @@ export function getLiquidGlassState(): {
  * Update liquid glass options on the current view
  * Note: To update options, we need to remove and re-add the view
  */
-export function updateLiquidGlass(
+function updateLiquidGlass(
   window: BrowserWindow,
   options?: GlassOptions,
 ): boolean {

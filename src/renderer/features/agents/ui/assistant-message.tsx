@@ -38,7 +38,7 @@ type AssistantMessageType = {
   metadata?: any;
 };
 
-export interface AssistantMessageProps {
+interface AssistantMessageProps {
   message: AssistantMessageType;
   isLastMessage: boolean;
   isStreaming: boolean;

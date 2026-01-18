@@ -4,7 +4,7 @@ import { Checkbox } from "../../../components/ui/checkbox";
 import { LoadingDot } from "../../../components/ui/icons";
 import { cn } from "../../../lib/utils";
 
-export interface ChatIconProps {
+interface ChatIconProps {
   isSelected: boolean;
   isLoading: boolean;
   hasUnseenChanges?: boolean;

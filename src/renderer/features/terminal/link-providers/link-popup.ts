@@ -16,7 +16,7 @@ const SHOW_DELAY = 400;
 /**
  * Check if the current platform is macOS.
  */
-export function isMac(): boolean {
+function isMac(): boolean {
   return typeof navigator !== "undefined"
     ? /Mac/.test(navigator.platform)
     : false;
@@ -25,7 +25,7 @@ export function isMac(): boolean {
 /**
  * Get the modifier key name based on platform.
  */
-export function getModifierKeyName(): string {
+function getModifierKeyName(): string {
   return isMac() ? "Cmd" : "Ctrl";
 }
 

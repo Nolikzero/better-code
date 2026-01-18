@@ -2,9 +2,9 @@
  * Slash command types for agent chat
  */
 
-export type SlashCommandCategory = "builtin" | "repository";
+type SlashCommandCategory = "builtin" | "repository";
 
-export interface SlashCommand {
+interface SlashCommand {
   id: string;
   name: string; // Display name without slash, e.g. "clear", "help"
   description: string;
@@ -23,7 +23,7 @@ export interface SlashCommandOption extends SlashCommand {
 }
 
 // Trigger payload for slash command dropdown
-export interface SlashTriggerPayload {
+interface SlashTriggerPayload {
   searchText: string;
   rect: DOMRect;
 }
@@ -41,6 +41,6 @@ export type BuiltinCommandAction =
   | { type: "security-review" };
 
 // Result of selecting a slash command
-export type SlashCommandSelection =
+type SlashCommandSelection =
   | { category: "builtin"; action: BuiltinCommandAction }
   | { category: "repository"; prompt: string; name: string };

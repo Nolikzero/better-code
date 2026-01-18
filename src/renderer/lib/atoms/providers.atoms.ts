@@ -28,7 +28,7 @@ export {
 // ============================================
 
 // Provider configuration (for display in UI, includes runtime availability)
-export type ProviderConfigUI = {
+type ProviderConfigUI = {
   id: ProviderId;
   name: string;
   description: string;

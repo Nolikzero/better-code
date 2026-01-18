@@ -121,7 +121,7 @@ export function generateAgentMd(agent: {
  * Load agent definition from filesystem by name
  * Searches in user (~/.claude/agents/) and project (.claude/agents/) directories
  */
-export async function loadAgent(
+async function loadAgent(
   name: string,
   cwd?: string,
 ): Promise<ParsedAgent | null> {

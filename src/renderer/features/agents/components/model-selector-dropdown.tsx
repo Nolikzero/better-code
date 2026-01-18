@@ -8,7 +8,7 @@ import { CheckIcon, IconChevronDown } from "../../../components/ui/icons";
 import type { ProviderId } from "../../../lib/atoms";
 import { getProviderIcon } from "../ui/provider-icons";
 
-export interface ModelOption {
+interface ModelOption {
   id: string;
   name: string;
   displayName: string;

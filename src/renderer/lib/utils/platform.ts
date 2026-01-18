@@ -16,7 +16,7 @@ export function isDesktopApp(): boolean {
 /**
  * Get the current platform
  */
-export function getPlatform(): "darwin" | "win32" | "linux" | "unknown" {
+function getPlatform(): "darwin" | "win32" | "linux" | "unknown" {
   if (typeof window !== "undefined" && window.desktopApi?.platform) {
     return window.desktopApi.platform as "darwin" | "win32" | "linux";
   }
@@ -33,14 +33,14 @@ export function isMacOS(): boolean {
 /**
  * Check if running on Windows
  */
-export function isWindows(): boolean {
+function isWindows(): boolean {
   return getPlatform() === "win32";
 }
 
 /**
  * Check if running on Linux
  */
-export function isLinux(): boolean {
+function isLinux(): boolean {
   return getPlatform() === "linux";
 }
 
@@ -52,7 +52,7 @@ export function isLinux(): boolean {
  * @param webShortcut - Shortcut string for web browser (e.g., "⌥⌘N")
  * @param desktopShortcut - Shortcut string for desktop app (e.g., "⌘N")
  */
-export function getShortcutDisplay(
+function getShortcutDisplay(
   webShortcut: string,
   desktopShortcut: string,
 ): string {
@@ -65,7 +65,7 @@ export function getShortcutDisplay(
  * @param webHotkey - Hotkey for web browser (e.g., "opt+cmd+n")
  * @param desktopHotkey - Hotkey for desktop app (e.g., "cmd+n")
  */
-export function getHotkey(webHotkey: string, desktopHotkey: string): string {
+function getHotkey(webHotkey: string, desktopHotkey: string): string {
   return isDesktopApp() ? desktopHotkey : webHotkey;
 }
 
@@ -73,7 +73,7 @@ export function getHotkey(webHotkey: string, desktopHotkey: string): string {
  * Shortcut mappings for common actions
  * Each entry has both web and desktop variants
  */
-export const SHORTCUTS = {
+const SHORTCUTS = {
   newAgent: {
     web: { hotkey: "opt+cmd+n", display: "⌥⌘N" },
     desktop: { hotkey: "cmd+n", display: "⌘N" },
@@ -141,7 +141,7 @@ export type ShortcutKey = keyof typeof SHORTCUTS;
 /**
  * Get shortcut info for the current platform
  */
-export function getShortcut(key: ShortcutKey): {
+function getShortcut(key: ShortcutKey): {
   hotkey: string;
   display: string;
 } {
@@ -159,14 +159,14 @@ export function getShortcutKey(key: ShortcutKey): string {
 /**
  * Get hotkey string for the current platform
  */
-export function getShortcutHotkey(key: ShortcutKey): string {
+function getShortcutHotkey(key: ShortcutKey): string {
   return getShortcut(key).hotkey;
 }
 
 /**
  * React hook to get platform-aware shortcut (re-renders on mount)
  */
-export function useShortcut(key: ShortcutKey): {
+function useShortcut(key: ShortcutKey): {
   hotkey: string;
   display: string;
 } {

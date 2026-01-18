@@ -38,7 +38,7 @@ const COMMON_LANGUAGES = [
 /**
  * Map our custom theme IDs to @pierre/diffs bundled themes
  */
-export const THEME_TO_PIERRE_MAP: Record<string, string> = {
+const THEME_TO_PIERRE_MAP: Record<string, string> = {
   "default-dark": "github-dark",
   "default-light": "github",
   "claude-dark": "github-dark",
@@ -53,7 +53,7 @@ export const THEME_TO_PIERRE_MAP: Record<string, string> = {
 /**
  * Get the @pierre/diffs theme for a given theme ID
  */
-export function getPierreTheme(themeId: string, isDark: boolean): string {
+function getPierreTheme(themeId: string, isDark: boolean): string {
   if (themeId in THEME_TO_PIERRE_MAP) {
     return THEME_TO_PIERRE_MAP[themeId];
   }
@@ -73,22 +73,26 @@ export function preloadDiffHighlighter(): void {
 
   // Preload common themes and languages for @pierre/diffs
   preloadHighlighter({
-    themes: SUPPORTED_THEMES as Parameters<typeof preloadHighlighter>[0]["themes"],
-    langs: COMMON_LANGUAGES as Parameters<typeof preloadHighlighter>[0]["langs"],
+    themes: SUPPORTED_THEMES as Parameters<
+      typeof preloadHighlighter
+    >[0]["themes"],
+    langs: COMMON_LANGUAGES as Parameters<
+      typeof preloadHighlighter
+    >[0]["langs"],
   }).catch((err) => {
     console.warn("[preloadDiffHighlighter] Failed to preload:", err);
   });
 }
 
 // Legacy exports for backward compatibility (no-ops)
-export function setDiffViewTheme(_themeId: string): void {
+function setDiffViewTheme(_themeId: string): void {
   // No-op: @pierre/diffs handles themes via props
 }
 
-export async function getDiffHighlighter(): Promise<null> {
+async function getDiffHighlighter(): Promise<null> {
   // No-op: @pierre/diffs handles highlighting internally
   return null;
 }
 
 // Type for backward compatibility
-export type DiffHighlighter = null;
+type DiffHighlighter = null;

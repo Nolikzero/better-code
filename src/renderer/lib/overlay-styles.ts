@@ -45,7 +45,7 @@ export const overlayItemFocus =
   "focus:bg-accent dark:focus:bg-neutral-800 focus:text-accent-foreground";
 
 /** Radix data-highlighted state (used by DropdownMenu, Select, ContextMenu) */
-export const overlayItemHighlighted =
+const overlayItemHighlighted =
   "data-[highlighted]:bg-accent dark:data-[highlighted]:bg-neutral-800 data-[highlighted]:text-accent-foreground";
 
 /** Item disabled state */
@@ -66,7 +66,7 @@ export const overlayItemWithIcon = `${overlayItem} [&_svg]:pointer-events-none [
 // =============================================================================
 
 /** Sub-trigger open state */
-export const overlaySubTriggerOpen =
+const overlaySubTriggerOpen =
   "data-[state=open]:bg-accent dark:data-[state=open]:bg-neutral-800";
 
 /** Combined sub-trigger styles */

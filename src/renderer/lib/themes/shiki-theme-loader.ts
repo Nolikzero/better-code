@@ -66,7 +66,7 @@ const THEME_TO_SHIKI_MAP: Record<string, shiki.BundledTheme> = {
 /**
  * Get or create the Shiki highlighter instance
  */
-export async function getHighlighter(): Promise<shiki.Highlighter> {
+async function getHighlighter(): Promise<shiki.Highlighter> {
   if (!highlighterPromise) {
     highlighterPromise = shiki.createHighlighter({
       themes: DEFAULT_THEMES,
@@ -83,7 +83,7 @@ const fullThemesCache = new Map<string, any>();
  * Load a full VS Code theme into Shiki
  * This handles themes from the new full theme system (BUILTIN_THEMES, imported, discovered)
  */
-export async function loadFullTheme(theme: VSCodeFullTheme): Promise<void> {
+async function loadFullTheme(theme: VSCodeFullTheme): Promise<void> {
   // Skip if already loaded
   if (fullThemesCache.has(theme.id)) {
     return;
@@ -154,7 +154,7 @@ function getShikiThemeForHighlighting(themeId: string): string {
  * Ensure a theme is loaded (built-in or bundled)
  * This should be called before using a theme for highlighting
  */
-export async function ensureThemeLoaded(themeId: string): Promise<void> {
+async function ensureThemeLoaded(themeId: string): Promise<void> {
   // Check if it's a Shiki bundled theme (always available)
   if (isShikiBundledTheme(themeId)) {
     return;
@@ -229,7 +229,7 @@ export async function highlightCode(
 /**
  * Get all loaded theme IDs
  */
-export async function getLoadedThemes(): Promise<string[]> {
+async function getLoadedThemes(): Promise<string[]> {
   const highlighter = await getHighlighter();
   return highlighter.getLoadedThemes();
 }

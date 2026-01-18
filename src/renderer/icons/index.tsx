@@ -54,7 +54,7 @@ export function IconSpinner(
 
 // Loading indicator that transitions from spinner to dot
 // Shows spinner when loading, animates to blue dot when done
-export function LoadingDot({
+function LoadingDot({
   isLoading,
   className,
   dotClassName = "bg-[#307BD0]",
@@ -111,7 +111,7 @@ export function LoadingDot({
 }
 
 // Edit file icon
-export function IconEditFile(props: IconProps) {
+function IconEditFile(props: IconProps) {
   return (
     <svg viewBox="0 0 16 16" width="16" height="16" fill="none" {...props}>
       <path
@@ -133,7 +133,7 @@ export function IconEditFile(props: IconProps) {
 }
 
 // Globe icon
-export const GlobeIcon = (props: LucideProps) => (
+const GlobeIcon = (props: LucideProps) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="14"
@@ -169,7 +169,7 @@ export const GlobeIcon = (props: LucideProps) => (
 );
 
 // Sparkles icon
-export const SparklesIcon = (props: IconProps) => {
+const SparklesIcon = (props: IconProps) => {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -200,7 +200,7 @@ export const SparklesIcon = (props: IconProps) => {
 };
 
 // Terminal icon
-export const CustomTerminalIcon = (props: LucideProps) => (
+const CustomTerminalIcon = (props: LucideProps) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="14"
@@ -220,7 +220,7 @@ export const CustomTerminalIcon = (props: LucideProps) => (
 );
 
 // Write file icon
-export const WriteFileIcon = (props: LucideProps) => (
+const WriteFileIcon = (props: LucideProps) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="14"
@@ -247,7 +247,7 @@ export const WriteFileIcon = (props: LucideProps) => (
 );
 
 // Planning icon
-export const PlanningIcon = (props: LucideProps) => (
+const PlanningIcon = (props: LucideProps) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="14"
@@ -267,7 +267,7 @@ export const PlanningIcon = (props: LucideProps) => (
 );
 
 // Eye icon
-export const EyeIcon = (props: LucideProps) => (
+const EyeIcon = (props: LucideProps) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="14"
@@ -296,7 +296,7 @@ export const EyeIcon = (props: LucideProps) => (
 );
 
 // Search icon
-export const SearchIcon = (props: LucideProps) => (
+const SearchIcon = (props: LucideProps) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="24"
@@ -318,7 +318,7 @@ export const SearchIcon = (props: LucideProps) => (
 );
 
 // Expand icon
-export function ExpandIcon(props: IconProps) {
+function ExpandIcon(props: IconProps) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -338,7 +338,7 @@ export function ExpandIcon(props: IconProps) {
 }
 
 // Collapse icon
-export function CollapseIcon(props: IconProps) {
+function CollapseIcon(props: IconProps) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -358,7 +358,7 @@ export function CollapseIcon(props: IconProps) {
 }
 
 // Double chevron icons
-export function IconDoubleChevronRight(props: IconProps) {
+function IconDoubleChevronRight(props: IconProps) {
   return (
     <svg
       viewBox="0 0 20 20"
@@ -373,7 +373,7 @@ export function IconDoubleChevronRight(props: IconProps) {
   );
 }
 
-export function IconArrowRight(props: IconProps) {
+function IconArrowRight(props: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" width="24" height="24" {...props}>
       <path
@@ -394,7 +394,7 @@ export function IconArrowRight(props: IconProps) {
   );
 }
 
-export function IconDoubleChevronLeft(props: IconProps) {
+function IconDoubleChevronLeft(props: IconProps) {
   return (
     <svg
       viewBox="0 0 20 20"
@@ -411,7 +411,7 @@ export function IconDoubleChevronLeft(props: IconProps) {
 }
 
 // Check icon
-export const CheckIcon = (props: IconProps) => (
+const CheckIcon = (props: IconProps) => (
   <svg
     width="16"
     height="16"
@@ -430,7 +430,7 @@ export const CheckIcon = (props: IconProps) => (
 );
 
 // Plan icon (list style)
-export function PlanIcon(props: IconProps) {
+function PlanIcon(props: IconProps) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -455,7 +455,7 @@ export function PlanIcon(props: IconProps) {
 }
 
 // External link icon
-export function ExternalLinkIcon(props: IconProps) {
+function ExternalLinkIcon(props: IconProps) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -477,7 +477,7 @@ export function ExternalLinkIcon(props: IconProps) {
 }
 
 // File icon
-export function FileIcon(props: IconProps) {
+function FileIcon(props: IconProps) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -498,7 +498,7 @@ export function FileIcon(props: IconProps) {
 }
 
 // Folder icon
-export function FolderIcon(props: IconProps) {
+function FolderIcon(props: IconProps) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -518,7 +518,7 @@ export function FolderIcon(props: IconProps) {
 }
 
 // Discord icon
-export const DiscordIcon = (props: LucideProps) => (
+const DiscordIcon = (props: LucideProps) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 24 24"
@@ -530,7 +530,7 @@ export const DiscordIcon = (props: LucideProps) => (
 );
 
 // Keyboard icon
-export function KeyboardIcon(props: IconProps) {
+function KeyboardIcon(props: IconProps) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -558,7 +558,7 @@ export function KeyboardIcon(props: IconProps) {
 }
 
 // Settings icon
-export function SettingsIcon(props: IconProps) {
+function SettingsIcon(props: IconProps) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -579,7 +579,7 @@ export function SettingsIcon(props: IconProps) {
 }
 
 // User icon
-export function UserIcon(props: IconProps) {
+function UserIcon(props: IconProps) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -600,7 +600,7 @@ export function UserIcon(props: IconProps) {
 }
 
 // Palette icon
-export function PaletteIcon(props: IconProps) {
+function PaletteIcon(props: IconProps) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -624,7 +624,7 @@ export function PaletteIcon(props: IconProps) {
 }
 
 // Users icon
-export function UsersIcon(props: IconProps) {
+function UsersIcon(props: IconProps) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -647,7 +647,7 @@ export function UsersIcon(props: IconProps) {
 }
 
 // Credit card icon
-export function CreditCardIcon(props: IconProps) {
+function CreditCardIcon(props: IconProps) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -668,7 +668,7 @@ export function CreditCardIcon(props: IconProps) {
 }
 
 // Bug icon for debug
-export function BugIcon(props: IconProps) {
+function BugIcon(props: IconProps) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -783,7 +783,7 @@ export const SlidersFilledIcon = (props: IconProps) => (
 );
 
 // Team/Workspace icon
-export const TeamIcon = (props: IconProps) => (
+const TeamIcon = (props: IconProps) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 24 24"
@@ -800,7 +800,7 @@ export const TeamIcon = (props: IconProps) => (
 );
 
 // Sandbox icon
-export const SandboxIcon = (props: IconProps) => (
+const SandboxIcon = (props: IconProps) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 24 24"
@@ -819,7 +819,7 @@ export const SandboxIcon = (props: IconProps) => (
 );
 
 // Plus icon
-export const PlusIcon = (props: IconProps) => {
+const PlusIcon = (props: IconProps) => {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -840,7 +840,7 @@ export const PlusIcon = (props: IconProps) => {
 };
 
 // Profile icon
-export const ProfileIcon = ({
+const ProfileIcon = ({
   className,
   ...props
 }: React.SVGProps<SVGSVGElement>) => (
@@ -865,7 +865,7 @@ export const ProfileIcon = ({
 );
 
 // GitHub logo
-export const GitHubLogo = (props: IconProps) => (
+const GitHubLogo = (props: IconProps) => (
   <svg
     fill="currentColor"
     viewBox="0 0 24 24"
@@ -877,7 +877,7 @@ export const GitHubLogo = (props: IconProps) => (
 );
 
 // Blank project icon
-export const BlankProjectIcon = ({
+const BlankProjectIcon = ({
   className,
   ...props
 }: React.SVGProps<SVGSVGElement>) => (
@@ -906,7 +906,7 @@ export const BlankProjectIcon = ({
 );
 
 // Archive icon
-export function ArchiveIcon({ className }: { className?: string }) {
+function ArchiveIcon({ className }: { className?: string }) {
   return (
     <svg
       className={className}
@@ -942,7 +942,7 @@ export function ArchiveIcon({ className }: { className?: string }) {
 }
 
 // Question circle icon
-export function QuestionCircleIcon(props: IconProps) {
+function QuestionCircleIcon(props: IconProps) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -980,7 +980,7 @@ export function QuestionCircleIcon(props: IconProps) {
 }
 
 // Ticket icon
-export const TicketIcon = ({ className }: { className?: string }) => (
+const TicketIcon = ({ className }: { className?: string }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="24"
@@ -1001,7 +1001,7 @@ export const TicketIcon = ({ className }: { className?: string }) => (
 );
 
 // Roadmap icon
-export function RoadmapIcon(props: IconProps) {
+function RoadmapIcon(props: IconProps) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -1021,7 +1021,7 @@ export function RoadmapIcon(props: IconProps) {
 }
 
 // Publisher studio icon
-export const PublisherStudioIcon = (props: IconProps) => (
+const PublisherStudioIcon = (props: IconProps) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 24 24"

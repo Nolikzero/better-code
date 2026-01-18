@@ -6,9 +6,7 @@ import type { GitHostProvider, GitHostStatus } from "./types";
 /**
  * Get the appropriate git host provider adapter based on the provider type
  */
-export function getGitHostProvider(
-  provider: GitProvider,
-): GitHostProvider | null {
+function getGitHostProvider(provider: GitProvider): GitHostProvider | null {
   switch (provider) {
     case "github":
       return githubAdapter;

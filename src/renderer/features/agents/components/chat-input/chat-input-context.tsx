@@ -18,7 +18,7 @@ export interface FileAttachment {
   isLoading?: boolean;
 }
 
-export interface ChatInputContextValue {
+interface ChatInputContextValue {
   // State
   isDragOver: boolean;
   isFocused: boolean;

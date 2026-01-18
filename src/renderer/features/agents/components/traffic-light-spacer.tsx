@@ -150,7 +150,7 @@ export function TrafficLightSpacer({
 /**
  * Wrapper to make child elements non-draggable within a draggable region
  */
-export function NoDrag({ children }: { children: React.ReactNode }) {
+function NoDrag({ children }: { children: React.ReactNode }) {
   return (
     <div
       style={{

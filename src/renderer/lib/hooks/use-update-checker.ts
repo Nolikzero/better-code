@@ -174,14 +174,14 @@ export function useUpdateChecker() {
  * Clear dismissed version from storage
  * Call this after a successful update to reset dismissal state
  */
-export function clearDismissedUpdate() {
+function clearDismissedUpdate() {
   localStorage.removeItem(DISMISSED_KEY);
 }
 
 /**
  * Clear dismiss for a specific version
  */
-export function clearDismissedVersion(version: string) {
+function clearDismissedVersion(version: string) {
   try {
     const dismissed = localStorage.getItem(DISMISSED_KEY);
     if (!dismissed) return;

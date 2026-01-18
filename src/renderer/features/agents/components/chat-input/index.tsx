@@ -5,27 +5,10 @@
 //   <ChatInputActions ... />
 // </ChatInputRoot>
 
-export {
-  ChatInputContext,
-  useChatInputContext,
-  type ImageAttachment,
-  type FileAttachment,
-  type ChatInputContextValue,
-} from "./chat-input-context";
+export { ChatInputRoot } from "./chat-input-root";
 
-export { ChatInputRoot, type ChatInputRootProps } from "./chat-input-root";
+export { ChatInputAttachments } from "./chat-input-attachments";
 
-export {
-  ChatInputAttachments,
-  type ChatInputAttachmentsProps,
-} from "./chat-input-attachments";
+export { ChatInputEditor } from "./chat-input-editor";
 
-export {
-  ChatInputEditor,
-  type ChatInputEditorProps,
-} from "./chat-input-editor";
-
-export {
-  ChatInputActions,
-  type ChatInputActionsProps,
-} from "./chat-input-actions";
+export { ChatInputActions } from "./chat-input-actions";

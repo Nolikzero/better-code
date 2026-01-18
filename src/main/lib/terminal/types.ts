@@ -15,12 +15,12 @@ export interface TerminalSession {
   usedFallback: boolean;
 }
 
-export interface TerminalDataEvent {
+interface TerminalDataEvent {
   type: "data";
   data: string;
 }
 
-export interface TerminalExitEvent {
+interface TerminalExitEvent {
   type: "exit";
   exitCode: number;
   signal?: number;

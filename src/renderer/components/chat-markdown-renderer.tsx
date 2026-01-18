@@ -463,7 +463,7 @@ export const ChatMarkdownRenderer = memo(function ChatMarkdownRenderer({
 });
 
 // Convenience exports for specific use cases
-export const CompactMarkdownRenderer = memo(function CompactMarkdownRenderer({
+const CompactMarkdownRenderer = memo(function CompactMarkdownRenderer({
   content,
   className,
   syntaxHighlight = false,
@@ -482,21 +482,19 @@ export const CompactMarkdownRenderer = memo(function CompactMarkdownRenderer({
   );
 });
 
-export const FullscreenMarkdownRenderer = memo(
-  function FullscreenMarkdownRenderer({
-    content,
-    className,
-  }: {
-    content: string;
-    className?: string;
-  }) {
-    return (
-      <ChatMarkdownRenderer
-        content={content}
-        size="lg"
-        syntaxHighlight={true}
-        className={className}
-      />
-    );
-  },
-);
+const FullscreenMarkdownRenderer = memo(function FullscreenMarkdownRenderer({
+  content,
+  className,
+}: {
+  content: string;
+  className?: string;
+}) {
+  return (
+    <ChatMarkdownRenderer
+      content={content}
+      size="lg"
+      syntaxHighlight={true}
+      className={className}
+    />
+  );
+});

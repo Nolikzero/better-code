@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from "motion/react";
 import type { ReactNode } from "react";
 import { Button } from "../../../components/ui/button";
 
-export interface MultiSelectAction {
+interface MultiSelectAction {
   label: string;
   icon?: ReactNode;
   onClick: () => void;

@@ -10,7 +10,7 @@ import {
   useState,
 } from "react";
 import { cn } from "../../../lib/utils";
-import { LARGE_TEXT_THRESHOLD, MENTION_PREFIXES } from "./constants";
+import { LARGE_TEXT_THRESHOLD } from "./constants";
 import {
   buildContentFromSerialized,
   createMentionNode,
@@ -21,17 +21,9 @@ import {
 import type {
   AgentsMentionsEditorHandle,
   FileMentionOption,
-  SlashTriggerPayload,
   TriggerPayload,
 } from "./types";
-
 // Re-export types and constants for backward compatibility
-export type {
-  FileMentionOption,
-  SlashTriggerPayload,
-  AgentsMentionsEditorHandle,
-};
-export { MENTION_PREFIXES };
 
 type AgentsMentionsEditorProps = {
   // UNCONTROLLED: no value/onChange - use ref methods instead

@@ -11,7 +11,7 @@ import type { SettingsTab } from "../../../lib/atoms";
 
 export type AgentActionSource = "hotkey" | "ui_button" | "context-menu";
 
-export type AgentActionCategory = "general" | "navigation" | "chat" | "view";
+type AgentActionCategory = "general" | "navigation" | "chat" | "view";
 
 export interface AgentActionContext {
   // Navigation
@@ -32,7 +32,7 @@ export interface AgentActionResult {
   error?: string;
 }
 
-export type AgentActionHandler = (
+type AgentActionHandler = (
   context: AgentActionContext,
   source: AgentActionSource,
 ) => Promise<AgentActionResult> | AgentActionResult;
@@ -119,7 +119,7 @@ export const AGENT_ACTIONS: Record<string, AgentActionDefinition> = {
   "toggle-sidebar": toggleSidebarAction,
 };
 
-export function getAgentAction(id: string): AgentActionDefinition | undefined {
+function getAgentAction(id: string): AgentActionDefinition | undefined {
   return AGENT_ACTIONS[id];
 }
 

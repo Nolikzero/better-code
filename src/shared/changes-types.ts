@@ -12,11 +12,7 @@ export type FileStatus =
   | "untracked";
 
 /** Change categories for organizing the sidebar */
-export type ChangeCategory =
-  | "against-base"
-  | "committed"
-  | "staged"
-  | "unstaged";
+type ChangeCategory = "against-base" | "committed" | "staged" | "unstaged";
 
 /** A changed file entry */
 export interface ChangedFile {
@@ -55,10 +51,10 @@ export interface GitChangesStatus {
 }
 
 /** Diff view mode toggle */
-export type DiffViewMode = "side-by-side" | "inline";
+type DiffViewMode = "side-by-side" | "inline";
 
 /** Input for getting file diff */
-export interface FileDiffInput {
+interface FileDiffInput {
   worktreePath: string;
   filePath: string;
   category: ChangeCategory;

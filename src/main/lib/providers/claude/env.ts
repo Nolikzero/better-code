@@ -31,7 +31,7 @@ const STRIPPED_ENV_KEYS = [
  * Get path to the bundled Claude binary.
  * Returns the path to the native Claude executable bundled with the app.
  */
-export function getBundledClaudeBinaryPath(): string {
+function getBundledClaudeBinaryPath(): string {
   const isDev = !app.isPackaged;
   const platform = process.platform;
   const arch = process.arch;
@@ -235,7 +235,7 @@ export function getClaudeBinaryPath(): ClaudeBinaryResult | null {
 /**
  * Clear cached binary path (useful for testing)
  */
-export function clearClaudeBinaryCache(): void {
+function clearClaudeBinaryCache(): void {
   cachedBinaryResult = undefined;
 }
 
@@ -265,7 +265,7 @@ function parseEnvOutput(output: string): Record<string, string> {
  * This captures PATH, HOME, and all shell profile configurations.
  * Results are cached for the lifetime of the process.
  */
-export function getClaudeShellEnvironment(): Record<string, string> {
+function getClaudeShellEnvironment(): Record<string, string> {
   if (cachedShellEnv !== null) {
     return { ...cachedShellEnv };
   }
@@ -390,7 +390,7 @@ export function buildClaudeEnv(options?: {
 /**
  * Clear cached shell environment (useful for testing)
  */
-export function clearClaudeEnvCache(): void {
+function clearClaudeEnvCache(): void {
   cachedShellEnv = null;
 }
 

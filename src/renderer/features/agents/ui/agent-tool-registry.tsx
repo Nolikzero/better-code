@@ -23,9 +23,9 @@ import {
   WriteFileIcon,
 } from "../../../components/ui/icons";
 
-export type ToolVariant = "simple" | "collapsible";
+type ToolVariant = "simple" | "collapsible";
 
-export interface ToolMeta {
+interface ToolMeta {
   icon: React.ComponentType<{ className?: string }>;
   title: (part: any) => string;
   subtitle?: (part: any) => string;

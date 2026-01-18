@@ -9,7 +9,7 @@
  * Mapping from VS Code theme color keys to CSS variable names
  * Priority order: first matching key wins
  */
-export const VSCODE_TO_CSS_MAP: Record<string, string[]> = {
+const VSCODE_TO_CSS_MAP: Record<string, string[]> = {
   // Background colors
   "--background": ["editor.background", "editorPane.background"],
   "--foreground": ["editor.foreground", "foreground"],
@@ -139,7 +139,7 @@ export const VSCODE_TO_CSS_MAP: Record<string, string[]> = {
  * @param backgroundHex - Optional background to blend with for transparent colors
  * @param preserveAlpha - If true, output alpha as "H S% L% / A%" instead of blending
  */
-export function hexToHSL(
+function hexToHSL(
   hex: string,
   backgroundHex?: string,
   preserveAlpha?: boolean,

@@ -8,8 +8,6 @@ import type { GitProvider } from "./index";
 import { fetchGitHostStatus, getCompareUrl } from "./providers";
 import { assertRegisteredWorktree } from "./security";
 
-export { isUpstreamMissingError };
-
 async function hasUpstreamBranch(
   git: ReturnType<typeof simpleGit>,
 ): Promise<boolean> {

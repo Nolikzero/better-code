@@ -776,9 +776,7 @@ export function getBuiltinThemeById(id: string): VSCodeFullTheme | undefined {
 /**
  * Get themes by type
  */
-export function getBuiltinThemesByType(
-  type: "light" | "dark",
-): VSCodeFullTheme[] {
+function getBuiltinThemesByType(type: "light" | "dark"): VSCodeFullTheme[] {
   return BUILTIN_THEMES.filter((theme) => theme.type === type);
 }
 
@@ -786,5 +784,5 @@ export function getBuiltinThemesByType(
  * Default theme IDs for light/dark modes
  * Uses Liquid Glass themes by default for glassmorphism effect
  */
-export const DEFAULT_LIGHT_THEME_ID = "liquid-glass-light";
-export const DEFAULT_DARK_THEME_ID = "liquid-glass-dark";
+const DEFAULT_LIGHT_THEME_ID = "liquid-glass-light";
+const DEFAULT_DARK_THEME_ID = "liquid-glass-dark";

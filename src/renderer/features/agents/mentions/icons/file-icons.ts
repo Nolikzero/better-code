@@ -39,7 +39,7 @@ import {
 /**
  * Known file extensions with icons
  */
-export const KNOWN_FILE_ICON_EXTENSIONS = new Set([
+const KNOWN_FILE_ICON_EXTENSIONS = new Set([
   "tsx",
   "ts",
   "js",

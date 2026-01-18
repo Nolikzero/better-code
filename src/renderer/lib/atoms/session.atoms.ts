@@ -2,13 +2,13 @@ import type { MCPServer, ProviderId } from "@shared/types";
 import { atomWithStorage } from "jotai/utils";
 
 // Re-export types from shared for convenience
-export type { MCPServerStatus, MCPServer } from "@shared/types";
+export type { MCPServerStatus } from "@shared/types";
 
 // ============================================
 // SESSION INFO ATOMS (MCP, Plugins, Tools)
 // ============================================
 
-export type SessionInfo = {
+type SessionInfo = {
   tools: string[];
   mcpServers: MCPServer[];
   plugins: { name: string; path: string }[];

@@ -170,7 +170,7 @@ const imageAttachmentSchema = z.object({
   filename: z.string().optional(),
 });
 
-export type ImageAttachment = z.infer<typeof imageAttachmentSchema>;
+type ImageAttachment = z.infer<typeof imageAttachmentSchema>;
 
 export const chatRouter = router({
   /**

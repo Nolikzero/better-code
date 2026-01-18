@@ -5,10 +5,7 @@
  * @param text - The text to insert
  * @param editableElement - The contentEditable element to dispatch input event to
  */
-export function insertTextAtCursor(
-  text: string,
-  editableElement: Element,
-): void {
+function insertTextAtCursor(text: string, editableElement: Element): void {
   // Use async insertion to prevent UI freeze with large text
   // requestAnimationFrame allows the browser to process the paste event
   // before we modify the DOM, preventing blocking the main thread

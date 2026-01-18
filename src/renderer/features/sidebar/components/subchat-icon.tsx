@@ -8,7 +8,7 @@ import {
 } from "../../../components/ui/icons";
 import { cn } from "../../../lib/utils";
 
-export interface SubChatIconProps {
+interface SubChatIconProps {
   mode: "agent" | "plan";
   isActive: boolean;
   isLoading: boolean;

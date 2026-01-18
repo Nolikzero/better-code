@@ -8,7 +8,7 @@ import type {
   TerminalSession,
 } from "./types";
 
-export class TerminalManager extends EventEmitter {
+class TerminalManager extends EventEmitter {
   private sessions = new Map<string, TerminalSession>();
   private pendingSessions = new Map<string, Promise<SessionResult>>();
 

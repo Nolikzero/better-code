@@ -1,24 +1,12 @@
 // Re-export shared types for backward compatibility
 export type {
   ProviderId,
-  SandboxMode,
-  ApprovalPolicy,
-  ReasoningEffort,
-  ProviderModel,
   ProviderConfig,
-  ImageAttachment,
   AuthStatus,
   ProviderStatus,
   ProviderSpecificConfig,
 } from "@shared/types";
-
 // Re-export message types
-export type {
-  UIMessageChunk,
-  MCPServer,
-  MCPServerStatus,
-  MessageMetadata,
-} from "@shared/types";
 
 // Import types needed for local interfaces
 import type {

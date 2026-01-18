@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 
 // Constants
-export const DRAFTS_STORAGE_KEY = "agent-drafts-global";
-export const DRAFT_ID_PREFIX = "draft-";
-export const DRAFTS_CHANGE_EVENT = "drafts-changed";
+const DRAFTS_STORAGE_KEY = "agent-drafts-global";
+const DRAFT_ID_PREFIX = "draft-";
+const DRAFTS_CHANGE_EVENT = "drafts-changed";
 
 // Types
 export interface DraftContent {
@@ -11,7 +11,7 @@ export interface DraftContent {
   updatedAt: number;
 }
 
-export interface DraftProject {
+interface DraftProject {
   id: string;
   name: string;
   path: string;
@@ -29,13 +29,13 @@ export interface NewChatDraft {
 }
 
 // SubChatDraft uses key format: "chatId:subChatId"
-export type SubChatDraft = DraftContent;
+type SubChatDraft = DraftContent;
 
 // Raw drafts from localStorage (mixed format)
 type GlobalDraftsRaw = Record<string, DraftContent | NewChatDraft>;
 
 // Emit custom event when drafts change (for same-tab sync)
-export function emitDraftsChanged(): void {
+function emitDraftsChanged(): void {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new CustomEvent(DRAFTS_CHANGE_EVENT));
 }
@@ -68,17 +68,17 @@ export function generateDraftId(): string {
 }
 
 // Check if a key is a new chat draft (starts with draft-)
-export function isNewChatDraftKey(key: string): boolean {
+function isNewChatDraftKey(key: string): boolean {
   return key.startsWith(DRAFT_ID_PREFIX);
 }
 
 // Check if a key is a sub-chat draft (contains :)
-export function isSubChatDraftKey(key: string): boolean {
+function isSubChatDraftKey(key: string): boolean {
   return key.includes(":");
 }
 
 // Get new chat drafts as sorted array (only visible ones)
-export function getNewChatDrafts(): NewChatDraft[] {
+function getNewChatDrafts(): NewChatDraft[] {
   const globalDrafts = loadGlobalDrafts();
   return Object.entries(globalDrafts)
     .filter(([key]) => isNewChatDraftKey(key))
@@ -94,7 +94,7 @@ export function getNewChatDrafts(): NewChatDraft[] {
 }
 
 // Save a new chat draft
-export function saveNewChatDraft(
+function saveNewChatDraft(
   draftId: string,
   text: string,
   project?: DraftProject,
@@ -169,7 +169,7 @@ export function clearSubChatDraft(chatId: string, subChatId: string): void {
 }
 
 // Build drafts cache from localStorage (for sidebar display)
-export function buildDraftsCache(): Record<string, string> {
+function buildDraftsCache(): Record<string, string> {
   const globalDrafts = loadGlobalDrafts();
   const cache: Record<string, string> = {};
   for (const [key, value] of Object.entries(globalDrafts)) {
@@ -242,7 +242,7 @@ export function useSubChatDraftsCache(): Record<string, string> {
 /**
  * Hook to get a specific sub-chat draft
  */
-export function useSubChatDraft(
+function useSubChatDraft(
   parentChatId: string | null,
   subChatId: string,
 ): string | null {

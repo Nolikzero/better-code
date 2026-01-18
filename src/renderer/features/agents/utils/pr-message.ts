@@ -1,4 +1,4 @@
-export type GitProvider = "github" | "gitlab" | "bitbucket" | null;
+type GitProvider = "github" | "gitlab" | "bitbucket" | null;
 
 export interface PrContext {
   branch: string;

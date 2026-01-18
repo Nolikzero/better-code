@@ -186,7 +186,6 @@ export function ArchivePopover({ trigger }: ArchivePopoverProps) {
         side="right"
         align="end"
         sideOffset={8}
-        forceDark={false}
         className="w-[250px] h-[400px] p-0 flex flex-col overflow-hidden"
         onKeyDown={handleKeyDown}
         tabIndex={-1}

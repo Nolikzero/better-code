@@ -5,5 +5,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-// Re-export platform utilities
-export { isMacOS as isMac } from "./utils/platform";
+export const isMac =
+  typeof navigator !== "undefined" &&
+  /Mac|iPod|iPhone|iPad/.test(navigator.platform);

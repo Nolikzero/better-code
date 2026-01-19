@@ -20,8 +20,11 @@ import { closeDatabase, initDatabase } from "./lib/db";
 import { initializeProviders } from "./lib/providers/init";
 import { createMainWindow, getWindow } from "./windows/main";
 
-// Dev mode detection
-const IS_DEV = !!process.env.ELECTRON_RENDERER_URL;
+// Electron Forge Vite plugin global for dev detection
+declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
+
+// Dev mode detection (Forge Vite plugin sets this global in dev mode)
+const IS_DEV = !!MAIN_WINDOW_VITE_DEV_SERVER_URL;
 
 // Set dev mode userData path BEFORE requestSingleInstanceLock()
 // This ensures dev and prod have separate instance locks

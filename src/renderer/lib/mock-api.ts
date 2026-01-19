@@ -223,10 +223,12 @@ export const api = {
           mutateAsync: async (args: {
             userMessage: string;
             providerId?: "claude" | "codex";
+            projectPath?: string;
           }) => {
             return mutation.mutateAsync({
               userMessage: args.userMessage,
               providerId: args.providerId,
+              projectPath: args.projectPath,
             });
           },
           isPending: mutation.isPending,

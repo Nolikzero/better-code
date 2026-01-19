@@ -144,6 +144,7 @@ function findInSystemPaths(): string | null {
 
 /**
  * Find Claude binary using PATH lookup (which/where)
+ * Uses interactive login shell to get full PATH including nvm/fnm
  */
 function findInPath(): string | null {
   const platform = process.platform;
@@ -161,11 +162,11 @@ function findInPath(): string | null {
         return firstMatch;
       }
     } else {
-      const shellEnv = getClaudeShellEnvironment();
-      const result = execSync(`which ${binaryName}`, {
+      // Run which inside interactive login shell to get full PATH
+      const shell = process.env.SHELL || "/bin/zsh";
+      const result = execSync(`${shell} -ilc 'which ${binaryName}'`, {
         encoding: "utf8",
         timeout: 5000,
-        env: shellEnv,
       });
       const foundPath = result.trim();
       if (foundPath && isExecutable(foundPath)) {
@@ -261,8 +262,8 @@ function parseEnvOutput(output: string): Record<string, string> {
 }
 
 /**
- * Load full shell environment using interactive login shell.
- * This captures PATH, HOME, and all shell profile configurations.
+ * Load full shell environment using login shell (non-interactive).
+ * Uses -lc to avoid TCC folder access prompts from interactive shell configs.
  * Results are cached for the lifetime of the process.
  */
 function getClaudeShellEnvironment(): Record<string, string> {

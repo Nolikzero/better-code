@@ -4,25 +4,10 @@ import { createIPCHandler } from "trpc-electron/main";
 import { initLiquidGlass } from "../lib/liquid-glass";
 import { createAppRouter } from "../lib/trpc/routers";
 
-// Type for macOS-specific BrowserWindow methods
-// Note: setTrafficLightPosition was removed in Electron 40
-// We need to check if the method exists before calling it
-type MacBrowserWindow = BrowserWindow & {
-  setTrafficLightPosition?: (position: { x: number; y: number }) => void;
-};
+// Electron Forge Vite plugin globals
+declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
+declare const MAIN_WINDOW_VITE_NAME: string;
 
-/**
- * Safely set traffic light position (method may not exist in Electron 40+)
- */
-function safeSetTrafficLightPosition(
-  win: BrowserWindow,
-  position: { x: number; y: number },
-): void {
-  const macWin = win as MacBrowserWindow;
-  if (typeof macWin.setTrafficLightPosition === "function") {
-    macWin.setTrafficLightPosition(position);
-  }
-}
 
 // Register IPC handlers for window operations (only once)
 let ipcHandlersRegistered = false;
@@ -100,19 +85,14 @@ function registerIpcHandlers(getWindow: () => BrowserWindow | null): void {
   );
 
   // Traffic light visibility control (for hybrid native/custom approach)
-  // Note: setWindowButtonVisibility was removed in Electron 40
-  // Traffic lights are now managed via trafficLightPosition in BrowserWindow options
+  // Uses setWindowButtonVisibility (Electron 40+) to show/hide native traffic lights
   ipcMain.handle(
     "window:set-traffic-light-visibility",
     (_event, visible: boolean) => {
       const win = getWindow();
       if (win && process.platform === "darwin") {
-        // Move traffic lights off-screen to hide, on-screen to show
-        if (visible || win.isFullScreen()) {
-          safeSetTrafficLightPosition(win, { x: 15, y: 12 });
-        } else {
-          safeSetTrafficLightPosition(win, { x: -100, y: -100 });
-        }
+        // In fullscreen, always show native traffic lights
+        win.setWindowButtonVisibility(visible || win.isFullScreen());
       }
     },
   );
@@ -193,13 +173,12 @@ export function createMainWindow(): BrowserWindow {
     transparent: true,
     backgroundColor: "#00000000",
     // hiddenInset shows native traffic lights inset in the window
-    // Start with traffic lights off-screen (custom ones shown in normal mode)
-    // Native lights will be moved on-screen in fullscreen mode
+    // Traffic lights start hidden via setWindowButtonVisibility, position is for when they're visible
     titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
     trafficLightPosition:
       process.platform === "darwin" ? { x: 15, y: 12 } : undefined,
     webPreferences: {
-      preload: join(__dirname, "../preload/index.js"),
+      preload: join(__dirname, "preload.js"),
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: false, // Required for electron-trpc
@@ -229,9 +208,9 @@ export function createMainWindow(): BrowserWindow {
   // Show window when ready
   window.on("ready-to-show", () => {
     console.log("[Main] Window ready to show");
-    // Ensure native traffic lights are visible by default (login page, loading states)
+    // Hide native traffic lights initially - React TrafficLights component controls visibility
     if (process.platform === "darwin") {
-      safeSetTrafficLightPosition(window, { x: 15, y: 12 });
+      window.setWindowButtonVisibility(false);
     }
     window.show();
   });
@@ -240,14 +219,14 @@ export function createMainWindow(): BrowserWindow {
   window.on("enter-full-screen", () => {
     // Always show native traffic lights in fullscreen
     if (process.platform === "darwin") {
-      safeSetTrafficLightPosition(window, { x: 15, y: 12 });
+      window.setWindowButtonVisibility(true);
     }
     window.webContents.send("window:fullscreen-change", true);
   });
   window.on("leave-full-screen", () => {
-    // Show native traffic lights when exiting fullscreen (TrafficLights component will manage after mount)
+    // Hide native traffic lights when exiting fullscreen - React TrafficLights component will show custom ones
     if (process.platform === "darwin") {
-      safeSetTrafficLightPosition(window, { x: 15, y: 12 });
+      window.setWindowButtonVisibility(false);
     }
     window.webContents.send("window:fullscreen-change", false);
   });
@@ -272,22 +251,17 @@ export function createMainWindow(): BrowserWindow {
   });
 
   // Load the renderer - always load main app (no auth check)
-  const devServerUrl = process.env.ELECTRON_RENDERER_URL;
-
   console.log("[Main] Loading main app...");
-  if (devServerUrl) {
-    window.loadURL(devServerUrl);
+  if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+    window.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
     window.webContents.openDevTools();
   } else {
-    window.loadFile(join(__dirname, "../renderer/index.html"));
+    window.loadFile(join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
   }
 
-  // Ensure traffic lights are visible after page load (covers reload/Cmd+R case)
+  // Page load handler - native traffic lights stay hidden, React controls visibility
   window.webContents.on("did-finish-load", () => {
     console.log("[Main] Page finished loading");
-    if (process.platform === "darwin") {
-      safeSetTrafficLightPosition(window, { x: 15, y: 12 });
-    }
 
     // Initialize liquid glass module (macOS 26+ Tahoe)
     // The actual enable/disable is controlled by theme via tRPC

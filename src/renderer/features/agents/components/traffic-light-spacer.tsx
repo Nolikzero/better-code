@@ -40,9 +40,20 @@ export function TrafficLights({
     }
   }, [isHovered, isDesktop, isFullscreen]);
 
-  // NOTE: Removed mount effect that hides native lights
-  // Native lights are shown by default (main process), and AgentsLayout controls visibility
-  // This prevents the "flash of hidden lights" during loading state
+  // Sync native lights with initial hover state on mount
+  // Fixes race condition where main process shows lights but component hasn't hidden them yet
+  useEffect(() => {
+    if (!isDesktop || isFullscreen) return;
+    if (
+      typeof window === "undefined" ||
+      !window.desktopApi?.setTrafficLightVisibility
+    )
+      return;
+
+    // On mount, immediately sync native lights with initial hover state
+    window.desktopApi.setTrafficLightVisibility(isHovered);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDesktop]); // Only run on mount (isDesktop is stable after initial render)
 
   // Only show in desktop app, hide in fullscreen (native traffic lights always show in fullscreen)
   // isFullscreen === true means fullscreen, null or false means not fullscreen

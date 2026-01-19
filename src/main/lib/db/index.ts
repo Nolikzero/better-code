@@ -32,8 +32,8 @@ function getDatabasePath(): string {
  */
 function getMigrationsPath(): string {
   if (app.isPackaged) {
-    // Production: migrations bundled in resources
-    return join(process.resourcesPath, "migrations");
+    // Production: migrations bundled in resources (copied as "drizzle" folder)
+    return join(process.resourcesPath, "drizzle");
   }
   // Development: from out/main -> apps/desktop/drizzle
   return join(__dirname, "../../drizzle");

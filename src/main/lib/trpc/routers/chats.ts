@@ -1,6 +1,9 @@
 import { TRPCError } from "@trpc/server";
 import { execSync } from "child_process";
 import { and, desc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
+import { app } from "electron";
+import os from "os";
+import path from "path";
 import simpleGit from "simple-git";
 import { z } from "zod";
 import { chats, getDatabase, projects, subChats } from "../../db";
@@ -14,7 +17,7 @@ import {
   removeWorktree,
 } from "../../git";
 import { execWithShellEnv } from "../../git/shell-env";
-import { buildClaudeEnv, getClaudeBinaryPath } from "../../providers/claude";
+import { getClaudeBinaryPath } from "../../providers/claude";
 import { publicProcedure, router } from "../index";
 
 // Dynamic import for ESM module
@@ -570,6 +573,7 @@ export const chatsRouter = router({
       z.object({
         userMessage: z.string(),
         providerId: z.enum(["claude", "codex"]).optional().default("claude"),
+        projectPath: z.string().optional(),
       }),
     )
     .mutation(async ({ input }) => {
@@ -581,7 +585,6 @@ export const chatsRouter = router({
 
       try {
         const claudeQuery = await getClaudeQuery();
-        const claudeEnv = buildClaudeEnv();
         const binaryResult = getClaudeBinaryPath();
         if (!binaryResult) {
           throw new TRPCError({
@@ -605,18 +608,35 @@ export const chatsRouter = router({
         // Set a timeout to abort if it takes too long
         const timeout = setTimeout(() => abortController.abort(), 10000);
 
+        // Use isolated config dir to avoid loading user's MCP servers/settings
+        // which can trigger macOS TCC prompts (e.g., Photo Library access)
+        const isolatedConfigDir = path.join(
+          app.getPath("userData"),
+          "claude-name-gen",
+        );
+
         try {
+          // Minimal env for name generation - avoid shell spawning which triggers TCC prompts
+          const minimalEnv: Record<string, string> = {
+            HOME: os.homedir(),
+            USER: os.userInfo().username,
+            PATH: process.env.PATH || "/usr/bin:/bin",
+            SHELL: process.env.SHELL || "/bin/zsh",
+            TERM: "xterm-256color",
+            CLAUDE_CONFIG_DIR: isolatedConfigDir,
+            CLAUDE_CODE_ENTRYPOINT: "sdk-ts",
+            ...(cliOAuthToken && {
+              CLAUDE_CODE_OAUTH_TOKEN: cliOAuthToken,
+            }),
+          };
+
           const stream = claudeQuery({
             prompt,
             options: {
               abortController,
-              cwd: process.cwd(),
-              env: {
-                ...claudeEnv,
-                ...(cliOAuthToken && {
-                  CLAUDE_CODE_OAUTH_TOKEN: cliOAuthToken,
-                }),
-              },
+              // Use project path as cwd, fallback to userData if not available
+              cwd: input.projectPath || app.getPath("userData"),
+              env: minimalEnv,
               maxTurns: 1,
               pathToClaudeCodeExecutable: claudeBinaryPath,
             },

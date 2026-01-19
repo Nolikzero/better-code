@@ -2414,6 +2414,7 @@ export function ChatView({
           return generateSubChatNameMutation.mutateAsync({
             userMessage: msg,
             providerId: effectiveProvider,
+            projectPath: originalProjectPath || worktreePath || undefined,
           });
         },
         renameSubChat: async (input) => {
@@ -2494,6 +2495,8 @@ export function ChatView({
       selectedTeamId,
       utils.agents.getAgentChats,
       utils.agents.getAgentChat,
+      originalProjectPath,
+      worktreePath,
     ],
   );
 

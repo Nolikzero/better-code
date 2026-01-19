@@ -1043,7 +1043,7 @@ export function AgentsSidebar({
           isHovered={isSidebarHovered || isDropdownOpen}
           isFullscreen={isFullscreen}
           isDesktop={isDesktop}
-          className="absolute left-4 top-[14px] z-20"
+          className="absolute left-3 top-[10px] z-20"
         />
 
         {/* Close button - positioned at top right, adjusted for traffic lights area when not fullscreen */}

@@ -53,8 +53,9 @@ function parseEnvOutput(output: string): Record<string, string> {
 }
 
 /**
- * Load full shell environment using interactive login shell.
- * This captures PATH, HOME, and all shell profile configurations.
+ * Load full shell environment using login shell.
+ * This captures PATH, HOME, and all login shell profile configurations.
+ * Uses non-interactive mode to avoid triggering macOS TCC folder access prompts.
  * Results are cached for the lifetime of the process.
  */
 function getCodexShellEnvironment(): Record<string, string> {
@@ -90,7 +91,9 @@ function getCodexShellEnvironment(): Record<string, string> {
 
     // Fallback: return minimal required env
     const home = os.homedir();
-    const fallbackPath = [
+
+    // Build fallback PATH including nvm paths
+    const fallbackPaths = [
       `${home}/.local/bin`,
       "/opt/homebrew/bin",
       "/usr/local/bin",
@@ -98,7 +101,13 @@ function getCodexShellEnvironment(): Record<string, string> {
       "/bin",
       "/usr/sbin",
       "/sbin",
-    ].join(":");
+    ];
+
+    // Add nvm bin paths to fallback
+    const nvmBinPaths = getNodeManagerPaths("").map((p) => path.dirname(p));
+    fallbackPaths.unshift(...nvmBinPaths);
+
+    const fallbackPath = fallbackPaths.join(":");
 
     const fallback: Record<string, string> = {
       HOME: home,
@@ -140,6 +149,42 @@ function getBundledCodexBinaryPath(): string {
 }
 
 /**
+ * Get node version manager bin paths (nvm, fnm, volta)
+ * These are where npm global packages like codex are installed
+ */
+function getNodeManagerPaths(binaryName: string): string[] {
+  const home = os.homedir();
+  const paths: string[] = [];
+
+  // nvm paths (~/.nvm/versions/node/*/bin)
+  const nvmDir = process.env.NVM_DIR || path.join(home, ".nvm");
+  const nvmVersionsDir = path.join(nvmDir, "versions", "node");
+  try {
+    if (fs.existsSync(nvmVersionsDir)) {
+      const versions = fs.readdirSync(nvmVersionsDir);
+      versions.sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
+      paths.push(...versions.map((v) => path.join(nvmVersionsDir, v, "bin", binaryName)));
+    }
+  } catch {}
+
+  // fnm paths (~/.local/share/fnm/node-versions/*/installation/bin)
+  const fnmDir = process.env.FNM_DIR || path.join(home, ".local", "share", "fnm", "node-versions");
+  try {
+    if (fs.existsSync(fnmDir)) {
+      const versions = fs.readdirSync(fnmDir);
+      versions.sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
+      paths.push(...versions.map((v) => path.join(fnmDir, v, "installation", "bin", binaryName)));
+    }
+  } catch {}
+
+  // volta paths (~/.volta/bin)
+  const voltaBin = path.join(home, ".volta", "bin", binaryName);
+  paths.push(voltaBin);
+
+  return paths;
+}
+
+/**
  * Get platform-specific system installation paths to check for Codex
  */
 function getSystemPaths(): string[] {
@@ -152,6 +197,8 @@ function getSystemPaths(): string[] {
       path.join(home, ".local", "bin", binaryName),
       "/opt/homebrew/bin/codex",
       "/usr/local/bin/codex",
+      // nvm-installed npm global packages
+      ...getNodeManagerPaths(binaryName),
     ];
   }
 
@@ -160,6 +207,8 @@ function getSystemPaths(): string[] {
       path.join(home, ".local", "bin", binaryName),
       "/usr/local/bin/codex",
       "/snap/bin/codex",
+      // nvm-installed npm global packages
+      ...getNodeManagerPaths(binaryName),
     ];
   }
 
@@ -168,6 +217,8 @@ function getSystemPaths(): string[] {
     return [
       path.join(userProfile, ".local", "bin", binaryName),
       path.join(userProfile, "AppData", "Roaming", "npm", binaryName),
+      // nvm-windows paths
+      ...getNodeManagerPaths(binaryName),
     ];
   }
 
@@ -192,20 +243,18 @@ function findInSystemPaths(): string | null {
 
 /**
  * Find Codex in npm global installation
+ * Uses interactive login shell to get full PATH including nvm
  */
 function findInNpmGlobal(): string | null {
   const platform = process.platform;
   const binaryName = platform === "win32" ? "codex.cmd" : "codex";
 
   try {
-    // Use shell environment to get full PATH (including nvm-managed npm)
-    const shellEnv = getCodexShellEnvironment();
-    // Get npm global prefix
-    const npmPrefix = execSync("npm prefix -g", {
+    // Run npm prefix -g inside interactive shell to get nvm-managed npm
+    const shell = process.env.SHELL || "/bin/zsh";
+    const npmPrefix = execSync(`${shell} -ilc 'npm prefix -g'`, {
       encoding: "utf8",
       timeout: 5000,
-      windowsHide: true,
-      env: shellEnv,
     }).trim();
 
     // Check bin directory
@@ -227,6 +276,7 @@ function findInNpmGlobal(): string | null {
 
 /**
  * Find Codex binary using PATH lookup (which/where)
+ * Uses interactive login shell to get full PATH including nvm/fnm
  */
 function findInPath(): string | null {
   const platform = process.platform;
@@ -244,12 +294,11 @@ function findInPath(): string | null {
         return firstMatch;
       }
     } else {
-      // Use shell environment to get full PATH (including homebrew, nvm, etc.)
-      const shellEnv = getCodexShellEnvironment();
-      const result = execSync(`which ${binaryName}`, {
+      // Run which inside interactive login shell to get full PATH
+      const shell = process.env.SHELL || "/bin/zsh";
+      const result = execSync(`${shell} -ilc 'which ${binaryName}'`, {
         encoding: "utf8",
         timeout: 5000,
-        env: shellEnv,
       });
       const foundPath = result.trim();
       if (foundPath && isExecutable(foundPath)) {

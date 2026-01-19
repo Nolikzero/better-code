@@ -4,21 +4,20 @@
   "private": true,
   "description": "BetterCode - UI for parallel work with AI agents",
   "author": "BetterCode",
-  "main": "out/main/index.js",
+  "main": ".vite/build/index.js",
   "scripts": {
-    "dev": "electron-vite dev",
-    "build": "electron-vite build",
-    "preview": "electron-vite preview",
-    "package": "electron-builder --dir",
-    "package:mac": "electron-builder --mac",
-    "package:win": "electron-builder --win",
-    "package:linux": "electron-builder --linux",
-    "dist": "electron-builder",
+    "dev": "electron-forge start",
+    "build": "electron-forge package",
+    "package": "electron-forge make",
+    "package:mac": "electron-forge make --platform darwin",
+    "package:win": "electron-forge make --platform win32",
+    "package:linux": "electron-forge make --platform linux",
+    "publish": "electron-forge publish",
     "dist:manifest": "node scripts/generate-update-manifest.mjs",
     "dist:upload": "node scripts/upload-release.mjs",
     "claude:download": "node scripts/download-claude-binary.mjs",
     "claude:download:all": "node scripts/download-claude-binary.mjs --all",
-    "release": "rm -rf release && bun run claude:download && bun run build && bun run package:mac && bun run dist:manifest && ./scripts/upload-release-wrangler.sh",
+    "release": "rm -rf out && bun run claude:download && bun run package:mac && bun run dist:manifest && ./scripts/upload-release-wrangler.sh",
     "sync:public": "./scripts/sync-to-public.sh",
     "icon:generate": "node scripts/generate-icon.mjs",
     "db:generate": "drizzle-kit generate",
@@ -33,12 +32,12 @@
     "typecheck": "tsc --noEmit",
     "knip": "knip",
     "knip:fix": "knip --fix",
-    "prepare": "husky",
-    "postinstall": "node -e \"if(!process.env.VERCEL){require('child_process').execSync('electron-rebuild -f -w better-sqlite3,node-pty',{stdio:'inherit'})}\""
+    "prepare": "husky"
   },
   "dependencies": {
     "@ai-sdk/react": "^3.0.41",
     "@anthropic-ai/claude-agent-sdk": "^0.2.12",
+    "@emotion/is-prop-valid": "^1.4.0",
     "@iarna/toml": "^2.2.5",
     "@pierre/diffs": "^1.0.6",
     "@radix-ui/react-alert-dialog": "^1.1.15",
@@ -105,7 +104,6 @@
     "zustand": "^5.0.10"
   },
   "overrides": {
-    "minimatch": "9.0.5",
     "brace-expansion": "2.0.2",
     "semver": "7.7.2"
   },
@@ -120,6 +118,14 @@
   ],
   "devDependencies": {
     "@biomejs/biome": "2.3.11",
+    "@electron-forge/cli": "^7.8.0",
+    "@electron-forge/maker-deb": "^7.8.0",
+    "@electron-forge/maker-dmg": "^7.8.0",
+    "@electron-forge/maker-rpm": "^7.8.0",
+    "@electron-forge/maker-squirrel": "^7.8.0",
+    "@electron-forge/maker-zip": "^7.8.0",
+    "@electron-forge/plugin-auto-unpack-natives": "^7.8.0",
+    "@electron-forge/plugin-vite": "^7.8.0",
     "@types/better-sqlite3": "^7.6.13",
     "@types/iarna__toml": "^2.0.5",
     "@types/node": "^25.0.9",
@@ -128,9 +134,6 @@
     "@vitejs/plugin-react": "^5.1.2",
     "drizzle-kit": "^0.31.8",
     "electron": "40.0.0",
-    "electron-builder": "^26.4.0",
-    "electron-rebuild": "^3.2.9",
-    "electron-vite": "^5.0.0",
     "husky": "^9.1.7",
     "knip": "^5.82.0",
     "postcss": "^8.5.6",
@@ -139,129 +142,5 @@
     "tw-animate-css": "^1.4.0",
     "typescript": "^5.9.3",
     "vite": "^7.3.1"
-  },
-  "build": {
-    "appId": "app.bettercode.desktop",
-    "productName": "BetterCode",
-    "npmRebuild": true,
-    "afterPack": "./scripts/afterPack.js",
-    "directories": {
-      "buildResources": "build",
-      "output": "release"
-    },
-    "files": [
-      "out/**/*",
-      "!**/*.map",
-      "!**/*.js.map",
-      "!**/node_modules/**/*.md",
-      "!**/node_modules/**/*.d.ts",
-      "!**/node_modules/**/*.d.mts",
-      "!**/node_modules/**/LICENSE*",
-      "!**/node_modules/**/CHANGELOG*",
-      "!**/node_modules/**/README*",
-      "!**/node_modules/**/.github/**",
-      "!**/node_modules/**/test/**",
-      "!**/node_modules/**/tests/**",
-      "!**/node_modules/**/__tests__/**",
-      "!**/node_modules/**/example/**",
-      "!**/node_modules/**/examples/**",
-      "!**/node_modules/**/doc/**",
-      "!**/node_modules/**/docs/**",
-      "!**/node_modules/**/*.gyp",
-      "!**/node_modules/**/*.gypi",
-      "!**/node_modules/**/Makefile",
-      "!**/node_modules/sharp/**",
-      "!**/node_modules/@img/**",
-      "!**/node_modules/@pierre/diffs/node_modules/**"
-    ],
-    "extraResources": [
-      {
-        "from": "drizzle",
-        "to": "migrations"
-      },
-      {
-        "from": "resources/bin/${platform}-${arch}",
-        "to": "bin",
-        "filter": [
-          "**/*"
-        ]
-      },
-      {
-        "from": "resources/bin/VERSION",
-        "to": "bin/VERSION"
-      }
-    ],
-    "asar": true,
-    "asarUnpack": [
-      "node_modules/better-sqlite3/**/*",
-      "node_modules/node-pty/**/*",
-      "node_modules/@anthropic-ai/claude-agent-sdk/**/*"
-    ],
-    "mac": {
-      "category": "public.app-category.developer-tools",
-      "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "arm64",
-            "x64"
-          ]
-        },
-        {
-          "target": "zip",
-          "arch": [
-            "arm64",
-            "x64"
-          ]
-        }
-      ],
-      "icon": "build/icon.icns",
-      "hardenedRuntime": true,
-      "gatekeeperAssess": false,
-      "entitlements": "build/entitlements.mac.plist",
-      "entitlementsInherit": "build/entitlements.mac.plist"
-    },
-    "dmg": {
-      "background": "build/dmg-background.png",
-      "window": {
-        "width": 540,
-        "height": 380
-      },
-      "contents": [
-        {
-          "x": 140,
-          "y": 150,
-          "type": "file"
-        },
-        {
-          "x": 400,
-          "y": 150,
-          "type": "link",
-          "path": "/Applications"
-        }
-      ],
-      "iconSize": 80
-    },
-    "win": {
-      "target": [
-        "nsis",
-        "portable"
-      ],
-      "icon": "build/icon.ico"
-    },
-    "linux": {
-      "target": [
-        "AppImage",
-        "deb"
-      ],
-      "icon": "build/icons",
-      "category": "Development"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "installerIcon": "build/icon.ico",
-      "uninstallerIcon": "build/icon.ico"
-    }
   }
 }

@@ -163,17 +163,25 @@ function getNodeManagerPaths(binaryName: string): string[] {
     if (fs.existsSync(nvmVersionsDir)) {
       const versions = fs.readdirSync(nvmVersionsDir);
       versions.sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
-      paths.push(...versions.map((v) => path.join(nvmVersionsDir, v, "bin", binaryName)));
+      paths.push(
+        ...versions.map((v) => path.join(nvmVersionsDir, v, "bin", binaryName)),
+      );
     }
   } catch {}
 
   // fnm paths (~/.local/share/fnm/node-versions/*/installation/bin)
-  const fnmDir = process.env.FNM_DIR || path.join(home, ".local", "share", "fnm", "node-versions");
+  const fnmDir =
+    process.env.FNM_DIR ||
+    path.join(home, ".local", "share", "fnm", "node-versions");
   try {
     if (fs.existsSync(fnmDir)) {
       const versions = fs.readdirSync(fnmDir);
       versions.sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
-      paths.push(...versions.map((v) => path.join(fnmDir, v, "installation", "bin", binaryName)));
+      paths.push(
+        ...versions.map((v) =>
+          path.join(fnmDir, v, "installation", "bin", binaryName),
+        ),
+      );
     }
   } catch {}
 

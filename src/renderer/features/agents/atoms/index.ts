@@ -208,6 +208,15 @@ export const agentsSidebarWidthAtom = atomWithStorage<number>(
   { getOnInit: true },
 );
 
+// Expanded chat IDs in sidebar tree view (persisted)
+// When a chat is selected, it auto-expands to show sub-chats
+export const expandedChatIdsAtom = atomWithStorage<string[]>(
+  "agents:expandedChatIds",
+  [],
+  undefined,
+  { getOnInit: true },
+);
+
 // Preview sidebar (right) width and open state
 export const agentsPreviewSidebarWidthAtom = atomWithStorage<number>(
   "agents-preview-sidebar-width",
@@ -520,3 +529,64 @@ export type UndoItem =
     };
 
 export const undoStackAtom = atom<UndoItem[]>([]);
+
+// Prompt history storage - stores prompts per scope key
+// Key format: "project:{projectId}" or "chat:{chatId}"
+const promptHistoryStorageAtom = atomWithStorage<Record<string, string[]>>(
+  "agents:promptHistory",
+  {},
+  undefined,
+  { getOnInit: true },
+);
+
+const MAX_PROMPT_HISTORY = 100;
+
+// atomFamily to get/set prompt history per scope
+export const promptHistoryAtomFamily = atomFamily((scopeKey: string) =>
+  atom(
+    (get) => get(promptHistoryStorageAtom)[scopeKey] ?? [],
+    (get, set, newPrompt: string | string[]) => {
+      const current = get(promptHistoryStorageAtom);
+      const existing = current[scopeKey] ?? [];
+
+      // Handle both single prompt (add) and full array (set)
+      const updated =
+        typeof newPrompt === "string"
+          ? [...existing.filter((p) => p !== newPrompt), newPrompt] // Dedupe and add to end
+          : newPrompt;
+
+      // Limit size
+      const limited = updated.slice(-MAX_PROMPT_HISTORY);
+      set(promptHistoryStorageAtom, { ...current, [scopeKey]: limited });
+    },
+  ),
+);
+
+// Navigation index per editor instance (NOT persisted - resets on mount)
+// -1 = not navigating (at current input), 0+ = index from end of history
+interface HistoryNavState {
+  index: number;
+  savedInput: string; // Saves current input when starting navigation
+}
+
+export const historyNavAtomFamily = atomFamily((_scopeKey: string) =>
+  atom<HistoryNavState>({ index: -1, savedInput: "" }),
+);
+
+// Added directories per sub-chat (synced from database)
+// Stores additional working directories for context (e.g., /add-dir command)
+const addedDirectoriesStorageAtom = atom<Record<string, string[]>>({});
+
+// atomFamily to get/set added directories per subChatId
+export const addedDirectoriesAtomFamily = atomFamily((subChatId: string) =>
+  atom(
+    (get) => get(addedDirectoriesStorageAtom)[subChatId] ?? [],
+    (get, set, newDirs: string[] | ((prev: string[]) => string[])) => {
+      const current = get(addedDirectoriesStorageAtom);
+      const existing = current[subChatId] ?? [];
+      const updated =
+        typeof newDirs === "function" ? newDirs(existing) : newDirs;
+      set(addedDirectoriesStorageAtom, { ...current, [subChatId]: updated });
+    },
+  ),
+);

@@ -686,7 +686,7 @@ async function getCurrentBranch(repoPath: string): Promise<string | null> {
 /**
  * Result of pre-checkout safety checks
  */
-interface CheckoutSafetyResult {
+export interface CheckoutSafetyResult {
   safe: boolean;
   error?: string;
   hasUncommittedChanges?: boolean;
@@ -701,7 +701,7 @@ interface CheckoutSafetyResult {
  * @param repoPath - Path to the repository
  * @returns Safety check result indicating if checkout is safe
  */
-async function checkBranchCheckoutSafety(
+export async function checkBranchCheckoutSafety(
   repoPath: string,
 ): Promise<CheckoutSafetyResult> {
   const git = simpleGit(repoPath);
@@ -729,16 +729,8 @@ async function checkBranchCheckoutSafety(
       };
     }
 
-    // Block on untracked files as they could be overwritten by checkout
-    if (hasUntrackedFiles) {
-      return {
-        safe: false,
-        error:
-          "Cannot switch branches: you have untracked files that may be overwritten. Please commit, stash, or remove them first.",
-        hasUncommittedChanges: false,
-        hasUntrackedFiles: true,
-      };
-    }
+    // Note: We don't block on untracked files - let git handle it naturally.
+    // Git will fail with a clear message if untracked files would be overwritten.
 
     // Fetch and prune stale remote refs (best-effort, ignore errors if offline)
     try {
@@ -766,7 +758,10 @@ async function checkBranchCheckoutSafety(
  * @param repoPath - Path to the repository
  * @param branch - The branch name to checkout
  */
-async function checkoutBranch(repoPath: string, branch: string): Promise<void> {
+export async function checkoutBranch(
+  repoPath: string,
+  branch: string,
+): Promise<void> {
   const git = simpleGit(repoPath);
 
   // Check if branch exists locally

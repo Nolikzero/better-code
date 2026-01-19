@@ -1,5 +1,11 @@
 import { relations } from "drizzle-orm";
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import {
+  index,
+  integer,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from "drizzle-orm/sqlite-core";
 import { createId } from "../utils";
 
 // ============ PROJECTS ============
@@ -57,6 +63,11 @@ export const chats = sqliteTable(
   (table) => ({
     projectIdIdx: index("chats_project_id_idx").on(table.projectId),
     archivedAtIdx: index("chats_archived_at_idx").on(table.archivedAt),
+    // Unique constraint for branch-centric model (one workspace per project+branch)
+    projectBranchIdx: uniqueIndex("chats_project_branch_idx").on(
+      table.projectId,
+      table.branch,
+    ),
   }),
 );
 
@@ -98,6 +109,8 @@ export const subChats = sqliteTable(
     fileAdditions: integer("file_additions").default(0),
     fileDeletions: integer("file_deletions").default(0),
     fileCount: integer("file_count").default(0),
+    // Additional working directories for context (JSON array of paths)
+    addedDirs: text("added_dirs").default("[]"),
   },
   (table) => ({
     chatIdIdx: index("sub_chats_chat_id_idx").on(table.chatId),

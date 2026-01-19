@@ -27,26 +27,29 @@ import {
   PROVIDER_MODELS,
   type ProviderId,
   soundNotificationsEnabledAtom,
+  subChatProviderOverridesAtom,
 } from "../../../lib/atoms";
 import { appStore } from "../../../lib/jotai-store";
 import { api } from "../../../lib/mock-api";
 import { trpc, trpcClient } from "../../../lib/trpc";
 import { cn } from "../../../lib/utils";
 import { isDesktopApp } from "../../../lib/utils/platform";
-import { AgentsSubChatsSidebar } from "../../sidebar/agents-subchats-sidebar";
+// Sub-chats sidebar removed - sub-chats now shown inline in main sidebar tree view
+// import { AgentsSubChatsSidebar } from "../../sidebar/agents-subchats-sidebar";
 import { useDesktopNotifications } from "../../sidebar/hooks/use-desktop-notifications";
 import { terminalSidebarOpenAtom } from "../../terminal/atoms";
 import { TerminalSidebar } from "../../terminal/terminal-sidebar";
 import {
+  addedDirectoriesAtomFamily,
   agentsPreviewSidebarOpenAtom,
   agentsPreviewSidebarWidthAtom,
   agentsSubChatsSidebarModeAtom,
-  agentsSubChatsSidebarWidthAtom,
   agentsSubChatUnseenChangesAtom,
   agentsUnseenChangesAtom,
   clearLoading,
   compactingSubChatsAtom,
   diffSidebarOpenAtomFamily,
+  historyNavAtomFamily,
   isPlanModeAtom,
   justCreatedIdsAtom,
   loadingSubChatsAtom,
@@ -55,6 +58,7 @@ import {
   pendingPrMessageAtom,
   pendingReviewMessageAtom,
   pendingUserQuestionsAtom,
+  promptHistoryAtomFamily,
   QUESTIONS_SKIPPED_MESSAGE,
   selectedAgentChatIdAtom,
   setLoading,
@@ -74,7 +78,9 @@ import {
 } from "../components/chat-input";
 import { ModeToggleDropdown } from "../components/mode-toggle-dropdown";
 import { ModelSelectorDropdown } from "../components/model-selector-dropdown";
+import { ProviderSelectorDropdown } from "../components/provider-selector-dropdown";
 import { useAgentsFileUpload } from "../hooks/use-agents-file-upload";
+import { useBranchSwitchConfirmation } from "../hooks/use-branch-switch-confirmation";
 import { useChangedFilesTracking } from "../hooks/use-changed-files-tracking";
 import { useChatScroll } from "../hooks/use-chat-scroll";
 import { useDiffManagement } from "../hooks/use-diff-management";
@@ -100,9 +106,11 @@ import {
   type SubChatMeta,
   useAgentSubChatStore,
 } from "../stores/sub-chat-store";
+import { AddedDirectoriesBadge } from "../ui/added-directories-badge";
 import { AgentContextIndicator } from "../ui/agent-context-indicator";
 import { AgentPreview } from "../ui/agent-preview";
 import { AgentUserQuestion } from "../ui/agent-user-question";
+import { BranchSwitchDialog } from "../ui/branch-switch-dialog";
 import { ChatTitleEditor } from "../ui/chat-title-editor";
 import { DiffSidebar } from "../ui/diff-sidebar";
 import { PLAYBACK_SPEEDS, type PlaybackSpeed } from "../ui/message-controls";
@@ -195,7 +203,6 @@ function ChatViewInner({
   chat,
   subChatId,
   parentChatId,
-  isFirstSubChat,
   onAutoRename,
   onCreateNewSubChat,
   teamId,
@@ -210,6 +217,8 @@ function ChatViewInner({
   projectPath,
   isArchived = false,
   onRestoreWorkspace,
+  chatBranch,
+  originalProjectPath,
 }: {
   chat: Chat<any>;
   subChatId: string;
@@ -229,6 +238,8 @@ function ChatViewInner({
   projectPath?: string;
   isArchived?: boolean;
   onRestoreWorkspace?: () => void;
+  chatBranch?: string | null;
+  originalProjectPath?: string;
 }) {
   // UNCONTROLLED: just track if editor has content for send button
   const [hasContent, setHasContent] = useState(false);
@@ -262,6 +273,16 @@ function ChatViewInner({
   // tRPC utils for cache invalidation
   const utils = api.useUtils();
 
+  // Branch switch confirmation hook for sending messages
+  const branchSwitchForMessage = useBranchSwitchConfirmation({
+    projectPath: originalProjectPath,
+    chatBranch,
+    isWorktreeMode:
+      !!projectPath &&
+      !!originalProjectPath &&
+      projectPath !== originalProjectPath,
+  });
+
   // Get sub-chat name from store
   const subChatName = useAgentSubChatStore(
     (state) => state.allSubChats.find((sc) => sc.id === subChatId)?.name || "",
@@ -269,6 +290,9 @@ function ChatViewInner({
 
   // Mutation for renaming sub-chat
   const renameSubChatMutation = api.agents.renameSubChat.useMutation({
+    onSuccess: () => {
+      utils.chats.listWithSubChats.invalidate();
+    },
     onError: (error) => {
       if (error.data?.code === "NOT_FOUND") {
         toast.error("Send a message first before renaming this chat");
@@ -302,6 +326,21 @@ function ChatViewInner({
 
   // Plan mode state (read from global atom)
   const [isPlanMode, setIsPlanMode] = useAtom(isPlanModeAtom);
+
+  // Prompt history - scoped to chat (workspace)
+  const historyKey = `chat:${parentChatId}`;
+  const [history, addToHistory] = useAtom(promptHistoryAtomFamily(historyKey));
+  const [navState, setNavState] = useAtom(historyNavAtomFamily(historyKey));
+
+  // Added directories for /add-dir command (per sub-chat)
+  const [addedDirs, setAddedDirs] = useAtom(
+    addedDirectoriesAtomFamily(subChatId),
+  );
+
+  // Reset navigation when switching sub-chats
+  useEffect(() => {
+    setNavState({ index: -1, savedInput: "" });
+  }, [subChatId, setNavState]);
 
   // Mutation for updating sub-chat mode in database
   const updateSubChatModeMutation = api.agents.updateSubChatMode.useMutation({
@@ -348,10 +387,25 @@ function ChatViewInner({
       if (subChat?.mode) {
         setIsPlanMode(subChat.mode === "plan");
       }
+
+      // Initialize addedDirs from database (stored as JSON string)
+      if ((subChat as any)?.addedDirs) {
+        try {
+          const dirs = JSON.parse((subChat as any).addedDirs);
+          if (Array.isArray(dirs)) {
+            setAddedDirs(dirs);
+          }
+        } catch {
+          // Ignore parse errors
+        }
+      } else {
+        setAddedDirs([]);
+      }
+
       lastInitializedRef.current = subChatId;
     }
-    // Dependencies: Only subChatId - setIsPlanMode is stable, useAgentSubChatStore is external
-  }, [subChatId, setIsPlanMode]);
+    // Dependencies: Only subChatId - setIsPlanMode and setAddedDirs are stable, useAgentSubChatStore is external
+  }, [subChatId, setIsPlanMode, setAddedDirs]);
 
   // Track last mode to detect actual user changes (not store updates)
   const lastIsPlanModeRef = useRef<boolean>(isPlanMode);
@@ -380,8 +434,11 @@ function ChatViewInner({
   }, [isPlanMode, subChatId, updateSubChatModeMutation.mutate]);
 
   // Provider & model selection state
-  // Per-chat override takes priority, then falls back to global default
+  // Per-subchat override takes priority, then per-chat override, then falls back to global default
   const chatProviderOverrides = useAtomValue(chatProviderOverridesAtom);
+  const [subChatProviderOverrides, setSubChatProviderOverrides] = useAtom(
+    subChatProviderOverridesAtom,
+  );
   const [globalDefaultProvider, _setGlobalDefaultProvider] = useAtom(
     defaultProviderIdAtom,
   );
@@ -389,9 +446,49 @@ function ChatViewInner({
     lastSelectedModelByProviderAtom,
   );
 
-  // Use per-chat override if available, otherwise global default
-  const effectiveProvider =
-    chatProviderOverrides[parentChatId] || globalDefaultProvider;
+  // Use per-subchat override first, then per-chat override, otherwise global default
+  const effectiveProvider = useMemo(
+    () =>
+      subChatProviderOverrides[subChatId] ||
+      chatProviderOverrides[parentChatId] ||
+      globalDefaultProvider,
+    [
+      subChatProviderOverrides,
+      subChatId,
+      chatProviderOverrides,
+      parentChatId,
+      globalDefaultProvider,
+    ],
+  );
+
+  // Mutation to persist provider change to database
+  const updateSubChatProviderMutation =
+    trpc.chats.updateSubChatProvider.useMutation();
+
+  // Handler for provider change
+  const handleProviderChange = useCallback(
+    (newProvider: ProviderId) => {
+      // Update local state immediately (optimistic update)
+      setSubChatProviderOverrides((prev) => ({
+        ...prev,
+        [subChatId]: newProvider,
+      }));
+
+      // Update store
+      useAgentSubChatStore
+        .getState()
+        .updateSubChatProvider(subChatId, newProvider);
+
+      // Persist to database (skip for temp subchats)
+      if (!subChatId.startsWith("temp-")) {
+        updateSubChatProviderMutation.mutate({
+          id: subChatId,
+          providerId: newProvider,
+        });
+      }
+    },
+    [subChatId, setSubChatProviderOverrides, updateSubChatProviderMutation],
+  );
 
   // Reset to agent mode when switching to Codex provider (Codex doesn't support plan mode)
   useEffect(() => {
@@ -1030,7 +1127,7 @@ function ChatViewInner({
   useToggleFocusOnCmdEsc(editorRef);
 
   // Auto-trigger AI response when we have initial message but no response yet
-  // Also trigger auto-rename for initial sub-chat with pre-populated message
+  // Also trigger auto-rename for ALL sub-chats with pre-populated message
   // IMPORTANT: Skip if there's an active streamId (prevents double-generation on resume)
   useEffect(() => {
     if (
@@ -1041,7 +1138,8 @@ function ChatViewInner({
     ) {
       hasTriggeredAutoGenerateRef.current = true;
       // Trigger rename for pre-populated initial message (from createAgentChat)
-      if (!hasTriggeredRenameRef.current && isFirstSubChat) {
+      // Applies to ALL sub-chats, not just the first one
+      if (!hasTriggeredRenameRef.current) {
         const firstMsg = messages[0];
         if (firstMsg?.role === "user") {
           const textPart = firstMsg.parts?.find((p: any) => p.type === "text");
@@ -1053,15 +1151,7 @@ function ChatViewInner({
       }
       regenerate();
     }
-  }, [
-    status,
-    messages,
-    regenerate,
-    isFirstSubChat,
-    onAutoRename,
-    streamId,
-    subChatId,
-  ]);
+  }, [status, messages, regenerate, onAutoRename, streamId, subChatId]);
 
   // Auto-focus input when switching to this chat (any sub-chat change)
   // Skip on mobile to prevent keyboard from opening automatically
@@ -1094,20 +1184,8 @@ function ChatViewInner({
     if (!hasText && !hasImages) return;
 
     const text = inputValue.trim();
-    // Clear editor and draft from localStorage
-    editorRef.current?.clear();
-    currentDraftTextRef.current = "";
-    if (parentChatId) {
-      clearSubChatDraft(parentChatId, subChatId);
-    }
 
-    // Trigger auto-rename on first message in a new sub-chat
-    if (messages.length === 0 && !hasTriggeredRenameRef.current) {
-      hasTriggeredRenameRef.current = true;
-      onAutoRename(text || "Image message", subChatId);
-    }
-
-    // Build message parts: images first, then files, then text
+    // Build message parts FIRST (before any state changes)
     // Include base64Data for API transmission
     const parts: any[] = [
       ...images
@@ -1136,6 +1214,32 @@ function ChatViewInner({
 
     if (text) {
       parts.push({ type: "text", text });
+    }
+
+    // Check if branch switch is needed before sending (local mode only)
+    const needsSwitch = await branchSwitchForMessage.checkBranchSwitch(
+      "send-message",
+      { messageParts: parts },
+    );
+    if (needsSwitch) return; // Dialog shown, wait for confirmation
+
+    // Add to prompt history before sending
+    if (text) {
+      addToHistory(text);
+    }
+    setNavState({ index: -1, savedInput: "" });
+
+    // Clear editor and draft from localStorage
+    editorRef.current?.clear();
+    currentDraftTextRef.current = "";
+    if (parentChatId) {
+      clearSubChatDraft(parentChatId, subChatId);
+    }
+
+    // Trigger auto-rename on first message in a new sub-chat
+    if (messages.length === 0 && !hasTriggeredRenameRef.current) {
+      hasTriggeredRenameRef.current = true;
+      onAutoRename(text || "Image message", subChatId);
     }
 
     clearAll();
@@ -1200,6 +1304,148 @@ function ChatViewInner({
     await sendMessage({ role: "user", parts });
   };
 
+  // Handler for confirming branch switch and then sending the pending message
+  const handleConfirmBranchSwitchForMessage = useCallback(async () => {
+    const result = await branchSwitchForMessage.confirmSwitch();
+    if (!result.success) return;
+
+    // Get stored message parts from payload
+    const payload = result.payload as { messageParts: any[] } | undefined;
+    const messageParts = payload?.messageParts;
+    if (!messageParts) return;
+
+    // Extract text from message parts for history
+    const textPart = messageParts.find((p: any) => p.type === "text");
+    const text = textPart?.text || "";
+
+    // Add to prompt history before sending
+    if (text) {
+      addToHistory(text);
+    }
+    setNavState({ index: -1, savedInput: "" });
+
+    // Clear editor and draft from localStorage
+    editorRef.current?.clear();
+    currentDraftTextRef.current = "";
+    if (parentChatId) {
+      clearSubChatDraft(parentChatId, subChatId);
+    }
+
+    // Trigger auto-rename on first message in a new sub-chat
+    if (messages.length === 0 && !hasTriggeredRenameRef.current) {
+      hasTriggeredRenameRef.current = true;
+      onAutoRename(text || "Image message", subChatId);
+    }
+
+    clearAll();
+
+    // Optimistic update: immediately update chat's updatedAt
+    if (teamId) {
+      const now = new Date();
+      utils.agents.getAgentChats.setData(
+        { teamId },
+        (old: ChatListItem[] | undefined) => {
+          if (!old) return old;
+          const updated = old.map((c: ChatListItem) =>
+            c.id === parentChatId ? { ...c, updatedAt: now } : c,
+          );
+          return updated.sort(
+            (a: ChatListItem, b: ChatListItem) =>
+              new Date(b.updatedAt ?? 0).getTime() -
+              new Date(a.updatedAt ?? 0).getTime(),
+          );
+        },
+      );
+    }
+
+    // Desktop app: Optimistic update for chats.list
+    const queryClient = getQueryClient();
+    if (queryClient) {
+      const now = new Date();
+      const queries = queryClient.getQueryCache().getAll();
+      const chatsListQuery = queries.find(
+        (q) =>
+          Array.isArray(q.queryKey) &&
+          Array.isArray(q.queryKey[0]) &&
+          q.queryKey[0][0] === "chats" &&
+          q.queryKey[0][1] === "list",
+      );
+      if (chatsListQuery) {
+        queryClient.setQueryData(
+          chatsListQuery.queryKey,
+          (old: any[] | undefined) => {
+            if (!old) return old;
+            const updated = old.map((c: any) =>
+              c.id === parentChatId ? { ...c, updatedAt: now } : c,
+            );
+            return updated.sort(
+              (a: any, b: any) =>
+                new Date(b.updatedAt).getTime() -
+                new Date(a.updatedAt).getTime(),
+            );
+          },
+        );
+      }
+    }
+
+    // Optimistically update sub-chat timestamp
+    useAgentSubChatStore.getState().updateSubChatTimestamp(subChatId);
+
+    // Force scroll to bottom when sending a message
+    scrollToBottom();
+
+    // Now send the message
+    await sendMessage({ role: "user", parts: messageParts });
+  }, [
+    branchSwitchForMessage,
+    addToHistory,
+    setNavState,
+    parentChatId,
+    subChatId,
+    messages.length,
+    onAutoRename,
+    clearAll,
+    teamId,
+    utils.agents.getAgentChats,
+    scrollToBottom,
+    sendMessage,
+  ]);
+
+  // History navigation handlers
+  const handleArrowUp = useCallback(() => {
+    if (history.length === 0) return false;
+
+    const currentValue = editorRef.current?.getValue() || "";
+
+    if (navState.index === -1) {
+      // Starting navigation - save current input
+      setNavState({ index: 0, savedInput: currentValue });
+      editorRef.current?.setValue(history[history.length - 1] || "");
+    } else if (navState.index < history.length - 1) {
+      // Navigate further back
+      const newIndex = navState.index + 1;
+      setNavState((prev) => ({ ...prev, index: newIndex }));
+      editorRef.current?.setValue(history[history.length - 1 - newIndex] || "");
+    }
+    return true;
+  }, [history, navState, setNavState]);
+
+  const handleArrowDown = useCallback(() => {
+    if (navState.index === -1) return false;
+
+    if (navState.index === 0) {
+      // Return to saved input
+      editorRef.current?.setValue(navState.savedInput);
+      setNavState({ index: -1, savedInput: "" });
+    } else {
+      // Navigate forward
+      const newIndex = navState.index - 1;
+      setNavState((prev) => ({ ...prev, index: newIndex }));
+      editorRef.current?.setValue(history[history.length - 1 - newIndex] || "");
+    }
+    return true;
+  }, [history, navState, setNavState]);
+
   // Wrap the base mention select handler to pass in the editor insert function
   const handleMentionSelect = useCallback(
     (mention: FileMentionOption) => {
@@ -1240,6 +1486,36 @@ function ChatViewInner({
             // Trigger context compaction
             handleCompact();
             break;
+          case "add-dir":
+            // Open native folder picker to add directories
+            (async () => {
+              if (!isDesktopApp()) {
+                toast.error("Folder picker only available in desktop app");
+                return;
+              }
+              const result = await window.desktopApi.dialog.showOpenDialog({
+                title: "Select Additional Directory",
+                properties: ["openDirectory", "multiSelections"],
+              });
+              if (!result.canceled && result.filePaths.length > 0) {
+                // Get current added dirs from DB and merge
+                const currentDirs = addedDirs ?? [];
+                const newDirs = [
+                  ...new Set([...currentDirs, ...result.filePaths]),
+                ];
+                // Save to DB
+                await trpcClient.chats.updateSubChatAddedDirs.mutate({
+                  id: subChatId,
+                  addedDirs: newDirs,
+                });
+                // Update atom state
+                setAddedDirs(newDirs);
+                toast.success(
+                  `Added ${result.filePaths.length} director${result.filePaths.length > 1 ? "ies" : "y"} to context`,
+                );
+              }
+            })();
+            break;
           // Prompt-based commands - auto-send to agent
           case "review":
           case "pr-comments":
@@ -1271,6 +1547,9 @@ function ChatViewInner({
       onCreateNewSubChat,
       handleCompact,
       handleCloseSlashTrigger,
+      subChatId,
+      addedDirs,
+      setAddedDirs,
     ],
   );
 
@@ -1498,6 +1777,8 @@ function ChatViewInner({
                   setIsPlanMode((prev) => !prev);
                 }
               }}
+              onArrowUp={handleArrowUp}
+              onArrowDown={handleArrowDown}
               onPaste={handlePaste}
               onBlur={handleEditorBlur}
               isMobile={isMobile}
@@ -1505,6 +1786,12 @@ function ChatViewInner({
             <ChatInputActions
               leftContent={
                 <>
+                  {/* Provider selector - per-subchat provider selection */}
+                  <ProviderSelectorDropdown
+                    providerId={effectiveProvider}
+                    onProviderChange={handleProviderChange}
+                  />
+
                   {/* Mode toggle (Agent/Plan) - hidden for Codex which doesn't support plan mode */}
                   {effectiveProvider !== "codex" && (
                     <ModeToggleDropdown
@@ -1527,6 +1814,9 @@ function ChatViewInner({
                     open={isModelDropdownOpen}
                     onOpenChange={setIsModelDropdownOpen}
                   />
+
+                  {/* Added directories badge (for /add-dir command) */}
+                  <AddedDirectoriesBadge subChatId={subChatId} />
                 </>
               }
               rightContent={
@@ -1622,6 +1912,16 @@ function ChatViewInner({
           isPlanMode={isPlanMode}
         />
       </div>
+
+      {/* Branch Switch Confirmation Dialog for sending messages */}
+      <BranchSwitchDialog
+        open={branchSwitchForMessage.dialogOpen}
+        onOpenChange={branchSwitchForMessage.setDialogOpen}
+        pendingSwitch={branchSwitchForMessage.pendingSwitch}
+        isPending={branchSwitchForMessage.isPending}
+        onConfirm={handleConfirmBranchSwitchForMessage}
+        onCancel={branchSwitchForMessage.cancelSwitch}
+      />
     </>
   );
 }
@@ -1679,19 +1979,6 @@ export function ChatView({
   const [subChatsSidebarMode, setSubChatsSidebarMode] = useAtom(
     agentsSubChatsSidebarModeAtom,
   );
-
-  // Check if sub-chats data is loaded
-  const subChatsStoreChatId = useAgentSubChatStore((state) => state.chatId);
-  const subChatsCount = useAgentSubChatStore(
-    (state) => state.allSubChats.length,
-  );
-  const isLoadingSubChats =
-    chatId !== null && (subChatsStoreChatId !== chatId || subChatsCount === 0);
-
-  // SubChatsSidebar is open when in sidebar mode and not mobile
-  const isSubChatsSidebarOpen =
-    chatId && subChatsSidebarMode === "sidebar" && !isMobileFullscreen;
-
   // Clear "unseen changes" when chat is opened
   useEffect(() => {
     setUnseenChanges((prev: Set<string>) => {
@@ -1727,8 +2014,16 @@ export function ChatView({
   const utils = api.useUtils();
 
   // tRPC mutations for renaming
-  const renameSubChatMutation = api.agents.renameSubChat.useMutation();
-  const renameChatMutation = api.agents.renameChat.useMutation();
+  const renameSubChatMutation = api.agents.renameSubChat.useMutation({
+    onSuccess: () => {
+      utils.chats.listWithSubChats.invalidate();
+    },
+  });
+  const renameChatMutation = api.agents.renameChat.useMutation({
+    onSuccess: () => {
+      utils.chats.listWithSubChats.invalidate();
+    },
+  });
   const generateSubChatNameMutation =
     api.agents.generateSubChatName.useMutation();
 
@@ -1829,6 +2124,21 @@ export function ChatView({
     }
   }, [chatId, agentChat?.providerId, setChatProviderOverrides]);
 
+  // Restore subchat provider from database when subchat loads
+  const setSubChatProviderOverrides = useSetAtom(subChatProviderOverridesAtom);
+  useEffect(() => {
+    if (!activeSubChatId || !agentSubChats.length) return;
+    const currentSubChat = agentSubChats.find(
+      (sc) => sc.id === activeSubChatId,
+    );
+    if ((currentSubChat as any)?.providerId) {
+      setSubChatProviderOverrides((prev) => ({
+        ...prev,
+        [activeSubChatId]: (currentSubChat as any).providerId as ProviderId,
+      }));
+    }
+  }, [activeSubChatId, agentSubChats, setSubChatProviderOverrides]);
+
   // Get effective provider for this chat (per-chat override or global default)
   const effectiveProvider =
     chatProviderOverrides[chatId] || globalDefaultProvider;
@@ -1838,10 +2148,22 @@ export function ChatView({
 
   // Desktop: use worktreePath instead of sandbox
   const worktreePath = agentChat?.worktreePath as string | null;
+  const branch = agentChat?.branch as string | null;
+  const baseBranch = agentChat?.baseBranch as string | null;
   // Desktop: original project path for MCP config lookup
   const originalProjectPath = (agentChat as any)?.project?.path as
     | string
     | undefined;
+
+  // Branch switch confirmation hook for creating sub-chats
+  const branchSwitchForSubChat = useBranchSwitchConfirmation({
+    projectPath: originalProjectPath,
+    chatBranch: branch,
+    isWorktreeMode:
+      !!worktreePath &&
+      !!originalProjectPath &&
+      worktreePath !== originalProjectPath,
+  });
   // Fallback for web: use sandbox_id
   const sandboxId = agentChat?.sandbox_id ?? undefined;
   const sandboxUrl = sandboxId ? `https://3003-${sandboxId}.e2b.app` : null;
@@ -1921,6 +2243,29 @@ export function ChatView({
 
     // Re-get fresh state after setChatId may have loaded from localStorage
     const freshState = useAgentSubChatStore.getState();
+
+    // Guard: Check if store has "fresh" data from creation that DB doesn't know about yet.
+    // This prevents the race condition where new-chat-form.tsx sets fresh subchat data,
+    // but this effect runs with stale cached agentSubChats and overwrites it.
+    const storeHasFreshData = freshState.allSubChats.some(
+      (sc) => !agentSubChats.find((dbSc) => dbSc.id === sc.id),
+    );
+    if (storeHasFreshData && freshState.allSubChats.length > 0) {
+      // Store has newer data than DB query - preserve it and just validate open tabs
+      const validOpenIds = freshState.openSubChatIds.filter((id) =>
+        freshState.allSubChats.some((sc) => sc.id === id),
+      );
+      if (validOpenIds.length === 0 && freshState.allSubChats.length > 0) {
+        freshState.addToOpenSubChats(freshState.allSubChats[0].id);
+        freshState.setActiveSubChat(freshState.allSubChats[0].id);
+      } else if (validOpenIds.length > 0) {
+        const currentActive = freshState.activeSubChatId;
+        if (!currentActive || !validOpenIds.includes(currentActive)) {
+          freshState.setActiveSubChat(validOpenIds[0]);
+        }
+      }
+      return;
+    }
 
     // Get sub-chats from DB (like Canvas - no isPersistedInDb flag)
     // Build a map of existing local sub-chats to preserve their created_at if DB doesn't have it
@@ -2141,6 +2486,12 @@ export function ChatView({
 
   // Handle creating a new sub-chat
   const handleCreateNewSubChat = useCallback(async () => {
+    // Check if branch switch is needed before creating (local mode only)
+    const needsSwitch =
+      await branchSwitchForSubChat.checkBranchSwitch("create-subchat");
+    if (needsSwitch) return; // Dialog shown, wait for confirmation
+
+    // Proceed with sub-chat creation
     const store = useAgentSubChatStore.getState();
     const subChatMode = isPlanMode ? "plan" : "agent";
 
@@ -2162,6 +2513,37 @@ export function ChatView({
       created_at: new Date().toISOString(),
       mode: subChatMode,
     });
+
+    // Also add to listWithSubChats query cache for sidebar
+    const projectId = agentChat?.projectId;
+    if (projectId) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      trpcUtils.chats.listWithSubChats.setData({ projectId }, (old: any) => {
+        if (!old) return old;
+        return old.map((chat: any) =>
+          chat.id === chatId
+            ? {
+                ...chat,
+                subChats: [
+                  ...(chat.subChats || []),
+                  {
+                    id: newId,
+                    chatId,
+                    name: "New Chat",
+                    mode: subChatMode,
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                    hasPendingPlanApproval: false,
+                    fileAdditions: null,
+                    fileDeletions: null,
+                    fileCount: null,
+                  },
+                ],
+              }
+            : chat,
+        );
+      });
+    }
 
     // Add to open tabs and set as active
     store.addToOpenSubChats(newId);
@@ -2273,7 +2655,39 @@ export function ChatView({
     notifyAgentComplete,
     notifyPlanComplete,
     agentChat?.name,
+    agentChat?.projectId,
+    trpcUtils.chats.listWithSubChats,
+    branchSwitchForSubChat,
   ]);
+
+  // Handler for confirming branch switch and creating sub-chat
+  const handleConfirmBranchSwitchForNewSubChat = useCallback(async () => {
+    const result = await branchSwitchForSubChat.confirmSwitch();
+    if (!result.success) return;
+
+    // Create sub-chat after successful branch switch
+    const store = useAgentSubChatStore.getState();
+    const subChatMode = appStore.get(isPlanModeAtom) ? "plan" : "agent";
+
+    const newSubChat = await trpcClient.chats.createSubChat.mutate({
+      chatId,
+      name: "New Chat",
+      mode: subChatMode,
+    });
+    const newId = newSubChat.id;
+
+    setJustCreatedIds((prev) => new Set([...prev, newId]));
+
+    store.addToAllSubChats({
+      id: newId,
+      name: "New Chat",
+      created_at: new Date().toISOString(),
+      mode: subChatMode,
+    });
+
+    store.addToOpenSubChats(newId);
+    store.setActiveSubChat(newId);
+  }, [branchSwitchForSubChat, chatId, setJustCreatedIds]);
 
   // Multi-select state for sub-chats (for Cmd+W bulk close)
   const selectedSubChatIds = useAtomValue(selectedSubChatIdsAtom);
@@ -2424,10 +2838,57 @@ export function ChatView({
           await renameChatMutation.mutateAsync(input);
         },
         updateSubChatName: (subChatIdToUpdate, name) => {
+          console.log("[updateSubChatName] Called with:", {
+            subChatIdToUpdate,
+            name,
+          });
           // Update local store
           useAgentSubChatStore
             .getState()
             .updateSubChatName(subChatIdToUpdate, name);
+          // Optimistic update for sidebar list (listWithSubChats query)
+          const projectId = agentChat?.projectId;
+          console.log("[updateSubChatName] projectId:", projectId);
+          if (projectId) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            trpcUtils.chats.listWithSubChats.setData(
+              { projectId },
+              (old: any) => {
+                console.log(
+                  "[updateSubChatName] Cache before update:",
+                  JSON.stringify(
+                    old?.map((c: any) => ({
+                      id: c.id,
+                      subChats: c.subChats?.map((sc: any) => ({
+                        id: sc.id,
+                        name: sc.name,
+                      })),
+                    })),
+                  ),
+                );
+                if (!old) return old;
+                const updated = old.map((chat: any) => ({
+                  ...chat,
+                  subChats: chat.subChats?.map((sc: any) =>
+                    sc.id === subChatIdToUpdate ? { ...sc, name } : sc,
+                  ),
+                }));
+                console.log(
+                  "[updateSubChatName] Cache after update:",
+                  JSON.stringify(
+                    updated?.map((c: any) => ({
+                      id: c.id,
+                      subChats: c.subChats?.map((sc: any) => ({
+                        id: sc.id,
+                        name: sc.name,
+                      })),
+                    })),
+                  ),
+                );
+                return updated;
+              },
+            );
+          }
           // Also update query cache so init effect doesn't overwrite
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           utils.agents.getAgentChat.setData({ chatId }, (old: any) => {
@@ -2463,6 +2924,20 @@ export function ChatView({
           });
         },
         updateChatName: (chatIdToUpdate, name) => {
+          // Optimistic update for sidebar list (listWithSubChats query)
+          const projectId = agentChat?.projectId;
+          if (projectId) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            trpcUtils.chats.listWithSubChats.setData(
+              { projectId },
+              (old: any) => {
+                if (!old) return old;
+                return old.map((chat: any) =>
+                  chat.id === chatIdToUpdate ? { ...chat, name } : chat,
+                );
+              },
+            );
+          }
           // Optimistic update for sidebar (list query)
           // On desktop, selectedTeamId is always null, so we update unconditionally
           utils.agents.getAgentChats.setData(
@@ -2488,6 +2963,7 @@ export function ChatView({
     [
       chatId,
       agentSubChats,
+      agentChat,
       effectiveProvider,
       generateSubChatNameMutation,
       renameSubChatMutation,
@@ -2495,6 +2971,7 @@ export function ChatView({
       selectedTeamId,
       utils.agents.getAgentChats,
       utils.agents.getAgentChat,
+      trpcUtils.chats.listWithSubChats,
       originalProjectPath,
       worktreePath,
     ],
@@ -2525,266 +3002,267 @@ export function ChatView({
   // No early return - let the UI render with loading state handled by activeChat check below
 
   return (
-    <div className="flex h-full flex-col">
-      {/* Main content */}
-      <div className="flex-1 overflow-hidden flex">
-        {/* Chat Panel */}
-        <div
-          className="flex-1 flex flex-col overflow-hidden relative"
-          style={{ minWidth: "350px" }}
-        >
-          {/* Chat Header */}
-          {!shouldHideChatHeader && (
-            <ChatHeader
-              chatId={chatId}
-              isMobileFullscreen={isMobileFullscreen}
-              isSubChatsSidebarOpen={subChatsSidebarMode === "sidebar"}
-              isSidebarOpen={isSidebarOpen}
-              onToggleSidebar={onToggleSidebar}
-              hasAnyUnseenChanges={hasAnyUnseenChanges}
-              onCreateNewSubChat={handleCreateNewSubChat}
-              onBackToChats={onBackToChats}
-              canOpenPreview={canOpenPreview}
-              isPreviewSidebarOpen={isPreviewSidebarOpen}
-              onOpenPreview={() => setIsPreviewSidebarOpen(true)}
-              sandboxId={sandboxId}
-              canOpenDiff={canOpenDiff}
-              isDiffSidebarOpen={isDiffSidebarOpen}
-              diffStats={diffStats}
-              onOpenDiff={() => setIsDiffSidebarOpen(true)}
-              canOpenTerminal={!!worktreePath}
-              isTerminalSidebarOpen={isTerminalSidebarOpen}
-              onOpenTerminal={() => setIsTerminalSidebarOpen(true)}
-              worktreePath={worktreePath}
-              onOpenSubChatsSidebar={() => setSubChatsSidebarMode("sidebar")}
-              isArchived={isArchived}
-              onRestoreWorkspace={handleRestoreWorkspace}
-              isRestoring={restoreWorkspaceMutation.isPending}
-              originalProjectPath={originalProjectPath}
-              effectiveProvider={effectiveProvider}
-            />
-          )}
-
-          {/* Chat Content */}
-          {activeChat && activeSubChatId ? (
-            <ChatViewInner
-              key={activeSubChatId}
-              chat={activeChat}
-              subChatId={activeSubChatId}
-              parentChatId={chatId}
-              isFirstSubChat={isFirstSubChatActive}
-              onAutoRename={handleAutoRename}
-              onCreateNewSubChat={handleCreateNewSubChat}
-              teamId={selectedTeamId || undefined}
-              repository={repository}
-              streamId={agentChatStore.getStreamId(activeSubChatId)}
-              isMobile={isMobileFullscreen}
-              isSubChatsSidebarOpen={subChatsSidebarMode === "sidebar"}
-              sandboxId={sandboxId || undefined}
-              projectPath={worktreePath || undefined}
-              isArchived={isArchived}
-              onRestoreWorkspace={handleRestoreWorkspace}
-            />
-          ) : (
-            <>
-              {/* Empty chat area - no loading indicator */}
-              <div className="flex-1" />
-
-              {/* Disabled input while loading */}
-              <div className="px-2 pb-2">
-                <div className="w-full max-w-2xl mx-auto">
-                  <div className="relative w-full">
-                    <PromptInput
-                      className="border bg-input-background relative z-10 p-2 rounded-xs opacity-50 pointer-events-none"
-                      maxHeight={200}
-                    >
-                      <div className="p-1 text-muted-foreground text-sm">
-                        Plan, @ for context, / for commands
-                      </div>
-                      <PromptInputActions className="w-full">
-                        <div className="flex items-center gap-0.5 flex-1 min-w-0">
-                          {/* Mode selector placeholder */}
-                          <button
-                            disabled
-                            className="flex items-center gap-1.5 px-2 py-1 text-sm text-muted-foreground rounded-md cursor-not-allowed"
-                          >
-                            <AgentIcon className="h-3.5 w-3.5" />
-                            <span>Agent</span>
-                            <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
-                          </button>
-
-                          {/* Model selector placeholder */}
-                          <button
-                            disabled
-                            className="flex items-center gap-1.5 px-2 py-1 text-sm text-muted-foreground rounded-md cursor-not-allowed"
-                          >
-                            {getProviderIcon("claude", "h-3.5 w-3.5")}
-                            <span>
-                              Sonnet{" "}
-                              <span className="text-muted-foreground">4.5</span>
-                            </span>
-                            <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
-                          </button>
-                        </div>
-                        <div className="flex items-center gap-0.5 ml-auto shrink-0">
-                          {/* Attach button placeholder */}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            disabled
-                            className="h-7 w-7 rounded-xs cursor-not-allowed"
-                          >
-                            <AttachIcon className="h-4 w-4" />
-                          </Button>
-
-                          {/* Send button */}
-                          <div className="ml-1">
-                            <AgentSendButton
-                              disabled={true}
-                              onClick={() => {}}
-                            />
-                          </div>
-                        </div>
-                      </PromptInputActions>
-                    </PromptInput>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Sub-chats Sidebar - on the right */}
-        {!isMobileFullscreen && (
-          <ResizableSidebar
-            isOpen={!!isSubChatsSidebarOpen}
-            onClose={() => setSubChatsSidebarMode("tabs")}
-            widthAtom={agentsSubChatsSidebarWidthAtom}
-            minWidth={200}
-            maxWidth={400}
-            side="right"
-            animationDuration={0}
-            initialWidth={0}
-            exitWidth={0}
-            disableClickToClose={true}
-            className="bg-background border-l"
-            style={{ borderLeftWidth: "0.5px" }}
+    <>
+      <div className="flex h-full flex-col">
+        {/* Main content */}
+        <div className="flex-1 overflow-hidden flex">
+          {/* Chat Panel */}
+          <div
+            className="flex-1 flex flex-col overflow-hidden relative"
+            style={{ minWidth: "350px" }}
           >
-            <AgentsSubChatsSidebar
-              onClose={() => setSubChatsSidebarMode("tabs")}
-              isLoading={isLoadingSubChats}
-              agentName={agentChat?.name ?? undefined}
-            />
-          </ResizableSidebar>
-        )}
-
-        {/* Diff Sidebar - hidden on mobile fullscreen and when diff is not available */}
-        {canOpenDiff && !isMobileFullscreen && (
-          <DiffSidebar
-            chatId={chatId}
-            sandboxId={sandboxId}
-            worktreePath={worktreePath}
-            repository={repository}
-            diffStats={diffStats}
-            diffContent={diffContent}
-            parsedFileDiffs={parsedFileDiffs}
-            prefetchedFileContents={prefetchedFileContents}
-            isOpen={isDiffSidebarOpen}
-            onClose={() => setIsDiffSidebarOpen(false)}
-            diffSidebarWidth={diffSidebarWidth}
-            diffSidebarRef={diffSidebarRef}
-            prUrl={agentChat?.prUrl}
-            prNumber={agentChat?.prNumber}
-            hasPrNumber={hasPrNumber}
-            isPrOpen={isPrOpen}
-            onCreatePr={handleCreatePr}
-            onCommitToPr={handleCommitToPr}
-            onMergePr={handleMergePr}
-            onReview={handleReview}
-            isCreatingPr={isCreatingPr}
-            isCommittingToPr={isCommittingToPr}
-            isReviewing={isReviewing}
-            isMergingPr={mergePrMutation.isPending}
-          />
-        )}
-
-        {/* Preview Sidebar - hidden on mobile fullscreen and when preview is not available */}
-        {canOpenPreview && !isMobileFullscreen && (
-          <ResizableSidebar
-            isOpen={isPreviewSidebarOpen}
-            onClose={() => setIsPreviewSidebarOpen(false)}
-            widthAtom={agentsPreviewSidebarWidthAtom}
-            minWidth={350}
-            side="right"
-            animationDuration={0}
-            initialWidth={0}
-            exitWidth={0}
-            showResizeTooltip={true}
-            className="bg-tl-background border-l"
-            style={{ borderLeftWidth: "0.5px" }}
-          >
-            {isQuickSetup ? (
-              <div className="flex flex-col h-full">
-                {/* Header with close button */}
-                <div className="flex items-center justify-end px-3 h-10 bg-tl-background shrink-0 border-b border-border/50">
-                  <Button
-                    variant="ghost"
-                    className="h-7 w-7 p-0 hover:bg-muted transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] rounded-md"
-                    onClick={() => setIsPreviewSidebarOpen(false)}
-                  >
-                    <IconCloseSidebarRight className="h-4 w-4 text-muted-foreground" />
-                  </Button>
-                </div>
-                {/* Content */}
-                <div className="flex flex-col items-center justify-center flex-1 p-6 text-center">
-                  <div className="text-muted-foreground mb-4">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="48"
-                      height="48"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="opacity-50"
-                    >
-                      <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
-                      <line x1="8" y1="21" x2="16" y2="21" />
-                      <line x1="12" y1="17" x2="12" y2="21" />
-                    </svg>
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Preview not available
-                  </p>
-                  <p className="text-xs text-muted-foreground/70 max-w-[200px]">
-                    Set up this repository to enable live preview
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <AgentPreview
+            {/* Chat Header */}
+            {!shouldHideChatHeader && (
+              <ChatHeader
                 chatId={chatId}
+                isMobileFullscreen={isMobileFullscreen}
+                isSubChatsSidebarOpen={subChatsSidebarMode === "sidebar"}
+                isSidebarOpen={isSidebarOpen}
+                onToggleSidebar={onToggleSidebar}
+                hasAnyUnseenChanges={hasAnyUnseenChanges}
+                onCreateNewSubChat={handleCreateNewSubChat}
+                onBackToChats={onBackToChats}
+                canOpenPreview={canOpenPreview}
+                isPreviewSidebarOpen={isPreviewSidebarOpen}
+                onOpenPreview={() => setIsPreviewSidebarOpen(true)}
                 sandboxId={sandboxId}
-                port={previewPort}
-                repository={repository}
-                hideHeader={false}
-                onClose={() => setIsPreviewSidebarOpen(false)}
+                canOpenDiff={canOpenDiff}
+                isDiffSidebarOpen={isDiffSidebarOpen}
+                diffStats={diffStats}
+                onOpenDiff={() => setIsDiffSidebarOpen(true)}
+                canOpenTerminal={!!worktreePath}
+                isTerminalSidebarOpen={isTerminalSidebarOpen}
+                onOpenTerminal={() => setIsTerminalSidebarOpen(true)}
+                worktreePath={worktreePath}
+                branch={branch}
+                baseBranch={baseBranch}
+                onOpenSubChatsSidebar={() => setSubChatsSidebarMode("sidebar")}
+                isArchived={isArchived}
+                onRestoreWorkspace={handleRestoreWorkspace}
+                isRestoring={restoreWorkspaceMutation.isPending}
+                originalProjectPath={originalProjectPath}
+                effectiveProvider={effectiveProvider}
               />
             )}
-          </ResizableSidebar>
-        )}
 
-        {/* Terminal Sidebar - shows when worktree exists (desktop only) */}
-        {worktreePath && (
-          <TerminalSidebar
-            chatId={chatId}
-            cwd={worktreePath}
-            workspaceId={chatId}
-          />
-        )}
+            {/* Chat Content */}
+            {activeChat && activeSubChatId ? (
+              <ChatViewInner
+                key={activeSubChatId}
+                chat={activeChat}
+                subChatId={activeSubChatId}
+                parentChatId={chatId}
+                isFirstSubChat={isFirstSubChatActive}
+                onAutoRename={handleAutoRename}
+                onCreateNewSubChat={handleCreateNewSubChat}
+                teamId={selectedTeamId || undefined}
+                repository={repository}
+                streamId={agentChatStore.getStreamId(activeSubChatId)}
+                isMobile={isMobileFullscreen}
+                isSubChatsSidebarOpen={subChatsSidebarMode === "sidebar"}
+                sandboxId={sandboxId || undefined}
+                projectPath={worktreePath || undefined}
+                isArchived={isArchived}
+                onRestoreWorkspace={handleRestoreWorkspace}
+                chatBranch={branch}
+                originalProjectPath={originalProjectPath}
+              />
+            ) : (
+              <>
+                {/* Empty chat area - no loading indicator */}
+                <div className="flex-1" />
+
+                {/* Disabled input while loading */}
+                <div className="px-2 pb-2">
+                  <div className="w-full max-w-2xl mx-auto">
+                    <div className="relative w-full">
+                      <PromptInput
+                        className="border bg-input-background relative z-10 p-2 rounded-xs opacity-50 pointer-events-none"
+                        maxHeight={200}
+                      >
+                        <div className="p-1 text-muted-foreground text-sm">
+                          Plan, @ for context, / for commands
+                        </div>
+                        <PromptInputActions className="w-full">
+                          <div className="flex items-center gap-0.5 flex-1 min-w-0">
+                            {/* Mode selector placeholder */}
+                            <button
+                              disabled
+                              className="flex items-center gap-1.5 px-2 py-1 text-sm text-muted-foreground rounded-md cursor-not-allowed"
+                            >
+                              <AgentIcon className="h-3.5 w-3.5" />
+                              <span>Agent</span>
+                              <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
+                            </button>
+
+                            {/* Model selector placeholder */}
+                            <button
+                              disabled
+                              className="flex items-center gap-1.5 px-2 py-1 text-sm text-muted-foreground rounded-md cursor-not-allowed"
+                            >
+                              {getProviderIcon("claude", "h-3.5 w-3.5")}
+                              <span>
+                                Sonnet{" "}
+                                <span className="text-muted-foreground">
+                                  4.5
+                                </span>
+                              </span>
+                              <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
+                            </button>
+                          </div>
+                          <div className="flex items-center gap-0.5 ml-auto shrink-0">
+                            {/* Attach button placeholder */}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              disabled
+                              className="h-7 w-7 rounded-xs cursor-not-allowed"
+                            >
+                              <AttachIcon className="h-4 w-4" />
+                            </Button>
+
+                            {/* Send button */}
+                            <div className="ml-1">
+                              <AgentSendButton
+                                disabled={true}
+                                onClick={() => {}}
+                              />
+                            </div>
+                          </div>
+                        </PromptInputActions>
+                      </PromptInput>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Diff Sidebar - hidden on mobile fullscreen and when diff is not available */}
+          {canOpenDiff && !isMobileFullscreen && (
+            <DiffSidebar
+              chatId={chatId}
+              sandboxId={sandboxId}
+              worktreePath={worktreePath}
+              repository={repository}
+              diffStats={diffStats}
+              diffContent={diffContent}
+              parsedFileDiffs={parsedFileDiffs}
+              prefetchedFileContents={prefetchedFileContents}
+              isOpen={isDiffSidebarOpen}
+              onClose={() => setIsDiffSidebarOpen(false)}
+              diffSidebarWidth={diffSidebarWidth}
+              diffSidebarRef={diffSidebarRef}
+              prUrl={agentChat?.prUrl}
+              prNumber={agentChat?.prNumber}
+              hasPrNumber={hasPrNumber}
+              isPrOpen={isPrOpen}
+              onCreatePr={handleCreatePr}
+              onCommitToPr={handleCommitToPr}
+              onMergePr={handleMergePr}
+              onReview={handleReview}
+              isCreatingPr={isCreatingPr}
+              isCommittingToPr={isCommittingToPr}
+              isReviewing={isReviewing}
+              isMergingPr={mergePrMutation.isPending}
+            />
+          )}
+
+          {/* Preview Sidebar - hidden on mobile fullscreen and when preview is not available */}
+          {canOpenPreview && !isMobileFullscreen && (
+            <ResizableSidebar
+              isOpen={isPreviewSidebarOpen}
+              onClose={() => setIsPreviewSidebarOpen(false)}
+              widthAtom={agentsPreviewSidebarWidthAtom}
+              minWidth={350}
+              side="right"
+              animationDuration={0}
+              initialWidth={0}
+              exitWidth={0}
+              showResizeTooltip={true}
+              className="bg-tl-background border-l"
+              style={{ borderLeftWidth: "0.5px" }}
+            >
+              {isQuickSetup ? (
+                <div className="flex flex-col h-full">
+                  {/* Header with close button */}
+                  <div className="flex items-center justify-end px-3 h-10 bg-tl-background shrink-0 border-b border-border/50">
+                    <Button
+                      variant="ghost"
+                      className="h-7 w-7 p-0 hover:bg-muted transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] rounded-md"
+                      onClick={() => setIsPreviewSidebarOpen(false)}
+                    >
+                      <IconCloseSidebarRight className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                  </div>
+                  {/* Content */}
+                  <div className="flex flex-col items-center justify-center flex-1 p-6 text-center">
+                    <div className="text-muted-foreground mb-4">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="48"
+                        height="48"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="opacity-50"
+                      >
+                        <rect
+                          x="2"
+                          y="3"
+                          width="20"
+                          height="14"
+                          rx="2"
+                          ry="2"
+                        />
+                        <line x1="8" y1="21" x2="16" y2="21" />
+                        <line x1="12" y1="17" x2="12" y2="21" />
+                      </svg>
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Preview not available
+                    </p>
+                    <p className="text-xs text-muted-foreground/70 max-w-[200px]">
+                      Set up this repository to enable live preview
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <AgentPreview
+                  chatId={chatId}
+                  sandboxId={sandboxId}
+                  port={previewPort}
+                  repository={repository}
+                  hideHeader={false}
+                  onClose={() => setIsPreviewSidebarOpen(false)}
+                />
+              )}
+            </ResizableSidebar>
+          )}
+
+          {/* Terminal Sidebar - shows when worktree exists (desktop only) */}
+          {worktreePath && (
+            <TerminalSidebar
+              chatId={chatId}
+              cwd={worktreePath}
+              workspaceId={chatId}
+            />
+          )}
+        </div>
       </div>
-    </div>
+
+      {/* Branch Switch Confirmation Dialog */}
+      <BranchSwitchDialog
+        open={branchSwitchForSubChat.dialogOpen}
+        onOpenChange={branchSwitchForSubChat.setDialogOpen}
+        pendingSwitch={branchSwitchForSubChat.pendingSwitch}
+        isPending={branchSwitchForSubChat.isPending}
+        onConfirm={handleConfirmBranchSwitchForNewSubChat}
+        onCancel={branchSwitchForSubChat.cancelSwitch}
+      />
+    </>
   );
 }

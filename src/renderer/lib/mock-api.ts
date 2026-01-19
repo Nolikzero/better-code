@@ -251,6 +251,28 @@ export const api = {
         };
       },
     },
+    updateSubChatProvider: {
+      useMutation: (opts?: { onSuccess?: AnyFn; onError?: AnyFn }) => {
+        const mutation = trpc.chats.updateSubChatProvider.useMutation({
+          onSuccess: (data) => opts?.onSuccess?.(data),
+          onError: (err) => opts?.onError?.(err),
+        });
+        return {
+          mutate: (args?: {
+            subChatId: string;
+            providerId: "claude" | "codex";
+          }) => {
+            if (args?.subChatId && args?.providerId) {
+              mutation.mutate({
+                id: args.subChatId,
+                providerId: args.providerId,
+              });
+            }
+          },
+          isPending: mutation.isPending,
+        };
+      },
+    },
     // Desktop stubs - not needed for local development
     createAgentPr: {
       useMutation: (opts?: { onSuccess?: AnyFn; onError?: AnyFn }) => ({
@@ -372,6 +394,11 @@ export const api = {
         },
         getUserBalance: {
           invalidate: async () => {},
+        },
+      },
+      chats: {
+        listWithSubChats: {
+          invalidate: async () => utils.chats.listWithSubChats.invalidate(),
         },
       },
     };

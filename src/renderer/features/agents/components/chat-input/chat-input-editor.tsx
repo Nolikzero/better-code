@@ -21,6 +21,10 @@ export interface ChatInputEditorProps {
   // Mode switching
   onShiftTab?: () => void;
 
+  // History navigation
+  onArrowUp?: () => boolean;
+  onArrowDown?: () => boolean;
+
   // Clipboard
   onPaste?: (e: React.ClipboardEvent) => void;
 
@@ -44,6 +48,8 @@ export function ChatInputEditor({
   onContentChange,
   onSubmit,
   onShiftTab,
+  onArrowUp,
+  onArrowDown,
   onPaste,
   onBlur,
   placeholder = "Plan, @ for context, / for commands",
@@ -73,6 +79,8 @@ export function ChatInputEditor({
         onContentChange={onContentChange}
         onSubmit={onSubmit}
         onShiftTab={onShiftTab}
+        onArrowUp={onArrowUp}
+        onArrowDown={onArrowDown}
         placeholder={placeholder}
         className={cn(
           "bg-transparent overflow-y-auto p-1",

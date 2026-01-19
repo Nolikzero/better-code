@@ -2,10 +2,11 @@ import { create } from "zustand";
 
 export interface SubChatMeta {
   id: string;
-  name: string;
+  name: string | null;
   created_at?: string;
   updated_at?: string;
-  mode?: "plan" | "agent";
+  mode?: "plan" | "agent" | string;
+  providerId?: "claude" | "codex" | string;
 }
 
 interface AgentSubChatStore {
@@ -29,6 +30,10 @@ interface AgentSubChatStore {
   addToAllSubChats: (subChat: SubChatMeta) => void;
   updateSubChatName: (subChatId: string, name: string) => void;
   updateSubChatMode: (subChatId: string, mode: "plan" | "agent") => void;
+  updateSubChatProvider: (
+    subChatId: string,
+    providerId: "claude" | "codex",
+  ) => void;
   updateSubChatTimestamp: (subChatId: string) => void;
   reset: () => void;
 }
@@ -181,6 +186,15 @@ export const useAgentSubChatStore = create<AgentSubChatStore>((set, get) => ({
     set({
       allSubChats: allSubChats.map((sc) =>
         sc.id === subChatId ? { ...sc, mode } : sc,
+      ),
+    });
+  },
+
+  updateSubChatProvider: (subChatId, providerId) => {
+    const { allSubChats } = get();
+    set({
+      allSubChats: allSubChats.map((sc) =>
+        sc.id === subChatId ? { ...sc, providerId } : sc,
       ),
     });
   },

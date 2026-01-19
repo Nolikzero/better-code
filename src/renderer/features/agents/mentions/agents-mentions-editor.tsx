@@ -40,9 +40,50 @@ type AgentsMentionsEditorProps = {
   disabled?: boolean;
   onPaste?: (e: React.ClipboardEvent) => void;
   onShiftTab?: () => void; // callback for Shift+Tab (e.g., mode switching)
+  onArrowUp?: () => boolean; // callback for ArrowUp (history navigation), return true if handled
+  onArrowDown?: () => boolean; // callback for ArrowDown (history navigation), return true if handled
   onFocus?: () => void;
   onBlur?: () => void;
 };
+
+// Helper to check if cursor is at the start of the editor
+function isCursorAtStart(editor: HTMLDivElement | null): boolean {
+  if (!editor) return true;
+  if (!editor.textContent) return true; // Empty = at start
+
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return true;
+
+  const range = sel.getRangeAt(0);
+  if (!range.collapsed) return false; // Has selection
+
+  // Check if cursor is at the very beginning
+  // Walk the tree to count characters before cursor
+  let charCount = 0;
+  const walker = document.createTreeWalker(
+    editor,
+    NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT,
+  );
+  let node: Node | null = walker.nextNode();
+
+  while (node) {
+    if (node === range.startContainer) {
+      charCount += range.startOffset;
+      break;
+    }
+    if (node.nodeType === Node.TEXT_NODE) {
+      charCount += (node.textContent || "").length;
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      const el = node as HTMLElement;
+      if (el.hasAttribute("data-mention-id")) {
+        charCount += 1; // Count mention as 1 char for position check
+      }
+    }
+    node = walker.nextNode();
+  }
+
+  return charCount === 0;
+}
 
 // Memoized to prevent re-renders when parent re-renders
 export const AgentsMentionsEditor = memo(
@@ -61,6 +102,8 @@ export const AgentsMentionsEditor = memo(
         disabled,
         onPaste,
         onShiftTab,
+        onArrowUp,
+        onArrowDown,
         onFocus,
         onBlur,
       },
@@ -329,8 +372,32 @@ export const AgentsMentionsEditor = memo(
             e.preventDefault();
             onShiftTab?.();
           }
+          // Arrow key history navigation
+          if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+            // Don't interfere with dropdown navigation
+            if (triggerActive.current || slashTriggerActive.current) {
+              return;
+            }
+
+            // Only navigate history when cursor is at start or input is empty
+            if (!isCursorAtStart(editorRef.current)) {
+              return;
+            }
+
+            const handler = e.key === "ArrowUp" ? onArrowUp : onArrowDown;
+            if (handler?.()) {
+              e.preventDefault();
+            }
+          }
         },
-        [onSubmit, onCloseTrigger, onCloseSlashTrigger, onShiftTab],
+        [
+          onSubmit,
+          onCloseTrigger,
+          onCloseSlashTrigger,
+          onShiftTab,
+          onArrowUp,
+          onArrowDown,
+        ],
       );
 
       // Expose methods via ref (UNCONTROLLED pattern)

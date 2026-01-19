@@ -160,6 +160,24 @@ contextBridge.exposeInMainWorld("desktopApi", {
   logout: async () => {
     console.log("[Auth] Logout requested - use 'claude logout' in terminal");
   },
+
+  // Dialog
+  dialog: {
+    showOpenDialog: (options: {
+      title?: string;
+      properties?: Array<
+        | "openFile"
+        | "openDirectory"
+        | "multiSelections"
+        | "showHiddenFiles"
+        | "createDirectory"
+        | "promptToCreate"
+        | "noResolveAliases"
+        | "treatPackageAsDirectory"
+        | "dontAddToRecent"
+      >;
+    }) => ipcRenderer.invoke("dialog:showOpenDialog", options),
+  },
 });
 
 // Type definitions
@@ -239,6 +257,23 @@ export interface DesktopApi {
     username: string | null;
   } | null>;
   logout: () => Promise<void>;
+  // Dialog
+  dialog: {
+    showOpenDialog: (options: {
+      title?: string;
+      properties?: Array<
+        | "openFile"
+        | "openDirectory"
+        | "multiSelections"
+        | "showHiddenFiles"
+        | "createDirectory"
+        | "promptToCreate"
+        | "noResolveAliases"
+        | "treatPackageAsDirectory"
+        | "dontAddToRecent"
+      >;
+    }) => Promise<{ canceled: boolean; filePaths: string[] }>;
+  };
 }
 
 declare global {

@@ -35,6 +35,8 @@ export interface ChatSessionOptions {
   maxThinkingTokens?: number;
   images?: ImageAttachment[];
   abortController: AbortController;
+  // Additional working directories (for /add-dir command)
+  addDirs?: string[];
   // Codex-specific options
   sandboxMode?: SandboxMode;
   approvalPolicy?: ApprovalPolicy;

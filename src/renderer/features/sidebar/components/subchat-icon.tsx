@@ -9,7 +9,7 @@ import {
 import { cn } from "../../../lib/utils";
 
 interface SubChatIconProps {
-  mode: "agent" | "plan";
+  mode: "agent" | "plan" | string;
   isActive: boolean;
   isLoading: boolean;
   hasUnseenChanges?: boolean;

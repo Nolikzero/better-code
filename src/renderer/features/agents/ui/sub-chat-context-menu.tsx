@@ -1,3 +1,4 @@
+import { Trash2 } from "lucide-react";
 import { useMemo } from "react";
 import {
   ContextMenuContent,
@@ -27,6 +28,7 @@ interface SubChatContextMenuProps {
   onArchive: (subChatId: string) => void;
   onArchiveOthers: (subChatId: string) => void;
   onArchiveAllBelow?: (subChatId: string) => void;
+  onDelete?: (subChatId: string) => void;
   isOnlyChat: boolean;
   currentIndex?: number;
   totalCount?: number;
@@ -47,6 +49,7 @@ export function SubChatContextMenu({
   onArchive,
   onArchiveOthers,
   onArchiveAllBelow,
+  onDelete,
   isOnlyChat,
   currentIndex,
   totalCount,
@@ -117,6 +120,18 @@ export function SubChatContextMenu({
             disabled={isOnlyChat}
           >
             Archive other chats
+          </ContextMenuItem>
+        </>
+      )}
+      {onDelete && (
+        <>
+          <ContextMenuSeparator />
+          <ContextMenuItem
+            onClick={() => onDelete(subChat.id)}
+            className="text-destructive focus:text-destructive"
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete chat permanently
           </ContextMenuItem>
         </>
       )}

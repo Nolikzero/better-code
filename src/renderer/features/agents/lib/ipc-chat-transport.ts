@@ -11,6 +11,7 @@ import {
   lastSelectedModelByProviderAtom,
   type ProviderId,
   sessionInfoAtom,
+  subChatProviderOverridesAtom,
 } from "../../../lib/atoms";
 import { appStore } from "../../../lib/jotai-store";
 import { trpcClient } from "../../../lib/trpc";
@@ -19,6 +20,7 @@ import {
   showTimeoutNotification,
 } from "../../sidebar/hooks/use-desktop-notifications";
 import {
+  addedDirectoriesAtomFamily,
   askUserQuestionResultsAtom,
   compactingSubChatsAtom,
   lastSelectedModelIdAtom,
@@ -102,7 +104,7 @@ type IPCChatTransportConfig = {
   subChatId: string;
   cwd: string;
   projectPath?: string; // Original project path for MCP config lookup (when using worktrees)
-  mode: "plan" | "agent";
+  mode: "plan" | "agent" | string;
   model?: string;
   providerId?: ProviderId; // AI provider selection (claude or codex)
 };
@@ -139,11 +141,13 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
     const thinkingEnabled = appStore.get(extendedThinkingEnabledAtom);
     const maxThinkingTokens = thinkingEnabled ? 60_000 : undefined;
 
-    // Determine effective provider (config override -> per-chat override -> global default)
+    // Determine effective provider (config override -> subchat override -> chat override -> global default)
     const defaultProvider = appStore.get(defaultProviderIdAtom);
     const chatOverrides = appStore.get(chatProviderOverridesAtom);
+    const subChatOverrides = appStore.get(subChatProviderOverridesAtom);
     const effectiveProvider =
       this.config.providerId ||
+      subChatOverrides[this.config.subChatId] ||
       chatOverrides[this.config.chatId] ||
       defaultProvider;
 
@@ -181,6 +185,11 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
         ? appStore.get(codexReasoningEffortAtom)
         : undefined;
 
+    // Get added directories for this sub-chat
+    const addDirs = appStore.get(
+      addedDirectoriesAtomFamily(this.config.subChatId),
+    );
+
     // Stream debug logging
     const subId = this.config.subChatId.slice(-8);
     let chunkCount = 0;
@@ -201,12 +210,14 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
             prompt,
             cwd: this.config.cwd,
             projectPath: this.config.projectPath, // Original project path for MCP config lookup
-            mode: currentMode,
+            mode: currentMode as "plan" | "agent",
             sessionId,
             providerId: effectiveProvider, // AI provider selection
             ...(maxThinkingTokens && { maxThinkingTokens }),
             ...(finalModelString && { model: finalModelString }),
             ...(images.length > 0 && { images }),
+            // Additional working directories
+            ...(addDirs && addDirs.length > 0 && { addDirs }),
             // Codex-specific settings
             ...(sandboxMode && { sandboxMode }),
             ...(approvalPolicy && { approvalPolicy }),

@@ -18,11 +18,11 @@ import {
 } from "../../lib/atoms";
 import { useIsMobile } from "../../lib/hooks/use-mobile";
 import { useUpdateChecker } from "../../lib/hooks/use-update-checker";
-import { useAgentSubChatStore } from "../../lib/stores/sub-chat-store";
 import { trpc } from "../../lib/trpc";
 import { isDesktopApp } from "../../lib/utils/platform";
 import { selectedAgentChatIdAtom, selectedProjectAtom } from "../agents/atoms";
 import { useAgentsHotkeys } from "../agents/lib/agents-hotkeys-manager";
+import { useAgentSubChatStore } from "../agents/stores/sub-chat-store";
 import { AgentsContent } from "../agents/ui/agents-content";
 import { AgentsSidebar } from "../sidebar/agents-sidebar";
 
@@ -194,6 +194,15 @@ export function AgentsLayout() {
       setChatId(null);
     }
   }, [selectedChatId, setChatId]);
+
+  // ============================================================================
+  // Branch switching for local-mode chats
+  // ============================================================================
+  // NOTE: Auto-switching git branch when selecting a chat is disabled for local mode.
+  // Instead, branch switching happens with user confirmation when:
+  // 1. Creating a new sub-chat (in agents-sidebar.tsx, agents-subchats-sidebar.tsx, active-chat.tsx)
+  // 2. Sending a message to continue a conversation (in active-chat.tsx)
+  // This prevents unexpected branch switches when just browsing between chats.
 
   // Initialize hotkeys manager
   useAgentsHotkeys({

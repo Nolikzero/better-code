@@ -31,7 +31,7 @@
     --ring: 0 0% 9%;
     /* Monochrome text selection */
     --selection: 0 0% 9% / 0.12;
-    --radius: 15px;
+    --radius: 5px;
     /* Plan Mode - gray instead of orange */
     --plan-mode: 0 0% 45%;
     --plan-mode-foreground: 0 0% 100%;

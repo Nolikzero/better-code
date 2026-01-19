@@ -1,4 +1,11 @@
-import { app, BrowserWindow, clipboard, ipcMain, shell } from "electron";
+import {
+  app,
+  BrowserWindow,
+  clipboard,
+  dialog,
+  ipcMain,
+  shell,
+} from "electron";
 import { join } from "path";
 import { createIPCHandler } from "trpc-electron/main";
 import { initLiquidGlass } from "../lib/liquid-glass";
@@ -7,7 +14,6 @@ import { createAppRouter } from "../lib/trpc/routers";
 // Electron Forge Vite plugin globals
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
-
 
 // Register IPC handlers for window operations (only once)
 let ipcHandlersRegistered = false;
@@ -138,6 +144,34 @@ function registerIpcHandlers(getWindow: () => BrowserWindow | null): void {
     clipboard.writeText(text),
   );
   ipcMain.handle("clipboard:read", () => clipboard.readText());
+
+  // Dialog
+  ipcMain.handle(
+    "dialog:showOpenDialog",
+    async (
+      _event,
+      options: {
+        title?: string;
+        properties?: Array<
+          | "openFile"
+          | "openDirectory"
+          | "multiSelections"
+          | "showHiddenFiles"
+          | "createDirectory"
+          | "promptToCreate"
+          | "noResolveAliases"
+          | "treatPackageAsDirectory"
+          | "dontAddToRecent"
+        >;
+      },
+    ) => {
+      const window = getWindow();
+      if (!window) {
+        return { canceled: true, filePaths: [] };
+      }
+      return dialog.showOpenDialog(window, options);
+    },
+  );
 }
 
 // Current window reference
@@ -256,7 +290,9 @@ export function createMainWindow(): BrowserWindow {
     window.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
     window.webContents.openDevTools();
   } else {
-    window.loadFile(join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
+    window.loadFile(
+      join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`),
+    );
   }
 
   // Page load handler - native traffic lights stay hidden, React controls visibility

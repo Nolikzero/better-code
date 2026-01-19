@@ -68,11 +68,13 @@ import {
   pendingUserQuestionsAtom,
   previousAgentChatIdAtom,
   selectedAgentChatIdAtom,
+  selectedProjectAtom,
   subChatFilesAtom,
   type UndoItem,
   undoStackAtom,
 } from "../agents/atoms";
 import { AgentsRenameSubChatDialog } from "../agents/components/agents-rename-subchat-dialog";
+import { useBranchSwitchConfirmation } from "../agents/hooks/use-branch-switch-confirmation";
 import {
   getSubChatDraftKey,
   useSubChatDraftsCache,
@@ -81,6 +83,7 @@ import {
   type SubChatMeta,
   useAgentSubChatStore,
 } from "../agents/stores/sub-chat-store";
+import { BranchSwitchDialog } from "../agents/ui/branch-switch-dialog";
 import { SubChatContextMenu } from "../agents/ui/sub-chat-context-menu";
 import {
   MultiSelectFooter,
@@ -204,6 +207,25 @@ export function AgentsSubChatsSidebar({
     null,
   );
 
+  // Get project from atom for branch checking
+  const selectedProject = useAtomValue(selectedProjectAtom);
+
+  // Query parent chat data for branch info
+  const { data: parentChatData } = trpc.chats.get.useQuery(
+    { id: parentChatId! },
+    { enabled: !!parentChatId },
+  );
+
+  // Branch switch confirmation hook
+  const branchSwitch = useBranchSwitchConfirmation({
+    projectPath: selectedProject?.path,
+    chatBranch: parentChatData?.branch,
+    isWorktreeMode:
+      !!parentChatData?.worktreePath &&
+      !!selectedProject?.path &&
+      parentChatData.worktreePath !== selectedProject.path,
+  });
+
   // SubChat name tooltip via shared hook
   const {
     tooltip: _subChatTooltip,
@@ -241,7 +263,7 @@ export function AgentsSubChatsSidebar({
   const { pinnedChats, unpinnedChats } = useMemo(() => {
     const filtered = searchQuery.trim()
       ? openSubChats.filter((chat) =>
-          chat.name.toLowerCase().includes(searchQuery.toLowerCase()),
+          (chat.name ?? "").toLowerCase().includes(searchQuery.toLowerCase()),
         )
       : openSubChats;
 
@@ -509,7 +531,8 @@ export function AgentsSubChatsSidebar({
     [renamingSubChat, renameMutation, setJustCreatedIds],
   );
 
-  const handleCreateNew = async () => {
+  // Extract the actual sub-chat creation logic for reuse
+  const createSubChatDirectly = async () => {
     if (!parentChatId) return;
 
     const store = useAgentSubChatStore.getState();
@@ -536,6 +559,25 @@ export function AgentsSubChatsSidebar({
     // Add to open tabs and set as active
     store.addToOpenSubChats(newId);
     store.setActiveSubChat(newId);
+  };
+
+  const handleCreateNew = async () => {
+    if (!parentChatId) return;
+
+    // Check if branch switch is needed and show dialog if so
+    const needsSwitch = await branchSwitch.checkBranchSwitch("create-subchat");
+    if (needsSwitch) return; // Dialog shown, wait for confirmation
+
+    // No branch switch needed, create directly
+    await createSubChatDirectly();
+  };
+
+  // Handler for confirming branch switch and creating sub-chat
+  const handleConfirmBranchSwitch = async () => {
+    const result = await branchSwitch.confirmSwitch();
+    if (result.success) {
+      await createSubChatDirectly();
+    }
   };
 
   const handleSelectFromHistory = useCallback((subChat: SubChatMeta) => {
@@ -1466,6 +1508,16 @@ export function AgentsSubChatsSidebar({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Branch Switch Confirmation Dialog */}
+      <BranchSwitchDialog
+        open={branchSwitch.dialogOpen}
+        onOpenChange={branchSwitch.setDialogOpen}
+        pendingSwitch={branchSwitch.pendingSwitch}
+        isPending={branchSwitch.isPending}
+        onConfirm={handleConfirmBranchSwitch}
+        onCancel={branchSwitch.cancelSwitch}
+      />
 
       {/* SubChat name tooltip portal */}
       <SubChatTooltipPortal />

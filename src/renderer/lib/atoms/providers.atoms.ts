@@ -56,6 +56,13 @@ export const chatProviderOverridesAtom = atomWithStorage<
   Record<string, ProviderId>
 >("agents:chatProviderOverrides", {}, undefined, { getOnInit: true });
 
+// Per-subchat provider overrides (subChatId -> providerId)
+// When a subchat has an override, it uses that provider instead of workspace/global default
+// Priority: subchat override -> chat/workspace override -> global default
+export const subChatProviderOverridesAtom = atomWithStorage<
+  Record<string, ProviderId>
+>("agents:subChatProviderOverrides", {}, undefined, { getOnInit: true });
+
 // Model selection per provider (providerId -> modelId)
 // Each provider has its own last selected model
 export const lastSelectedModelByProviderAtom = atomWithStorage<

@@ -57,6 +57,20 @@
       "when": 1768760878578,
       "tag": "0007_flowery_leper_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1737331200000,
+      "tag": "0008_branch_centric_workspace",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1768852987724,
+      "tag": "0009_cloudy_beyonder",
+      "breakpoints": true
     }
   ]
 }

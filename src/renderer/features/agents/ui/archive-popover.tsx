@@ -66,8 +66,9 @@ export function ArchivePopover({ trigger }: ArchivePopoverProps) {
           return [restoredChat, ...oldData];
         });
       }
-      // Invalidate both lists to refresh
+      // Invalidate all lists to refresh
       utils.chats.list.invalidate();
+      utils.chats.listWithSubChats.invalidate();
       utils.chats.listArchived.invalidate();
     },
   });

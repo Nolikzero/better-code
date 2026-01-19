@@ -197,6 +197,9 @@ export class ClaudeProvider implements AIProvider {
               agents: options.agents as any,
             }),
           ...(options.mcpServers && { mcpServers: options.mcpServers }),
+          // Additional working directories (from /add-dir command)
+          ...(options.addDirs &&
+            options.addDirs.length > 0 && { addDirs: options.addDirs }),
           env: finalEnv,
           permissionMode:
             options.mode === "plan"

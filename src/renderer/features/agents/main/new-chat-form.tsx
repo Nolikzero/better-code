@@ -25,11 +25,13 @@ import {
 import { cn } from "../../../lib/utils";
 import {
   agentsDebugModeAtom,
+  historyNavAtomFamily,
   isPlanModeAtom,
   justCreatedIdsAtom,
   lastSelectedBranchesAtom,
   lastSelectedRepoAtom,
   lastSelectedWorkModeAtom,
+  promptHistoryAtomFamily,
   selectedAgentChatIdAtom,
   selectedDraftIdAtom,
   selectedProjectAtom,
@@ -82,6 +84,7 @@ import {
   type AgentsMentionsEditorHandle,
   type FileMentionOption,
 } from "../mentions";
+import { useAgentSubChatStore } from "../stores/sub-chat-store";
 import { AgentsHeaderControls } from "../ui/agents-header-controls";
 import { PROVIDERS } from "../ui/provider-icons";
 import { handlePasteEvent } from "../utils/paste-text";
@@ -162,6 +165,17 @@ export function NewChatForm({
   const _setSettingsDialogOpen = useSetAtom(agentsSettingsDialogOpenAtom);
   const _setSettingsActiveTab = useSetAtom(agentsSettingsDialogActiveTabAtom);
   const setJustCreatedIds = useSetAtom(justCreatedIdsAtom);
+
+  // Prompt history - scoped to project
+  const historyKey = validatedProject ? `project:${validatedProject.id}` : "";
+  const [history, addToHistory] = useAtom(promptHistoryAtomFamily(historyKey));
+  const [navState, setNavState] = useAtom(historyNavAtomFamily(historyKey));
+
+  // Reset navigation when project changes
+  useEffect(() => {
+    setNavState({ index: -1, savedInput: "" });
+  }, [validatedProject?.id, setNavState]);
+
   const [repoSearchQuery, _setRepoSearchQuery] = useState("");
   const [createBranchDialogOpen, setCreateBranchDialogOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -332,11 +346,25 @@ export function NewChatForm({
     },
   );
 
+  // Check if workspace already exists for selected branch (local mode only)
+  // This enables the "continuing in existing workspace" indicator
+  const existingWorkspaceQuery = trpc.chats.findByProjectAndBranch.useQuery(
+    {
+      projectId: validatedProject?.id ?? "",
+      branch: selectedBranch,
+    },
+    {
+      enabled:
+        !!validatedProject?.id && workMode === "local" && !!selectedBranch,
+      staleTime: 10_000, // Cache for 10 seconds
+    },
+  );
+
   // Transform branch data to match web app format
   const branches = useMemo(() => {
     if (!branchesQuery.data) return [];
 
-    const { local, remote, defaultBranch } = branchesQuery.data;
+    const { local, remote, defaultBranch, currentBranch } = branchesQuery.data;
 
     // Combine local and remote branches, preferring local info
     const branchMap = new Map<
@@ -345,6 +373,7 @@ export function NewChatForm({
         name: string;
         protected: boolean;
         isDefault: boolean;
+        isCurrent: boolean;
         committedAt: string | null;
         authorName: null;
       }
@@ -356,6 +385,7 @@ export function NewChatForm({
         name,
         protected: false,
         isDefault: name === defaultBranch,
+        isCurrent: name === currentBranch,
         committedAt: null,
         authorName: null,
       });
@@ -367,6 +397,7 @@ export function NewChatForm({
         name: branch,
         protected: false,
         isDefault: branch === defaultBranch,
+        isCurrent: branch === currentBranch,
         committedAt: lastCommitDate
           ? new Date(lastCommitDate).toISOString()
           : null,
@@ -423,21 +454,41 @@ export function NewChatForm({
     return formatTimeAgo(dateString);
   };
 
-  // Set default branch when project/branches change (only if no saved branch for this project)
+  // Track if we've already set the branch for Local mode on this mount
+  const hasSetLocalBranchRef = useRef(false);
+
+  // Set branch when project/branches change
+  // In Local mode: initialize to current branch on first load
+  // In Worktree mode: use saved branch or default branch
   useEffect(() => {
-    if (
-      branchesQuery.data?.defaultBranch &&
-      validatedProject?.id &&
-      !selectedBranch
-    ) {
-      setSelectedBranch(branchesQuery.data.defaultBranch);
+    if (!branchesQuery.data || !validatedProject?.id) return;
+
+    if (workMode === "local") {
+      // In Local mode, only set initial branch - don't override user selection
+      const currentBranch = branchesQuery.data.currentBranch;
+      if (currentBranch && !hasSetLocalBranchRef.current) {
+        hasSetLocalBranchRef.current = true;
+        setSelectedBranch(currentBranch);
+      }
+    } else {
+      // In Worktree mode, only set if no branch selected
+      const currentSelection = lastSelectedBranches[validatedProject.id];
+      if (!currentSelection) {
+        setSelectedBranch(branchesQuery.data.defaultBranch);
+      }
     }
   }, [
-    branchesQuery.data?.defaultBranch,
+    branchesQuery.data,
     validatedProject?.id,
-    selectedBranch,
     setSelectedBranch,
+    workMode,
+    lastSelectedBranches,
   ]);
+
+  // Reset the flag when switching modes or projects to allow re-initialization
+  useEffect(() => {
+    hasSetLocalBranchRef.current = false;
+  }, [workMode, validatedProject?.id]);
 
   // Auto-focus input when NewChatForm is shown (when clicking "New Chat")
   // Skip on mobile to prevent keyboard from opening automatically
@@ -569,12 +620,62 @@ export function NewChatForm({
       editorRef.current?.clear();
       clearImages();
       clearCurrentDraft();
+
+      const newSubChatId = data.newSubChatId || data.subChats?.[0]?.id;
+
+      // For existing workspace reuse, optimistically update the chats.get cache
+      // BEFORE initializing store or setting selectedChatId. This prevents the race
+      // condition where the active-chat effect overwrites fresh store data with stale cache.
+      if ((data as any).isExisting && newSubChatId && data.subChats?.[0]) {
+        utils.chats.get.setData({ id: data.id }, (oldData) => {
+          if (!oldData) return oldData;
+          const existingSubChats = (oldData as any).subChats || [];
+          // Check if new subchat already exists to avoid duplicates
+          if (existingSubChats.some((sc: any) => sc.id === newSubChatId)) {
+            return oldData;
+          }
+          return {
+            ...oldData,
+            subChats: [...existingSubChats, data.subChats![0]],
+          };
+        });
+      }
+
+      // 1. Initialize sub-chat store with data from response
+      // This must happen before setSelectedChatId triggers any effects
+      if (newSubChatId) {
+        const store = useAgentSubChatStore.getState();
+        store.setChatId(data.id);
+
+        // Populate allSubChats from creation response so UI has data immediately
+        const subChatMeta =
+          data.subChats?.map((sc) => ({
+            id: sc.id,
+            name: sc.name || "New Chat",
+            created_at: sc.createdAt?.toISOString() || new Date().toISOString(),
+            mode: (sc.mode as "plan" | "agent") || "agent",
+            providerId: sc.providerId as "claude" | "codex" | undefined,
+          })) || [];
+        store.setAllSubChats(subChatMeta);
+        store.addToOpenSubChats(newSubChatId);
+        store.setActiveSubChat(newSubChatId);
+      }
+
+      // 2. Invalidate queries
       utils.chats.list.invalidate();
+      utils.chats.listWithSubChats.invalidate();
+      // Invalidate branches query to reflect the new current branch after checkout
+      utils.changes.getBranches.invalidate();
+      // Invalidate chats.get query to ensure new sub-chat is loaded (for eventual consistency)
+      utils.chats.get.invalidate({ id: data.id });
+
+      // 3. LAST: Set selected chat ID (triggers navigation and effects)
       setSelectedChatId(data.id);
+
       // Track this chat and its first subchat as just created for typewriter effect
       const ids = [data.id];
-      if (data.subChats?.[0]?.id) {
-        ids.push(data.subChats[0].id);
+      if (newSubChatId) {
+        ids.push(newSubChatId);
       }
       setJustCreatedIds((prev) => new Set([...prev, ...ids]));
     },
@@ -632,6 +733,12 @@ export function NewChatForm({
       return;
     }
 
+    // Add to prompt history before sending
+    if (historyKey) {
+      addToHistory(message.trim());
+    }
+    setNavState({ index: -1, savedInput: "" });
+
     // Build message parts array (images first, then text)
     type MessagePart =
       | { type: "text"; text: string }
@@ -666,8 +773,12 @@ export function NewChatForm({
       projectId: selectedProject.id,
       name: message.trim().slice(0, 50), // Use first 50 chars as chat name
       initialMessageParts: parts.length > 0 ? parts : undefined,
+      // Worktree mode: baseBranch is what to branch FROM
       baseBranch:
         workMode === "worktree" ? selectedBranch || undefined : undefined,
+      // Local mode: selectedBranch is what to switch TO
+      selectedBranch:
+        workMode === "local" ? selectedBranch || undefined : undefined,
       useWorktree: workMode === "worktree",
       mode: isPlanMode ? "plan" : "agent",
       providerId: defaultProvider,
@@ -682,7 +793,45 @@ export function NewChatForm({
     images,
     isPlanMode,
     defaultProvider,
+    historyKey,
+    addToHistory,
+    setNavState,
   ]);
+
+  // History navigation handlers
+  const handleArrowUp = useCallback(() => {
+    if (!historyKey || history.length === 0) return false;
+
+    const currentValue = editorRef.current?.getValue() || "";
+
+    if (navState.index === -1) {
+      // Starting navigation - save current input
+      setNavState({ index: 0, savedInput: currentValue });
+      editorRef.current?.setValue(history[history.length - 1] || "");
+    } else if (navState.index < history.length - 1) {
+      // Navigate further back
+      const newIndex = navState.index + 1;
+      setNavState((prev) => ({ ...prev, index: newIndex }));
+      editorRef.current?.setValue(history[history.length - 1 - newIndex] || "");
+    }
+    return true;
+  }, [historyKey, history, navState, setNavState]);
+
+  const handleArrowDown = useCallback(() => {
+    if (!historyKey || navState.index === -1) return false;
+
+    if (navState.index === 0) {
+      // Return to saved input
+      editorRef.current?.setValue(navState.savedInput);
+      setNavState({ index: -1, savedInput: "" });
+    } else {
+      // Navigate forward
+      const newIndex = navState.index - 1;
+      setNavState((prev) => ({ ...prev, index: newIndex }));
+      editorRef.current?.setValue(history[history.length - 1 - newIndex] || "");
+    }
+    return true;
+  }, [historyKey, history, navState, setNavState]);
 
   // Wrap the base mention select handler to pass in the editor insert function
   const handleMentionSelect = useCallback(
@@ -912,6 +1061,8 @@ export function NewChatForm({
                       setIsPlanMode((prev) => !prev);
                     }
                   }}
+                  onArrowUp={handleArrowUp}
+                  onArrowDown={handleArrowDown}
                   onPaste={handlePaste}
                   isMobile={isMobileFullscreen}
                 />
@@ -977,8 +1128,8 @@ export function NewChatForm({
                   />
                 )}
 
-                {/* Branch selector - only visible when worktree mode is selected */}
-                {validatedProject && workMode === "worktree" && (
+                {/* Branch selector - visible for both local and worktree modes */}
+                {validatedProject && (
                   <Popover
                     open={branchPopoverOpen}
                     onOpenChange={(open) => {
@@ -1093,6 +1244,12 @@ export function NewChatForm({
                                         default
                                       </span>
                                     )}
+                                    {workMode === "local" &&
+                                      branch.isCurrent && (
+                                        <span className="text-[10px] text-emerald-500/80 bg-emerald-500/10 px-1.5 py-0.5 rounded shrink-0">
+                                          current
+                                        </span>
+                                      )}
                                     {isSelected && (
                                       <CheckIcon className="h-4 w-4 shrink-0 ml-auto" />
                                     )}
@@ -1118,6 +1275,13 @@ export function NewChatForm({
                       setSelectedBranch(branchName);
                     }}
                   />
+                )}
+
+                {/* Existing workspace indicator - shown in local mode when workspace exists */}
+                {workMode === "local" && existingWorkspaceQuery.data && (
+                  <span className="text-xs text-muted-foreground/70 ml-1">
+                    continuing in existing workspace
+                  </span>
                 )}
               </div>
 

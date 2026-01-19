@@ -31,17 +31,9 @@ const useCombinedAuth = () => ({ userId: null, isLoaded: true });
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const AuthDialog = (_props: any) => null;
 
-import { pluralize } from "@shared/utils";
 import { useHotkeys } from "react-hotkeys-hook";
 import { toast } from "sonner";
 import { Button } from "../../components/ui/button";
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuTrigger,
-} from "../../components/ui/context-menu";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -70,13 +62,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "../../components/ui/tooltip";
-import { TypewriterText } from "../../components/ui/typewriter-text";
 import { trpc } from "../../lib/trpc";
-import { getShortcutKey, isDesktopApp } from "../../lib/utils/platform";
+import { isDesktopApp } from "../../lib/utils/platform";
 import {
   agentsDebugModeAtom,
   agentsUnseenChangesAtom,
   archivePopoverOpenAtom,
+  expandedChatIdsAtom,
   justCreatedIdsAtom,
   loadingSubChatsAtom,
   previousAgentChatIdAtom,
@@ -99,7 +91,14 @@ import {
   OPEN_SUB_CHATS_CHANGE_EVENT,
   useAgentSubChatStore,
 } from "../agents/stores/sub-chat-store";
-import { ChatIcon, SidebarListSection } from "./components";
+import { BranchSwitchDialog } from "../agents/ui/branch-switch-dialog";
+import { SubChatContextMenu } from "../agents/ui/sub-chat-context-menu";
+import {
+  ChatTreeItem,
+  ProjectSelectorHeader,
+  SidebarListSection,
+  type SubChatMeta,
+} from "./components";
 import { useScrollGradients, useTruncatedTooltip } from "./hooks";
 import { useHaptic } from "./hooks/use-haptic";
 
@@ -122,7 +121,6 @@ interface AgentsSidebarProps {
 
 export function AgentsSidebar({
   userId = "demo-user-id",
-  clerkUser = null,
   desktopUser = {
     id: "demo-user-id",
     email: "demo@example.com",
@@ -141,7 +139,7 @@ export function AgentsSidebar({
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [focusedChatIndex, setFocusedChatIndex] = useState<number>(-1); // -1 means no focus
-  const [hoveredChatIndex, setHoveredChatIndex] = useState<number>(-1); // Track hovered chat for X hotkey
+  const [hoveredChatIndex] = useState<number>(-1); // Track hovered chat for X hotkey
 
   // Global desktop/fullscreen state from atoms (initialized in AgentsLayout)
   const isDesktop = useAtomValue(isDesktopAtom);
@@ -203,13 +201,8 @@ export function AgentsSidebar({
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Agent name tooltip via shared hook
-  const {
-    tooltip: _agentTooltip,
-    nameRefs,
-    handleMouseEnter: handleAgentMouseEnter,
-    handleMouseLeave: handleAgentMouseLeave,
-    TooltipPortal: AgentTooltipPortal,
-  } = useTruncatedTooltip();
+  const { tooltip: _agentTooltip, TooltipPortal: AgentTooltipPortal } =
+    useTruncatedTooltip();
 
   const setSettingsDialogOpen = useSetAtom(agentsSettingsDialogOpenAtom);
   const setSettingsActiveTab = useSetAtom(agentsSettingsDialogActiveTabAtom);
@@ -223,8 +216,26 @@ export function AgentsSidebar({
   // Desktop: use selectedProject instead of teams
   const [selectedProject] = useAtom(selectedProjectAtom);
 
-  // Fetch all chats (no project filter)
-  const { data: agentChats } = trpc.chats.list.useQuery({});
+  // Branch switch state for creating sub-chats (needs local state since chatId varies)
+  const [branchSwitchDialogOpen, setBranchSwitchDialogOpen] = useState(false);
+  const [pendingBranchSwitch, setPendingBranchSwitch] = useState<{
+    currentBranch: string;
+    targetBranch: string;
+    action: "create-subchat" | "send-message";
+    payload?: { chatId: string };
+  } | null>(null);
+
+  // Expanded chat IDs for tree view
+  const [expandedChatIds, setExpandedChatIds] = useAtom(expandedChatIdsAtom);
+
+  // Fetch chats with sub-chats for selected project (tree view)
+  const { data: chatsWithSubChats } = trpc.chats.listWithSubChats.useQuery(
+    { projectId: selectedProject?.id ?? "" },
+    { enabled: !!selectedProject?.id },
+  );
+
+  // Fallback to flat list for backwards compatibility
+  const agentChats = chatsWithSubChats;
 
   // Track open sub-chat changes for reactivity
   const [openSubChatsVersion, setOpenSubChatsVersion] = useState(0);
@@ -346,6 +357,7 @@ export function AgentsSidebar({
   const restoreChatMutation = trpc.chats.restore.useMutation({
     onSuccess: (_, variables) => {
       utils.chats.list.invalidate();
+      utils.chats.listWithSubChats.invalidate();
       utils.chats.listArchived.invalidate();
       // Select the restored chat
       setSelectedChatId(variables.id);
@@ -373,6 +385,7 @@ export function AgentsSidebar({
   const archiveChatMutation = trpc.chats.archive.useMutation({
     onSuccess: (_, variables) => {
       utils.chats.list.invalidate();
+      utils.chats.listWithSubChats.invalidate();
       utils.chats.listArchived.invalidate();
 
       // If archiving the currently selected chat, navigate to previous or new workspace
@@ -442,6 +455,7 @@ export function AgentsSidebar({
   const archiveChatsBatchMutation = trpc.chats.archiveBatch.useMutation({
     onSuccess: (_, variables) => {
       utils.chats.list.invalidate();
+      utils.chats.listWithSubChats.invalidate();
       utils.chats.listArchived.invalidate();
 
       // Add each chat to unified undo stack for Cmd+Z
@@ -511,28 +525,12 @@ export function AgentsSidebar({
   const renameChatMutation = trpc.chats.rename.useMutation({
     onSuccess: () => {
       utils.chats.list.invalidate();
+      utils.chats.listWithSubChats.invalidate();
     },
     onError: () => {
       toast.error("Failed to rename agent");
     },
   });
-
-  const handleTogglePin = (chatId: string) => {
-    setPinnedChatIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(chatId)) {
-        next.delete(chatId);
-      } else {
-        next.add(chatId);
-      }
-      return next;
-    });
-  };
-
-  const handleRenameClick = (chat: { id: string; name: string | null }) => {
-    setRenamingChat(chat);
-    setRenameDialogOpen(true);
-  };
 
   const handleRenameSave = async (newName: string) => {
     if (!renamingChat) return;
@@ -564,78 +562,6 @@ export function AgentsSidebar({
       setRenamingChat(null);
     }
   };
-
-  const handleArchiveAllBelow = (chatId: string) => {
-    const currentIndex = filteredChats.findIndex((c) => c.id === chatId);
-    if (currentIndex === -1 || currentIndex === filteredChats.length - 1)
-      return;
-
-    const chatsToArchive = filteredChats
-      .slice(currentIndex + 1)
-      .map((c) => c.id);
-
-    if (chatsToArchive.length > 0) {
-      archiveChatsBatchMutation.mutate({ chatIds: chatsToArchive });
-    }
-  };
-
-  const handleArchiveOthers = (chatId: string) => {
-    const chatsToArchive = filteredChats
-      .filter((c) => c.id !== chatId)
-      .map((c) => c.id);
-
-    if (chatsToArchive.length > 0) {
-      archiveChatsBatchMutation.mutate({ chatIds: chatsToArchive });
-    }
-  };
-
-  // Check if all selected chats are pinned
-  const areAllSelectedPinned = useMemo(() => {
-    if (selectedChatIds.size === 0) return false;
-    return Array.from(selectedChatIds).every((id) => pinnedChatIds.has(id));
-  }, [selectedChatIds, pinnedChatIds]);
-
-  // Check if all selected chats are unpinned
-  const areAllSelectedUnpinned = useMemo(() => {
-    if (selectedChatIds.size === 0) return false;
-    return Array.from(selectedChatIds).every((id) => !pinnedChatIds.has(id));
-  }, [selectedChatIds, pinnedChatIds]);
-
-  // Show pin option only if all selected have same pin state
-  const canShowPinOption = areAllSelectedPinned || areAllSelectedUnpinned;
-
-  // Handle bulk pin of selected chats
-  const handleBulkPin = () => {
-    const chatIdsToPin = Array.from(selectedChatIds);
-    if (chatIdsToPin.length > 0) {
-      setPinnedChatIds((prev) => {
-        const next = new Set(prev);
-        for (const id of chatIdsToPin) {
-          next.add(id);
-        }
-        return next;
-      });
-      clearChatSelection();
-    }
-  };
-
-  // Handle bulk unpin of selected chats
-  const handleBulkUnpin = () => {
-    const chatIdsToUnpin = Array.from(selectedChatIds);
-    if (chatIdsToUnpin.length > 0) {
-      setPinnedChatIds((prev) => {
-        const next = new Set(prev);
-        for (const id of chatIdsToUnpin) {
-          next.delete(id);
-        }
-        return next;
-      });
-      clearChatSelection();
-    }
-  };
-
-  // Get clerk username
-  const _clerkUsername = clerkUser?.username;
 
   // Filter and separate pinned/unpinned agents
   const { pinnedAgents, unpinnedAgents, filteredChats } = useMemo(() => {
@@ -777,6 +703,186 @@ export function AgentsSidebar({
     }
   };
 
+  // Toggle expand/collapse for a chat in tree view
+  const handleToggleExpand = useCallback(
+    (chatId: string) => {
+      setExpandedChatIds((prev) => {
+        if (prev.includes(chatId)) {
+          return prev.filter((id) => id !== chatId);
+        }
+        return [...prev, chatId];
+      });
+    },
+    [setExpandedChatIds],
+  );
+
+  // Auto-expand chat when selected
+  useEffect(() => {
+    if (selectedChatId && !expandedChatIds.includes(selectedChatId)) {
+      setExpandedChatIds((prev) => [...prev, selectedChatId]);
+    }
+  }, [selectedChatId, expandedChatIds, setExpandedChatIds]);
+
+  // Handle sub-chat selection in tree view
+  const handleSubChatSelect = useCallback(
+    (chatId: string, subChatId: string) => {
+      // Select the parent chat
+      setSelectedChatId(chatId);
+      // Set the sub-chat as active in the store
+      const store = useAgentSubChatStore.getState();
+      store.setChatId(chatId);
+      store.addToOpenSubChats(subChatId);
+      store.setActiveSubChat(subChatId);
+      // On mobile, switch to chat mode
+      if (isMobileFullscreen && onChatSelect) {
+        onChatSelect();
+      }
+    },
+    [setSelectedChatId, isMobileFullscreen, onChatSelect],
+  );
+
+  // Create new sub-chat for a workspace
+  const createSubChatMutation = trpc.chats.createSubChat.useMutation({
+    onSuccess: (newSubChat, variables) => {
+      utils.chats.listWithSubChats.invalidate();
+      // Select the parent workspace
+      setSelectedChatId(variables.chatId);
+      // Open and select the new sub-chat
+      const store = useAgentSubChatStore.getState();
+      store.setChatId(variables.chatId);
+      store.addToOpenSubChats(newSubChat.id);
+      store.setActiveSubChat(newSubChat.id);
+    },
+  });
+
+  // Mutation for checking out branch before creating sub-chat (doesn't update DB)
+  const checkoutBranchMutation = trpc.changes.checkoutBranch.useMutation({
+    onError: (error) => {
+      toast.error(error.message || "Failed to switch branch");
+    },
+    onSuccess: () => {
+      utils.changes.getBranches.invalidate();
+    },
+  });
+
+  const handleCreateSubChat = useCallback(
+    async (chatId: string) => {
+      // Find the chat data to check its branch
+      const chatData = chatsWithSubChats?.find((c) => c.id === chatId);
+      const projectPath = selectedProject?.path;
+      const worktreePath = chatData?.worktreePath;
+
+      // Determine if this is local mode (not using a separate worktree)
+      const isWorktreeMode =
+        worktreePath && projectPath && worktreePath !== projectPath;
+      const isLocalMode = !isWorktreeMode && projectPath;
+
+      const chatBranch = chatData?.branch;
+
+      // Check if branch switch is needed
+      if (isLocalMode && chatBranch && projectPath) {
+        let currentBranch: string | undefined;
+        try {
+          const freshBranches = await utils.changes.getBranches.fetch({
+            worktreePath: projectPath,
+          });
+          currentBranch = freshBranches.currentBranch;
+        } catch {
+          // Fall back - assume no switch needed
+        }
+
+        if (currentBranch && chatBranch !== currentBranch) {
+          // Show confirmation dialog instead of creating immediately
+          setPendingBranchSwitch({
+            currentBranch,
+            targetBranch: chatBranch,
+            action: "create-subchat",
+            payload: { chatId },
+          });
+          setBranchSwitchDialogOpen(true);
+          return;
+        }
+      }
+
+      // No branch switch needed, create directly
+      createSubChatMutation.mutate({ chatId, mode: "agent" });
+    },
+    [
+      createSubChatMutation,
+      chatsWithSubChats,
+      selectedProject?.path,
+      utils.changes.getBranches,
+    ],
+  );
+
+  // Handler for confirming branch switch and creating sub-chat
+  const handleConfirmBranchSwitch = useCallback(async () => {
+    if (
+      !pendingBranchSwitch ||
+      !selectedProject?.path ||
+      !pendingBranchSwitch.payload?.chatId
+    )
+      return;
+
+    try {
+      // Switch branch first
+      await checkoutBranchMutation.mutateAsync({
+        projectPath: selectedProject.path,
+        branch: pendingBranchSwitch.targetBranch,
+      });
+
+      // Then create sub-chat
+      createSubChatMutation.mutate({
+        chatId: pendingBranchSwitch.payload.chatId,
+        mode: "agent",
+      });
+    } catch {
+      // Error already handled by mutation onError
+    } finally {
+      setBranchSwitchDialogOpen(false);
+      setPendingBranchSwitch(null);
+    }
+  }, [
+    pendingBranchSwitch,
+    selectedProject?.path,
+    checkoutBranchMutation,
+    createSubChatMutation,
+  ]);
+
+  // Delete sub-chat mutation
+  const deleteSubChatMutation = trpc.chats.deleteSubChat.useMutation({
+    onSuccess: () => {
+      utils.chats.listWithSubChats.invalidate();
+      toast.success("Chat deleted");
+    },
+    onError: () => {
+      toast.error("Failed to delete chat");
+    },
+  });
+
+  // Handle delete sub-chat
+  const handleDeleteSubChat = useCallback(
+    (subChatId: string) => {
+      const store = useAgentSubChatStore.getState();
+      const activeId = store.activeSubChatId;
+
+      // Remove from open tabs first
+      store.removeFromOpenSubChats(subChatId);
+
+      // Delete from database
+      deleteSubChatMutation.mutate({ id: subChatId });
+
+      // If deleting active, switch to another
+      if (activeId === subChatId) {
+        const openIds = store.openSubChatIds.filter((id) => id !== subChatId);
+        if (openIds.length > 0) {
+          store.setActiveSubChat(openIds[0]!);
+        }
+      }
+    },
+    [deleteSubChatMutation],
+  );
+
   const handleChatClick = (
     chatId: string,
     e?: React.MouseEvent,
@@ -841,11 +947,6 @@ export function AgentsSidebar({
     if (isMobileFullscreen && onChatSelect) {
       onChatSelect();
     }
-  };
-
-  const handleCheckboxClick = (e: React.MouseEvent, chatId: string) => {
-    e.stopPropagation();
-    toggleChatSelection(chatId);
   };
 
   const formatTime = (dateStr: string) => {
@@ -1283,7 +1384,10 @@ export function AgentsSidebar({
         </div>
       </div>
 
-      {/* Search and New Workspace */}
+      {/* Project Selector */}
+      <ProjectSelectorHeader onNewWorkspace={handleNewAgent} />
+
+      {/* Search */}
       <div className="px-2 pb-3 shrink-0">
         <div className="space-y-2">
           {/* Search Input */}
@@ -1343,28 +1447,6 @@ export function AgentsSidebar({
               )}
             />
           </div>
-          {/* New Workspace Button */}
-          <TooltipProvider>
-            <Tooltip delayDuration={500}>
-              <TooltipTrigger asChild>
-                <ButtonCustom
-                  onClick={handleNewAgent}
-                  variant="outline"
-                  size="sm"
-                  className={cn(
-                    "px-2 w-full hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] text-foreground rounded-lg gap-1.5",
-                    isMobileFullscreen ? "h-10" : "h-7",
-                  )}
-                >
-                  <span className="text-sm font-medium">New Workspace</span>
-                </ButtonCustom>
-              </TooltipTrigger>
-              <TooltipContent side="right">
-                Start a new workspace
-                <Kbd>{getShortcutKey("newAgent")}</Kbd>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
         </div>
       </div>
 
@@ -1407,7 +1489,7 @@ export function AgentsSidebar({
                         }
                       }}
                       className={cn(
-                        "w-full text-left py-1.5 cursor-pointer group relative",
+                        "w-full text-left py-1.5 cursor-pointer group relative mt-2",
                         "transition-colors duration-150",
                         "outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70",
                         isMultiSelectMode ? "px-3" : "pl-2 pr-2",
@@ -1477,7 +1559,7 @@ export function AgentsSidebar({
             </div>
           )}
 
-          {/* Chats Section */}
+          {/* Chats Section - Tree View with inline sub-chats */}
           {filteredChats.length > 0 ? (
             <div className={cn("mb-4", isMultiSelectMode ? "px-0" : "-mx-1")}>
               {/* Pinned section */}
@@ -1487,273 +1569,61 @@ export function AgentsSidebar({
                   isMultiSelectMode={isMultiSelectMode}
                   className="mb-3"
                 >
-                  {pinnedAgents.map((chat, _index) => {
+                  {pinnedAgents.map((chat) => {
                     const isLoading = loadingChatIds.has(chat.id);
                     const isSelected = selectedChatId === chat.id;
-                    const isPinned = pinnedChatIds.has(chat.id);
-                    const globalIndex = filteredChats.findIndex(
-                      (c) => c.id === chat.id,
-                    );
-                    const isFocused =
-                      focusedChatIndex === globalIndex && focusedChatIndex >= 0;
-                    // Desktop: use branch from chat and repo name from project
-                    const branch = chat.branch;
-                    const project = projectsMap.get(chat.projectId);
-                    const repoName = project?.gitRepo || project?.name;
-                    const displayText = branch
-                      ? repoName
-                        ? `${repoName} • ${branch}`
-                        : branch
-                      : repoName || "Local project";
-
-                    const isChecked = selectedChatIds.has(chat.id);
-                    const stats = workspaceFileStats.get(chat.id);
                     const hasPendingPlan = workspacePendingPlans.has(chat.id);
+                    const project = projectsMap.get(chat.projectId);
+                    const activeSubChat =
+                      useAgentSubChatStore.getState().activeSubChatId;
+                    const subChats =
+                      (chat as typeof chat & { subChats?: SubChatMeta[] })
+                        .subChats || [];
+                    const stats = workspaceFileStats.get(chat.id);
 
                     return (
-                      <ContextMenu key={chat.id}>
-                        <ContextMenuTrigger asChild>
-                          <div
-                            data-chat-item
-                            data-chat-index={globalIndex}
-                            onClick={(e) => {
-                              // On real mobile (touch devices), onTouchEnd handles the click
-                              // In desktop app with narrow window, we still use mouse clicks
-                              if (isMobileFullscreen && !isDesktop) return;
-                              handleChatClick(chat.id, e, globalIndex);
-                            }}
-                            onTouchEnd={(e) => {
-                              // On real mobile touch devices, use touchEnd directly to bypass ContextMenu's click delay
-                              if (isMobileFullscreen && !isDesktop) {
-                                e.preventDefault();
-                                handleChatClick(
-                                  chat.id,
-                                  undefined,
-                                  globalIndex,
-                                );
-                              }
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.preventDefault();
-                                handleChatClick(
-                                  chat.id,
-                                  undefined,
-                                  globalIndex,
-                                );
-                              }
-                            }}
-                            onMouseEnter={(e) => {
-                              setHoveredChatIndex(globalIndex);
-                              handleAgentMouseEnter(
-                                chat.id,
-                                chat.name || "New workspace",
-                                e.currentTarget,
-                              );
-                            }}
-                            onMouseLeave={() => {
-                              setHoveredChatIndex(-1);
-                              handleAgentMouseLeave();
-                            }}
-                            className={cn(
-                              "w-full text-left py-1.5 cursor-pointer group relative",
-                              // Disable transitions on mobile for instant tap response
-                              !isMobileFullscreen &&
-                                "transition-colors duration-150",
-                              "outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70",
-                              // In multi-select: px-3 compensates for removed container px-2, keeping text aligned
-                              isMultiSelectMode ? "px-3" : "pl-2 pr-2",
-                              !isMultiSelectMode && "rounded-md",
-                              isSelected
-                                ? "bg-foreground/5 text-foreground"
-                                : isFocused
-                                  ? "bg-foreground/5 text-foreground"
-                                  : // On mobile, no hover effect to prevent double-tap issue
-                                    isMobileFullscreen
-                                    ? "text-muted-foreground"
-                                    : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground",
-                              isChecked &&
-                                (isMobileFullscreen
-                                  ? "bg-primary/10"
-                                  : "bg-primary/10 hover:bg-primary/15"),
-                            )}
-                          >
-                            <div className="flex items-start gap-2.5">
-                              <div className="pt-0.5">
-                                <ChatIcon
-                                  isSelected={isSelected}
-                                  isLoading={isLoading}
-                                  hasUnseenChanges={unseenChanges.has(chat.id)}
-                                  hasPendingPlan={hasPendingPlan}
-                                  isMultiSelectMode={isMultiSelectMode}
-                                  isChecked={isChecked}
-                                  onCheckboxClick={(e) =>
-                                    handleCheckboxClick(e, chat.id)
-                                  }
-                                  gitOwner={
-                                    projectsMap.get(chat.projectId)?.gitOwner
-                                  }
-                                  gitProvider={
-                                    projectsMap.get(chat.projectId)?.gitProvider
-                                  }
-                                />
-                              </div>
-                              <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-                                <div className="flex items-center gap-1">
-                                  <span
-                                    ref={(el) => {
-                                      if (el) nameRefs.current.set(chat.id, el);
-                                    }}
-                                    className="truncate block text-sm leading-tight flex-1"
-                                  >
-                                    <TypewriterText
-                                      text={chat.name || ""}
-                                      placeholder="New workspace"
-                                      id={chat.id}
-                                      isJustCreated={justCreatedIds.has(
-                                        chat.id,
-                                      )}
-                                      showPlaceholder={true}
-                                    />
-                                  </span>
-                                  {/* Hide archive button on mobile - use context menu instead */}
-                                  {!isMultiSelectMode &&
-                                    !isMobileFullscreen && (
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          archiveChatMutation.mutate({
-                                            id: chat.id,
-                                          });
-                                        }}
-                                        tabIndex={-1}
-                                        className="shrink-0 text-muted-foreground hover:text-foreground active:text-foreground transition-[opacity,transform,color] duration-150 ease-out opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto active:scale-[0.97]"
-                                        aria-label="Archive workspace"
-                                      >
-                                        <ArchiveIcon className="h-3.5 w-3.5" />
-                                      </button>
-                                    )}
-                                </div>
-                                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground/60 min-w-0">
-                                  <span className="truncate flex-1 min-w-0">
-                                    {displayText}
-                                  </span>
-                                  <div className="flex items-center gap-1.5 shrink-0">
-                                    {stats &&
-                                      (stats.additions > 0 ||
-                                        stats.deletions > 0) && (
-                                        <>
-                                          <span className="text-green-600 dark:text-green-400">
-                                            +{stats.additions}
-                                          </span>
-                                          <span className="text-red-600 dark:text-red-400">
-                                            -{stats.deletions}
-                                          </span>
-                                        </>
-                                      )}
-                                    <span>
-                                      {formatTime(
-                                        chat.updatedAt?.toISOString() ??
-                                          new Date().toISOString(),
-                                      )}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </ContextMenuTrigger>
-                        <ContextMenuContent className="w-48">
-                          {/* Multi-select context menu */}
-                          {isMultiSelectMode && selectedChatIds.has(chat.id) ? (
-                            <>
-                              {canShowPinOption && (
-                                <>
-                                  <ContextMenuItem
-                                    onClick={
-                                      areAllSelectedPinned
-                                        ? handleBulkUnpin
-                                        : handleBulkPin
-                                    }
-                                  >
-                                    {areAllSelectedPinned
-                                      ? `Unpin ${selectedChatIds.size} ${pluralize(selectedChatIds.size, "workspace")}`
-                                      : `Pin ${selectedChatIds.size} ${pluralize(selectedChatIds.size, "workspace")}`}
-                                  </ContextMenuItem>
-                                  <ContextMenuSeparator />
-                                </>
-                              )}
-                              <ContextMenuItem
-                                onClick={handleBulkArchive}
-                                disabled={archiveChatsBatchMutation.isPending}
-                              >
-                                {archiveChatsBatchMutation.isPending
-                                  ? "Archiving..."
-                                  : `Archive ${selectedChatIds.size} ${pluralize(selectedChatIds.size, "workspace")}`}
-                              </ContextMenuItem>
-                            </>
-                          ) : (
-                            <>
-                              <ContextMenuItem
-                                onClick={() => handleTogglePin(chat.id)}
-                              >
-                                {isPinned ? "Unpin workspace" : "Pin workspace"}
-                              </ContextMenuItem>
-                              <ContextMenuItem
-                                onClick={() =>
-                                  handleRenameClick({
-                                    id: chat.id,
-                                    name: chat.name,
-                                  })
-                                }
-                              >
-                                Rename workspace
-                              </ContextMenuItem>
-                              {branch && (
-                                <ContextMenuItem
-                                  onClick={() => {
-                                    navigator.clipboard.writeText(branch);
-                                    toast.success("Branch name copied", {
-                                      description: branch,
-                                    });
-                                  }}
-                                >
-                                  Copy branch name
-                                </ContextMenuItem>
-                              )}
-                              <ContextMenuSeparator />
-                              <ContextMenuItem
-                                onClick={() =>
-                                  archiveChatMutation.mutate({
-                                    id: chat.id,
-                                  })
-                                }
-                                className="justify-between"
-                              >
-                                Archive workspace
-                                <Kbd>{getShortcutKey("archiveAgent")}</Kbd>
-                              </ContextMenuItem>
-                              <ContextMenuItem
-                                onClick={() => handleArchiveAllBelow(chat.id)}
-                                disabled={
-                                  filteredChats.findIndex(
-                                    (c) => c.id === chat.id,
-                                  ) ===
-                                  filteredChats.length - 1
-                                }
-                              >
-                                Archive all below
-                              </ContextMenuItem>
-                              <ContextMenuItem
-                                onClick={() => handleArchiveOthers(chat.id)}
-                                disabled={filteredChats.length === 1}
-                              >
-                                Archive others
-                              </ContextMenuItem>
-                            </>
-                          )}
-                        </ContextMenuContent>
-                      </ContextMenu>
+                      <ChatTreeItem
+                        key={chat.id}
+                        id={chat.id}
+                        name={chat.name}
+                        branch={chat.branch}
+                        isExpanded={expandedChatIds.includes(chat.id)}
+                        isSelected={isSelected}
+                        isLoading={isLoading}
+                        hasUnseenChanges={unseenChanges.has(chat.id)}
+                        hasPendingPlan={hasPendingPlan}
+                        isJustCreated={justCreatedIds.has(chat.id)}
+                        subChats={subChats}
+                        activeSubChatId={activeSubChat}
+                        loadingSubChatIds={new Set([...loadingSubChats.keys()])}
+                        gitOwner={project?.gitOwner}
+                        gitProvider={project?.gitProvider}
+                        fileAdditions={stats?.additions}
+                        fileDeletions={stats?.deletions}
+                        fileCount={stats?.fileCount}
+                        onToggleExpand={() => handleToggleExpand(chat.id)}
+                        onSelect={() => handleChatClick(chat.id)}
+                        onSelectSubChat={(subChatId) =>
+                          handleSubChatSelect(chat.id, subChatId)
+                        }
+                        onArchive={() =>
+                          archiveChatMutation.mutate({ id: chat.id })
+                        }
+                        onCreateSubChat={() => handleCreateSubChat(chat.id)}
+                        onDeleteSubChat={handleDeleteSubChat}
+                        renderSubChatContextMenu={(subChat) => (
+                          <SubChatContextMenu
+                            subChat={subChat}
+                            isPinned={false}
+                            onTogglePin={() => {}}
+                            onRename={() => {}}
+                            onArchive={() => {}}
+                            onArchiveOthers={() => {}}
+                            onDelete={handleDeleteSubChat}
+                            isOnlyChat={subChats.length <= 1}
+                          />
+                        )}
+                      />
                     );
                   })}
                 </SidebarListSection>
@@ -1767,276 +1637,61 @@ export function AgentsSidebar({
                   }
                   isMultiSelectMode={isMultiSelectMode}
                 >
-                  {unpinnedAgents.map((chat, _index) => {
+                  {unpinnedAgents.map((chat) => {
                     const isLoading = loadingChatIds.has(chat.id);
                     const isSelected = selectedChatId === chat.id;
-                    const isPinned = pinnedChatIds.has(chat.id);
-                    const globalIndex = filteredChats.findIndex(
-                      (c) => c.id === chat.id,
-                    );
-                    const isFocused =
-                      focusedChatIndex === globalIndex && focusedChatIndex >= 0;
-                    // Desktop: use branch from chat and repo name from project
-                    const branch = chat.branch;
-                    const project = projectsMap.get(chat.projectId);
-                    const repoName = project?.gitRepo || project?.name;
-                    const displayText = branch
-                      ? repoName
-                        ? `${repoName} • ${branch}`
-                        : branch
-                      : repoName || "Local project";
-
-                    const isChecked = selectedChatIds.has(chat.id);
-                    const stats = workspaceFileStats.get(chat.id);
                     const hasPendingPlan = workspacePendingPlans.has(chat.id);
+                    const project = projectsMap.get(chat.projectId);
+                    const activeSubChat =
+                      useAgentSubChatStore.getState().activeSubChatId;
+                    const subChats =
+                      (chat as typeof chat & { subChats?: SubChatMeta[] })
+                        .subChats || [];
+                    const stats = workspaceFileStats.get(chat.id);
 
                     return (
-                      <ContextMenu key={chat.id}>
-                        <ContextMenuTrigger asChild>
-                          <div
-                            data-chat-item
-                            data-chat-index={globalIndex}
-                            onClick={(e) => {
-                              // On real mobile (touch devices), onTouchEnd handles the click
-                              // In desktop app with narrow window, we still use mouse clicks
-                              if (isMobileFullscreen && !isDesktop) return;
-                              handleChatClick(chat.id, e, globalIndex);
-                            }}
-                            onTouchEnd={(e) => {
-                              // On real mobile touch devices, use touchEnd directly to bypass ContextMenu's click delay
-                              if (isMobileFullscreen && !isDesktop) {
-                                e.preventDefault();
-                                handleChatClick(
-                                  chat.id,
-                                  undefined,
-                                  globalIndex,
-                                );
-                              }
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.preventDefault();
-                                handleChatClick(
-                                  chat.id,
-                                  undefined,
-                                  globalIndex,
-                                );
-                              }
-                            }}
-                            onMouseEnter={(e) => {
-                              setHoveredChatIndex(globalIndex);
-                              handleAgentMouseEnter(
-                                chat.id,
-                                chat.name || "New workspace",
-                                e.currentTarget,
-                              );
-                            }}
-                            onMouseLeave={() => {
-                              setHoveredChatIndex(-1);
-                              handleAgentMouseLeave();
-                            }}
-                            className={cn(
-                              "w-full text-left py-1.5 cursor-pointer group relative",
-                              // Disable transitions on mobile for instant tap response
-                              !isMobileFullscreen &&
-                                "transition-colors duration-150",
-                              "outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70",
-                              // In multi-select: px-3 compensates for removed container px-2, keeping text aligned
-                              isMultiSelectMode ? "px-3" : "pl-2 pr-2",
-                              !isMultiSelectMode && "rounded-md",
-                              isSelected
-                                ? "bg-foreground/5 text-foreground"
-                                : isFocused
-                                  ? "bg-foreground/5 text-foreground"
-                                  : // On mobile, no hover effect to prevent double-tap issue
-                                    isMobileFullscreen
-                                    ? "text-muted-foreground"
-                                    : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground",
-                              isChecked &&
-                                (isMobileFullscreen
-                                  ? "bg-primary/10"
-                                  : "bg-primary/10 hover:bg-primary/15"),
-                            )}
-                          >
-                            <div className="flex items-start gap-2.5">
-                              <div className="pt-0.5">
-                                <ChatIcon
-                                  isSelected={isSelected}
-                                  isLoading={isLoading}
-                                  hasUnseenChanges={unseenChanges.has(chat.id)}
-                                  hasPendingPlan={hasPendingPlan}
-                                  isMultiSelectMode={isMultiSelectMode}
-                                  isChecked={isChecked}
-                                  onCheckboxClick={(e) =>
-                                    handleCheckboxClick(e, chat.id)
-                                  }
-                                  gitOwner={
-                                    projectsMap.get(chat.projectId)?.gitOwner
-                                  }
-                                  gitProvider={
-                                    projectsMap.get(chat.projectId)?.gitProvider
-                                  }
-                                />
-                              </div>
-                              <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-                                {/* Top line: Chat name + Archive button */}
-                                <div className="flex items-center gap-1">
-                                  <span
-                                    ref={(el) => {
-                                      if (el) nameRefs.current.set(chat.id, el);
-                                    }}
-                                    className="truncate block text-sm leading-tight flex-1"
-                                  >
-                                    <TypewriterText
-                                      text={chat.name || ""}
-                                      placeholder="New workspace"
-                                      id={chat.id}
-                                      isJustCreated={justCreatedIds.has(
-                                        chat.id,
-                                      )}
-                                      showPlaceholder={true}
-                                    />
-                                  </span>
-                                  {/* Archive button - shown on group hover via CSS only, hidden in multi-select */}
-                                  {/* Hide archive button on mobile - use context menu instead */}
-                                  {!isMultiSelectMode &&
-                                    !isMobileFullscreen && (
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          archiveChatMutation.mutate({
-                                            id: chat.id,
-                                          });
-                                        }}
-                                        tabIndex={-1}
-                                        className="shrink-0 text-muted-foreground hover:text-foreground active:text-foreground transition-[opacity,transform,color] duration-150 ease-out opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto active:scale-[0.97]"
-                                        aria-label="Archive workspace"
-                                      >
-                                        <ArchiveIcon className="h-3.5 w-3.5" />
-                                      </button>
-                                    )}
-                                </div>
-                                {/* Bottom line: Branch/Repository (left), Time, and Stats (right) */}
-                                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground/60 min-w-0">
-                                  <span className="truncate flex-1 min-w-0">
-                                    {displayText}
-                                  </span>
-                                  <div className="flex items-center gap-1.5 shrink-0">
-                                    {stats &&
-                                      (stats.additions > 0 ||
-                                        stats.deletions > 0) && (
-                                        <>
-                                          <span className="text-green-600 dark:text-green-400">
-                                            +{stats.additions}
-                                          </span>
-                                          <span className="text-red-600 dark:text-red-400">
-                                            -{stats.deletions}
-                                          </span>
-                                        </>
-                                      )}
-                                    <span>
-                                      {formatTime(
-                                        chat.updatedAt?.toISOString() ??
-                                          new Date().toISOString(),
-                                      )}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </ContextMenuTrigger>
-                        <ContextMenuContent className="w-48">
-                          {/* Multi-select context menu */}
-                          {isMultiSelectMode && selectedChatIds.has(chat.id) ? (
-                            <>
-                              {canShowPinOption && (
-                                <>
-                                  <ContextMenuItem
-                                    onClick={
-                                      areAllSelectedPinned
-                                        ? handleBulkUnpin
-                                        : handleBulkPin
-                                    }
-                                  >
-                                    {areAllSelectedPinned
-                                      ? `Unpin ${selectedChatIds.size} ${pluralize(selectedChatIds.size, "workspace")}`
-                                      : `Pin ${selectedChatIds.size} ${pluralize(selectedChatIds.size, "workspace")}`}
-                                  </ContextMenuItem>
-                                  <ContextMenuSeparator />
-                                </>
-                              )}
-                              <ContextMenuItem
-                                onClick={handleBulkArchive}
-                                disabled={archiveChatsBatchMutation.isPending}
-                              >
-                                {archiveChatsBatchMutation.isPending
-                                  ? "Archiving..."
-                                  : `Archive ${selectedChatIds.size} ${pluralize(selectedChatIds.size, "workspace")}`}
-                              </ContextMenuItem>
-                            </>
-                          ) : (
-                            <>
-                              <ContextMenuItem
-                                onClick={() => handleTogglePin(chat.id)}
-                              >
-                                {isPinned ? "Unpin workspace" : "Pin workspace"}
-                              </ContextMenuItem>
-                              <ContextMenuItem
-                                onClick={() =>
-                                  handleRenameClick({
-                                    id: chat.id,
-                                    name: chat.name,
-                                  })
-                                }
-                              >
-                                Rename workspace
-                              </ContextMenuItem>
-                              {branch && (
-                                <ContextMenuItem
-                                  onClick={() => {
-                                    navigator.clipboard.writeText(branch);
-                                    toast.success("Branch name copied", {
-                                      description: branch,
-                                    });
-                                  }}
-                                >
-                                  Copy branch name
-                                </ContextMenuItem>
-                              )}
-                              <ContextMenuSeparator />
-                              <ContextMenuItem
-                                onClick={() =>
-                                  archiveChatMutation.mutate({
-                                    id: chat.id,
-                                  })
-                                }
-                                className="justify-between"
-                              >
-                                Archive workspace
-                                <Kbd>{getShortcutKey("archiveAgent")}</Kbd>
-                              </ContextMenuItem>
-                              <ContextMenuItem
-                                onClick={() => handleArchiveAllBelow(chat.id)}
-                                disabled={
-                                  filteredChats.findIndex(
-                                    (c) => c.id === chat.id,
-                                  ) ===
-                                  filteredChats.length - 1
-                                }
-                              >
-                                Archive all below
-                              </ContextMenuItem>
-                              <ContextMenuItem
-                                onClick={() => handleArchiveOthers(chat.id)}
-                                disabled={filteredChats.length === 1}
-                              >
-                                Archive others
-                              </ContextMenuItem>
-                            </>
-                          )}
-                        </ContextMenuContent>
-                      </ContextMenu>
+                      <ChatTreeItem
+                        key={chat.id}
+                        id={chat.id}
+                        name={chat.name}
+                        branch={chat.branch}
+                        isExpanded={expandedChatIds.includes(chat.id)}
+                        isSelected={isSelected}
+                        isLoading={isLoading}
+                        hasUnseenChanges={unseenChanges.has(chat.id)}
+                        hasPendingPlan={hasPendingPlan}
+                        isJustCreated={justCreatedIds.has(chat.id)}
+                        subChats={subChats}
+                        activeSubChatId={activeSubChat}
+                        loadingSubChatIds={new Set([...loadingSubChats.keys()])}
+                        gitOwner={project?.gitOwner}
+                        gitProvider={project?.gitProvider}
+                        fileAdditions={stats?.additions}
+                        fileDeletions={stats?.deletions}
+                        fileCount={stats?.fileCount}
+                        onToggleExpand={() => handleToggleExpand(chat.id)}
+                        onSelect={() => handleChatClick(chat.id)}
+                        onSelectSubChat={(subChatId) =>
+                          handleSubChatSelect(chat.id, subChatId)
+                        }
+                        onArchive={() =>
+                          archiveChatMutation.mutate({ id: chat.id })
+                        }
+                        onCreateSubChat={() => handleCreateSubChat(chat.id)}
+                        onDeleteSubChat={handleDeleteSubChat}
+                        renderSubChatContextMenu={(subChat) => (
+                          <SubChatContextMenu
+                            subChat={subChat}
+                            isPinned={false}
+                            onTogglePin={() => {}}
+                            onRename={() => {}}
+                            onArchive={() => {}}
+                            onArchiveOthers={() => {}}
+                            onDelete={handleDeleteSubChat}
+                            isOnlyChat={subChats.length <= 1}
+                          />
+                        )}
+                      />
                     );
                   })}
                 </SidebarListSection>
@@ -2220,6 +1875,25 @@ export function AgentsSidebar({
         onSave={handleRenameSave}
         currentName={renamingChat?.name || ""}
         isLoading={renameLoading}
+      />
+
+      {/* Branch Switch Confirmation Dialog */}
+      <BranchSwitchDialog
+        open={branchSwitchDialogOpen}
+        onOpenChange={(open) => {
+          if (!checkoutBranchMutation.isPending) {
+            setBranchSwitchDialogOpen(open);
+          }
+        }}
+        pendingSwitch={pendingBranchSwitch}
+        isPending={checkoutBranchMutation.isPending}
+        onConfirm={handleConfirmBranchSwitch}
+        onCancel={() => {
+          if (!checkoutBranchMutation.isPending) {
+            setBranchSwitchDialogOpen(false);
+            setPendingBranchSwitch(null);
+          }
+        }}
       />
     </>
   );

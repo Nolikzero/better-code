@@ -80,6 +80,24 @@ interface DesktopApi {
     username: string | null;
   } | null>;
   logout: () => Promise<void>;
+
+  // Dialog
+  dialog: {
+    showOpenDialog: (options: {
+      title?: string;
+      properties?: Array<
+        | "openFile"
+        | "openDirectory"
+        | "multiSelections"
+        | "showHiddenFiles"
+        | "createDirectory"
+        | "promptToCreate"
+        | "noResolveAliases"
+        | "treatPackageAsDirectory"
+        | "dontAddToRecent"
+      >;
+    }) => Promise<{ canceled: boolean; filePaths: string[] }>;
+  };
 }
 
 declare global {

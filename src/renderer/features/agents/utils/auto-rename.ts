@@ -47,7 +47,14 @@ export async function autoRenameAgentChat({
       return; // Don't rename if we got a generic name
     }
 
-    // 2. Retry loop with delays [0, 3000, 5000, 5000]ms
+    // 2. Update UI immediately (before DB persistence)
+    console.log("[auto-rename] Updating UI with name:", name);
+    updateSubChatName(subChatId, name);
+    if (isFirstSubChat) {
+      updateChatName(parentChatId, name);
+    }
+
+    // 3. Retry loop to persist to DB with delays [0, 3000, 5000, 5000]ms
     const delays = [0, 3_000, 5_000, 5_000];
 
     for (let attempt = 0; attempt < delays.length; attempt++) {
@@ -56,22 +63,21 @@ export async function autoRenameAgentChat({
       }
 
       try {
-        // Rename sub-chat
+        // Persist sub-chat rename to DB
         await renameSubChat({ subChatId, name });
-        updateSubChatName(subChatId, name);
 
-        // Also rename parent chat if this is the first sub-chat
+        // Also persist parent chat rename if this is the first sub-chat
         if (isFirstSubChat) {
           await renameChat({ chatId: parentChatId, name });
-          updateChatName(parentChatId, name);
         }
 
+        console.log("[auto-rename] Successfully persisted to DB");
         return; // Success!
       } catch {
         // NOT_FOUND or other error - retry
         if (attempt === delays.length - 1) {
           console.error(
-            `[auto-rename] Failed to rename after ${delays.length} attempts`,
+            `[auto-rename] Failed to persist to DB after ${delays.length} attempts`,
           );
         }
       }

@@ -72,6 +72,7 @@ export {
   type ReasoningEffort,
   SANDBOX_MODES,
   type SandboxMode,
+  subChatProviderOverridesAtom,
 } from "./providers.atoms";
 // Selection atoms
 export {

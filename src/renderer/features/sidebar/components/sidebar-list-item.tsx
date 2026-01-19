@@ -86,7 +86,7 @@ export const SidebarListItem = React.memo(function SidebarListItem({
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       className={cn(
-        "w-full text-left py-1.5 cursor-pointer group relative",
+        "w-full text-left py-1.5 cursor-pointer group relative mt-2",
         // Disable transitions on mobile for instant tap response
         !isMobileFullscreen && "transition-colors duration-150",
         "outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70",

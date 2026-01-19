@@ -417,6 +417,13 @@ export class CodexProvider implements AIProvider {
       );
     }
 
+    // Additional working directories (from /add-dir command)
+    if (options.addDirs && options.addDirs.length > 0) {
+      for (const dir of options.addDirs) {
+        args.push("--add-dir", dir);
+      }
+    }
+
     // Output as JSON events for streaming
     args.push("--json");
 

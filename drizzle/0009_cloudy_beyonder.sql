@@ -1,0 +1,1 @@
+ALTER TABLE `sub_chats` ADD `added_dirs` text DEFAULT '[]';

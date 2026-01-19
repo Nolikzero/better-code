@@ -8,6 +8,8 @@ import simpleGit from "simple-git";
 import { z } from "zod";
 import { chats, getDatabase, projects, subChats } from "../../db";
 import {
+  checkBranchCheckoutSafety,
+  checkoutBranch,
   createWorktreeForChat,
   fetchGitHostStatus,
   fetchGitHubPRStatus,
@@ -16,6 +18,7 @@ import {
   getWorktreeDiff,
   removeWorktree,
 } from "../../git";
+import { gitQueue } from "../../git/git-queue";
 import { execWithShellEnv } from "../../git/shell-env";
 import { getClaudeBinaryPath } from "../../providers/claude";
 import { publicProcedure, router } from "../index";
@@ -83,6 +86,80 @@ export const chatsRouter = router({
     }),
 
   /**
+   * List chats with their sub-chats for a project (optimized for tree view)
+   */
+  listWithSubChats: publicProcedure
+    .input(z.object({ projectId: z.string() }))
+    .query(({ input }) => {
+      const db = getDatabase();
+
+      // Get all non-archived chats for the project with their sub-chats in a single query
+      const rows = db
+        .select({
+          chat: chats,
+          subChat: {
+            id: subChats.id,
+            chatId: subChats.chatId,
+            name: subChats.name,
+            mode: subChats.mode,
+            createdAt: subChats.createdAt,
+            updatedAt: subChats.updatedAt,
+            hasPendingPlanApproval: subChats.hasPendingPlanApproval,
+            fileAdditions: subChats.fileAdditions,
+            fileDeletions: subChats.fileDeletions,
+            fileCount: subChats.fileCount,
+            addedDirs: subChats.addedDirs,
+          },
+        })
+        .from(chats)
+        .leftJoin(subChats, eq(subChats.chatId, chats.id))
+        .where(
+          and(eq(chats.projectId, input.projectId), isNull(chats.archivedAt)),
+        )
+        .orderBy(desc(chats.updatedAt), desc(subChats.updatedAt))
+        .all();
+
+      // Group sub-chats by chat
+      const chatMap = new Map<
+        string,
+        {
+          chat: typeof chats.$inferSelect;
+          subChats: Array<{
+            id: string;
+            chatId: string;
+            name: string | null;
+            mode: string;
+            createdAt: Date | null;
+            updatedAt: Date | null;
+            hasPendingPlanApproval: boolean | null;
+            fileAdditions: number | null;
+            fileDeletions: number | null;
+            fileCount: number | null;
+            addedDirs: string | null;
+          }>;
+        }
+      >();
+
+      for (const row of rows) {
+        if (!chatMap.has(row.chat.id)) {
+          chatMap.set(row.chat.id, { chat: row.chat, subChats: [] });
+        }
+        if (row.subChat?.id) {
+          chatMap.get(row.chat.id)!.subChats.push(row.subChat);
+        }
+      }
+
+      // Convert to array and sort sub-chats by updatedAt desc
+      return Array.from(chatMap.values()).map(({ chat, subChats }) => ({
+        ...chat,
+        subChats: subChats.sort(
+          (a, b) =>
+            (b.updatedAt?.getTime() || 0) - (a.updatedAt?.getTime() || 0),
+        ),
+      }));
+    }),
+
+  /**
    * List archived chats (optionally filter by project)
    */
   listArchived: publicProcedure
@@ -99,6 +176,33 @@ export const chatsRouter = router({
         .where(and(...conditions))
         .orderBy(desc(chats.archivedAt))
         .all();
+    }),
+
+  /**
+   * Find a chat (workspace) by project and branch - for branch-centric model
+   */
+  findByProjectAndBranch: publicProcedure
+    .input(
+      z.object({
+        projectId: z.string(),
+        branch: z.string(),
+      }),
+    )
+    .query(({ input }) => {
+      const db = getDatabase();
+      const result = db
+        .select()
+        .from(chats)
+        .where(
+          and(
+            eq(chats.projectId, input.projectId),
+            eq(chats.branch, input.branch),
+            isNull(chats.archivedAt),
+          ),
+        )
+        .get();
+      // Return null instead of undefined (React Query requirement)
+      return result ?? null;
     }),
 
   /**
@@ -166,6 +270,8 @@ export const chatsRouter = router({
           .optional(),
         baseBranch: z.string().optional(), // Branch to base the worktree off
         useWorktree: z.boolean().default(true), // If false, work directly in project dir
+        selectedBranch: z.string().optional(), // Branch to switch to in local mode
+        createNewBranch: z.boolean().optional(), // Create selectedBranch as new branch from current
         mode: z.enum(["plan", "agent"]).default("agent"),
         providerId: z.enum(["claude", "codex"]).optional().default("claude"),
       }),
@@ -183,22 +289,8 @@ export const chatsRouter = router({
       console.log("[chats.create] found project:", project);
       if (!project) throw new Error("Project not found");
 
-      // Create chat (fast path)
-      const chat = db
-        .insert(chats)
-        .values({
-          name: input.name,
-          projectId: input.projectId,
-          providerId: input.providerId,
-        })
-        .returning()
-        .get();
-      console.log("[chats.create] created chat:", chat);
-
-      // Create initial sub-chat with user message (AI SDK format)
-      // If initialMessageParts is provided, use it; otherwise fallback to text-only message
+      // Build initial messages for sub-chat
       let initialMessages = "[]";
-
       if (input.initialMessageParts && input.initialMessageParts.length > 0) {
         initialMessages = JSON.stringify([
           {
@@ -216,6 +308,147 @@ export const chatsRouter = router({
           },
         ]);
       }
+
+      // LOCAL MODE: Find-or-create workspace by branch (branch-centric model)
+      if (!input.useWorktree && input.selectedBranch) {
+        console.log(
+          "[chats.create] local mode - checking for existing workspace:",
+          input.projectId,
+          input.selectedBranch,
+        );
+
+        // Check if workspace already exists for this (projectId, branch)
+        // Include archived chats to handle unique constraint properly
+        const existingChat = db
+          .select()
+          .from(chats)
+          .where(
+            and(
+              eq(chats.projectId, input.projectId),
+              eq(chats.branch, input.selectedBranch),
+            ),
+          )
+          .get();
+
+        if (existingChat) {
+          // If chat is archived, unarchive it for reuse
+          if (existingChat.archivedAt) {
+            console.log(
+              "[chats.create] found archived workspace, unarchiving:",
+              existingChat.id,
+            );
+            db.update(chats)
+              .set({ archivedAt: null, updatedAt: new Date() })
+              .where(eq(chats.id, existingChat.id))
+              .run();
+          }
+          console.log(
+            "[chats.create] found existing workspace:",
+            existingChat.id,
+          );
+
+          // Always checkout branch - user may have switched externally
+          // Use git queue to serialize operations and prevent index.lock conflicts
+          await gitQueue.enqueue(
+            project.path,
+            `checkoutBranch:existing:${input.selectedBranch}`,
+            async () => {
+              const git = simpleGit(project.path);
+              const status = await git.status();
+              const currentBranch = status.current;
+
+              if (currentBranch !== input.selectedBranch) {
+                console.log(
+                  "[chats.create] existing workspace on different branch, switching:",
+                  currentBranch,
+                  "->",
+                  input.selectedBranch,
+                );
+                const safety = await checkBranchCheckoutSafety(project.path);
+                if (!safety.safe) {
+                  console.log("[chats.create] checkout safety failed:", safety);
+                  throw new TRPCError({
+                    code: "PRECONDITION_FAILED",
+                    message: safety.error,
+                  });
+                }
+                console.log(
+                  "[chats.create] checkout safety passed, performing checkout...",
+                );
+                await checkoutBranch(project.path, input.selectedBranch!);
+
+                // Verify checkout succeeded
+                const postStatus = await git.status();
+                console.log(
+                  "[chats.create] post-checkout branch:",
+                  postStatus.current,
+                );
+                if (postStatus.current !== input.selectedBranch) {
+                  throw new TRPCError({
+                    code: "INTERNAL_SERVER_ERROR",
+                    message: `Branch checkout failed: expected "${input.selectedBranch}" but on "${postStatus.current}"`,
+                  });
+                }
+                console.log("[chats.create] checkout verified successfully");
+              } else {
+                console.log(
+                  "[chats.create] already on correct branch:",
+                  currentBranch,
+                );
+              }
+            },
+          );
+
+          // Workspace exists - just create a new SubChat in it
+          const subChat = db
+            .insert(subChats)
+            .values({
+              chatId: existingChat.id,
+              mode: input.mode,
+              messages: initialMessages,
+              providerId: input.providerId,
+            })
+            .returning()
+            .get();
+
+          // Update chat's updatedAt
+          db.update(chats)
+            .set({ updatedAt: new Date() })
+            .where(eq(chats.id, existingChat.id))
+            .run();
+
+          console.log(
+            "[chats.create] created subChat in existing workspace:",
+            subChat,
+          );
+
+          return {
+            ...existingChat,
+            archivedAt: null, // Ensure unarchived state is reflected
+            subChats: [subChat],
+            isExisting: true, // Flag to indicate workspace reuse
+            newSubChatId: subChat.id, // Explicitly identify the new sub-chat
+          };
+        }
+
+        // No existing workspace - proceed with new chat creation below
+        console.log(
+          "[chats.create] no existing workspace, creating new one for branch:",
+          input.selectedBranch,
+        );
+      }
+
+      // Create new chat (workspace)
+      const chat = db
+        .insert(chats)
+        .values({
+          name: input.name,
+          projectId: input.projectId,
+          providerId: input.providerId,
+        })
+        .returning()
+        .get();
+      console.log("[chats.create] created chat:", chat);
 
       const subChat = db
         .insert(subChats)
@@ -274,13 +507,166 @@ export const chatsRouter = router({
           worktreeResult = { worktreePath: project.path };
         }
       } else {
-        // Local mode: use project path directly, no branch info
+        // Local mode: use project path directly
         console.log("[chats.create] local mode - using project path directly");
-        db.update(chats)
-          .set({ worktreePath: project.path })
-          .where(eq(chats.id, chat.id))
-          .run();
-        worktreeResult = { worktreePath: project.path };
+
+        // Handle branch selection in local mode
+        if (input.selectedBranch) {
+          console.log(
+            "[chats.create] local mode with branch selection:",
+            input.selectedBranch,
+            "createNew:",
+            input.createNewBranch,
+          );
+
+          // Use git queue to serialize operations and prevent index.lock conflicts
+          // Returns { needsBranchSwitch, currentBranch } for use after the queue completes
+          const branchResult = await gitQueue.enqueue(
+            project.path,
+            `checkoutBranch:new:${input.selectedBranch}`,
+            async () => {
+              const git = simpleGit(project.path);
+              const status = await git.status();
+              const currentBranch = status.current || "main";
+
+              // Check if we need to switch branches
+              const needsBranchSwitch = input.selectedBranch !== currentBranch;
+
+              if (needsBranchSwitch) {
+                // Check for uncommitted changes before switching
+                const safety = await checkBranchCheckoutSafety(project.path);
+                if (!safety.safe) {
+                  // Rollback: delete the chat we just created
+                  db.delete(chats).where(eq(chats.id, chat.id)).run();
+                  throw new TRPCError({
+                    code: "PRECONDITION_FAILED",
+                    message: safety.error,
+                  });
+                }
+
+                if (input.createNewBranch) {
+                  // Create new branch from current and switch to it
+                  console.log(
+                    "[chats.create] creating new branch:",
+                    input.selectedBranch,
+                    "from:",
+                    currentBranch,
+                  );
+                  await git.checkout(["-b", input.selectedBranch!]);
+                } else {
+                  // Switch to existing branch
+                  console.log(
+                    "[chats.create] switching to existing branch:",
+                    input.selectedBranch,
+                  );
+                  await checkoutBranch(project.path, input.selectedBranch!);
+                }
+
+                // Verify checkout succeeded
+                const postStatus = await git.status();
+                console.log(
+                  "[chats.create] new workspace post-checkout branch:",
+                  postStatus.current,
+                );
+                if (postStatus.current !== input.selectedBranch) {
+                  // Rollback: delete the chat we just created
+                  db.delete(chats).where(eq(chats.id, chat.id)).run();
+                  throw new TRPCError({
+                    code: "INTERNAL_SERVER_ERROR",
+                    message: `Branch checkout failed: expected "${input.selectedBranch}" but on "${postStatus.current}"`,
+                  });
+                }
+                console.log(
+                  "[chats.create] new workspace checkout verified successfully",
+                );
+              } else {
+                console.log(
+                  "[chats.create] already on branch:",
+                  input.selectedBranch,
+                );
+              }
+
+              return { needsBranchSwitch, currentBranch };
+            },
+          );
+
+          // Before setting branch, double-check no other chat has this branch
+          // This handles race conditions and edge cases where find-or-create missed something
+          const conflictingChat = db
+            .select()
+            .from(chats)
+            .where(
+              and(
+                eq(chats.projectId, input.projectId),
+                eq(chats.branch, input.selectedBranch),
+              ),
+            )
+            .get();
+
+          if (conflictingChat) {
+            // Another chat already has this branch - delete the one we just created
+            // and use the existing one instead
+            console.log(
+              "[chats.create] found conflicting chat with same branch, using existing:",
+              conflictingChat.id,
+            );
+            db.delete(chats).where(eq(chats.id, chat.id)).run();
+
+            // Unarchive if needed
+            if (conflictingChat.archivedAt) {
+              db.update(chats)
+                .set({ archivedAt: null, updatedAt: new Date() })
+                .where(eq(chats.id, conflictingChat.id))
+                .run();
+            }
+
+            // Create sub-chat in existing workspace
+            const existingSubChat = db
+              .insert(subChats)
+              .values({
+                chatId: conflictingChat.id,
+                mode: input.mode,
+                messages: initialMessages,
+                providerId: input.providerId,
+              })
+              .returning()
+              .get();
+
+            return {
+              ...conflictingChat,
+              archivedAt: null,
+              subChats: [existingSubChat],
+              isExisting: true,
+              newSubChatId: existingSubChat.id,
+            };
+          }
+
+          worktreeResult = {
+            worktreePath: project.path,
+            branch: input.selectedBranch,
+            baseBranch: branchResult.needsBranchSwitch
+              ? branchResult.currentBranch
+              : undefined,
+          };
+
+          db.update(chats)
+            .set({
+              worktreePath: project.path,
+              branch: input.selectedBranch,
+              baseBranch: branchResult.needsBranchSwitch
+                ? branchResult.currentBranch
+                : undefined,
+            })
+            .where(eq(chats.id, chat.id))
+            .run();
+        } else {
+          // No branch selection - use current branch
+          db.update(chats)
+            .set({ worktreePath: project.path })
+            .where(eq(chats.id, chat.id))
+            .run();
+          worktreeResult = { worktreePath: project.path };
+        }
       }
 
       const response = {
@@ -289,6 +675,7 @@ export const chatsRouter = router({
         branch: worktreeResult.branch,
         baseBranch: worktreeResult.baseBranch,
         subChats: [subChat],
+        newSubChatId: subChat.id,
       };
 
       console.log("[chats.create] returning:", response);
@@ -445,6 +832,7 @@ export const chatsRouter = router({
         chatId: z.string(),
         name: z.string().optional(),
         mode: z.enum(["plan", "agent"]).default("agent"),
+        providerId: z.enum(["claude", "codex"]).optional(),
       }),
     )
     .mutation(({ input }) => {
@@ -456,6 +844,7 @@ export const chatsRouter = router({
           name: input.name,
           mode: input.mode,
           messages: "[]",
+          ...(input.providerId && { providerId: input.providerId }),
         })
         .returning()
         .get();
@@ -501,6 +890,38 @@ export const chatsRouter = router({
       return db
         .update(subChats)
         .set({ mode: input.mode })
+        .where(eq(subChats.id, input.id))
+        .returning()
+        .get();
+    }),
+
+  /**
+   * Update sub-chat provider
+   */
+  updateSubChatProvider: publicProcedure
+    .input(
+      z.object({ id: z.string(), providerId: z.enum(["claude", "codex"]) }),
+    )
+    .mutation(({ input }) => {
+      const db = getDatabase();
+      return db
+        .update(subChats)
+        .set({ providerId: input.providerId })
+        .where(eq(subChats.id, input.id))
+        .returning()
+        .get();
+    }),
+
+  /**
+   * Update sub-chat added directories (for /add-dir command)
+   */
+  updateSubChatAddedDirs: publicProcedure
+    .input(z.object({ id: z.string(), addedDirs: z.array(z.string()) }))
+    .mutation(({ input }) => {
+      const db = getDatabase();
+      return db
+        .update(subChats)
+        .set({ addedDirs: JSON.stringify(input.addedDirs) })
         .where(eq(subChats.id, input.id))
         .returning()
         .get();

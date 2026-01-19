@@ -188,6 +188,7 @@ export const chatRouter = router({
         maxThinkingTokens: z.number().optional(), // Enable extended thinking
         images: z.array(imageAttachmentSchema).optional(), // Image attachments
         providerId: z.enum(["claude", "codex"]).optional(), // AI provider selection
+        addDirs: z.array(z.string()).optional(), // Additional working directories
         // Codex-specific settings
         sandboxMode: z
           .enum(["read-only", "workspace-write", "danger-full-access"])
@@ -355,6 +356,7 @@ export const chatRouter = router({
                   model: input.model,
                   maxThinkingTokens: input.maxThinkingTokens,
                   abortController,
+                  addDirs: input.addDirs,
                   // Codex-specific settings from UI
                   sandboxMode: input.sandboxMode,
                   approvalPolicy: input.approvalPolicy,
@@ -755,6 +757,9 @@ export const chatRouter = router({
                 }),
                 // Pass MCP servers from original project config directly to SDK
                 ...(mcpServersForSdk && { mcpServers: mcpServersForSdk }),
+                // Additional working directories (from /add-dir command)
+                ...(input.addDirs &&
+                  input.addDirs.length > 0 && { addDirs: input.addDirs }),
                 env: finalEnv,
                 permissionMode:
                   input.mode === "plan"

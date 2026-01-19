@@ -1,6 +1,12 @@
 "use client";
 
-import { Eye, FileText, MessageSquareCode, ShieldCheck } from "lucide-react";
+import {
+  Eye,
+  FileText,
+  FolderPlus,
+  MessageSquareCode,
+  ShieldCheck,
+} from "lucide-react";
 import {
   memo,
   useCallback,
@@ -38,6 +44,8 @@ function getCommandIcon(commandName: string) {
       return FileText;
     case "security-review":
       return ShieldCheck;
+    case "add-dir":
+      return FolderPlus;
     default:
       return IconChatBubble;
   }

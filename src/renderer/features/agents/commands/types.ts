@@ -28,6 +28,7 @@ export type BuiltinCommandAction =
   | { type: "plan" }
   | { type: "agent" }
   | { type: "compact" }
+  | { type: "add-dir" }
   // Prompt-based commands (send to agent)
   | { type: "review" }
   | { type: "pr-comments" }

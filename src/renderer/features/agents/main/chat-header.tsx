@@ -22,6 +22,7 @@ import { MobileChatHeader } from "../ui/mobile-chat-header";
 import { ProviderIndicator } from "../ui/provider-indicator";
 import { SubChatSelector } from "../ui/sub-chat-selector";
 import { CHAT_LAYOUT } from "../ui/user-message";
+import { WorkspaceContextBadge } from "../ui/workspace-context-badge";
 
 export interface ChatHeaderProps {
   chatId: string;
@@ -47,6 +48,8 @@ export interface ChatHeaderProps {
   isTerminalSidebarOpen: boolean;
   onOpenTerminal: () => void;
   worktreePath: string | null;
+  branch?: string | null;
+  baseBranch?: string | null;
   // SubChats sidebar controls
   onOpenSubChatsSidebar: () => void;
   // Archive controls
@@ -79,6 +82,8 @@ export function ChatHeader({
   isTerminalSidebarOpen,
   onOpenTerminal,
   worktreePath,
+  branch,
+  baseBranch,
   onOpenSubChatsSidebar,
   isArchived,
   onRestoreWorkspace,
@@ -137,6 +142,12 @@ export function ChatHeader({
                 canOpenDiff={canOpenDiff}
                 isDiffSidebarOpen={isDiffSidebarOpen}
                 diffStats={diffStats}
+              />
+              {/* Workspace context badge */}
+              <WorkspaceContextBadge
+                branch={branch}
+                baseBranch={baseBranch}
+                worktreePath={worktreePath}
               />
               {/* MCP Servers indicator */}
               <McpServersIndicator

@@ -1938,7 +1938,7 @@ function ChatViewInner({
                         isCompacting={isCompacting}
                         changedFiles={changedFilesForSubChat}
                         worktreePath={projectPath}
-                        isOverlayMode={true}
+                        isOverlayMode={messages?.length !== 0}
                         onStop={async () => {
                           // Mark as manually aborted to prevent completion sound
                           agentChatStore.setManuallyAborted(subChatId, true);
@@ -1993,7 +1993,7 @@ function ChatViewInner({
                     hasContent={hasContent}
                     isStreaming={isStreaming}
                     isUploading={isUploading}
-                    isOverlayMode={true}
+                    isOverlayMode={messages?.length !== 0}
                   >
                     <ChatInputEditor
                       onTrigger={({ searchText, rect }) => {

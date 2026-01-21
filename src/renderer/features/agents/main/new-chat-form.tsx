@@ -984,7 +984,13 @@ export function NewChatForm({
   return (
     <div className="flex h-full flex-col">
       {/* Header - Simple burger on mobile, AgentsHeaderControls on desktop */}
-      <div className="shrink-0 flex items-center justify-between">
+      <div
+        className="shrink-0 flex items-center justify-between"
+        style={{
+          // @ts-expect-error - WebKit-specific property for Electron window dragging
+          WebkitAppRegion: "drag",
+        }}
+      >
         <div className="flex-1 min-w-0 flex items-center gap-4 px-2 py-2">
           {isMobileFullscreen ? (
             // Simple burger button for mobile - just opens chats list

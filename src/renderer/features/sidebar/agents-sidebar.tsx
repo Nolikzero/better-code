@@ -40,6 +40,7 @@ import { cn } from "../../lib/utils";
 import {
   activeChatDiffDataAtom,
   leftSidebarActiveTabAtom,
+  projectDiffDataAtom,
   selectedAgentChatIdAtom,
   selectedDraftIdAtom,
   selectedProjectAtom,
@@ -48,6 +49,7 @@ import {
   TrafficLightSpacer,
   TrafficLights,
 } from "../agents/components/traffic-light-spacer";
+import { useProjectDiffManagement } from "../agents/hooks/use-project-diff-management";
 import {
   LeftSidebarChangesView,
   LeftSidebarTabs,
@@ -92,7 +94,7 @@ export function AgentsSidebar({
   onChatSelect,
   hasChanges = false,
 }: AgentsSidebarProps) {
-  const [, setSelectedChatId] = useAtom(selectedAgentChatIdAtom);
+  const [selectedChatId, setSelectedChatId] = useAtom(selectedAgentChatIdAtom);
   const [, setSelectedDraftId] = useAtom(selectedDraftIdAtom);
   const [isSidebarHovered, setIsSidebarHovered] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -105,9 +107,18 @@ export function AgentsSidebar({
   const selectedProject = useAtomValue(selectedProjectAtom);
   const activeTab = useAtomValue(leftSidebarActiveTabAtom);
 
-  // Use the global atom that's updated by active-chat.tsx via git watcher
-  // This ensures real-time updates when files change
-  const activeDiffData = useAtomValue(activeChatDiffDataAtom);
+  // Fetch project-level diff when no chat is selected
+  // This ensures diff data is available even before the changes tab is opened
+  useProjectDiffManagement({
+    projectId: selectedProject?.id ?? null,
+    projectPath: selectedProject?.path ?? null,
+    enabled: !selectedChatId && !!selectedProject,
+  });
+
+  // Use either chat-level or project-level diff data based on selection
+  const chatDiffData = useAtomValue(activeChatDiffDataAtom);
+  const projectDiffData = useAtomValue(projectDiffDataAtom);
+  const activeDiffData = selectedChatId ? chatDiffData : projectDiffData;
   const changesCount = activeDiffData?.diffStats?.fileCount ?? 0;
 
   const setSettingsDialogOpen = useSetAtom(agentsSettingsDialogOpenAtom);

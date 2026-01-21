@@ -40,8 +40,11 @@ import {
   centerFilePathAtom,
   mainContentActiveTabAtom,
   previousAgentChatIdAtom,
+  projectDiffDataAtom,
   selectedAgentChatIdAtom,
+  selectedProjectAtom,
 } from "../atoms";
+import { useProjectDiffManagement } from "../hooks/use-project-diff-management";
 import { ChatView } from "../main/active-chat";
 import { NewChatForm } from "../main/new-chat-form";
 import {
@@ -79,10 +82,24 @@ export function AgentsContent() {
   const [activeTab, setActiveTab] = useAtom(mainContentActiveTabAtom);
   const [filePath, setFilePath] = useAtom(centerFilePathAtom);
 
+  // Selected project for project-level file/changes view
+  const selectedProject = useAtomValue(selectedProjectAtom);
+
   // Use the global atom that's updated by active-chat.tsx via git watcher
   // This ensures real-time updates when files change
-  const diffData = useAtomValue(activeChatDiffDataAtom);
-  const hasChanges = diffData?.diffStats?.hasChanges ?? false;
+  const chatDiffData = useAtomValue(activeChatDiffDataAtom);
+  const projectDiffData = useAtomValue(projectDiffDataAtom);
+
+  // Use project diff management when no chat is selected
+  useProjectDiffManagement({
+    projectId: selectedProject?.id ?? null,
+    projectPath: selectedProject?.path ?? null,
+    enabled: !selectedChatId && !!selectedProject,
+  });
+
+  // Determine which diff data to use: chat-level when chat selected, project-level otherwise
+  const effectiveDiffData = selectedChatId ? chatDiffData : projectDiffData;
+  const hasChanges = effectiveDiffData?.diffStats?.hasChanges ?? false;
 
   const hasFile = !!filePath;
 
@@ -921,7 +938,7 @@ export function AgentsContent() {
         className="flex-1 min-w-0 overflow-hidden flex flex-col"
         style={{ minWidth: "350px" }}
       >
-        {/* Tab bar - only show when file or changes exist */}
+        {/* Tab bar - only show when chat is selected (not for project-level view) */}
         {(hasFile || hasChanges) && activeSubChatId && <MainContentTabs />}
 
         {/* Content area */}
@@ -944,7 +961,17 @@ export function AgentsContent() {
               }
             />
           ) : (
-            <NewChatForm key={`new-chat-${newChatFormKeyRef.current}`} />
+            <NewChatForm
+              key={`new-chat-${newChatFormKeyRef.current}`}
+              isOverlayMode={activeTab !== "chat"}
+              overlayContent={
+                activeTab === "changes" && hasChanges ? (
+                  <CenterDiffView />
+                ) : activeTab === "file" && hasFile ? (
+                  <CenterFileView />
+                ) : null
+              }
+            />
           )}
         </div>
       </div>

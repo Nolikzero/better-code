@@ -238,7 +238,7 @@ export const AgentUserQuestion = memo(function AgentUserQuestion({
   }
 
   return (
-    <div className="border rounded-t-xl border-b-0 border-border bg-muted/30 overflow-hidden">
+    <div className="border rounded-t-xl border-b-0 border-border bg-background overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-1.5">
         <div className="flex items-center gap-1.5">

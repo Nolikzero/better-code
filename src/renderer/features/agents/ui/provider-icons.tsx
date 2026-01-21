@@ -50,3 +50,36 @@ export const PROVIDERS: { id: ProviderId; name: string; hasModels: boolean }[] =
     { id: "codex", name: "OpenAI Codex", hasModels: true },
     { id: "opencode", name: "OpenCode", hasModels: true },
   ];
+
+/**
+ * Provider-specific authentication configuration
+ * Used by the login modal to display provider-specific instructions
+ */
+export const PROVIDER_AUTH_CONFIG: Record<
+  ProviderId,
+  {
+    name: string;
+    command: string;
+    description: string;
+    bgColor: string;
+  }
+> = {
+  claude: {
+    name: "Claude Code",
+    command: "claude login",
+    description: "Please authenticate with Claude Code CLI",
+    bgColor: "bg-[#D97757]",
+  },
+  codex: {
+    name: "OpenAI Codex",
+    command: "codex auth",
+    description: "Please authenticate with Codex CLI",
+    bgColor: "bg-[#10A37F]",
+  },
+  opencode: {
+    name: "OpenCode",
+    command: "opencode",
+    description: "Please configure API keys for your preferred provider",
+    bgColor: "bg-[#6366F1]",
+  },
+};

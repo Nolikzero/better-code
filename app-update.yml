@@ -1,3 +1,4 @@
-provider: generic
-url: https://cdn.bettercode.app/releases/
+provider: github
+owner: nolikzero
+repo: better-code
 updaterCacheDirName: bettercode-updater

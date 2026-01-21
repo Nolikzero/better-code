@@ -3,7 +3,6 @@ import {
   type ApprovalMode,
   Codex,
   type Input as CodexInput,
-  type SandboxMode as CodexSandboxMode,
   type WebSearchMode as CodexWebSearchMode,
   type ModelReasoningEffort,
   type Thread,
@@ -207,17 +206,6 @@ export class CodexProvider implements AIProvider {
   }
 
   /**
-   * Map our sandbox mode to SDK's SandboxMode type
-   */
-  private mapSandboxMode(options: ChatSessionOptions): CodexSandboxMode {
-    if (options.sandboxMode) {
-      return options.sandboxMode as CodexSandboxMode;
-    }
-    // Plan mode: read-only, Agent mode: workspace-write
-    return options.mode === "plan" ? "read-only" : "workspace-write";
-  }
-
-  /**
    * Map our approval policy to SDK's ApprovalMode type
    */
   private mapApprovalPolicy(
@@ -288,7 +276,7 @@ export class CodexProvider implements AIProvider {
       const threadOptions: ThreadOptions = {
         model: options.model,
         workingDirectory: options.cwd,
-        sandboxMode: this.mapSandboxMode(options),
+        sandboxMode: "workspace-write",
         approvalPolicy: this.mapApprovalPolicy(options),
         modelReasoningEffort: this.mapReasoningEffort(options.reasoningEffort),
         additionalDirectories: options.addDirs,

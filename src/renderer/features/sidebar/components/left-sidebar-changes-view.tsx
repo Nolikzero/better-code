@@ -7,6 +7,8 @@ import {
   activeChatDiffDataAtom,
   changesSectionCollapsedAtom,
   prActionsAtom,
+  projectDiffDataAtom,
+  selectedAgentChatIdAtom,
 } from "../../agents/atoms";
 import { ChangesFileList } from "./changes-file-list";
 import { GitActionsToolbar } from "./git-actions-toolbar";
@@ -15,12 +17,22 @@ import { GitActionsToolbar } from "./git-actions-toolbar";
  * Left sidebar changes view - simplified to show only a file list.
  * Clicking a file opens the center diff view.
  * Now includes a git actions toolbar for commit, stash, push operations.
+ * Supports both chat-level (worktree) and project-level changes.
  */
 export function LeftSidebarChangesView() {
-  // Use the global atom that's updated by active-chat.tsx via git watcher
-  // This ensures real-time updates when files change
-  const diffData = useAtomValue(activeChatDiffDataAtom);
-  const prActions = useAtomValue(prActionsAtom);
+  // Determine if we're showing chat-level or project-level changes
+  const selectedChatId = useAtomValue(selectedAgentChatIdAtom);
+  const chatDiffData = useAtomValue(activeChatDiffDataAtom);
+  const projectDiffData = useAtomValue(projectDiffDataAtom);
+
+  // Use chat diff data when chat is selected, otherwise use project diff data
+  const isProjectLevel = !selectedChatId;
+  const diffData = isProjectLevel ? projectDiffData : chatDiffData;
+
+  // Only show PR actions for chat-level changes
+  const chatPrActions = useAtomValue(prActionsAtom);
+  const prActions = isProjectLevel ? null : chatPrActions;
+
   const [isCollapsed, setIsCollapsed] = useAtom(changesSectionCollapsedAtom);
 
   // Callback to refresh diff data after git operations
@@ -37,8 +49,13 @@ export function LeftSidebarChangesView() {
     setIsCollapsed((prev) => !prev);
   }, []);
 
-  // Render empty state if no diff data, no worktree, or no changes
-  if (!diffData || !diffData.worktreePath || !diffData.diffStats.hasChanges) {
+  // Extract path based on whether it's chat-level or project-level
+  const workingPath = isProjectLevel
+    ? (diffData as typeof projectDiffData)?.projectPath
+    : (diffData as typeof chatDiffData)?.worktreePath;
+
+  // Render empty state if no diff data, no path, or no changes
+  if (!diffData || !workingPath || !diffData.diffStats.hasChanges) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center px-4 py-8 text-center">
         <div className="mb-3 rounded-full bg-muted p-3">
@@ -52,15 +69,19 @@ export function LeftSidebarChangesView() {
     );
   }
 
-  const { chatId, worktreePath, diffStats, parsedFileDiffs } = diffData;
+  // Get the ID (chatId for chat-level, projectId for project-level)
+  const id = isProjectLevel
+    ? (diffData as typeof projectDiffData)!.projectId
+    : (diffData as typeof chatDiffData)!.chatId;
+  const { diffStats, parsedFileDiffs } = diffData;
 
   return (
     <div className="flex flex-col min-h-0 flex-1">
-      {/* Git Actions Toolbar - only show when expanded */}
-      {!isCollapsed && (
+      {/* Git Actions Toolbar - only show when expanded and for chat-level changes */}
+      {!isCollapsed && !isProjectLevel && (
         <GitActionsToolbar
-          chatId={chatId}
-          worktreePath={worktreePath}
+          chatId={id}
+          worktreePath={workingPath}
           hasChanges={diffStats.hasChanges}
           onRefresh={handleRefresh}
         />
@@ -68,8 +89,8 @@ export function LeftSidebarChangesView() {
 
       {/* File List */}
       <ChangesFileList
-        chatId={chatId}
-        worktreePath={worktreePath}
+        chatId={id}
+        worktreePath={workingPath}
         diffStats={diffStats}
         parsedFileDiffs={parsedFileDiffs}
         prActions={prActions}

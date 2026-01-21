@@ -6,6 +6,10 @@ import { join } from "path";
 // Enable file logging in both dev and production
 log.transports.file.level = "info";
 
+if (app.isPackaged) {
+  Object.assign(console, log.functions);
+}
+
 import {
   checkForUpdates,
   downloadUpdate,
@@ -13,19 +17,18 @@ import {
   setupFocusUpdateCheck,
 } from "./lib/auto-updater";
 import { closeDatabase, initDatabase } from "./lib/db";
+import { initDockMenu } from "./lib/dock-menu";
 import { initializeProviders, shutdownProviders } from "./lib/providers/init";
+import { initTray, updateTrayStatus } from "./lib/tray-menu";
 import { createMainWindow, getWindow } from "./windows/main";
 
-// Electron Forge Vite plugin global for dev detection
-declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
-
-// Dev mode detection (Forge Vite plugin sets this global in dev mode)
-const IS_DEV = !!MAIN_WINDOW_VITE_DEV_SERVER_URL;
+// Dev mode detection - use process.env.NODE_ENV for initial setup
+// (app.isPackaged isn't available until app is ready in some contexts)
+const IS_DEV = process.env.NODE_ENV === "development";
 
 // Set dev mode userData path BEFORE requestSingleInstanceLock()
 // This ensures dev and prod have separate instance locks
-if (IS_DEV) {
-  const { join } = require("path");
+if (IS_DEV && app) {
   const devUserData = join(app.getPath("userData"), "..", "BetterCode Dev");
   app.setPath("userData", devUserData);
   console.log("[Dev] Using separate userData path:", devUserData);
@@ -284,6 +287,19 @@ if (gotTheLock) {
     // Create main window
     createMainWindow();
 
+    // Initialize dock menu (macOS only)
+    const cleanupDockMenu = initDockMenu();
+
+    // Initialize system tray (all platforms)
+    const cleanupTray = initTray();
+
+    // Store cleanup for use in before-quit handler
+    (global as any).__cleanupDockMenu = cleanupDockMenu;
+    (global as any).__cleanupTray = cleanupTray;
+
+    // Expose updateTrayStatus for renderer to call via IPC
+    (global as any).__updateTrayStatus = updateTrayStatus;
+
     // Deferred startup tasks (run after window is created to improve perceived startup time)
     // Use setImmediate to let the event loop process window rendering first
     setImmediate(() => {
@@ -320,6 +336,14 @@ if (gotTheLock) {
   // Cleanup before quit
   app.on("before-quit", async () => {
     console.log("[App] Shutting down...");
+    // Cleanup dock menu
+    if ((global as any).__cleanupDockMenu) {
+      (global as any).__cleanupDockMenu();
+    }
+    // Cleanup system tray
+    if ((global as any).__cleanupTray) {
+      (global as any).__cleanupTray();
+    }
     await shutdownProviders();
     await closeDatabase();
   });

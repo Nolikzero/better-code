@@ -24,7 +24,7 @@ export const agentsSettingsDialogOpenAtom = atom<boolean>(false);
 // Shortcuts dialog
 export const agentsShortcutsDialogOpenAtom = atom<boolean>(false);
 
-// Login modal (shown when Claude Code auth fails)
+// Login modal (shown when provider auth fails)
 export const agentsLoginModalOpenAtom = atom<boolean>(false);
 
 // Help popover

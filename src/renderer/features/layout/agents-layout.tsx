@@ -2,7 +2,7 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AgentsSettingsDialog } from "../../components/dialogs/agents-settings-dialog";
 import { AgentsShortcutsDialog } from "../../components/dialogs/agents-shortcuts-dialog";
-import { ClaudeLoginModal } from "../../components/dialogs/claude-login-modal";
+import { LoginModal } from "../../components/dialogs/login-modal";
 import { QuickOpenDialog } from "../../components/ui/quick-open-dialog";
 import { ResizableSidebar } from "../../components/ui/resizable-sidebar";
 import { TooltipProvider } from "../../components/ui/tooltip";
@@ -268,6 +268,43 @@ export function AgentsLayout() {
     return unsubscribe;
   }, [isDesktop, setSelectedChatId, setActiveSubChat, addToOpenSubChats]);
 
+  // Handle dock menu clicks - navigate to the chat (macOS only)
+  useEffect(() => {
+    if (!isDesktop || !window.desktopApi?.onDockNavigateToChat) return;
+
+    const unsubscribe = window.desktopApi.onDockNavigateToChat((data) => {
+      if (data.chatId) {
+        setSelectedChatId(data.chatId);
+      }
+    });
+
+    return unsubscribe;
+  }, [isDesktop, setSelectedChatId]);
+
+  // Handle tray menu clicks - navigate to the chat (all platforms)
+  useEffect(() => {
+    if (!isDesktop || !window.desktopApi?.onTrayNavigateToChat) return;
+
+    const unsubscribe = window.desktopApi.onTrayNavigateToChat((data) => {
+      if (data.chatId) {
+        setSelectedChatId(data.chatId);
+      }
+    });
+
+    return unsubscribe;
+  }, [isDesktop, setSelectedChatId]);
+
+  // Handle tray preferences click - open settings dialog
+  useEffect(() => {
+    if (!isDesktop || !window.desktopApi?.onTrayOpenPreferences) return;
+
+    const unsubscribe = window.desktopApi.onTrayOpenPreferences(() => {
+      setSettingsOpen(true);
+    });
+
+    return unsubscribe;
+  }, [isDesktop, setSettingsOpen]);
+
   const handleCloseSidebar = useCallback(() => {
     setSidebarOpen(false);
   }, [setSidebarOpen]);
@@ -290,7 +327,7 @@ export function AgentsLayout() {
         isOpen={shortcutsOpen}
         onClose={() => setShortcutsOpen(false)}
       />
-      <ClaudeLoginModal />
+      <LoginModal />
       <QuickOpenDialog />
       <div className="flex w-full h-full relative overflow-hidden bg-background select-none">
         {/* Left Sidebar (Project Selector + File Tree + Changes) */}

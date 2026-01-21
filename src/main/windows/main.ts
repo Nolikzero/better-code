@@ -11,10 +11,6 @@ import { createIPCHandler } from "trpc-electron/main";
 import { initLiquidGlass } from "../lib/liquid-glass";
 import { createAppRouter } from "../lib/trpc/routers";
 
-// Electron Forge Vite plugin globals
-declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
-declare const MAIN_WINDOW_VITE_NAME: string;
-
 // Register IPC handlers for window operations (only once)
 let ipcHandlersRegistered = false;
 
@@ -172,6 +168,14 @@ function registerIpcHandlers(getWindow: () => BrowserWindow | null): void {
       return dialog.showOpenDialog(window, options);
     },
   );
+
+  // Tray status update
+  ipcMain.handle("tray:update-status", (_event, activeCount: number) => {
+    const updateTrayStatus = (global as any).__updateTrayStatus;
+    if (updateTrayStatus) {
+      updateTrayStatus(activeCount);
+    }
+  });
 }
 
 // Current window reference
@@ -212,7 +216,7 @@ export function createMainWindow(): BrowserWindow {
     trafficLightPosition:
       process.platform === "darwin" ? { x: 15, y: 12 } : undefined,
     webPreferences: {
-      preload: join(__dirname, "preload.js"),
+      preload: join(__dirname, "../preload/preload.js"),
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: false, // Required for electron-trpc
@@ -286,13 +290,11 @@ export function createMainWindow(): BrowserWindow {
 
   // Load the renderer - always load main app (no auth check)
   console.log("[Main] Loading main app...");
-  if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-    window.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
+  if (process.env.ELECTRON_RENDERER_URL) {
+    window.loadURL(process.env.ELECTRON_RENDERER_URL);
     window.webContents.openDevTools();
   } else {
-    window.loadFile(
-      join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`),
-    );
+    window.loadFile(join(__dirname, "../renderer/index.html"));
   }
 
   // Page load handler - native traffic lights stay hidden, React controls visibility

@@ -3,7 +3,7 @@ import { BrowserWindow, dialog } from "electron";
 import { basename } from "path";
 import { z } from "zod";
 import { getDatabase, projects } from "../../db";
-import { getGitRemoteInfo } from "../../git";
+import { getGitRemoteInfo, getWorktreeDiff } from "../../git";
 import { publicProcedure, router } from "../index";
 
 export const projectsRouter = router({
@@ -203,5 +203,33 @@ export const projectsRouter = router({
         .where(eq(projects.id, input.id))
         .returning()
         .get();
+    }),
+
+  /**
+   * Get git diff for a project's working directory
+   * Shows uncommitted changes against HEAD
+   */
+  getDiff: publicProcedure
+    .input(z.object({ projectId: z.string() }))
+    .query(async ({ input }) => {
+      const db = getDatabase();
+      const project = db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, input.projectId))
+        .get();
+
+      if (!project?.path) {
+        return { diff: null, error: "Project not found" };
+      }
+
+      // Use getWorktreeDiff which works for any git directory
+      const result = await getWorktreeDiff(project.path);
+
+      if (!result.success) {
+        return { diff: null, error: result.error };
+      }
+
+      return { diff: result.diff || "" };
     }),
 });

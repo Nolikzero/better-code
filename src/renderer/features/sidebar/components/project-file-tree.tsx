@@ -296,11 +296,10 @@ export function ProjectFileTree() {
   // Handle "Add to Chat" context menu action
   const handleAddToChat = useCallback(
     (entry: FileTreeEntry) => {
-      if (!selectedChatId) return;
       const mention = createMentionOption(entry);
       setPendingFileMentions((prev) => [...prev, mention]);
     },
-    [selectedChatId, createMentionOption, setPendingFileMentions],
+    [createMentionOption, setPendingFileMentions],
   );
 
   // Handle drag start - set file mention data
@@ -612,10 +611,7 @@ export function ProjectFileTree() {
                   </button>
                 </ContextMenuTrigger>
                 <ContextMenuContent className="w-48">
-                  <ContextMenuItem
-                    onClick={() => handleAddToChat(entry)}
-                    disabled={!selectedChatId}
-                  >
+                  <ContextMenuItem onClick={() => handleAddToChat(entry)}>
                     <MessageSquarePlus className="mr-2 h-4 w-4" />
                     Add to Chat
                   </ContextMenuItem>

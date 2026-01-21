@@ -31,6 +31,7 @@ import {
   lastSelectedBranchesAtom,
   lastSelectedRepoAtom,
   lastSelectedWorkModeAtom,
+  pendingFileMentionsAtom,
   promptHistoryAtomFamily,
   selectedAgentChatIdAtom,
   selectedDraftIdAtom,
@@ -95,11 +96,15 @@ import { handlePasteEvent } from "../utils/paste-text";
 interface NewChatFormProps {
   isMobileFullscreen?: boolean;
   onBackToChats?: () => void;
+  isOverlayMode?: boolean;
+  overlayContent?: React.ReactNode;
 }
 
 export function NewChatForm({
   isMobileFullscreen = false,
   onBackToChats,
+  isOverlayMode = false,
+  overlayContent,
 }: NewChatFormProps = {}) {
   // UNCONTROLLED: just track if editor has content for send button
   const [hasContent, setHasContent] = useState(false);
@@ -213,6 +218,24 @@ export function NewChatForm({
   const branchListRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<AgentsMentionsEditorHandle>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Watch for pending file mentions (from project tree context menu)
+  const [pendingFileMentions, setPendingFileMentions] = useAtom(
+    pendingFileMentionsAtom,
+  );
+
+  useEffect(() => {
+    if (pendingFileMentions.length === 0) return;
+
+    // Focus and append all mentions to editor
+    editorRef.current?.focus();
+    for (const mention of pendingFileMentions) {
+      editorRef.current?.appendMention(mention);
+    }
+
+    // Clear the pending mentions
+    setPendingFileMentions([]);
+  }, [pendingFileMentions, setPendingFileMentions]);
 
   // Image upload hook
   const {
@@ -984,7 +1007,7 @@ export function NewChatForm({
   return (
     <div className="flex h-full flex-col">
       {/* Header - Simple burger on mobile, AgentsHeaderControls on desktop */}
-      <div
+      {!isOverlayMode && (<div
         className="shrink-0 flex items-center justify-between"
         style={{
           // @ts-expect-error - WebKit-specific property for Electron window dragging
@@ -1011,370 +1034,383 @@ export function NewChatForm({
             />
           )}
         </div>
-      </div>
+      </div>)}
 
-      <div className="flex flex-1 items-center justify-center overflow-y-auto relative">
-        <div className="w-full max-w-2xl space-y-4 md:space-y-6 relative z-10 px-4">
-          {/* SiriOrb - only show when project is selected */}
-          {validatedProject && (
-            <div className="space-y-4 text-center mb-2 md:mb-4">
-              <div className="flex justify-center">
-                <SiriOrb
-                  size="180px"
-                  colors={orbColors}
-                  animationDuration={20}
-                />
-              </div>
-              <h1 className="text-2xl md:text-4xl font-medium tracking-tight">
-                What would you like to do?
-              </h1>
-            </div>
-          )}
-
-          {/* Input Area or Select Repo State */}
-          {!validatedProject ? (
-            // No project selected - show select repo button (like Sign in button)
-            <div className="flex justify-center">
-              <button
-                onClick={handleOpenFolder}
-                disabled={openFolder.isPending}
-                className="h-8 px-3 bg-primary text-primary-foreground rounded-lg text-sm font-medium transition-[background-color,transform] duration-150 hover:bg-primary/90 active:scale-[0.97] shadow-[0_0_0_0.5px_rgb(23,23,23),inset_0_0_0_1px_rgba(255,255,255,0.14)] disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {openFolder.isPending ? "Opening..." : "Select repo"}
-              </button>
-            </div>
-          ) : (
-            // Project selected - show input form
-            <>
-              <ChatInputRoot
-                maxHeight={240}
-                onSubmit={handleSend}
-                contextItems={
-                  images.length > 0 ? (
-                    <ChatInputAttachments
-                      images={images}
-                      onRemoveImage={removeImage}
-                    />
-                  ) : undefined
-                }
-                onAddAttachments={handleAddAttachments}
-                filterDroppedFiles={filterImagesOnly}
-                editorRef={editorRef}
-                fileInputRef={fileInputRef}
-                hasContent={hasContent}
-                isSubmitting={createChatMutation.isPending}
-                isUploading={isUploading}
-                disabled={createChatMutation.isPending}
-              >
-                <ChatInputEditor
-                  onTrigger={handleMentionTrigger}
-                  onCloseTrigger={closeMention}
-                  onSlashTrigger={({ searchText, rect }) =>
-                    handleSlashTrigger(searchText, rect)
-                  }
-                  onCloseSlashTrigger={handleCloseSlashTrigger}
-                  onContentChange={handleContentChange}
-                  onSubmit={handleSend}
-                  onShiftTab={() => {
-                    if (defaultProvider !== "codex") {
-                      setIsPlanMode((prev) => !prev);
-                    }
-                  }}
-                  onArrowUp={handleArrowUp}
-                  onArrowDown={handleArrowDown}
-                  onPaste={handlePaste}
-                  isMobile={isMobileFullscreen}
-                />
-                <ChatInputActions
-                  leftContent={
-                    <>
-                      {/* Mode toggle (Agent/Plan) - hidden for Codex which doesn't support plan mode */}
-                      {defaultProvider !== "codex" && (
-                        <ModeToggleDropdown
-                          isPlanMode={isPlanMode}
-                          onModeChange={setIsPlanMode}
-                        />
-                      )}
-
-                      {/* Provider selector */}
-                      <ProviderSelectorDropdown
-                        providerId={defaultProvider}
-                        onProviderChange={setDefaultProvider}
-                      />
-
-                      {/* Model selector */}
-                      {defaultProvider === "opencode" ? (
-                        <OpenCodeModelSelector
-                          currentModelId={currentModelId}
-                          onModelChange={(modelId) => {
-                            setModelByProvider({
-                              ...modelByProvider,
-                              opencode: modelId,
-                            });
-                          }}
-                        />
-                      ) : (
-                        <ModelSelectorDropdown
-                          providerId={defaultProvider}
-                          models={providerModels}
-                          currentModelId={currentModelId}
-                          onModelChange={(modelId) => {
-                            setModelByProvider({
-                              ...modelByProvider,
-                              [defaultProvider]: modelId,
-                            });
-                          }}
-                        />
-                      )}
-
-                      {/* Web search mode selector (Codex only) */}
-                      {defaultProvider === "codex" && <WebSearchModeSelector />}
-                    </>
-                  }
-                  acceptedFileTypes="image/jpeg,image/png"
-                  onAddAttachments={handleAddAttachments}
-                  maxImages={5}
-                  imageCount={images.length}
-                  actionButton={
-                    <AgentSendButton
-                      isStreaming={false}
-                      isSubmitting={createChatMutation.isPending || isUploading}
-                      disabled={Boolean(
-                        !hasContent || !selectedProject || isUploading,
-                      )}
-                      onClick={handleSend}
-                      isPlanMode={isPlanMode}
-                    />
-                  }
-                />
-              </ChatInputRoot>
-
-              {/* Project, Work Mode, and Branch selectors - directly under input */}
-              <div className="mt-1.5 md:mt-2 ml-[5px] flex items-center gap-2">
-                <ProjectSelector />
-
-                {/* Work mode selector - between project and branch */}
-                {validatedProject && (
-                  <WorkModeSelector
-                    value={workMode}
-                    onChange={setWorkMode}
-                    disabled={createChatMutation.isPending}
+      {isOverlayMode ? (
+        /* Render overlay content (CenterDiffView/CenterFileView) when in overlay mode */
+        <div className="flex-1 min-h-0 overflow-hidden">{overlayContent}</div>
+      ) : (
+        <div className="flex flex-1 items-center justify-center overflow-y-auto relative">
+          <div className="w-full max-w-2xl space-y-4 md:space-y-6 relative z-10 px-4">
+            {/* SiriOrb - only show when project is selected */}
+            {validatedProject && (
+              <div className="space-y-4 text-center mb-2 md:mb-4">
+                <div className="flex justify-center">
+                  <SiriOrb
+                    size="180px"
+                    colors={orbColors}
+                    animationDuration={20}
                   />
-                )}
+                </div>
+                <h1 className="text-2xl md:text-4xl font-medium tracking-tight">
+                  What would you like to do?
+                </h1>
+              </div>
+            )}
 
-                {/* Branch selector - visible for both local and worktree modes */}
-                {validatedProject && (
-                  <Popover
-                    open={branchPopoverOpen}
-                    onOpenChange={(open) => {
-                      if (!open) {
-                        setBranchSearch(""); // Clear search on close
+            {/* Input Area or Select Repo State */}
+            {!validatedProject ? (
+              // No project selected - show select repo button (like Sign in button)
+              <div className="flex justify-center">
+                <button
+                  onClick={handleOpenFolder}
+                  disabled={openFolder.isPending}
+                  className="h-8 px-3 bg-primary text-primary-foreground rounded-lg text-sm font-medium transition-[background-color,transform] duration-150 hover:bg-primary/90 active:scale-[0.97] shadow-[0_0_0_0.5px_rgb(23,23,23),inset_0_0_0_1px_rgba(255,255,255,0.14)] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {openFolder.isPending ? "Opening..." : "Select repo"}
+                </button>
+              </div>
+            ) : (
+              // Project selected - show input form
+              <>
+                <ChatInputRoot
+                  maxHeight={240}
+                  onSubmit={handleSend}
+                  contextItems={
+                    images.length > 0 ? (
+                      <ChatInputAttachments
+                        images={images}
+                        onRemoveImage={removeImage}
+                      />
+                    ) : undefined
+                  }
+                  onAddAttachments={handleAddAttachments}
+                  filterDroppedFiles={filterImagesOnly}
+                  editorRef={editorRef}
+                  fileInputRef={fileInputRef}
+                  hasContent={hasContent}
+                  isSubmitting={createChatMutation.isPending}
+                  isUploading={isUploading}
+                  disabled={createChatMutation.isPending}
+                >
+                  <ChatInputEditor
+                    onTrigger={handleMentionTrigger}
+                    onCloseTrigger={closeMention}
+                    onSlashTrigger={({ searchText, rect }) =>
+                      handleSlashTrigger(searchText, rect)
+                    }
+                    onCloseSlashTrigger={handleCloseSlashTrigger}
+                    onContentChange={handleContentChange}
+                    onSubmit={handleSend}
+                    onShiftTab={() => {
+                      if (defaultProvider !== "codex") {
+                        setIsPlanMode((prev) => !prev);
                       }
-                      setBranchPopoverOpen(open);
                     }}
-                  >
-                    <PopoverTrigger asChild>
-                      <button
-                        className="flex items-center gap-1.5 px-2 py-1 text-sm text-muted-foreground hover:text-foreground transition-[background-color,color] duration-150 ease-out rounded-md hover:bg-muted/50 outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70"
-                        disabled={branchesQuery.isLoading}
-                      >
-                        <BranchIcon className="w-4 h-4" />
-                        <span className="truncate max-w-[100px]">
-                          {selectedBranch ||
-                            branchesQuery.data?.defaultBranch ||
-                            "main"}
-                        </span>
-                        <IconChevronDown className="w-3 h-3 opacity-50" />
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-80 p-0" align="start">
-                      {/* Search input with Create button */}
-                      <div className="flex items-center gap-1.5 h-7 px-1.5 mx-1 my-1 rounded-md bg-muted/50">
-                        <SearchIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
-                        <input
-                          type="text"
-                          placeholder="Search branches..."
-                          value={branchSearch}
-                          onChange={(e) => setBranchSearch(e.target.value)}
-                          className="flex-1 bg-transparent text-sm outline-hidden placeholder:text-muted-foreground"
-                        />
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 px-1.5 flex items-center gap-1 text-xs shrink-0"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setCreateBranchDialogOpen(true);
-                            setBranchPopoverOpen(false);
-                          }}
-                        >
-                          <Plus className="h-3 w-3" />
-                          Create
-                        </Button>
-                      </div>
+                    onArrowUp={handleArrowUp}
+                    onArrowDown={handleArrowDown}
+                    onPaste={handlePaste}
+                    isMobile={isMobileFullscreen}
+                  />
+                  <ChatInputActions
+                    leftContent={
+                      <>
+                        {/* Mode toggle (Agent/Plan) - hidden for Codex which doesn't support plan mode */}
+                        {defaultProvider !== "codex" && (
+                          <ModeToggleDropdown
+                            isPlanMode={isPlanMode}
+                            onModeChange={setIsPlanMode}
+                          />
+                        )}
 
-                      {/* Virtualized branch list */}
-                      {filteredBranches.length === 0 ? (
-                        <div className="py-6 text-center text-sm text-muted-foreground">
-                          No branches found.
-                        </div>
-                      ) : (
-                        <div
-                          ref={branchListRef}
-                          className="overflow-auto py-1 scrollbar-hide"
-                          style={{
-                            height: Math.min(
-                              filteredBranches.length * 32 + 8,
-                              300,
-                            ),
-                          }}
+                        {/* Provider selector */}
+                        <ProviderSelectorDropdown
+                          providerId={defaultProvider}
+                          onProviderChange={setDefaultProvider}
+                        />
+
+                        {/* Model selector */}
+                        {defaultProvider === "opencode" ? (
+                          <OpenCodeModelSelector
+                            currentModelId={currentModelId}
+                            onModelChange={(modelId) => {
+                              setModelByProvider({
+                                ...modelByProvider,
+                                opencode: modelId,
+                              });
+                            }}
+                          />
+                        ) : (
+                          <ModelSelectorDropdown
+                            providerId={defaultProvider}
+                            models={providerModels}
+                            currentModelId={currentModelId}
+                            onModelChange={(modelId) => {
+                              setModelByProvider({
+                                ...modelByProvider,
+                                [defaultProvider]: modelId,
+                              });
+                            }}
+                          />
+                        )}
+
+                        {/* Web search mode selector (Codex only) */}
+                        {defaultProvider === "codex" && (
+                          <WebSearchModeSelector />
+                        )}
+                      </>
+                    }
+                    acceptedFileTypes="image/jpeg,image/png"
+                    onAddAttachments={handleAddAttachments}
+                    maxImages={5}
+                    imageCount={images.length}
+                    actionButton={
+                      <AgentSendButton
+                        isStreaming={false}
+                        isSubmitting={
+                          createChatMutation.isPending || isUploading
+                        }
+                        disabled={Boolean(
+                          !hasContent || !selectedProject || isUploading,
+                        )}
+                        onClick={handleSend}
+                        isPlanMode={isPlanMode}
+                      />
+                    }
+                  />
+                </ChatInputRoot>
+
+                {/* Project, Work Mode, and Branch selectors - directly under input */}
+                <div className="mt-1.5 md:mt-2 ml-[5px] flex items-center gap-2">
+                  <ProjectSelector />
+
+                  {/* Work mode selector - between project and branch */}
+                  {validatedProject && (
+                    <WorkModeSelector
+                      value={workMode}
+                      onChange={setWorkMode}
+                      disabled={createChatMutation.isPending}
+                    />
+                  )}
+
+                  {/* Branch selector - visible for both local and worktree modes */}
+                  {validatedProject && (
+                    <Popover
+                      open={branchPopoverOpen}
+                      onOpenChange={(open) => {
+                        if (!open) {
+                          setBranchSearch(""); // Clear search on close
+                        }
+                        setBranchPopoverOpen(open);
+                      }}
+                    >
+                      <PopoverTrigger asChild>
+                        <button
+                          className="flex items-center gap-1.5 px-2 py-1 text-sm text-muted-foreground hover:text-foreground transition-[background-color,color] duration-150 ease-out rounded-md hover:bg-muted/50 outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70"
+                          disabled={branchesQuery.isLoading}
                         >
-                          <div
-                            style={{
-                              height: `${branchVirtualizer.getTotalSize()}px`,
-                              width: "100%",
-                              position: "relative",
+                          <BranchIcon className="w-4 h-4" />
+                          <span className="truncate max-w-[100px]">
+                            {selectedBranch ||
+                              branchesQuery.data?.defaultBranch ||
+                              "main"}
+                          </span>
+                          <IconChevronDown className="w-3 h-3 opacity-50" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-80 p-0" align="start">
+                        {/* Search input with Create button */}
+                        <div className="flex items-center gap-1.5 h-7 px-1.5 mx-1 my-1 rounded-md bg-muted/50">
+                          <SearchIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                          <input
+                            type="text"
+                            placeholder="Search branches..."
+                            value={branchSearch}
+                            onChange={(e) => setBranchSearch(e.target.value)}
+                            className="flex-1 bg-transparent text-sm outline-hidden placeholder:text-muted-foreground"
+                          />
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 px-1.5 flex items-center gap-1 text-xs shrink-0"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setCreateBranchDialogOpen(true);
+                              setBranchPopoverOpen(false);
                             }}
                           >
-                            {branchVirtualizer
-                              .getVirtualItems()
-                              .map((virtualItem) => {
-                                const branch =
-                                  filteredBranches[virtualItem.index];
-                                const isSelected =
-                                  selectedBranch === branch.name ||
-                                  (!selectedBranch && branch.isDefault);
-                                return (
-                                  <button
-                                    key={branch.name}
-                                    onClick={() => {
-                                      setSelectedBranch(branch.name);
-                                      setBranchPopoverOpen(false);
-                                      setBranchSearch("");
-                                    }}
-                                    className={cn(
-                                      "flex items-center gap-1.5 w-[calc(100%-8px)] mx-1 px-1.5 text-sm text-left absolute left-0 top-0 rounded-md cursor-default select-none outline-hidden transition-colors",
-                                      isSelected
-                                        ? "dark:bg-neutral-800 text-foreground"
-                                        : "dark:hover:bg-neutral-800 hover:text-foreground",
-                                    )}
-                                    style={{
-                                      height: `${virtualItem.size}px`,
-                                      transform: `translateY(${virtualItem.start}px)`,
-                                    }}
-                                  >
-                                    <BranchIcon className="h-4 w-4 text-muted-foreground shrink-0" />
-                                    <span className="truncate flex-1">
-                                      {branch.name}
-                                    </span>
-                                    {branch.committedAt && (
-                                      <span className="text-xs text-muted-foreground/70 shrink-0">
-                                        {formatRelativeTime(branch.committedAt)}
+                            <Plus className="h-3 w-3" />
+                            Create
+                          </Button>
+                        </div>
+
+                        {/* Virtualized branch list */}
+                        {filteredBranches.length === 0 ? (
+                          <div className="py-6 text-center text-sm text-muted-foreground">
+                            No branches found.
+                          </div>
+                        ) : (
+                          <div
+                            ref={branchListRef}
+                            className="overflow-auto py-1 scrollbar-hide"
+                            style={{
+                              height: Math.min(
+                                filteredBranches.length * 32 + 8,
+                                300,
+                              ),
+                            }}
+                          >
+                            <div
+                              style={{
+                                height: `${branchVirtualizer.getTotalSize()}px`,
+                                width: "100%",
+                                position: "relative",
+                              }}
+                            >
+                              {branchVirtualizer
+                                .getVirtualItems()
+                                .map((virtualItem) => {
+                                  const branch =
+                                    filteredBranches[virtualItem.index];
+                                  const isSelected =
+                                    selectedBranch === branch.name ||
+                                    (!selectedBranch && branch.isDefault);
+                                  return (
+                                    <button
+                                      key={branch.name}
+                                      onClick={() => {
+                                        setSelectedBranch(branch.name);
+                                        setBranchPopoverOpen(false);
+                                        setBranchSearch("");
+                                      }}
+                                      className={cn(
+                                        "flex items-center gap-1.5 w-[calc(100%-8px)] mx-1 px-1.5 text-sm text-left absolute left-0 top-0 rounded-md cursor-default select-none outline-hidden transition-colors",
+                                        isSelected
+                                          ? "dark:bg-neutral-800 text-foreground"
+                                          : "dark:hover:bg-neutral-800 hover:text-foreground",
+                                      )}
+                                      style={{
+                                        height: `${virtualItem.size}px`,
+                                        transform: `translateY(${virtualItem.start}px)`,
+                                      }}
+                                    >
+                                      <BranchIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+                                      <span className="truncate flex-1">
+                                        {branch.name}
                                       </span>
-                                    )}
-                                    {branch.isDefault && (
-                                      <span className="text-[10px] text-muted-foreground/70 bg-muted px-1.5 py-0.5 rounded shrink-0">
-                                        default
-                                      </span>
-                                    )}
-                                    {workMode === "local" &&
-                                      branch.isCurrent && (
-                                        <span className="text-[10px] text-emerald-500/80 bg-emerald-500/10 px-1.5 py-0.5 rounded shrink-0">
-                                          current
+                                      {branch.committedAt && (
+                                        <span className="text-xs text-muted-foreground/70 shrink-0">
+                                          {formatRelativeTime(
+                                            branch.committedAt,
+                                          )}
                                         </span>
                                       )}
-                                    {isSelected && (
-                                      <CheckIcon className="h-4 w-4 shrink-0 ml-auto" />
-                                    )}
-                                  </button>
-                                );
-                              })}
+                                      {branch.isDefault && (
+                                        <span className="text-[10px] text-muted-foreground/70 bg-muted px-1.5 py-0.5 rounded shrink-0">
+                                          default
+                                        </span>
+                                      )}
+                                      {workMode === "local" &&
+                                        branch.isCurrent && (
+                                          <span className="text-[10px] text-emerald-500/80 bg-emerald-500/10 px-1.5 py-0.5 rounded shrink-0">
+                                            current
+                                          </span>
+                                        )}
+                                      {isSelected && (
+                                        <CheckIcon className="h-4 w-4 shrink-0 ml-auto" />
+                                      )}
+                                    </button>
+                                  );
+                                })}
+                            </div>
                           </div>
-                        </div>
-                      )}
-                    </PopoverContent>
-                  </Popover>
-                )}
-
-                {/* Create Branch Dialog */}
-                {validatedProject && (
-                  <CreateBranchDialog
-                    open={createBranchDialogOpen}
-                    onOpenChange={setCreateBranchDialogOpen}
-                    projectPath={validatedProject.path}
-                    branches={branches}
-                    defaultBranch={branchesQuery.data?.defaultBranch || "main"}
-                    onBranchCreated={(branchName) => {
-                      setSelectedBranch(branchName);
-                    }}
-                  />
-                )}
-
-                {/* Existing workspace indicator - shown in local mode when workspace exists */}
-                {workMode === "local" && existingWorkspaceQuery.data && (
-                  <span className="text-xs text-muted-foreground/70 ml-1">
-                    continuing in existing workspace
-                  </span>
-                )}
-              </div>
-
-              {/* Recent chats for this project */}
-              {recentChats && recentChats.length > 0 && (
-                <div className="mt-6 space-y-2">
-                  <h3 className="text-xs font-medium text-muted-foreground px-1">
-                    Recent
-                  </h3>
-                  <div className="space-y-1">
-                    {recentChats.slice(0, 5).map((chat) => (
-                      <button
-                        key={chat.id}
-                        onClick={() => setSelectedChatId(chat.id)}
-                        className="w-full flex items-center gap-2 px-2 py-1.5 text-sm text-left rounded-md hover:bg-muted/50 transition-colors"
-                      >
-                        <span className="truncate flex-1">{chat.name}</span>
-                        {chat.branch && (
-                          <span className="text-xs text-muted-foreground truncate">
-                            {chat.branch}
-                          </span>
                         )}
-                      </button>
-                    ))}
-                  </div>
+                      </PopoverContent>
+                    </Popover>
+                  )}
+
+                  {/* Create Branch Dialog */}
+                  {validatedProject && (
+                    <CreateBranchDialog
+                      open={createBranchDialogOpen}
+                      onOpenChange={setCreateBranchDialogOpen}
+                      projectPath={validatedProject.path}
+                      branches={branches}
+                      defaultBranch={
+                        branchesQuery.data?.defaultBranch || "main"
+                      }
+                      onBranchCreated={(branchName) => {
+                        setSelectedBranch(branchName);
+                      }}
+                    />
+                  )}
+
+                  {/* Existing workspace indicator - shown in local mode when workspace exists */}
+                  {workMode === "local" && existingWorkspaceQuery.data && (
+                    <span className="text-xs text-muted-foreground/70 ml-1">
+                      continuing in existing workspace
+                    </span>
+                  )}
                 </div>
-              )}
 
-              {/* File mention dropdown */}
-              {/* Desktop: use projectPath for local file search */}
-              <AgentsFileMention
-                isOpen={showMentionDropdown && !!validatedProject}
-                onClose={closeMention}
-                onSelect={handleMentionSelect}
-                searchText={mentionSearchText}
-                position={mentionPosition}
-                projectPath={validatedProject?.path}
-                showingFilesList={showingFilesList}
-                showingSkillsList={showingSkillsList}
-                showingAgentsList={showingAgentsList}
-                showingToolsList={showingToolsList}
-              />
+                {/* Recent chats for this project */}
+                {recentChats && recentChats.length > 0 && (
+                  <div className="mt-6 space-y-2">
+                    <h3 className="text-xs font-medium text-muted-foreground px-1">
+                      Recent
+                    </h3>
+                    <div className="space-y-1">
+                      {recentChats.slice(0, 5).map((chat) => (
+                        <button
+                          key={chat.id}
+                          onClick={() => setSelectedChatId(chat.id)}
+                          className="w-full flex items-center gap-2 px-2 py-1.5 text-sm text-left rounded-md hover:bg-muted/50 transition-colors"
+                        >
+                          <span className="truncate flex-1">{chat.name}</span>
+                          {chat.branch && (
+                            <span className="text-xs text-muted-foreground truncate">
+                              {chat.branch}
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-              {/* Slash command dropdown */}
-              <AgentsSlashCommand
-                isOpen={showSlashDropdown}
-                onClose={handleCloseSlashTrigger}
-                onSelect={handleSlashSelect}
-                searchText={slashSearchText}
-                position={slashPosition}
-                teamId={selectedTeamId || undefined}
-                repository={resolvedRepo?.full_name}
-                isPlanMode={isPlanMode}
-                disabledCommands={["clear"]}
-              />
-            </>
-          )}
+                {/* File mention dropdown */}
+                {/* Desktop: use projectPath for local file search */}
+                <AgentsFileMention
+                  isOpen={showMentionDropdown && !!validatedProject}
+                  onClose={closeMention}
+                  onSelect={handleMentionSelect}
+                  searchText={mentionSearchText}
+                  position={mentionPosition}
+                  projectPath={validatedProject?.path}
+                  showingFilesList={showingFilesList}
+                  showingSkillsList={showingSkillsList}
+                  showingAgentsList={showingAgentsList}
+                  showingToolsList={showingToolsList}
+                />
+
+                {/* Slash command dropdown */}
+                <AgentsSlashCommand
+                  isOpen={showSlashDropdown}
+                  onClose={handleCloseSlashTrigger}
+                  onSelect={handleSlashSelect}
+                  searchText={slashSearchText}
+                  position={slashPosition}
+                  teamId={selectedTeamId || undefined}
+                  repository={resolvedRepo?.full_name}
+                  isPlanMode={isPlanMode}
+                  disabledCommands={["clear"]}
+                />
+              </>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

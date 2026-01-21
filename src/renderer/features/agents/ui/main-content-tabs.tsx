@@ -14,6 +14,8 @@ import {
   centerFilePathAtom,
   type MainContentTab,
   mainContentActiveTabAtom,
+  projectDiffDataAtom,
+  selectedAgentChatIdAtom,
 } from "../atoms";
 
 // Get filename from path
@@ -48,9 +50,13 @@ export function MainContentTabs() {
   const filePath = useAtomValue(centerFilePathAtom);
   const setFilePath = useSetAtom(centerFilePathAtom);
 
-  // Use the global atom that's updated by active-chat.tsx via git watcher
-  // This ensures real-time updates when files change
-  const diffData = useAtomValue(activeChatDiffDataAtom);
+  // Determine which diff data to use based on chat selection
+  const selectedChatId = useAtomValue(selectedAgentChatIdAtom);
+  const chatDiffData = useAtomValue(activeChatDiffDataAtom);
+  const projectDiffData = useAtomValue(projectDiffDataAtom);
+
+  // Use chat diff data when chat is selected, otherwise use project diff data
+  const diffData = selectedChatId ? chatDiffData : projectDiffData;
   const hasChanges = diffData?.diffStats?.hasChanges ?? false;
   const changesCount = diffData?.diffStats?.fileCount ?? 0;
 

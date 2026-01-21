@@ -1,3 +1,4 @@
+import type { ProviderId } from "@shared/types";
 import { atom } from "jotai";
 import { atomFamily, atomWithStorage } from "jotai/utils";
 import type { FileChange } from "../../../../shared/utils";
@@ -545,6 +546,9 @@ export const pendingAuthRetryMessageAtom = atom<PendingAuthRetryMessage | null>(
   null,
 );
 
+// Provider that triggered auth error - used by login modal to show provider-specific instructions
+export const authErrorProviderAtom = atom<ProviderId | null>(null);
+
 // Work mode preference (local = work in project dir, worktree = create isolated worktree)
 export type WorkMode = "local" | "worktree";
 export const lastSelectedWorkModeAtom = atomWithStorage<WorkMode>(
@@ -698,6 +702,18 @@ export interface ActiveChatDiffData {
 }
 
 export const activeChatDiffDataAtom = atom<ActiveChatDiffData | null>(null);
+
+// Project-level diff data (set by agents-content.tsx when no chat selected)
+export interface ProjectDiffData {
+  projectId: string;
+  projectPath: string;
+  diffStats: DiffStats;
+  diffContent: string | null;
+  parsedFileDiffs: ParsedFileDiff[] | null;
+  prefetchedFileContents: Record<string, string>;
+}
+
+export const projectDiffDataAtom = atom<ProjectDiffData | null>(null);
 
 // Trigger to refresh diff data - increment to trigger refetch
 // Used by components that modify the worktree (discard changes, etc.)

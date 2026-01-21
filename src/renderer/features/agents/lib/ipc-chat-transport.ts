@@ -23,6 +23,7 @@ import {
 import {
   addedDirectoriesAtomFamily,
   askUserQuestionResultsAtom,
+  authErrorProviderAtom,
   compactingSubChatsAtom,
   currentTodosAtomFamily,
   lastSelectedModelIdAtom,
@@ -344,7 +345,7 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
                 }
               }
 
-              // Handle authentication errors - show Claude login modal
+              // Handle authentication errors - show login modal
               if (chunk.type === "auth-error") {
                 // Store the failed message for retry after successful auth
                 // readyToRetry=false prevents immediate retry - modal sets it to true on OAuth success
@@ -354,7 +355,9 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
                   ...(images.length > 0 && { images }),
                   readyToRetry: false,
                 });
-                // Show the Claude Code login modal
+                // Store which provider triggered the auth error
+                appStore.set(authErrorProviderAtom, effectiveProvider);
+                // Show the login modal
                 appStore.set(agentsLoginModalOpenAtom, true);
                 // Use controller.error() instead of controller.close() so that
                 // the SDK Chat properly resets status from "streaming" to "ready"

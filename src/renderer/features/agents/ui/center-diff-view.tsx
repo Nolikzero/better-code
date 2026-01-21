@@ -39,6 +39,8 @@ import {
   centerDiffSelectedFileAtom,
   mainContentActiveTabAtom,
   prActionsAtom,
+  projectDiffDataAtom,
+  selectedAgentChatIdAtom,
 } from "../atoms";
 import {
   AgentDiffView,
@@ -53,10 +55,18 @@ import { PrStatusBar } from "./pr-status-bar";
  * Shows all changed files with action buttons and view controls.
  */
 export function CenterDiffView() {
-  // Use the global atom that's updated by active-chat.tsx via git watcher
-  // This ensures real-time updates when files change
-  const diffData = useAtomValue(activeChatDiffDataAtom);
-  const prActions = useAtomValue(prActionsAtom);
+  // Determine if we're showing chat-level or project-level diffs
+  const selectedChatId = useAtomValue(selectedAgentChatIdAtom);
+  const chatDiffData = useAtomValue(activeChatDiffDataAtom);
+  const projectDiffData = useAtomValue(projectDiffDataAtom);
+  const chatPrActions = useAtomValue(prActionsAtom);
+
+  // Use chat diff data when chat is selected, otherwise use project diff data
+  const isProjectLevel = !selectedChatId;
+  const diffData = isProjectLevel ? projectDiffData : chatDiffData;
+
+  // Only show PR actions for chat-level diffs
+  const prActions = isProjectLevel ? null : chatPrActions;
   const setActiveTab = useSetAtom(mainContentActiveTabAtom);
   const [centerDiffSelectedFile, setCenterDiffSelectedFile] = useAtom(
     centerDiffSelectedFileAtom,
@@ -110,16 +120,26 @@ export function CenterDiffView() {
     );
   }
 
-  const {
-    chatId,
-    worktreePath,
-    sandboxId,
-    repository,
-    diffStats,
-    diffContent,
-    parsedFileDiffs,
-    prefetchedFileContents,
-  } = diffData;
+  // Extract common diff properties
+  const diffStats = diffData.diffStats;
+  const diffContent = diffData.diffContent;
+  const parsedFileDiffs = diffData.parsedFileDiffs;
+  const prefetchedFileContents = diffData.prefetchedFileContents;
+
+  // For chat-level diffs, use chatId and worktreePath
+  // For project-level diffs, use projectId and projectPath
+  const chatId = isProjectLevel
+    ? ((diffData as typeof projectDiffData)?.projectId ?? "")
+    : ((diffData as typeof chatDiffData)?.chatId ?? "");
+  const worktreePath = isProjectLevel
+    ? ((diffData as typeof projectDiffData)?.projectPath ?? null)
+    : ((diffData as typeof chatDiffData)?.worktreePath ?? null);
+  const sandboxId = isProjectLevel
+    ? undefined
+    : (diffData as typeof chatDiffData)?.sandboxId;
+  const repository = isProjectLevel
+    ? undefined
+    : (diffData as typeof chatDiffData)?.repository;
 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-background">

@@ -23,6 +23,7 @@ import {
 import { gitQueue } from "../../git/git-queue";
 import { execWithShellEnv } from "../../git/shell-env";
 import { getClaudeBinaryPath } from "../../providers/claude";
+import { providerRegistry } from "../../providers/registry";
 import { publicProcedure, router } from "../index";
 
 // Dynamic import for ESM module
@@ -781,6 +782,23 @@ export const chatsRouter = router({
       // Get chat before deletion
       const chat = db.select().from(chats).where(eq(chats.id, input.id)).get();
 
+      // Stop all active subchats for this chat
+      if (chat) {
+        const chatSubChats = db
+          .select({ id: subChats.id })
+          .from(subChats)
+          .where(eq(subChats.chatId, chat.id))
+          .all();
+
+        for (const subChat of chatSubChats) {
+          for (const provider of providerRegistry.getAll()) {
+            if (provider.isActive(subChat.id)) {
+              provider.cancel(subChat.id);
+            }
+          }
+        }
+      }
+
       // Cleanup worktree if it was created (has branch = was a real worktree, not just project path)
       if (chat?.worktreePath && chat?.branch) {
         const project = db
@@ -959,6 +977,14 @@ export const chatsRouter = router({
     .input(z.object({ id: z.string() }))
     .mutation(({ input }) => {
       const db = getDatabase();
+
+      // Stop active stream before deletion
+      for (const provider of providerRegistry.getAll()) {
+        if (provider.isActive(input.id)) {
+          provider.cancel(input.id);
+        }
+      }
+
       return db
         .delete(subChats)
         .where(eq(subChats.id, input.id))

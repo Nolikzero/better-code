@@ -27,9 +27,9 @@ function initAutoUpdaterConfig() {
   autoUpdater.autoRunAppAfterInstall = true; // Restart app after install
 }
 
-// CDN base URL for updates - configurable via environment variable
-// If not set, auto-updates are disabled
-const CDN_BASE = process.env.UPDATE_CDN_URL || "";
+// GitHub repository for auto-updates
+const GITHUB_OWNER = "nolikzero";
+const GITHUB_REPO = "better-code";
 
 // Minimum interval between update checks (prevent spam on rapid focus/blur)
 const MIN_CHECK_INTERVAL = 60 * 1000; // 1 minute
@@ -51,23 +51,16 @@ function sendToRenderer(channel: string, data?: unknown) {
  * Initialize the auto-updater with event handlers and IPC
  */
 export async function initAutoUpdater(getWindow: () => BrowserWindow | null) {
-  // Skip if no CDN URL configured
-  if (!CDN_BASE) {
-    log.info(
-      "[AutoUpdater] Skipping initialization (no UPDATE_CDN_URL configured)",
-    );
-    return;
-  }
-
   mainWindow = getWindow;
 
   // Initialize config
   initAutoUpdaterConfig();
 
-  // Configure feed URL to point to R2 CDN
+  // Configure feed URL to point to GitHub Releases
   autoUpdater.setFeedURL({
-    provider: "generic",
-    url: CDN_BASE,
+    provider: "github",
+    owner: GITHUB_OWNER,
+    repo: GITHUB_REPO,
   });
 
   // Event: Checking for updates
@@ -137,7 +130,9 @@ export async function initAutoUpdater(getWindow: () => BrowserWindow | null) {
   // Register IPC handlers
   registerIpcHandlers();
 
-  log.info("[AutoUpdater] Initialized with feed URL:", CDN_BASE);
+  log.info(
+    `[AutoUpdater] Initialized with GitHub releases: ${GITHUB_OWNER}/${GITHUB_REPO}`,
+  );
 }
 
 /**

@@ -1886,7 +1886,15 @@ function ChatViewInner({
       {/* User questions panel - shows when AskUserQuestion tool is called */}
       {/* Only show if the pending question belongs to THIS sub-chat */}
       {pendingQuestions && pendingQuestions.subChatId === subChatId && (
-        <div className="px-4 relative z-20">
+        <div
+          className={cn(
+            "px-4 relative z-20",
+            (isOverlayMode && !isInputExpanded) ||
+              (!isOverlayMode && !isAtBottom && !isInputExpanded)
+              ? "bottom-10"
+              : "bottom-26",
+          )}
+        >
           <div className="w-full px-2 max-w-2xl mx-auto">
             <AgentUserQuestion
               pendingQuestions={pendingQuestions}

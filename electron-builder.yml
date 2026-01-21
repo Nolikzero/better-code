@@ -1,9 +1,140 @@
-# electron-builder config with environment variables
-# This extends the base config in package.json
+appId: app.bettercode.desktop
+productName: BetterCode
+copyright: Copyright © 2026
 
+directories:
+  output: dist
+  buildResources: build
+
+files:
+  - out/**/*
+  - package.json
+  - "!out/**/*.map"
+  # Exclude node_modules first, then include specific native modules
+  # Order matters: exclusion first, then specific includes override it
+  - "!node_modules"
+  - node_modules/better-sqlite3
+  - node_modules/node-pty
+  - node_modules/electron-liquid-glass
+  - node_modules/node-gyp-build
+  - node_modules/bindings
+  - node_modules/file-uri-to-path
+  - node_modules/@anthropic-ai
+
+extraResources:
+  - from: drizzle
+    to: drizzle
+    filter:
+      - "**/*"
+  - from: app-update.yml
+    to: .
+  - from: resources/bin/${platform}-${arch}
+    to: bin
+    filter:
+      - "*"
+  - from: resources/bin/VERSION
+    to: bin
+  # Tray icons
+  - from: build
+    to: icons
+    filter:
+      - "tray*.png"
+
+asar: true
+asarUnpack:
+  - "**/*.node"
+  - "**/better-sqlite3/**/*"
+  - "**/node-pty/**/*"
+  - "**/electron-liquid-glass/**/*"
+  - "**/node-gyp-build/**/*"
+  - "**/bindings/**/*"
+  - "**/file-uri-to-path/**/*"
+  - "**/@anthropic-ai/**/*"
+
+# macOS Configuration
 mac:
-  # Code signing identity - set via APPLE_IDENTITY env var
-  # Example: "Developer ID Application: Your Name (TEAM_ID)"
-  identity: ${env.APPLE_IDENTITY}
-  notarize:
-    teamId: ${env.APPLE_TEAM_ID}
+  category: public.app-category.developer-tools
+  icon: build/icon.icns
+  target:
+    - target: dmg
+      arch:
+        - arm64
+        - x64
+    - target: zip
+      arch:
+        - arm64
+        - x64
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  # Notarization is enabled automatically when these env vars are set:
+  # APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID
+  notarize: true
+
+dmg:
+  background: build/dmg-background.png
+  icon: build/icon.icns
+  iconSize: 80
+  format: ULFO
+  contents:
+    - x: 130
+      y: 220
+    - x: 410
+      y: 220
+      type: link
+      path: /Applications
+
+# Windows Configuration
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: build/icon.ico
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowElevation: true
+  allowToChangeInstallationDirectory: true
+  installerIcon: build/icon.ico
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: BetterCode
+
+# Linux Configuration
+linux:
+  target:
+    - target: deb
+      arch:
+        - x64
+        - arm64
+    - target: rpm
+      arch:
+        - x64
+        - arm64
+  category: Development
+  icon: build/icon.png
+  maintainer: BetterCode
+  vendor: BetterCode
+
+deb:
+  priority: optional
+
+rpm:
+  fpm: []
+
+# Publishing to GitHub Releases
+publish:
+  provider: github
+  owner: nolikzero
+  repo: better-code
+  releaseType: release
+
+# Hooks
+afterPack: scripts/afterPack.js
+
+# Native module handling
+npmRebuild: true
+nodeGypRebuild: false

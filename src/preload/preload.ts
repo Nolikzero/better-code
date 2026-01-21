@@ -126,6 +126,28 @@ contextBridge.exposeInMainWorld("desktopApi", {
     ipcRenderer.on("notification:clicked", handler);
     return () => ipcRenderer.off("notification:clicked", handler);
   },
+  onDockNavigateToChat: (callback: (data: { chatId: string }) => void) => {
+    const handler = (_event: unknown, data: { chatId: string }) =>
+      callback(data);
+    ipcRenderer.on("dock:navigate-to-chat", handler);
+    return () => ipcRenderer.off("dock:navigate-to-chat", handler);
+  },
+
+  // Tray menu events
+  onTrayNavigateToChat: (callback: (data: { chatId: string }) => void) => {
+    const handler = (_event: unknown, data: { chatId: string }) =>
+      callback(data);
+    ipcRenderer.on("tray:navigate-to-chat", handler);
+    return () => ipcRenderer.off("tray:navigate-to-chat", handler);
+  },
+  onTrayOpenPreferences: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on("tray:open-preferences", handler);
+    return () => ipcRenderer.off("tray:open-preferences", handler);
+  },
+  updateTrayStatus: (activeCount: number) =>
+    ipcRenderer.invoke("tray:update-status", activeCount),
+
   openExternal: (url: string) => ipcRenderer.invoke("shell:open-external", url),
 
   // Clipboard
@@ -235,6 +257,15 @@ export interface DesktopApi {
   onNotificationClicked: (
     callback: (data: { chatId?: string; subChatId?: string }) => void,
   ) => () => void;
+  onDockNavigateToChat: (
+    callback: (data: { chatId: string }) => void,
+  ) => () => void;
+  // Tray menu
+  onTrayNavigateToChat: (
+    callback: (data: { chatId: string }) => void,
+  ) => () => void;
+  onTrayOpenPreferences: (callback: () => void) => () => void;
+  updateTrayStatus: (activeCount: number) => Promise<void>;
   openExternal: (url: string) => Promise<void>;
   clipboardWrite: (text: string) => Promise<void>;
   clipboardRead: () => Promise<string>;

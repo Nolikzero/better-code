@@ -125,19 +125,24 @@ export class OpenCodeProvider implements AIProvider {
    */
   async getAuthStatus(): Promise<AuthStatus> {
     try {
-      const server = getServerInstance();
-      if (server.getState().status !== "running") {
-        // Server not running - check if binary exists
-        const hasBinary = await this.isAvailable();
-        if (!hasBinary) {
-          return {
-            authenticated: false,
-            error: "OpenCode not installed",
-          };
-        }
+      // Check if binary exists first
+      const hasBinary = await this.isAvailable();
+      if (!hasBinary) {
         return {
           authenticated: false,
-          error: "Server not running",
+          error: "OpenCode not installed",
+        };
+      }
+
+      // Ensure server is running before checking auth status
+      // This handles the race condition where UI queries status before initialize() completes
+      const server = getServerInstance();
+      try {
+        await server.ensureRunning();
+      } catch (serverError) {
+        return {
+          authenticated: false,
+          error: `Server failed to start: ${(serverError as Error).message}`,
         };
       }
 

@@ -1,9 +1,16 @@
 "use client";
 
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { Check, Copy, Terminal, X } from "lucide-react";
 import { useState } from "react";
-import { pendingAuthRetryMessageAtom } from "../../features/agents/atoms";
+import {
+  authErrorProviderAtom,
+  pendingAuthRetryMessageAtom,
+} from "../../features/agents/atoms";
+import {
+  getProviderIcon,
+  PROVIDER_AUTH_CONFIG,
+} from "../../features/agents/ui/provider-icons";
 import { agentsLoginModalOpenAtom } from "../../lib/atoms";
 import { appStore } from "../../lib/jotai-store";
 import {
@@ -11,30 +18,35 @@ import {
   AlertDialogCancel,
   AlertDialogContent,
 } from "../ui/alert-dialog";
-import { ClaudeCodeIcon } from "../ui/icons";
 import { Logo } from "../ui/logo";
 
-export function ClaudeLoginModal() {
+export function LoginModal() {
   const [open, setOpen] = useAtom(agentsLoginModalOpenAtom);
   const [copied, setCopied] = useState(false);
+  const authErrorProvider = useAtomValue(authErrorProviderAtom);
+
+  // Get provider config, fallback to claude if not set
+  const providerId = authErrorProvider ?? "claude";
+  const providerConfig = PROVIDER_AUTH_CONFIG[providerId];
 
   const handleCopyCommand = async () => {
-    await navigator.clipboard.writeText("claude login");
+    await navigator.clipboard.writeText(providerConfig.command);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Clear pending retry when modal is dismissed
-  const clearPendingRetry = () => {
+  // Clear pending retry and auth error provider when modal is dismissed
+  const clearPendingState = () => {
     const pending = appStore.get(pendingAuthRetryMessageAtom);
     if (pending && !pending.readyToRetry) {
       appStore.set(pendingAuthRetryMessageAtom, null);
     }
+    appStore.set(authErrorProviderAtom, null);
   };
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
-      clearPendingRetry();
+      clearPendingState();
     }
     setOpen(newOpen);
   };
@@ -55,8 +67,10 @@ export function ClaudeLoginModal() {
               <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
                 <Logo className="w-5 h-5" fill="white" />
               </div>
-              <div className="w-10 h-10 rounded-full bg-[#D97757] flex items-center justify-center">
-                <ClaudeCodeIcon className="w-6 h-6 text-white" />
+              <div
+                className={`w-10 h-10 rounded-full ${providerConfig.bgColor} flex items-center justify-center`}
+              >
+                {getProviderIcon(providerId, "w-6 h-6 text-white")}
               </div>
             </div>
             <div className="space-y-1">
@@ -64,7 +78,7 @@ export function ClaudeLoginModal() {
                 Authentication Required
               </h1>
               <p className="text-sm text-muted-foreground">
-                Please authenticate with Claude Code CLI
+                {providerConfig.description}
               </p>
             </div>
           </div>
@@ -79,7 +93,7 @@ export function ClaudeLoginModal() {
               className="flex items-center gap-2 w-full px-3 py-2 bg-muted rounded-lg font-mono text-sm hover:bg-muted/80 transition-colors"
             >
               <Terminal className="w-4 h-4 text-muted-foreground" />
-              <span className="flex-1 text-left">claude login</span>
+              <span className="flex-1 text-left">{providerConfig.command}</span>
               {copied ? (
                 <Check className="w-4 h-4 text-green-500" />
               ) : (

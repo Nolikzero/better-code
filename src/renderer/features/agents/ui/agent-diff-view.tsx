@@ -1427,7 +1427,7 @@ export const AgentDiffView = forwardRef<AgentDiffViewRef, AgentDiffViewProps>(
               )}
             </div>
           </ContextMenuTrigger>
-          <ContextMenuContent className="w-48">
+          <ContextMenuContent className="w-60">
             <ContextMenuItem
               onClick={handleAddToChat}
               disabled={!hasSelection}

@@ -16,9 +16,9 @@ import { highlightCodeWithLineNumbers } from "../../../lib/themes/shiki-theme-lo
 import { trpc } from "../../../lib/trpc";
 import { cn } from "../../../lib/utils";
 import {
+  type CodeSnippet,
   centerFileLineAtom,
   centerFilePathAtom,
-  type CodeSnippet,
   codeSnippetsAtomFamily,
   mainContentActiveTabAtom,
   selectedAgentChatIdAtom,
@@ -391,7 +391,6 @@ export function CenterFileView() {
                 counterReset: "line",
               }}
               // Using CSS counter-increment on each line via global style
-              // biome-ignore lint/security/noDangerouslySetInnerHtml: Shiki output is trusted
               dangerouslySetInnerHTML={{
                 __html: highlightedCode.replace(
                   /<span class="line"/g,

@@ -100,7 +100,11 @@ export function CodeSelectionContextMenu({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Cmd/Ctrl + Shift + A
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "a") {
+      if (
+        (e.metaKey || e.ctrlKey) &&
+        e.shiftKey &&
+        e.key.toLowerCase() === "a"
+      ) {
         if (hasValidSelection()) {
           e.preventDefault();
           handleAddToChat();
@@ -124,7 +128,7 @@ export function CodeSelectionContextMenu({
           {children}
         </div>
       </ContextMenuTrigger>
-      <ContextMenuContent className="w-48">
+      <ContextMenuContent className="w-60">
         <ContextMenuItem
           onClick={handleAddToChat}
           disabled={!hasSelection}

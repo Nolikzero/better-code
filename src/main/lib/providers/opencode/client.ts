@@ -369,7 +369,9 @@ export interface OpenCodeProviderWithModels {
  * Returns providers grouped with their models and connection status
  * Used by OpenCode model selector UI
  */
-export async function fetchProvidersWithDetails(forceRefresh = false): Promise<{
+export async function fetchProvidersWithDetails(
+  _forceRefresh = false,
+): Promise<{
   providers: OpenCodeProviderWithModels[];
 }> {
   const client = getClient();

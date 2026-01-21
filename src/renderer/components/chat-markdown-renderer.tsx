@@ -139,6 +139,7 @@ function CodeBlock({
           "px-4 py-3",
           "overflow-x-auto",
           "whitespace-pre",
+          "[&_.line]:block [&_.line]:min-h-[14px]",
           // Force all nested elements to preserve whitespace and have no background
           "[&_*]:whitespace-pre [&_*]:bg-transparent",
           "[&_pre]:m-0 [&_code]:m-0",
@@ -146,7 +147,7 @@ function CodeBlock({
         )}
         style={{
           fontFamily: '"Geist Mono", ui-monospace, monospace',
-          lineHeight: 1.5,
+          lineHeight: "1px",
           tabSize: 2,
         }}
       >

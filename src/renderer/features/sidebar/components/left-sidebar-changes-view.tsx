@@ -1,6 +1,7 @@
 "use client";
 
 import { useAtom, useAtomValue } from "jotai";
+import { GitBranch } from "lucide-react";
 import { useCallback } from "react";
 import {
   activeChatDiffDataAtom,
@@ -36,9 +37,19 @@ export function LeftSidebarChangesView() {
     setIsCollapsed((prev) => !prev);
   }, []);
 
-  // Render spacer if no diff data, no worktree, or no changes
+  // Render empty state if no diff data, no worktree, or no changes
   if (!diffData || !diffData.worktreePath || !diffData.diffStats.hasChanges) {
-    return <div className="flex-1" />;
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center px-4 py-8 text-center">
+        <div className="mb-3 rounded-full bg-muted p-3">
+          <GitBranch className="h-5 w-5 text-muted-foreground" />
+        </div>
+        <p className="text-sm font-medium text-foreground">No changes</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Modified files will appear here
+        </p>
+      </div>
+    );
   }
 
   const { chatId, worktreePath, diffStats, parsedFileDiffs } = diffData;

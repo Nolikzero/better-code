@@ -4,7 +4,8 @@
 // import { clearSubChatSelectionAtom, isSubChatMultiSelectModeAtom, selectedSubChatIdsAtom } from "@/lib/atoms/agent-subchat-selection"
 import { Chat, useChat } from "@ai-sdk/react";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ChevronUp, MessageSquare } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import {
   useCallback,
   useEffect,
@@ -56,7 +57,9 @@ import {
   agentsUnseenChangesAtom,
   askUserQuestionResultsAtom,
   changesSectionCollapsedAtom,
+  chatInputHeightAtom,
   clearLoading,
+  codeSnippetsAtomFamily,
   compactingSubChatsAtom,
   historyNavAtomFamily,
   isPlanModeAtom,
@@ -232,6 +235,8 @@ function ChatViewInner({
   onRestoreWorkspace,
   chatBranch,
   originalProjectPath,
+  isOverlayMode = false,
+  overlayContent,
 }: {
   chat: Chat<any>;
   subChatId: string;
@@ -253,16 +258,65 @@ function ChatViewInner({
   onRestoreWorkspace?: () => void;
   chatBranch?: string | null;
   originalProjectPath?: string;
+  isOverlayMode?: boolean;
+  overlayContent?: React.ReactNode;
 }) {
   // UNCONTROLLED: just track if editor has content for send button
   const [hasContent, setHasContent] = useState(false);
   const hasTriggeredRenameRef = useRef(false);
   const hasTriggeredAutoGenerateRef = useRef(false);
 
+  // Input expansion state for overlay mode (compact bar that expands on hover)
+  const [isInputExpanded, setIsInputExpanded] = useState(false);
+  const collapseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Handlers for stable hover behavior with delayed collapse
+  const handleInputAreaMouseEnter = useCallback(() => {
+    if (!isOverlayMode) return;
+    // Cancel any pending collapse
+    if (collapseTimeoutRef.current) {
+      clearTimeout(collapseTimeoutRef.current);
+      collapseTimeoutRef.current = null;
+    }
+    setIsInputExpanded(true);
+  }, [isOverlayMode]);
+
+  const handleInputAreaMouseLeave = useCallback(() => {
+    if (!isOverlayMode) return;
+    // Delay collapse to avoid flickering
+    collapseTimeoutRef.current = setTimeout(() => {
+      setIsInputExpanded(false);
+    }, 150);
+  }, [isOverlayMode]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (collapseTimeoutRef.current) {
+        clearTimeout(collapseTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const editorRef = useRef<AgentsMentionsEditorHandle>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const inputContainerRef = useRef<HTMLDivElement>(null);
   const _prevChatKeyRef = useRef<string | null>(null);
   const prevSubChatIdRef = useRef<string | null>(null);
+
+  // Track input height for overlay positioning (when File/Changes tabs overlay the chat)
+  const setInputHeight = useSetAtom(chatInputHeightAtom);
+  // For switching to chat tab after sending message in overlay mode
+  const setActiveTab = useSetAtom(mainContentActiveTabAtom);
+  useEffect(() => {
+    if (!inputContainerRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      const height = entries[0]?.contentRect.height ?? 120;
+      setInputHeight(height);
+    });
+    observer.observe(inputContainerRef.current);
+    return () => observer.disconnect();
+  }, [setInputHeight]);
 
   // TTS playback rate state (persists across messages and sessions via localStorage)
   const [ttsPlaybackRate, setTtsPlaybackRate] = useState<PlaybackSpeed>(() => {
@@ -571,6 +625,19 @@ function ChatViewInner({
     clearAll,
     isUploading,
   } = useAgentsFileUpload();
+
+  // Code snippets state for "Add to Chat" feature
+  const [codeSnippets, setCodeSnippets] = useAtom(
+    codeSnippetsAtomFamily(subChatId),
+  );
+
+  // Remove a code snippet by ID
+  const removeCodeSnippet = useCallback(
+    (snippetId: string) => {
+      setCodeSnippets((prev) => prev.filter((s) => s.id !== snippetId));
+    },
+    [setCodeSnippets],
+  );
 
   // Mention dropdown state (from hook)
   const {
@@ -1273,8 +1340,21 @@ function ChatViewInner({
         })),
     ];
 
-    if (text) {
-      parts.push({ type: "text", text });
+    // Build the text content, including code snippets as context
+    let finalText = text;
+    if (codeSnippets.length > 0) {
+      const snippetContext = codeSnippets
+        .map(
+          (s) =>
+            `\`\`\`${s.language} ${s.filePath}:${s.startLine}-${s.endLine}\n${s.content}\n\`\`\``,
+        )
+        .join("\n\n");
+      const contextPrefix = `Here's some code context:\n\n${snippetContext}\n\n`;
+      finalText = text ? `${contextPrefix}${text}` : contextPrefix.trim();
+    }
+
+    if (finalText) {
+      parts.push({ type: "text", text: finalText });
     }
 
     // Check if branch switch is needed before sending (local mode only)
@@ -1304,6 +1384,16 @@ function ChatViewInner({
     }
 
     clearAll();
+
+    // Clear code snippets after sending
+    if (codeSnippets.length > 0) {
+      setCodeSnippets([]);
+    }
+
+    // Switch to chat tab after sending message in overlay mode
+    if (isOverlayMode) {
+      setActiveTab("chat");
+    }
 
     // Optimistic update: immediately update chat's updatedAt and resort array for instant sidebar resorting
     if (teamId) {
@@ -1703,9 +1793,10 @@ function ChatViewInner({
   }, [subChatId, setPendingPlanApprovals]);
 
   return (
-    <>
+    <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
       {/* Chat title - flex above scroll area (desktop only) */}
-      {!isMobile && (
+      {/* Hidden in overlay mode (File/Changes tabs) */}
+      {!isMobile && !isOverlayMode && (
         <div
           className={cn(
             "shrink-0 pb-2",
@@ -1724,27 +1815,34 @@ function ChatViewInner({
       )}
 
       {/* Messages - using use-stick-to-bottom for smooth auto-scrolling */}
-      <div
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto w-full relative allow-text-selection outline-hidden"
-        tabIndex={-1}
-        data-chat-container
-      >
-        <div ref={contentRef}>
-          <ChatMessages
-            messages={messages}
-            status={status}
-            subChatId={subChatId}
-            sandboxSetupStatus={sandboxSetupStatus}
-            sandboxSetupError={sandboxSetupError}
-            onRetrySetup={onRetrySetup}
-            isMobile={isMobile}
-            isSubChatsSidebarOpen={isSubChatsSidebarOpen}
-            ttsPlaybackRate={ttsPlaybackRate}
-            onPlaybackRateChange={handlePlaybackRateChange}
-          />
+      {/* Hidden in overlay mode (File/Changes tabs overlay this area) */}
+      {isOverlayMode ? (
+        /* Render overlay content (CenterDiffView/CenterFileView) when in overlay mode */
+        <div className="flex-1 min-h-0 overflow-hidden">{overlayContent}</div>
+      ) : (
+        <div
+          ref={scrollRef}
+          className="flex-1 overflow-y-auto w-full relative allow-text-selection outline-hidden"
+          tabIndex={-1}
+          data-chat-container
+        >
+          <div ref={contentRef}>
+            <ChatMessages
+              messages={messages}
+              status={status}
+              subChatId={subChatId}
+              sandboxSetupStatus={sandboxSetupStatus}
+              sandboxSetupError={sandboxSetupError}
+              onRetrySetup={onRetrySetup}
+              isMobile={isMobile}
+              isSubChatsSidebarOpen={isSubChatsSidebarOpen}
+              ttsPlaybackRate={ttsPlaybackRate}
+              onPlaybackRateChange={handlePlaybackRateChange}
+            />
+            {!isOverlayMode && <div className="pb-40"></div>}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* User questions panel - shows when AskUserQuestion tool is called */}
       {/* Only show if the pending question belongs to THIS sub-chat */}
@@ -1760,190 +1858,236 @@ function ChatViewInner({
         </div>
       )}
 
-      {/* Sub-chat status card - pinned above input */}
-      {(isStreaming || changedFilesForSubChat.length > 0) &&
-        !(pendingQuestions?.subChatId === subChatId) && (
-          <div className="px-2 -mb-6 relative z-0">
-            <div className="w-full max-w-2xl mx-auto px-2">
-              <SubChatStatusCard
-                chatId={parentChatId}
-                isStreaming={isStreaming}
-                isCompacting={isCompacting}
-                changedFiles={changedFilesForSubChat}
-                worktreePath={projectPath}
-                onStop={async () => {
-                  // Mark as manually aborted to prevent completion sound
-                  agentChatStore.setManuallyAborted(subChatId, true);
-                  await stop();
-                  // Call DELETE endpoint to cancel server-side stream
-                  await fetch(
-                    `/api/agents/chat?id=${encodeURIComponent(subChatId)}`,
-                    {
-                      method: "DELETE",
-                      credentials: "include",
-                    },
-                  );
-                }}
-              />
+      <div
+        className="absolute w-full bottom-0"
+        onMouseEnter={handleInputAreaMouseEnter}
+        onMouseLeave={handleInputAreaMouseLeave}
+      >
+        {/* Compact bar - shown in overlay mode when collapsed */}
+        {isOverlayMode && !isInputExpanded && (
+          <div className="px-2 pb-2 border-border/50 pt-2">
+            <div className="w-full max-w-2xl mx-auto">
+              <div className="h-8 px-3 bg-background flex items-center gap-2 text-sm text-muted-foreground rounded-xs border border-border/50 cursor-text hover:border-foreground/30 transition-colors">
+                <MessageSquare className="w-4 h-4 shrink-0" />
+                <span className="truncate">Send a message...</span>
+                <ChevronUp className="w-4 h-4 shrink-0 ml-auto" />
+              </div>
             </div>
           </div>
         )}
 
-      {/* Input */}
-      <div
-        className={cn(
-          "px-2 pb-2 shadow-xs shadow-background relative z-10",
-          (isStreaming || changedFilesForSubChat.length > 0) &&
-            !(pendingQuestions?.subChatId === subChatId) &&
-            "-mt-3 pt-3",
-        )}
-      >
-        <div className="w-full max-w-2xl mx-auto">
-          <ChatInputRoot
-            maxHeight={200}
-            onSubmit={handleSend}
-            contextItems={
-              images.length > 0 || files.length > 0 ? (
-                <ChatInputAttachments
-                  images={images}
-                  files={files}
-                  onRemoveImage={removeImage}
-                  onRemoveFile={removeFile}
-                />
-              ) : undefined
-            }
-            onAddAttachments={handleAddAttachments}
-            editorRef={editorRef}
-            fileInputRef={fileInputRef}
-            hasContent={hasContent}
-            isStreaming={isStreaming}
-            isUploading={isUploading}
-          >
-            <ChatInputEditor
-              onTrigger={({ searchText, rect }) => {
-                // Desktop: use projectPath for local file search
-                if (projectPath || repository) {
-                  openMention(searchText, rect);
-                }
-              }}
-              onCloseTrigger={closeMention}
-              onSlashTrigger={({ searchText, rect }) =>
-                handleSlashTrigger(searchText, rect)
-              }
-              onCloseSlashTrigger={handleCloseSlashTrigger}
-              onContentChange={handleContentChange}
-              onSubmit={handleSend}
-              onShiftTab={() => {
-                if (effectiveProvider !== "codex") {
-                  setIsPlanMode((prev) => !prev);
-                }
-              }}
-              onArrowUp={handleArrowUp}
-              onArrowDown={handleArrowDown}
-              onPaste={handlePaste}
-              onBlur={handleEditorBlur}
-              isMobile={isMobile}
-            />
-            <ChatInputActions
-              leftContent={
-                <>
-                  {/* Provider selector - only show for new chats (no messages yet) */}
-                  {messages.length === 0 && (
-                    <ProviderSelectorDropdown
-                      providerId={effectiveProvider}
-                      onProviderChange={handleProviderChange}
-                    />
-                  )}
+        {/* Expanded content - SubChatStatusCard + Input */}
+        <AnimatePresence initial={false}>
+          {(!isOverlayMode || isInputExpanded) && (
+            <motion.div
+              initial={isOverlayMode ? { height: 0, opacity: 0 } : false}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+              className="overflow-hidden"
+            >
+              {/* Sub-chat status card - pinned above input */}
+              {(isStreaming || changedFilesForSubChat.length > 0) &&
+                !(pendingQuestions?.subChatId === subChatId) && (
+                  <div className="px-2 -mb-6 relative z-0">
+                    <div className="w-full max-w-2xl mx-auto px-2">
+                      <SubChatStatusCard
+                        chatId={parentChatId}
+                        isStreaming={isStreaming}
+                        isCompacting={isCompacting}
+                        changedFiles={changedFilesForSubChat}
+                        worktreePath={projectPath}
+                        isOverlayMode={true}
+                        onStop={async () => {
+                          // Mark as manually aborted to prevent completion sound
+                          agentChatStore.setManuallyAborted(subChatId, true);
+                          await stop();
+                          // Call DELETE endpoint to cancel server-side stream
+                          await fetch(
+                            `/api/agents/chat?id=${encodeURIComponent(subChatId)}`,
+                            {
+                              method: "DELETE",
+                              credentials: "include",
+                            },
+                          );
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
 
-                  {/* Mode toggle (Agent/Plan) - hidden for Codex which doesn't support plan mode */}
-                  {effectiveProvider !== "codex" && (
-                    <ModeToggleDropdown
-                      isPlanMode={isPlanMode}
-                      onModeChange={setIsPlanMode}
-                    />
-                  )}
-
-                  {/* Model selector */}
-                  {effectiveProvider === "opencode" ? (
-                    <OpenCodeModelSelector
-                      currentModelId={currentModelId}
-                      onModelChange={handleOpenCodeModelChange}
-                    />
-                  ) : (
-                    <ModelSelectorDropdown
-                      providerId={effectiveProvider}
-                      models={providerModels}
-                      currentModelId={currentModelId}
-                      onModelChange={handleModelChange}
-                      open={isModelDropdownOpen}
-                      onOpenChange={setIsModelDropdownOpen}
-                    />
-                  )}
-
-                  {/* Web search mode selector (Codex only) */}
-                  {effectiveProvider === "codex" && <WebSearchModeSelector />}
-
-                  {/* Added directories badge (for /add-dir command) */}
-                  <AddedDirectoriesBadge subChatId={subChatId} />
-                </>
-              }
-              rightContent={
-                <AgentContextIndicator
-                  messages={messages}
-                  onCompact={handleCompact}
-                  isCompacting={isCompacting}
-                  disabled={isStreaming}
-                />
-              }
-              acceptedFileTypes="image/jpeg,image/png,.txt,.md,.markdown,.json,.yaml,.yml,.xml,.csv,.tsv,.log,.ini,.cfg,.conf,.js,.ts,.jsx,.tsx,.py,.rb,.go,.rs,.java,.kt,.swift,.c,.cpp,.h,.hpp,.cs,.php,.html,.css,.scss,.sass,.less,.sql,.sh,.bash,.zsh,.ps1,.bat,.env,.gitignore,.dockerignore,.editorconfig,.prettierrc,.eslintrc,.babelrc,.nvmrc,.pdf"
-              onAddAttachments={handleAddAttachments}
-              maxImages={5}
-              maxFiles={10}
-              imageCount={images.length}
-              fileCount={files.length}
-              actionButton={
-                hasUnapprovedPlan &&
-                !hasContent &&
-                images.length === 0 &&
-                files.length === 0 &&
-                !isStreaming ? (
-                  <Button
-                    onClick={handleApprovePlan}
-                    size="sm"
-                    className="h-7 gap-1.5 rounded-lg"
-                  >
-                    Implement plan
-                    <Kbd>⌘↵</Kbd>
-                  </Button>
-                ) : (
-                  <AgentSendButton
-                    isStreaming={isStreaming}
-                    isSubmitting={false}
-                    disabled={
-                      (!hasContent &&
-                        images.length === 0 &&
-                        files.length === 0) ||
-                      isUploading ||
-                      isStreaming
+              {/* Input */}
+              <div
+                ref={inputContainerRef}
+                className={cn(
+                  "px-2 pb-2 shadow-xs shadow-background relative z-20",
+                  (isStreaming || changedFilesForSubChat.length > 0) &&
+                    !(pendingQuestions?.subChatId === subChatId) &&
+                    "-mt-3 pt-3",
+                  // In overlay mode, add top border for visual separation
+                  isOverlayMode && "border-border/50 pt-2",
+                )}
+              >
+                <div className="w-full max-w-2xl mx-auto">
+                  <ChatInputRoot
+                    maxHeight={200}
+                    onSubmit={handleSend}
+                    contextItems={
+                      images.length > 0 ||
+                      files.length > 0 ||
+                      codeSnippets.length > 0 ? (
+                        <ChatInputAttachments
+                          images={images}
+                          files={files}
+                          codeSnippets={codeSnippets}
+                          onRemoveImage={removeImage}
+                          onRemoveFile={removeFile}
+                          onRemoveCodeSnippet={removeCodeSnippet}
+                        />
+                      ) : undefined
                     }
-                    onClick={handleSend}
-                    onStop={async () => {
-                      // Mark as manually aborted to prevent completion sound
-                      agentChatStore.setManuallyAborted(subChatId, true);
-                      await stop();
-                      // Call DELETE endpoint to cancel server-side stream
-                      await fetch(
-                        `/api/agents/chat?id=${encodeURIComponent(subChatId)}`,
-                        { method: "DELETE", credentials: "include" },
-                      );
-                    }}
-                    isPlanMode={isPlanMode}
-                  />
-                )
-              }
-            />
-          </ChatInputRoot>
-        </div>
+                    onAddAttachments={handleAddAttachments}
+                    editorRef={editorRef}
+                    fileInputRef={fileInputRef}
+                    hasContent={hasContent}
+                    isStreaming={isStreaming}
+                    isUploading={isUploading}
+                    isOverlayMode={true}
+                  >
+                    <ChatInputEditor
+                      onTrigger={({ searchText, rect }) => {
+                        // Desktop: use projectPath for local file search
+                        if (projectPath || repository) {
+                          openMention(searchText, rect);
+                        }
+                      }}
+                      onCloseTrigger={closeMention}
+                      onSlashTrigger={({ searchText, rect }) =>
+                        handleSlashTrigger(searchText, rect)
+                      }
+                      onCloseSlashTrigger={handleCloseSlashTrigger}
+                      onContentChange={handleContentChange}
+                      onSubmit={handleSend}
+                      onShiftTab={() => {
+                        if (effectiveProvider !== "codex") {
+                          setIsPlanMode((prev) => !prev);
+                        }
+                      }}
+                      onArrowUp={handleArrowUp}
+                      onArrowDown={handleArrowDown}
+                      onPaste={handlePaste}
+                      onBlur={handleEditorBlur}
+                      isMobile={isMobile}
+                    />
+                    <ChatInputActions
+                      leftContent={
+                        <>
+                          {/* Provider selector - only show for new chats (no messages yet) */}
+                          {messages.length === 0 && (
+                            <ProviderSelectorDropdown
+                              providerId={effectiveProvider}
+                              onProviderChange={handleProviderChange}
+                            />
+                          )}
+
+                          {/* Mode toggle (Agent/Plan) - hidden for Codex which doesn't support plan mode */}
+                          {effectiveProvider !== "codex" && (
+                            <ModeToggleDropdown
+                              isPlanMode={isPlanMode}
+                              onModeChange={setIsPlanMode}
+                            />
+                          )}
+
+                          {/* Model selector */}
+                          {effectiveProvider === "opencode" ? (
+                            <OpenCodeModelSelector
+                              currentModelId={currentModelId}
+                              onModelChange={handleOpenCodeModelChange}
+                            />
+                          ) : (
+                            <ModelSelectorDropdown
+                              providerId={effectiveProvider}
+                              models={providerModels}
+                              currentModelId={currentModelId}
+                              onModelChange={handleModelChange}
+                              open={isModelDropdownOpen}
+                              onOpenChange={setIsModelDropdownOpen}
+                            />
+                          )}
+
+                          {/* Web search mode selector (Codex only) */}
+                          {effectiveProvider === "codex" && (
+                            <WebSearchModeSelector />
+                          )}
+
+                          {/* Added directories badge (for /add-dir command) */}
+                          <AddedDirectoriesBadge subChatId={subChatId} />
+                        </>
+                      }
+                      rightContent={
+                        <AgentContextIndicator
+                          messages={messages}
+                          onCompact={handleCompact}
+                          isCompacting={isCompacting}
+                          disabled={isStreaming}
+                        />
+                      }
+                      acceptedFileTypes="image/jpeg,image/png,.txt,.md,.markdown,.json,.yaml,.yml,.xml,.csv,.tsv,.log,.ini,.cfg,.conf,.js,.ts,.jsx,.tsx,.py,.rb,.go,.rs,.java,.kt,.swift,.c,.cpp,.h,.hpp,.cs,.php,.html,.css,.scss,.sass,.less,.sql,.sh,.bash,.zsh,.ps1,.bat,.env,.gitignore,.dockerignore,.editorconfig,.prettierrc,.eslintrc,.babelrc,.nvmrc,.pdf"
+                      onAddAttachments={handleAddAttachments}
+                      maxImages={5}
+                      maxFiles={10}
+                      imageCount={images.length}
+                      fileCount={files.length}
+                      actionButton={
+                        hasUnapprovedPlan &&
+                        !hasContent &&
+                        images.length === 0 &&
+                        files.length === 0 &&
+                        !isStreaming ? (
+                          <Button
+                            onClick={handleApprovePlan}
+                            size="sm"
+                            className="h-7 gap-1.5 rounded-lg"
+                          >
+                            Implement plan
+                            <Kbd>⌘↵</Kbd>
+                          </Button>
+                        ) : (
+                          <AgentSendButton
+                            isStreaming={isStreaming}
+                            isSubmitting={false}
+                            disabled={
+                              (!hasContent &&
+                                images.length === 0 &&
+                                files.length === 0) ||
+                              isUploading ||
+                              isStreaming
+                            }
+                            onClick={handleSend}
+                            onStop={async () => {
+                              // Mark as manually aborted to prevent completion sound
+                              agentChatStore.setManuallyAborted(
+                                subChatId,
+                                true,
+                              );
+                              await stop();
+                              // Call DELETE endpoint to cancel server-side stream
+                              await fetch(
+                                `/api/agents/chat?id=${encodeURIComponent(subChatId)}`,
+                                { method: "DELETE", credentials: "include" },
+                              );
+                            }}
+                            isPlanMode={isPlanMode}
+                          />
+                        )
+                      }
+                    />
+                  </ChatInputRoot>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* File mention dropdown */}
         {/* Desktop: use projectPath for local file search */}
@@ -1990,7 +2134,7 @@ function ChatViewInner({
         onConfirm={handleConfirmBranchSwitchForMessage}
         onCancel={branchSwitchForMessage.cancelSwitch}
       />
-    </>
+    </div>
   );
 }
 
@@ -2006,6 +2150,8 @@ export function ChatView({
   onOpenPreview: _onOpenPreview,
   onOpenDiff: _onOpenDiff,
   onOpenTerminal: _onOpenTerminal,
+  isOverlayMode = false,
+  overlayContent,
 }: {
   chatId: string;
   isSidebarOpen: boolean;
@@ -2017,6 +2163,8 @@ export function ChatView({
   onOpenPreview?: () => void;
   onOpenDiff?: () => void;
   onOpenTerminal?: () => void;
+  isOverlayMode?: boolean;
+  overlayContent?: React.ReactNode;
 }) {
   const [selectedTeamId] = useAtom(selectedTeamIdAtom);
   const [isPlanMode] = useAtom(isPlanModeAtom);
@@ -3227,8 +3375,8 @@ export function ChatView({
             className="flex-1 flex flex-col overflow-hidden relative"
             style={{ minWidth: "350px" }}
           >
-            {/* Chat Header */}
-            {!shouldHideChatHeader && (
+            {/* Chat Header - hidden in overlay mode */}
+            {!shouldHideChatHeader && !isOverlayMode && (
               <ChatHeader
                 chatId={chatId}
                 subChatId={activeSubChatId ?? undefined}
@@ -3283,6 +3431,8 @@ export function ChatView({
                 onRestoreWorkspace={handleRestoreWorkspace}
                 chatBranch={branch}
                 originalProjectPath={originalProjectPath}
+                isOverlayMode={isOverlayMode}
+                overlayContent={overlayContent}
               />
             ) : (
               <>

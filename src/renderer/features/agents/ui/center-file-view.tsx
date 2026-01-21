@@ -2,7 +2,7 @@
 
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { ArrowLeft, Check, Copy } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../../components/ui/button";
 import { FilesIcon } from "../../../components/ui/icons";
 import {
@@ -18,11 +18,15 @@ import { cn } from "../../../lib/utils";
 import {
   centerFileLineAtom,
   centerFilePathAtom,
+  type CodeSnippet,
+  codeSnippetsAtomFamily,
   mainContentActiveTabAtom,
   selectedAgentChatIdAtom,
   selectedProjectAtom,
 } from "../atoms";
 import { getFileIconByExtension } from "../mentions/icons/file-icons";
+import { useAgentSubChatStore } from "../stores/sub-chat-store";
+import { CodeSelectionContextMenu } from "./code-selection-context-menu";
 
 /**
  * Get language ID from file extension for syntax highlighting.
@@ -79,6 +83,21 @@ export function CenterFileView() {
   const [filePath, setFilePath] = useAtom(centerFilePathAtom);
   const setActiveTab = useSetAtom(mainContentActiveTabAtom);
   const themeId = useCodeTheme();
+
+  // Get active sub-chat for code snippets
+  const activeSubChatId = useAgentSubChatStore((s) => s.activeSubChatId);
+  const setCodeSnippets = useSetAtom(
+    codeSnippetsAtomFamily(activeSubChatId || ""),
+  );
+
+  // Handle adding code snippet to chat
+  const handleAddToChat = useCallback(
+    (snippet: CodeSnippet) => {
+      if (!activeSubChatId) return;
+      setCodeSnippets((prev) => [...prev, snippet]);
+    },
+    [activeSubChatId, setCodeSnippets],
+  );
 
   // Get agent chat to check for worktree path
   const { data: agentChat } = api.agents.getAgentChat.useQuery(
@@ -332,64 +351,71 @@ export function CenterFileView() {
       </div>
 
       {/* Content */}
-      <div
-        ref={scrollContainerRef}
-        className="flex-1 overflow-auto select-text"
+      <CodeSelectionContextMenu
+        filePath={filePath ?? ""}
+        language={language}
+        onAddToChat={handleAddToChat}
       >
-        {isLoading ? (
-          <div className="flex items-center justify-center h-full text-muted-foreground">
-            Loading...
-          </div>
-        ) : highlightedCode ? (
-          /* Native Shiki output with CSS-based line numbers */
-          <div
-            className={cn(
-              "shiki-with-line-numbers",
-              // Reset Shiki's default styles
-              "[&_pre]:m-0 [&_pre]:bg-transparent!",
-              "[&_code]:m-0 [&_code]:bg-transparent!",
-              // Line structure styling with CSS counter for line numbers
-              "[&_.line]:block [&_.line]:min-h-[18px] [&_.line]:pl-4",
-              "[&_.line]:before:inline-block [&_.line]:before:w-[3ch] [&_.line]:before:mr-4",
-              "[&_.line]:before:text-right [&_.line]:before:text-muted-foreground/50",
-              "[&_.line]:before:select-none [&_.line]:before:content-[counter(line)]",
-              "[&_.line]:before:border-r [&_.line]:before:border-border/30 [&_.line]:before:pr-4",
-              // Highlighted line styling
-              highlightedLine &&
-                `[&_.line:nth-child(${highlightedLine})]:bg-yellow-500/20`,
-            )}
-            style={{
-              fontFamily: '"Geist Mono", ui-monospace, monospace',
-              fontSize: "12px",
-              lineHeight: highlightedCode ? "1px" : "16px",
-              padding: "16px 0",
-              tabSize: 2,
-              counterReset: "line",
-            }}
-            // Using CSS counter-increment on each line via global style
-            dangerouslySetInnerHTML={{
-              __html: highlightedCode.replace(
-                /<span class="line"/g,
-                '<span class="line" style="counter-increment: line;"',
-              ),
-            }}
-          />
-        ) : (
-          /* Fallback for plaintext or loading state */
-          <pre
-            className="m-0 bg-transparent whitespace-pre"
-            style={{
-              fontFamily: '"Geist Mono", ui-monospace, monospace',
-              fontSize: "12px",
-              lineHeight: highlightedCode ? "1px" : "16px",
-              padding: "16px",
-              tabSize: 2,
-            }}
-          >
-            <code>{fileData?.content ?? ""}</code>
-          </pre>
-        )}
-      </div>
+        <div
+          ref={scrollContainerRef}
+          className="flex-1 overflow-auto select-text"
+        >
+          {isLoading ? (
+            <div className="flex items-center justify-center h-full text-muted-foreground">
+              Loading...
+            </div>
+          ) : highlightedCode ? (
+            /* Native Shiki output with CSS-based line numbers */
+            <div
+              className={cn(
+                "shiki-with-line-numbers",
+                // Reset Shiki's default styles
+                "[&_pre]:m-0 [&_pre]:bg-transparent!",
+                "[&_code]:m-0 [&_code]:bg-transparent!",
+                // Line structure styling with CSS counter for line numbers
+                "[&_.line]:block [&_.line]:min-h-[16px] [&_.line]:pl-4",
+                "[&_.line]:before:inline-block [&_.line]:before:w-[3ch] [&_.line]:before:mr-4",
+                "[&_.line]:before:text-right [&_.line]:before:text-muted-foreground/50",
+                "[&_.line]:before:select-none [&_.line]:before:content-[counter(line)]",
+                "[&_.line]:before:border-r [&_.line]:before:border-border/30 [&_.line]:before:pr-4",
+                // Highlighted line styling
+                highlightedLine &&
+                  `[&_.line:nth-child(${highlightedLine})]:bg-yellow-500/20`,
+              )}
+              style={{
+                fontFamily: '"Geist Mono", ui-monospace, monospace',
+                fontSize: "12px",
+                lineHeight: "1px",
+                padding: "16px 0",
+                tabSize: 2,
+                counterReset: "line",
+              }}
+              // Using CSS counter-increment on each line via global style
+              // biome-ignore lint/security/noDangerouslySetInnerHtml: Shiki output is trusted
+              dangerouslySetInnerHTML={{
+                __html: highlightedCode.replace(
+                  /<span class="line"/g,
+                  '<span class="line" style="counter-increment: line;"',
+                ),
+              }}
+            />
+          ) : (
+            /* Fallback for plaintext or loading state */
+            <pre
+              className="m-0 bg-transparent whitespace-pre"
+              style={{
+                fontFamily: '"Geist Mono", ui-monospace, monospace',
+                fontSize: "12px",
+                lineHeight: highlightedCode ? "1px" : "16px",
+                padding: "16px",
+                tabSize: 2,
+              }}
+            >
+              <code>{fileData?.content ?? ""}</code>
+            </pre>
+          )}
+        </div>
+      </CodeSelectionContextMenu>
     </div>
   );
 }

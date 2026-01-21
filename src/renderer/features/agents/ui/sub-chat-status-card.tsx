@@ -41,12 +41,13 @@ interface SubChatStatusCardProps {
   isCompacting?: boolean;
   changedFiles: SubChatFileChange[];
   worktreePath?: string | null; // For git status check to hide committed files
+  isOverlayMode?: boolean;
   onStop?: () => void;
 }
 
 export const SubChatStatusCard = memo(function SubChatStatusCard({
-  chatId,
   isStreaming,
+  isOverlayMode = false,
   isCompacting,
   changedFiles,
   worktreePath,
@@ -129,7 +130,12 @@ export const SubChatStatusCard = memo(function SubChatStatusCard({
   };
 
   return (
-    <div className="rounded-t-xl border border-b-0 border-border bg-muted/30 overflow-hidden flex flex-col pb-6">
+    <div
+      className={cn(
+        "rounded-t-xl border border-b-0 border-border bg-muted/30 overflow-hidden flex flex-col pb-4",
+        isOverlayMode && "bg-background",
+      )}
+    >
       {/* Expanded file list - renders above header, expands upward */}
       <AnimatePresence initial={false}>
         {isExpanded && uncommittedFiles.length > 0 && (

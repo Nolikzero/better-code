@@ -924,17 +924,9 @@ export function AgentsContent() {
         {/* Tab bar - only show when file or changes exist */}
         {(hasFile || hasChanges) && activeSubChatId && <MainContentTabs />}
 
-        {/* Content based on active tab */}
-        {activeTab === "changes" && hasChanges ? (
-          <div className="flex-1 min-h-0 flex flex-col relative overflow-hidden">
-            <CenterDiffView />
-          </div>
-        ) : activeTab === "file" && hasFile ? (
-          <div className="flex-1 min-h-0 flex flex-col relative overflow-hidden">
-            <CenterFileView />
-          </div>
-        ) : selectedChatId ? (
-          <div className="flex-1 min-h-0 flex flex-col relative overflow-hidden">
+        {/* Content area */}
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          {selectedChatId ? (
             <ChatView
               key={selectedChatId}
               chatId={selectedChatId}
@@ -942,13 +934,19 @@ export function AgentsContent() {
               onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
               selectedTeamName={selectedTeam?.name}
               selectedTeamImageUrl={selectedTeam?.image_url}
+              isOverlayMode={activeTab !== "chat"}
+              overlayContent={
+                activeTab === "changes" && hasChanges ? (
+                  <CenterDiffView />
+                ) : activeTab === "file" && hasFile ? (
+                  <CenterFileView />
+                ) : null
+              }
             />
-          </div>
-        ) : (
-          <div className="flex-1 min-h-0 flex flex-col relative overflow-hidden">
+          ) : (
             <NewChatForm key={`new-chat-${newChatFormKeyRef.current}`} />
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Quick-switch dialog - Agents (Opt+Ctrl+Tab) */}

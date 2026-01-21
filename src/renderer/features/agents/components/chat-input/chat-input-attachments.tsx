@@ -1,5 +1,7 @@
 "use client";
 
+import type { CodeSnippet } from "../../atoms";
+import { AgentCodeSnippetItem } from "../../ui/agent-code-snippet-item";
 import { AgentFileItem } from "../../ui/agent-file-item";
 import { AgentImageItem } from "../../ui/agent-image-item";
 import type { FileAttachment, ImageAttachment } from "./chat-input-context";
@@ -7,21 +9,25 @@ import type { FileAttachment, ImageAttachment } from "./chat-input-context";
 export interface ChatInputAttachmentsProps {
   images: ImageAttachment[];
   files?: FileAttachment[];
+  codeSnippets?: CodeSnippet[];
   onRemoveImage: (id: string) => void;
   onRemoveFile?: (id: string) => void;
+  onRemoveCodeSnippet?: (id: string) => void;
 }
 
 /**
- * Renders image and file attachments for the chat input.
+ * Renders image, file, and code snippet attachments for the chat input.
  * Used as contextItems in ChatInputRoot.
  */
 export function ChatInputAttachments({
   images,
   files = [],
+  codeSnippets = [],
   onRemoveImage,
   onRemoveFile,
+  onRemoveCodeSnippet,
 }: ChatInputAttachmentsProps) {
-  if (images.length === 0 && files.length === 0) {
+  if (images.length === 0 && files.length === 0 && codeSnippets.length === 0) {
     return null;
   }
 
@@ -57,6 +63,22 @@ export function ChatInputAttachments({
           size={f.size}
           isLoading={f.isLoading}
           onRemove={onRemoveFile ? () => onRemoveFile(f.id) : undefined}
+        />
+      ))}
+      {codeSnippets.map((snippet) => (
+        <AgentCodeSnippetItem
+          key={snippet.id}
+          id={snippet.id}
+          filePath={snippet.filePath}
+          startLine={snippet.startLine}
+          endLine={snippet.endLine}
+          content={snippet.content}
+          language={snippet.language}
+          onRemove={
+            onRemoveCodeSnippet
+              ? () => onRemoveCodeSnippet(snippet.id)
+              : undefined
+          }
         />
       ))}
     </div>

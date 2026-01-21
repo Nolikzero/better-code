@@ -802,3 +802,41 @@ export const revealFileInTreeAtom = atom<string | null>(null);
 // Order: Chat | File | Changes
 export type MainContentTab = "chat" | "file" | "changes";
 export const mainContentActiveTabAtom = atom<MainContentTab>("chat");
+
+// Chat input height - tracked for overlay positioning
+// When File/Changes tabs overlay the chat, they need to leave room for the input
+export const chatInputHeightAtom = atom<number>(120);
+
+// ============================================================================
+// Code Snippet Context (Add selected text to chat)
+// ============================================================================
+
+// Code snippet attachment type for adding selected code to chat context
+export interface CodeSnippet {
+  id: string;
+  filePath: string; // Relative path to file
+  startLine: number; // 1-indexed start line
+  endLine: number; // 1-indexed end line
+  content: string; // Selected text content
+  language: string; // Language for syntax highlighting
+}
+
+// Code snippets storage per sub-chat (transient, not persisted)
+const codeSnippetsStorageAtom = atom<Record<string, CodeSnippet[]>>({});
+
+// atomFamily to get/set code snippets per subChatId
+export const codeSnippetsAtomFamily = atomFamily((subChatId: string) =>
+  atom(
+    (get) => get(codeSnippetsStorageAtom)[subChatId] ?? [],
+    (
+      get,
+      set,
+      update: CodeSnippet[] | ((prev: CodeSnippet[]) => CodeSnippet[]),
+    ) => {
+      const current = get(codeSnippetsStorageAtom);
+      const existing = current[subChatId] ?? [];
+      const updated = typeof update === "function" ? update(existing) : update;
+      set(codeSnippetsStorageAtom, { ...current, [subChatId]: updated });
+    },
+  ),
+);

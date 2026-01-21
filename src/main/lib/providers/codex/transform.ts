@@ -63,7 +63,6 @@ export function createCodexTransformer() {
         return "Write";
       case "delete":
         return "Delete";
-      case "update":
       default:
         return "Edit";
     }

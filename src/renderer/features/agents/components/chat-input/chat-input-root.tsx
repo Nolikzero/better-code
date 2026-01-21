@@ -31,6 +31,7 @@ export interface ChatInputRootProps {
   isStreaming?: boolean;
   isSubmitting?: boolean;
   isUploading?: boolean;
+  isOverlayMode?: boolean;
   disabled?: boolean;
 }
 
@@ -48,6 +49,7 @@ export function ChatInputRoot({
   isStreaming = false,
   isSubmitting = false,
   isUploading = false,
+  isOverlayMode = false,
   disabled = false,
 }: ChatInputRootProps) {
   const [isDragOver, setIsDragOver] = useState(false);
@@ -125,6 +127,7 @@ export function ChatInputRoot({
               "border bg-input-background relative z-10 p-2 rounded-xs transition-[border-color] duration-150",
               isDragOver && "border-dashed border-primary/50",
               isFocused && !isDragOver && "border-dashed border-foreground/30",
+              isOverlayMode && "bg-background",
               className,
             )}
             maxHeight={maxHeight}

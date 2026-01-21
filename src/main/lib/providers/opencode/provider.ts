@@ -96,7 +96,7 @@ export class OpenCodeProvider implements AIProvider {
     console.log("[opencode] Shutting down provider...");
 
     // Cancel all active sessions
-    for (const [subChatId, session] of activeSessions) {
+    for (const [_subChatId, session] of activeSessions) {
       session.abortController.abort();
       if (session.sessionId) {
         await abortSession(session.sessionId).catch(() => {});

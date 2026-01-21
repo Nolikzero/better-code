@@ -19,11 +19,19 @@ import {
 } from "react";
 import {
   agentsFocusedDiffFileAtom,
+  type CodeSnippet,
+  codeSnippetsAtomFamily,
   filteredDiffFilesAtom,
   hoveredDiffFileAtom,
   selectedDiffFilesAtom,
   toggleDiffFileSelectionAtom,
 } from "../atoms";
+import {
+  generateSnippetId,
+  getSelectionText,
+  hasValidSelection,
+} from "../lib/selection-utils";
+import { useAgentSubChatStore } from "../stores/sub-chat-store";
 
 // Diff mode enum to match the old API
 export enum DiffModeEnum {
@@ -38,10 +46,18 @@ import {
   CheckCircle2,
   ChevronDown,
   Columns2,
+  MessageSquarePlus,
   Rows2,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "../../../components/ui/button";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuShortcut,
+  ContextMenuTrigger,
+} from "../../../components/ui/context-menu";
 import {
   CollapseIcon,
   ExpandIcon,
@@ -524,6 +540,174 @@ export const AgentDiffView = forwardRef<AgentDiffViewRef, AgentDiffViewProps>(
     const focusedDiffFile = useAtomValue(agentsFocusedDiffFileAtom);
     const setFocusedDiffFile = useSetAtom(agentsFocusedDiffFileAtom);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+    // Code snippet context menu support
+    const activeSubChatId = useAgentSubChatStore((s) => s.activeSubChatId);
+    const setCodeSnippets = useSetAtom(
+      codeSnippetsAtomFamily(activeSubChatId || ""),
+    );
+    const [hasSelection, setHasSelection] = useState(false);
+
+    // Track selection state for context menu
+    useEffect(() => {
+      const handleSelectionChange = () => {
+        setHasSelection(hasValidSelection());
+      };
+      document.addEventListener("selectionchange", handleSelectionChange);
+      return () => {
+        document.removeEventListener("selectionchange", handleSelectionChange);
+      };
+    }, []);
+
+    // Find shadow roots inside an element and look for line numbers
+    // @pierre/diffs renders content inside shadow DOM with data-line attributes
+    const findLineNumbersInShadowDOM = (
+      containerEl: Element,
+      selectedText: string,
+    ): { startLine: number; endLine: number } | null => {
+      // Find all elements that might have shadow roots
+      const allElements = containerEl.querySelectorAll("*");
+      for (const el of Array.from(allElements)) {
+        if (el.shadowRoot) {
+          const shadowRoot = el.shadowRoot;
+          const lineElements = shadowRoot.querySelectorAll("[data-line]");
+
+          if (lineElements.length > 0) {
+            // Try to find lines that contain parts of the selected text
+            const selectedLines = selectedText.split("\n");
+            const firstSelectedLine = selectedLines[0]?.trim();
+            const lastSelectedLine =
+              selectedLines[selectedLines.length - 1]?.trim();
+
+            let startLine: number | null = null;
+            let endLine: number | null = null;
+
+            for (const lineEl of Array.from(lineElements)) {
+              const lineText = lineEl.textContent?.trim() || "";
+              const lineNum = Number.parseInt(
+                lineEl.getAttribute("data-line") || "",
+                10,
+              );
+
+              if (Number.isNaN(lineNum)) continue;
+
+              // Check if this line contains our selected text
+              if (
+                startLine === null &&
+                firstSelectedLine &&
+                lineText.includes(firstSelectedLine)
+              ) {
+                startLine = lineNum;
+              }
+              if (lastSelectedLine && lineText.includes(lastSelectedLine)) {
+                endLine = lineNum;
+              }
+            }
+
+            if (startLine !== null) {
+              return {
+                startLine,
+                endLine: endLine ?? startLine + selectedLines.length - 1,
+              };
+            }
+          }
+        }
+      }
+      return null;
+    };
+
+    // Handle adding selection to chat from diff view
+    const handleAddToChat = useCallback(() => {
+      const selection = window.getSelection();
+      if (!selection) return;
+
+      const text = getSelectionText(selection);
+      if (!text || !activeSubChatId) return;
+
+      // Find the file path and diff container from closest data-diff-file-path attribute
+      const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+      let filePath = "unknown";
+      let language = "plaintext";
+      let diffContainer: Element | null = null;
+
+      if (range) {
+        let current: Node | null = range.startContainer;
+        while (current && current !== scrollContainerRef.current) {
+          if (current.nodeType === Node.ELEMENT_NODE) {
+            const el = current as Element;
+            const path = el.getAttribute("data-diff-file-path");
+            if (path) {
+              filePath = path;
+              diffContainer = el;
+              // Guess language from extension
+              const ext = path.split(".").pop()?.toLowerCase() || "";
+              const langMap: Record<string, string> = {
+                ts: "typescript",
+                tsx: "tsx",
+                js: "javascript",
+                jsx: "jsx",
+                py: "python",
+                go: "go",
+                rs: "rust",
+                md: "markdown",
+                json: "json",
+                css: "css",
+                html: "html",
+              };
+              language = langMap[ext] || "plaintext";
+              break;
+            }
+          }
+          current = current.parentNode;
+        }
+      }
+
+      // Calculate line count from selected text
+      const lines = text.split("\n");
+      const lineCount = lines.length;
+
+      // Try to find actual line numbers from shadow DOM inside the diff container
+      let startLine = 1;
+      let endLine = lineCount;
+
+      if (diffContainer) {
+        const lineNumbers = findLineNumbersInShadowDOM(diffContainer, text);
+        if (lineNumbers) {
+          startLine = lineNumbers.startLine;
+          endLine = lineNumbers.endLine;
+        }
+      }
+
+      const snippet: CodeSnippet = {
+        id: generateSnippetId(),
+        filePath,
+        startLine,
+        endLine,
+        content: text,
+        language,
+      };
+
+      setCodeSnippets((prev) => [...prev, snippet]);
+      selection.removeAllRanges();
+    }, [activeSubChatId, setCodeSnippets]);
+
+    // Keyboard shortcut: Cmd+Shift+A for adding selection
+    useEffect(() => {
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (
+          (e.metaKey || e.ctrlKey) &&
+          e.shiftKey &&
+          e.key.toLowerCase() === "a"
+        ) {
+          if (hasValidSelection()) {
+            e.preventDefault();
+            handleAddToChat();
+          }
+        }
+      };
+      window.addEventListener("keydown", handleKeyDown);
+      return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [handleAddToChat]);
 
     // Height for collapsed header (file name + stats)
     const COLLAPSED_HEIGHT = 44;
@@ -1111,132 +1295,156 @@ export const AgentDiffView = forwardRef<AgentDiffViewRef, AgentDiffViewProps>(
         )}
 
         {/* Content */}
-        <div
-          ref={scrollContainerRef}
-          className="relative flex-1 overflow-auto p-2 select-text"
-        >
-          {/* Sticky cover to hide content scrolling above cards */}
-          <div
-            className="sticky top-0 left-0 right-0 h-0 z-20 pointer-events-none"
-            aria-hidden="true"
-          >
-            <div className="absolute -top-2 left-0 right-0 h-2 bg-background" />
-          </div>
-
-          {/* Filter indicator when showing sub-chat files */}
-          {filteredDiffFiles && filteredDiffFiles.length > 0 && (
-            <div className="flex items-center justify-between gap-2 px-2 py-1.5 mb-2 rounded-md bg-primary/10 border border-primary/20">
-              <span className="text-xs text-primary">
-                Showing {fileDiffs.length} of {allFileDiffs.length} files from
-                this chat
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setFilteredDiffFiles(null)}
-                className="h-5 px-2 text-xs text-primary hover:text-primary"
-              >
-                Show all
-              </Button>
-            </div>
-          )}
-
-          {isLoadingDiff ||
-          (isLoadingFileContents && fileDiffs.length === 0) ? (
-            <div className="flex items-center justify-center h-full">
-              <IconSpinner className="w-6 h-6" />
-            </div>
-          ) : diffError ? (
-            <div className="flex flex-col items-center justify-center h-full text-center px-4">
-              <p className="text-sm text-red-500 mb-2">{diffError}</p>
-              <Button variant="outline" size="sm" onClick={handleRefresh}>
-                Try again
-              </Button>
-            </div>
-          ) : fileDiffs.length > 0 ? (
+        <ContextMenu>
+          <ContextMenuTrigger asChild>
             <div
-              style={{
-                height: virtualizer.getTotalSize(),
-                width: "100%",
-                position: "relative",
-              }}
+              ref={scrollContainerRef}
+              className="relative flex-1 overflow-auto p-2 select-text"
             >
-              {virtualizer.getVirtualItems().map((virtualRow) => {
-                const file = fileDiffs[virtualRow.index]!;
-                // Get display path for hover matching
-                const displayPath =
-                  file.newPath && file.newPath !== "/dev/null"
-                    ? file.newPath
-                    : file.oldPath || "";
-                // Check if this file is hovered
-                const isFileHovered =
-                  hoveredFile &&
-                  (displayPath === hoveredFile ||
-                    displayPath.endsWith(hoveredFile) ||
-                    hoveredFile.endsWith(displayPath));
-
-                return (
-                  <div
-                    key={file.key}
-                    data-index={virtualRow.index}
-                    ref={virtualizer.measureElement}
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      width: "100%",
-                      transform: `translateY(${virtualRow.start}px)`,
-                    }}
-                    onMouseEnter={() => setHoveredFile(displayPath)}
-                    onMouseLeave={() => setHoveredFile(null)}
-                  >
-                    <div
-                      className={cn(
-                        "pb-2 transition-all duration-150",
-                        isFileHovered && "ring-2 ring-primary/50 rounded-lg",
-                      )}
-                    >
-                      <FileDiffCard
-                        file={file}
-                        isLight={isLight}
-                        isCollapsed={!!collapsedByFileKey[file.key]}
-                        toggleCollapsed={toggleFileCollapsed}
-                        isFullExpanded={!!fullExpandedByFileKey[file.key]}
-                        toggleFullExpanded={toggleFileFullExpanded}
-                        hasContent={!!fileContents[file.key]}
-                        isLoadingContent={isLoadingFileContents}
-                        diffMode={diffMode}
-                        codeThemeId={codeThemeId}
-                        isSelected={selectedFiles.has(displayPath)}
-                        onToggleSelection={toggleSelection}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-full text-center px-4">
+              {/* Sticky cover to hide content scrolling above cards */}
               <div
-                className={cn(
-                  "w-10 h-10 rounded-full flex items-center justify-center mb-3",
-                  isLight ? "bg-emerald-100" : "bg-emerald-500/10",
-                )}
+                className="sticky top-0 left-0 right-0 h-0 z-20 pointer-events-none"
+                aria-hidden="true"
               >
-                <CheckCircle2
-                  className={cn(
-                    "w-5 h-5",
-                    isLight ? "text-emerald-600" : "text-emerald-400",
-                  )}
-                />
+                <div className="absolute -top-2 left-0 right-0 h-2 bg-background" />
               </div>
-              <p className="text-sm font-medium mb-1">No changes detected</p>
-              <p className="text-xs text-muted-foreground">
-                Make some changes to see the diff
-              </p>
+
+              {/* Filter indicator when showing sub-chat files */}
+              {filteredDiffFiles && filteredDiffFiles.length > 0 && (
+                <div className="flex items-center justify-between gap-2 px-2 py-1.5 mb-2 rounded-md bg-primary/10 border border-primary/20">
+                  <span className="text-xs text-primary">
+                    Showing {fileDiffs.length} of {allFileDiffs.length} files
+                    from this chat
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setFilteredDiffFiles(null)}
+                    className="h-5 px-2 text-xs text-primary hover:text-primary"
+                  >
+                    Show all
+                  </Button>
+                </div>
+              )}
+
+              {isLoadingDiff ||
+              (isLoadingFileContents && fileDiffs.length === 0) ? (
+                <div className="flex items-center justify-center h-full">
+                  <IconSpinner className="w-6 h-6" />
+                </div>
+              ) : diffError ? (
+                <div className="flex flex-col items-center justify-center h-full text-center px-4">
+                  <p className="text-sm text-red-500 mb-2">{diffError}</p>
+                  <Button variant="outline" size="sm" onClick={handleRefresh}>
+                    Try again
+                  </Button>
+                </div>
+              ) : fileDiffs.length > 0 ? (
+                <div
+                  style={{
+                    height: virtualizer.getTotalSize(),
+                    width: "100%",
+                    position: "relative",
+                  }}
+                >
+                  {virtualizer.getVirtualItems().map((virtualRow) => {
+                    const file = fileDiffs[virtualRow.index]!;
+                    // Get display path for hover matching
+                    const displayPath =
+                      file.newPath && file.newPath !== "/dev/null"
+                        ? file.newPath
+                        : file.oldPath || "";
+                    // Check if this file is hovered
+                    const isFileHovered =
+                      hoveredFile &&
+                      (displayPath === hoveredFile ||
+                        displayPath.endsWith(hoveredFile) ||
+                        hoveredFile.endsWith(displayPath));
+
+                    return (
+                      <div
+                        key={file.key}
+                        data-index={virtualRow.index}
+                        ref={virtualizer.measureElement}
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          width: "100%",
+                          transform: `translateY(${virtualRow.start}px)`,
+                        }}
+                        onMouseEnter={() => setHoveredFile(displayPath)}
+                        onMouseLeave={() => setHoveredFile(null)}
+                      >
+                        <div
+                          className={cn(
+                            "pb-2 transition-all duration-150",
+                            isFileHovered &&
+                              "ring-2 ring-primary/50 rounded-lg",
+                          )}
+                        >
+                          <FileDiffCard
+                            file={file}
+                            isLight={isLight}
+                            isCollapsed={!!collapsedByFileKey[file.key]}
+                            toggleCollapsed={toggleFileCollapsed}
+                            isFullExpanded={!!fullExpandedByFileKey[file.key]}
+                            toggleFullExpanded={toggleFileFullExpanded}
+                            hasContent={!!fileContents[file.key]}
+                            isLoadingContent={isLoadingFileContents}
+                            diffMode={diffMode}
+                            codeThemeId={codeThemeId}
+                            isSelected={selectedFiles.has(displayPath)}
+                            onToggleSelection={toggleSelection}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-center px-4">
+                  <div
+                    className={cn(
+                      "w-10 h-10 rounded-full flex items-center justify-center mb-3",
+                      isLight ? "bg-emerald-100" : "bg-emerald-500/10",
+                    )}
+                  >
+                    <CheckCircle2
+                      className={cn(
+                        "w-5 h-5",
+                        isLight ? "text-emerald-600" : "text-emerald-400",
+                      )}
+                    />
+                  </div>
+                  <p className="text-sm font-medium mb-1">
+                    No changes detected
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Make some changes to see the diff
+                  </p>
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </ContextMenuTrigger>
+          <ContextMenuContent className="w-48">
+            <ContextMenuItem
+              onClick={handleAddToChat}
+              disabled={!hasSelection}
+              className="gap-2"
+            >
+              <MessageSquarePlus className="size-4" />
+              <span>Add to Chat</span>
+              <ContextMenuShortcut>
+                {typeof navigator !== "undefined" &&
+                navigator.platform.includes("Mac")
+                  ? "Cmd"
+                  : "Ctrl"}
+                +Shift+A
+              </ContextMenuShortcut>
+            </ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
       </div>
     );
   },

@@ -24,6 +24,7 @@ import { gitQueue } from "../../git/git-queue";
 import { execWithShellEnv } from "../../git/shell-env";
 import { getClaudeBinaryPath } from "../../providers/claude";
 import { providerRegistry } from "../../providers/registry";
+import { worktreeInitRunner } from "../../worktree/init-runner";
 import { publicProcedure, router } from "../index";
 
 // Dynamic import for ESM module
@@ -505,6 +506,29 @@ export const chatsRouter = router({
             branch: result.branch,
             baseBranch: result.baseBranch,
           };
+
+          // Run worktree init command if configured
+          if (project.worktreeInitCommand) {
+            console.log(
+              "[chats.create] running worktree init command:",
+              project.worktreeInitCommand,
+            );
+            // Run async - don't block chat creation
+            worktreeInitRunner
+              .runInitCommand({
+                chatId: chat.id,
+                command: project.worktreeInitCommand,
+                worktreePath: result.worktreePath,
+                projectPath: project.path,
+                branchName: result.branch || "unknown",
+              })
+              .catch((err) => {
+                console.error(
+                  "[chats.create] Worktree init command failed:",
+                  err,
+                );
+              });
+          }
         } else {
           console.warn(`[Worktree] Failed: ${result.error}`);
           // Fallback to project path

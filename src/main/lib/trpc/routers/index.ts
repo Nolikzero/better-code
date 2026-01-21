@@ -12,6 +12,7 @@ import { providersRouter } from "./providers";
 import { skillsRouter } from "./skills";
 import { terminalRouter } from "./terminal";
 import { windowRouter } from "./window";
+import { worktreeInitRouter } from "./worktree-init";
 
 /**
  * Create the main app router
@@ -30,6 +31,7 @@ export function createAppRouter(_getWindow: () => BrowserWindow | null) {
     agents: agentsRouter,
     window: windowRouter,
     providers: providersRouter,
+    worktreeInit: worktreeInitRouter,
     // Git operations - named "changes" to match Superset API
     changes: createGitRouter(),
   });

@@ -155,6 +155,36 @@ export const projectsRouter = router({
     }),
 
   /**
+   * Update project settings (name, worktreeInitCommand)
+   */
+  update: publicProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        name: z.string().min(1).optional(),
+        worktreeInitCommand: z.string().nullable().optional(),
+      }),
+    )
+    .mutation(({ input }) => {
+      const db = getDatabase();
+      const updates: Record<string, unknown> = { updatedAt: new Date() };
+
+      if (input.name !== undefined) {
+        updates.name = input.name;
+      }
+      if (input.worktreeInitCommand !== undefined) {
+        updates.worktreeInitCommand = input.worktreeInitCommand;
+      }
+
+      return db
+        .update(projects)
+        .set(updates)
+        .where(eq(projects.id, input.id))
+        .returning()
+        .get();
+    }),
+
+  /**
    * Delete a project and all its chats
    */
   delete: publicProcedure

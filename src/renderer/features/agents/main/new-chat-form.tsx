@@ -1007,34 +1007,36 @@ export function NewChatForm({
   return (
     <div className="flex h-full flex-col">
       {/* Header - Simple burger on mobile, AgentsHeaderControls on desktop */}
-      {!isOverlayMode && (<div
-        className="shrink-0 flex items-center justify-between"
-        style={{
-          // @ts-expect-error - WebKit-specific property for Electron window dragging
-          WebkitAppRegion: "drag",
-        }}
-      >
-        <div className="flex-1 min-w-0 flex items-center gap-4 px-2 py-2">
-          {isMobileFullscreen ? (
-            // Simple burger button for mobile - just opens chats list
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onBackToChats}
-              className="h-7 w-7 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] shrink-0 rounded-md"
-              aria-label="All projects"
-            >
-              <AlignJustify className="h-4 w-4" />
-            </Button>
-          ) : (
-            <AgentsHeaderControls
-              isSidebarOpen={sidebarOpen}
-              onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
-              hasUnseenChanges={hasAnyUnseenChanges}
-            />
-          )}
+      {!isOverlayMode && (
+        <div
+          className="shrink-0 flex items-center justify-between"
+          style={{
+            // @ts-expect-error - WebKit-specific property for Electron window dragging
+            WebkitAppRegion: "drag",
+          }}
+        >
+          <div className="flex-1 min-w-0 flex items-center gap-4 px-2 py-2">
+            {isMobileFullscreen ? (
+              // Simple burger button for mobile - just opens chats list
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onBackToChats}
+                className="h-7 w-7 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] shrink-0 rounded-md"
+                aria-label="All projects"
+              >
+                <AlignJustify className="h-4 w-4" />
+              </Button>
+            ) : (
+              <AgentsHeaderControls
+                isSidebarOpen={sidebarOpen}
+                onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
+                hasUnseenChanges={hasAnyUnseenChanges}
+              />
+            )}
+          </div>
         </div>
-      </div>)}
+      )}
 
       {isOverlayMode ? (
         /* Render overlay content (CenterDiffView/CenterFileView) when in overlay mode */

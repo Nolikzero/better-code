@@ -133,6 +133,7 @@ import { ChatTitleEditor } from "../ui/chat-title-editor";
 import { PLAYBACK_SPEEDS, type PlaybackSpeed } from "../ui/message-controls";
 import { getProviderIcon } from "../ui/provider-icons";
 import { SubChatStatusCard } from "../ui/sub-chat-status-card";
+import { WorktreeInitProgress } from "../ui/worktree-init-progress";
 import { autoRenameAgentChat } from "../utils/auto-rename";
 import { handlePasteEvent } from "../utils/paste-text";
 import { ChatHeader } from "./chat-header";
@@ -1866,6 +1867,12 @@ function ChatViewInner({
           data-chat-container
         >
           <div ref={contentRef}>
+            {/* Worktree init progress - shows when init command is running */}
+            <div className="px-4 pt-4">
+              <div className="w-full max-w-2xl mx-auto">
+                <WorktreeInitProgress chatId={parentChatId} />
+              </div>
+            </div>
             <ChatMessages
               messages={messages}
               status={status}

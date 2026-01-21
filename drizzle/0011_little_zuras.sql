@@ -1,0 +1,1 @@
+ALTER TABLE `projects` ADD `worktree_init_command` text;

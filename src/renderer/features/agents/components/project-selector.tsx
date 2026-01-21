@@ -1,6 +1,7 @@
 import { useAtom } from "jotai";
-import { FolderOpen } from "lucide-react";
+import { FolderOpen, Settings } from "lucide-react";
 import { useMemo, useState } from "react";
+import { ProjectSettingsDialog } from "../../../components/dialogs/project-settings-dialog";
 import {
   Command,
   CommandEmpty,
@@ -50,6 +51,11 @@ export function ProjectSelector() {
   const [selectedProject, setSelectedProject] = useAtom(selectedProjectAtom);
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showProjectSettings, setShowProjectSettings] = useState(false);
+  const [settingsProjectId, setSettingsProjectId] = useState<string | null>(
+    null,
+  );
+  const [isNewProject, setIsNewProject] = useState(false);
 
   // Fetch projects from DB
   const { data: projects, isLoading: isLoadingProjects } =
@@ -74,6 +80,9 @@ export function ProjectSelector() {
   const openFolder = trpc.projects.openFolder.useMutation({
     onSuccess: (project) => {
       if (project) {
+        // Check if this is a new project (not reopened existing)
+        const isNew = !projects?.some((p) => p.id === project.id);
+
         // Optimistically update the projects list cache to prevent validation failures
         utils.projects.list.setData(undefined, (oldData) => {
           if (!oldData) return [project];
@@ -99,6 +108,13 @@ export function ProjectSelector() {
           gitOwner: project.gitOwner,
           gitRepo: project.gitRepo,
         });
+
+        // Show settings dialog for newly created projects
+        if (isNew) {
+          setSettingsProjectId(project.id);
+          setIsNewProject(true);
+          setShowProjectSettings(true);
+        }
       }
     },
   });
@@ -202,13 +218,27 @@ export function ProjectSelector() {
                       key={project.id}
                       value={`${project.name} ${project.path}`}
                       onSelect={() => handleSelectProject(project.id)}
-                      className="gap-2"
+                      className="gap-2 group"
                     >
                       <ProjectIcon
                         gitOwner={project.gitOwner}
                         gitProvider={project.gitProvider}
                       />
                       <span className="truncate flex-1">{project.name}</span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSettingsProjectId(project.id);
+                          setIsNewProject(false);
+                          setShowProjectSettings(true);
+                          setOpen(false);
+                        }}
+                        className="h-6 w-6 p-0 rounded-md opacity-0 group-hover:opacity-100 hover:bg-muted flex items-center justify-center transition-opacity"
+                        title="Project settings"
+                      >
+                        <Settings className="h-3.5 w-3.5 text-muted-foreground" />
+                      </button>
                       {isSelected && <CheckIcon className="h-4 w-4 shrink-0" />}
                     </CommandItem>
                   );
@@ -232,6 +262,22 @@ export function ProjectSelector() {
           </div>
         </Command>
       </PopoverContent>
+
+      {/* Project Settings Dialog */}
+      {settingsProjectId && (
+        <ProjectSettingsDialog
+          open={showProjectSettings}
+          onOpenChange={(open) => {
+            setShowProjectSettings(open);
+            if (!open) {
+              setSettingsProjectId(null);
+              setIsNewProject(false);
+            }
+          }}
+          projectId={settingsProjectId}
+          isNewProject={isNewProject}
+        />
+      )}
     </Popover>
   );
 }

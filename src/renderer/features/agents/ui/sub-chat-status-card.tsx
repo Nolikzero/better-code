@@ -1,6 +1,6 @@
 "use client";
 
-import { useAtom, useSetAtom } from "jotai";
+import { useSetAtom } from "jotai";
 import { ChevronUp } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { memo, useEffect, useMemo, useState } from "react";
@@ -10,8 +10,9 @@ import { trpc } from "../../../lib/trpc";
 import { cn } from "../../../lib/utils";
 import {
   agentsFocusedDiffFileAtom,
-  diffSidebarOpenAtomFamily,
+  centerDiffSelectedFileAtom,
   filteredDiffFilesAtom,
+  mainContentActiveTabAtom,
   type SubChatFileChange,
 } from "../atoms";
 import { getFileIconByExtension } from "../mentions";
@@ -52,13 +53,9 @@ export const SubChatStatusCard = memo(function SubChatStatusCard({
   onStop,
 }: SubChatStatusCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  // Use per-chat atom family instead of legacy global atom
-  const diffSidebarAtom = useMemo(
-    () => diffSidebarOpenAtomFamily(chatId),
-    [chatId],
-  );
-  const [, setDiffSidebarOpen] = useAtom(diffSidebarAtom);
+  const setActiveTab = useSetAtom(mainContentActiveTabAtom);
   const setFilteredDiffFiles = useSetAtom(filteredDiffFilesAtom);
+  const setCenterDiffSelectedFile = useSetAtom(centerDiffSelectedFileAtom);
   const setFocusedDiffFile = useSetAtom(agentsFocusedDiffFileAtom);
 
   // Listen for file changes from Claude Write/Edit tools
@@ -128,7 +125,7 @@ export const SubChatStatusCard = memo(function SubChatStatusCard({
     // Use displayPath (relative path) to match git diff paths
     const filePaths = uncommittedFiles.map((f) => f.displayPath);
     setFilteredDiffFiles(filePaths.length > 0 ? filePaths : null);
-    setDiffSidebarOpen(true);
+    setActiveTab("changes");
   };
 
   return (
@@ -152,10 +149,11 @@ export const SubChatStatusCard = memo(function SubChatStatusCard({
                   // Use displayPath (relative path) to match git diff paths
                   const filePaths = uncommittedFiles.map((f) => f.displayPath);
                   setFilteredDiffFiles(filePaths.length > 0 ? filePaths : null);
-                  // Set focus on this specific file
+                  // Select and scroll to this specific file
+                  setCenterDiffSelectedFile(file.displayPath);
                   setFocusedDiffFile(file.displayPath);
-                  // Open diff sidebar
-                  setDiffSidebarOpen(true);
+                  // Navigate to changes tab
+                  setActiveTab("changes");
                 };
 
                 const handleKeyDown = (e: React.KeyboardEvent) => {

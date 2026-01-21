@@ -33,9 +33,12 @@ import { trpc } from "../../../lib/trpc";
 import { AgentsSidebar } from "../../sidebar/agents-sidebar";
 import { TerminalSidebar, terminalSidebarOpenAtom } from "../../terminal";
 import {
+  activeChatDiffDataAtom,
   agentsMobileViewModeAtom,
   agentsPreviewSidebarOpenAtom,
   agentsSidebarOpenAtom,
+  centerFilePathAtom,
+  mainContentActiveTabAtom,
   previousAgentChatIdAtom,
   selectedAgentChatIdAtom,
 } from "../atoms";
@@ -47,6 +50,9 @@ import {
 } from "../stores/sub-chat-store";
 import { AgentDiffView } from "./agent-diff-view";
 import { AgentPreview } from "./agent-preview";
+import { CenterDiffView } from "./center-diff-view";
+import { CenterFileView } from "./center-file-view";
+import { MainContentTabs } from "./main-content-tabs";
 
 // import { useClerk, useUser } from "@clerk/nextjs"
 // import { useCombinedAuth } from "@/lib/hooks/use-combined-auth"
@@ -68,6 +74,17 @@ export function AgentsContent() {
   );
   const [mobileViewMode, setMobileViewMode] = useAtom(agentsMobileViewModeAtom);
   const setTerminalSidebarOpen = useSetAtom(terminalSidebarOpenAtom);
+
+  // Main content tabs state
+  const [activeTab, setActiveTab] = useAtom(mainContentActiveTabAtom);
+  const [filePath, setFilePath] = useAtom(centerFilePathAtom);
+
+  // Use the global atom that's updated by active-chat.tsx via git watcher
+  // This ensures real-time updates when files change
+  const diffData = useAtomValue(activeChatDiffDataAtom);
+  const hasChanges = diffData?.diffStats?.hasChanges ?? false;
+
+  const hasFile = !!filePath;
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -158,6 +175,44 @@ export function AgentsContent() {
     { enabled: !!selectedChatId },
   );
 
+  // Sync subchat store when chat data loads
+  // This ensures subchat navigation works even when ChatView is not mounted (e.g., File/Changes tabs)
+  useEffect(() => {
+    if (!selectedChatId || !chatData) return;
+
+    const store = useAgentSubChatStore.getState();
+
+    // Ensure chatId is set in store
+    if (store.chatId !== selectedChatId) {
+      store.setChatId(selectedChatId);
+    }
+
+    // Re-get fresh state after setChatId may have loaded from localStorage
+    const freshState = useAgentSubChatStore.getState();
+
+    // If allSubChats is empty but we have subchats data from query, populate it
+    // This mirrors the logic in active-chat.tsx but runs in the parent component
+    // to ensure data persists when switching to File/Changes tabs
+    if (freshState.allSubChats.length === 0 && chatData.subChats?.length > 0) {
+      const subChatMetas: SubChatMeta[] = chatData.subChats.map((sc: any) => ({
+        id: sc.id,
+        name: sc.name || "New Chat",
+        created_at: sc.created_at,
+        updated_at: sc.updated_at,
+        mode: sc.mode || "agent",
+        providerId: sc.providerId,
+      }));
+      store.setAllSubChats(subChatMetas);
+
+      // Ensure at least one tab is open
+      const updatedState = useAgentSubChatStore.getState();
+      if (updatedState.openSubChatIds.length === 0 && subChatMetas.length > 0) {
+        store.addToOpenSubChats(subChatMetas[0].id);
+        store.setActiveSubChat(subChatMetas[0].id);
+      }
+    }
+  }, [selectedChatId, chatData]);
+
   // Track previous chat ID for navigation after archive
   const [_previousChatId, setPreviousChatId] = useAtom(previousAgentChatIdAtom);
   const prevSelectedChatIdRef = useRef<string | null>(null);
@@ -173,6 +228,23 @@ export function AgentsContent() {
     }
     prevSelectedChatIdRef.current = selectedChatId;
   }, [selectedChatId, setPreviousChatId]);
+
+  // Reset file path and switch to chat tab when switching chats
+  useEffect(() => {
+    // Reset file path
+    setFilePath(null);
+    // Switch to chat tab
+    setActiveTab("chat");
+  }, [selectedChatId, setFilePath, setActiveTab]);
+
+  // Reset file path and switch to chat tab when switching subchats
+  useEffect(() => {
+    if (!activeSubChatId) return;
+    // Reset file path
+    setFilePath(null);
+    // Switch to chat tab
+    setActiveTab("chat");
+  }, [activeSubChatId, setFilePath, setActiveTab]);
 
   // Note: Archive mutations moved to AgentsSidebar to share undo stack with Cmd+Z
 
@@ -846,11 +918,23 @@ export function AgentsContent() {
     <>
       {/* Main content */}
       <div
-        className="flex-1 min-w-0 overflow-hidden"
+        className="flex-1 min-w-0 overflow-hidden flex flex-col"
         style={{ minWidth: "350px" }}
       >
-        {selectedChatId ? (
-          <div className="h-full flex flex-col relative overflow-hidden">
+        {/* Tab bar - only show when file or changes exist */}
+        {(hasFile || hasChanges) && activeSubChatId && <MainContentTabs />}
+
+        {/* Content based on active tab */}
+        {activeTab === "changes" && hasChanges ? (
+          <div className="flex-1 min-h-0 flex flex-col relative overflow-hidden">
+            <CenterDiffView />
+          </div>
+        ) : activeTab === "file" && hasFile ? (
+          <div className="flex-1 min-h-0 flex flex-col relative overflow-hidden">
+            <CenterFileView />
+          </div>
+        ) : selectedChatId ? (
+          <div className="flex-1 min-h-0 flex flex-col relative overflow-hidden">
             <ChatView
               key={selectedChatId}
               chatId={selectedChatId}
@@ -861,7 +945,7 @@ export function AgentsContent() {
             />
           </div>
         ) : (
-          <div className="h-full flex flex-col relative overflow-hidden">
+          <div className="flex-1 min-h-0 flex flex-col relative overflow-hidden">
             <NewChatForm key={`new-chat-${newChatFormKeyRef.current}`} />
           </div>
         )}

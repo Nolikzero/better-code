@@ -17,7 +17,13 @@ import {
   useRef,
   useState,
 } from "react";
-import { agentsFocusedDiffFileAtom, filteredDiffFilesAtom } from "../atoms";
+import {
+  agentsFocusedDiffFileAtom,
+  filteredDiffFilesAtom,
+  hoveredDiffFileAtom,
+  selectedDiffFilesAtom,
+  toggleDiffFileSelectionAtom,
+} from "../atoms";
 
 // Diff mode enum to match the old API
 export enum DiffModeEnum {
@@ -28,6 +34,7 @@ export enum DiffModeEnum {
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   AlertTriangle,
+  Check,
   CheckCircle2,
   ChevronDown,
   Columns2,
@@ -52,6 +59,10 @@ import { getFileIconByExtension } from "../mentions";
 // import { useIsHydrated } from "@/hooks/use-is-hydrated"
 const useIsHydrated = () => true; // Desktop is always hydrated
 
+import {
+  type ParsedDiffFile,
+  parseUnifiedDiff,
+} from "../../../../shared/utils";
 import { useCodeTheme } from "../../../lib/hooks/use-code-theme";
 import { trpcClient } from "../../../lib/trpc";
 import { cn } from "../../../lib/utils";
@@ -121,155 +132,15 @@ class DiffErrorBoundary extends Component<
   }
 }
 
-type ParsedDiffFile = {
-  key: string;
-  oldPath: string;
-  newPath: string;
-  diffText: string;
-  isBinary: boolean;
-  additions: number;
-  deletions: number;
-  isValid?: boolean; // Whether the diff format is valid/complete
-};
+// ParsedDiffFile is imported from shared utils
 
 export const diffViewModeAtom = atomWithStorage<DiffModeEnum>(
   "agents-diff:view-mode",
   DiffModeEnum.Unified,
 );
 
-// Validate if a diff hunk has valid structure
-// This is a lenient validator - only reject clearly malformed diffs
-// Don't count lines strictly since edge cases are hard to handle
-const validateDiffHunk = (
-  diffText: string,
-): { valid: boolean; reason?: string } => {
-  if (!diffText || diffText.trim().length === 0) {
-    return { valid: false, reason: "empty diff" };
-  }
-
-  const lines = diffText.split("\n");
-  const hunkHeaderRegex = /^@@ -\d+(?:,\d+)? \+\d+(?:,\d+)? @@/;
-
-  // Find the --- and +++ lines
-  const minusLineIdx = lines.findIndex((l) => l.startsWith("--- "));
-  const plusLineIdx = lines.findIndex((l) => l.startsWith("+++ "));
-
-  // Must have both header lines
-  if (minusLineIdx === -1 || plusLineIdx === -1) {
-    return { valid: false, reason: "missing header lines" };
-  }
-
-  // +++ must come after ---
-  if (plusLineIdx <= minusLineIdx) {
-    return { valid: false, reason: "header order wrong" };
-  }
-
-  // Check for special cases that don't have hunks
-  if (
-    diffText.includes("new mode") ||
-    diffText.includes("old mode") ||
-    diffText.includes("rename from") ||
-    diffText.includes("rename to") ||
-    diffText.includes("Binary files")
-  ) {
-    return { valid: true };
-  }
-
-  // Must have at least one hunk header after +++ line
-  let hasHunk = false;
-  for (let i = plusLineIdx + 1; i < lines.length; i++) {
-    if (hunkHeaderRegex.test(lines[i]!)) {
-      hasHunk = true;
-      break;
-    }
-  }
-
-  if (!hasHunk) {
-    return { valid: false, reason: "no hunk headers found" };
-  }
-
-  // Trust the diff format - the DiffView library will handle parsing
-  // If it fails, the error boundary will catch it
-  return { valid: true };
-};
-
-export const splitUnifiedDiffByFile = (diffText: string): ParsedDiffFile[] => {
-  const normalized = diffText.replace(/\r\n/g, "\n");
-  const lines = normalized.split("\n");
-
-  const blocks: string[] = [];
-  let current: string[] = [];
-
-  const pushCurrent = () => {
-    const text = current.join("\n").trim();
-    if (
-      text &&
-      (text.startsWith("diff --git ") ||
-        text.startsWith("--- ") ||
-        text.startsWith("+++ ") ||
-        text.startsWith("Binary files ") ||
-        text.includes("\n+++ ") ||
-        text.includes("\nBinary files "))
-    ) {
-      blocks.push(text);
-    }
-    current = [];
-  };
-
-  for (const line of lines) {
-    if (line.startsWith("diff --git ") && current.length > 0) {
-      pushCurrent();
-    }
-    current.push(line);
-  }
-  pushCurrent();
-
-  return blocks.map((blockText, index) => {
-    const blockLines = blockText.split("\n");
-    let oldPath = "";
-    let newPath = "";
-    let isBinary = false;
-    let additions = 0;
-    let deletions = 0;
-
-    for (const line of blockLines) {
-      if (line.startsWith("Binary files ") && line.endsWith(" differ")) {
-        isBinary = true;
-      }
-
-      if (line.startsWith("--- ")) {
-        const raw = line.slice(4).trim();
-        oldPath = raw.startsWith("a/") ? raw.slice(2) : raw;
-      }
-
-      if (line.startsWith("+++ ")) {
-        const raw = line.slice(4).trim();
-        newPath = raw.startsWith("b/") ? raw.slice(2) : raw;
-      }
-
-      if (line.startsWith("+") && !line.startsWith("+++ ")) {
-        additions += 1;
-      } else if (line.startsWith("-") && !line.startsWith("--- ")) {
-        deletions += 1;
-      }
-    }
-
-    const key = oldPath || newPath ? `${oldPath}->${newPath}` : `file-${index}`;
-    const validation = isBinary ? { valid: true } : validateDiffHunk(blockText);
-    const isValid = validation.valid;
-
-    return {
-      key,
-      oldPath,
-      newPath,
-      diffText: blockText,
-      isBinary,
-      additions,
-      deletions,
-      isValid,
-    };
-  });
-};
+// Re-export parseUnifiedDiff as splitUnifiedDiffByFile for backwards compatibility
+export const splitUnifiedDiffByFile = parseUnifiedDiff;
 
 interface FileDiffCardProps {
   file: ParsedDiffFile;
@@ -282,6 +153,8 @@ interface FileDiffCardProps {
   isLoadingContent: boolean;
   diffMode: DiffModeEnum;
   codeThemeId: string;
+  isSelected: boolean;
+  onToggleSelection: (filePath: string) => void;
 }
 
 // Custom comparator to prevent unnecessary re-renders
@@ -299,6 +172,7 @@ const fileDiffCardAreEqual = (
   if (prev.diffMode !== next.diffMode) return false;
   if (prev.isLight !== next.isLight) return false;
   if (prev.codeThemeId !== next.codeThemeId) return false;
+  if (prev.isSelected !== next.isSelected) return false;
   return true;
 };
 
@@ -313,6 +187,8 @@ const FileDiffCard = memo(function FileDiffCard({
   isLoadingContent,
   diffMode,
   codeThemeId,
+  isSelected,
+  onToggleSelection,
 }: FileDiffCardProps) {
   const diffCardRef = useRef<HTMLDivElement>(null);
 
@@ -345,27 +221,49 @@ const FileDiffCard = memo(function FileDiffCard({
     >
       <header
         className={cn(
-          "group px-3 py-1 font-mono text-xs bg-muted cursor-pointer",
+          "group px-3 py-1 font-mono text-xs bg-muted",
           // Note: sticky doesn't work with virtualization (absolute positioning)
           // Headers scroll with content like in VS Code
           "border-b transition-colors",
           "hover:bg-accent/50",
           isCollapsed ? "border-b-transparent" : "border-b-border",
         )}
-        onClick={() => toggleCollapsed(file.key)}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            toggleCollapsed(file.key);
-          }
-        }}
-        aria-expanded={!isCollapsed}
       >
         <div className="flex items-center gap-3">
-          {/* Collapse toggle + file info */}
-          <div className="flex-1 flex items-center gap-2 text-left min-w-0 min-h-[22px]">
+          {/* Checkbox for selection */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleSelection(displayPath);
+            }}
+            className={cn(
+              "w-4 h-4 shrink-0 rounded border flex items-center justify-center transition-colors",
+              isSelected
+                ? "border-primary bg-primary"
+                : "border-border/50 hover:border-primary/50",
+            )}
+            aria-label={isSelected ? "Deselect file" : "Select file"}
+          >
+            {isSelected && (
+              <Check className="w-3 h-3 text-primary-foreground" />
+            )}
+          </button>
+
+          {/* Collapse toggle + file info (clickable area) */}
+          <div
+            className="flex-1 flex items-center gap-2 text-left min-w-0 min-h-[22px] cursor-pointer"
+            onClick={() => toggleCollapsed(file.key)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                toggleCollapsed(file.key);
+              }
+            }}
+            role="button"
+            tabIndex={0}
+            aria-expanded={!isCollapsed}
+          >
             {/* Icon container with hover swap */}
             {(() => {
               const FileIcon = getFileIconByExtension(fileName);
@@ -499,6 +397,7 @@ const FileDiffCard = memo(function FileDiffCard({
             <div className="agent-diff-wrapper">
               <DiffErrorBoundary fileName={file.newPath || file.oldPath}>
                 <PatchDiff
+                  key={`${file.key}-${diffMode}`}
                   patch={file.diffText}
                   options={{
                     theme: pierreTheme,
@@ -1045,6 +944,13 @@ export const AgentDiffView = forwardRef<AgentDiffViewRef, AgentDiffViewProps>(
       onStatsChange,
     ]);
 
+    // Hover state for sync with sidebar
+    const [hoveredFile, setHoveredFile] = useAtom(hoveredDiffFileAtom);
+
+    // Selection state for git operations
+    const selectedFiles = useAtomValue(selectedDiffFilesAtom);
+    const toggleSelection = useSetAtom(toggleDiffFileSelectionAtom);
+
     // Scroll to focused file when atom changes (works with virtualized list)
     useEffect(() => {
       if (!focusedDiffFile || isLoadingDiff) {
@@ -1257,6 +1163,18 @@ export const AgentDiffView = forwardRef<AgentDiffViewRef, AgentDiffViewProps>(
             >
               {virtualizer.getVirtualItems().map((virtualRow) => {
                 const file = fileDiffs[virtualRow.index]!;
+                // Get display path for hover matching
+                const displayPath =
+                  file.newPath && file.newPath !== "/dev/null"
+                    ? file.newPath
+                    : file.oldPath || "";
+                // Check if this file is hovered
+                const isFileHovered =
+                  hoveredFile &&
+                  (displayPath === hoveredFile ||
+                    displayPath.endsWith(hoveredFile) ||
+                    hoveredFile.endsWith(displayPath));
+
                 return (
                   <div
                     key={file.key}
@@ -1269,8 +1187,15 @@ export const AgentDiffView = forwardRef<AgentDiffViewRef, AgentDiffViewProps>(
                       width: "100%",
                       transform: `translateY(${virtualRow.start}px)`,
                     }}
+                    onMouseEnter={() => setHoveredFile(displayPath)}
+                    onMouseLeave={() => setHoveredFile(null)}
                   >
-                    <div className="pb-2">
+                    <div
+                      className={cn(
+                        "pb-2 transition-all duration-150",
+                        isFileHovered && "ring-2 ring-primary/50 rounded-lg",
+                      )}
+                    >
                       <FileDiffCard
                         file={file}
                         isLight={isLight}
@@ -1282,6 +1207,8 @@ export const AgentDiffView = forwardRef<AgentDiffViewRef, AgentDiffViewProps>(
                         isLoadingContent={isLoadingFileContents}
                         diffMode={diffMode}
                         codeThemeId={codeThemeId}
+                        isSelected={selectedFiles.has(displayPath)}
+                        onToggleSelection={toggleSelection}
                       />
                     </div>
                   </div>

@@ -114,7 +114,8 @@ function getAgentShortcuts(ctrlTabTarget: "workspaces" | "agents"): Shortcut[] {
     // Tools
     { label: "Toggle terminal", keys: ["cmd", "J"] },
     { label: "Open diff", keys: ["cmd", "D"] },
-    { label: "Create PR", keys: ["cmd", "P"] },
+    { label: "Go to file", keys: ["cmd", "P"] },
+    { label: "Create PR", keys: ["cmd", "shift", "P"] },
   ];
 }
 

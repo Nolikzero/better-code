@@ -19,6 +19,7 @@ export interface AgentActionContext {
 
   // UI states
   setSidebarOpen?: (open: boolean | ((prev: boolean) => boolean)) => void;
+  setChatsSidebarOpen?: (open: boolean | ((prev: boolean) => boolean)) => void;
   setSettingsDialogOpen?: (open: boolean) => void;
   setSettingsActiveTab?: (tab: SettingsTab) => void;
   setShortcutsDialogOpen?: (open: boolean) => void;
@@ -108,6 +109,18 @@ const toggleSidebarAction: AgentActionDefinition = {
   },
 };
 
+const toggleChatsSidebarAction: AgentActionDefinition = {
+  id: "toggle-chats-sidebar",
+  label: "Toggle chats sidebar",
+  description: "Show/hide right chats sidebar",
+  category: "view",
+  hotkey: ["cmd+shift+\\", "ctrl+shift+\\"],
+  handler: async (context) => {
+    context.setChatsSidebarOpen?.((prev) => !prev);
+    return { success: true };
+  },
+};
+
 // ============================================================================
 // ACTION REGISTRY
 // ============================================================================
@@ -117,6 +130,7 @@ export const AGENT_ACTIONS: Record<string, AgentActionDefinition> = {
   "create-new-agent": createNewAgentAction,
   "open-settings": openSettingsAction,
   "toggle-sidebar": toggleSidebarAction,
+  "toggle-chats-sidebar": toggleChatsSidebarAction,
 };
 
 function _getAgentAction(id: string): AgentActionDefinition | undefined {

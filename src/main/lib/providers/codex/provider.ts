@@ -1,5 +1,16 @@
 import TOML from "@iarna/toml";
-import { type ChildProcess, spawn } from "child_process";
+import {
+  type ApprovalMode,
+  Codex,
+  type Input as CodexInput,
+  type SandboxMode as CodexSandboxMode,
+  type WebSearchMode as CodexWebSearchMode,
+  type ModelReasoningEffort,
+  type Thread,
+  type ThreadOptions,
+  type TurnOptions,
+} from "@openai/codex-sdk";
+import type { ImageAttachment } from "@shared/types";
 import * as fs from "fs/promises";
 import os from "os";
 import path from "path";
@@ -13,6 +24,7 @@ import type {
 } from "../types";
 import {
   buildCodexEnv,
+  getCodexApiKey,
   getCodexBinaryPath,
   getCodexOAuthToken,
   logCodexEnv,
@@ -22,8 +34,41 @@ import { createCodexTransformer } from "./transform";
 // Active sessions for cancellation
 const activeSessions = new Map<
   string,
-  { abortController: AbortController; process?: ChildProcess }
+  { abortController: AbortController; thread?: Thread }
 >();
+
+// Singleton Codex client
+let codexClient: Codex | null = null;
+
+/**
+ * Prepare images for Codex SDK by writing base64 data to temp files.
+ * SDK expects file paths, not base64 data.
+ */
+async function prepareImages(
+  images: ImageAttachment[],
+): Promise<{ paths: string[]; cleanup: () => Promise<void> }> {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "codex-images-"));
+  const paths: string[] = [];
+
+  for (let i = 0; i < images.length; i++) {
+    const img = images[i];
+    const ext = img.mediaType.split("/")[1] || "png";
+    const filePath = path.join(tempDir, `image-${i}.${ext}`);
+    await fs.writeFile(filePath, Buffer.from(img.base64Data, "base64"));
+    paths.push(filePath);
+  }
+
+  return {
+    paths,
+    cleanup: async () => {
+      try {
+        await fs.rm(tempDir, { recursive: true, force: true });
+      } catch {
+        // Ignore cleanup errors
+      }
+    },
+  };
+}
 
 /**
  * Extended options for Codex provider
@@ -61,9 +106,48 @@ export class CodexProvider implements AIProvider {
     binaryName: "codex",
   };
 
+  /**
+   * Get the Codex SDK client singleton
+   */
+  private getClient(): Codex {
+    if (!codexClient) {
+      // Only get actual API key (not OAuth tokens)
+      // OAuth auth is handled by the binary reading from ~/.codex/auth.json
+      const apiKey = getCodexApiKey();
+      const env = buildCodexEnv({ apiKey: apiKey || undefined });
+      const binaryResult = getCodexBinaryPath();
+
+      codexClient = new Codex({
+        apiKey: apiKey || undefined,
+        env,
+        codexPathOverride: binaryResult?.path || undefined,
+      });
+
+      if (binaryResult) {
+        console.log(
+          `[codex] Using binary from ${binaryResult.source}: ${binaryResult.path}`,
+        );
+      }
+      if (apiKey) {
+        console.log("[codex] Using API key authentication");
+      } else {
+        console.log(
+          "[codex] Using OAuth authentication (binary reads from ~/.codex/auth.json)",
+        );
+      }
+    }
+    return codexClient;
+  }
+
   async isAvailable(): Promise<boolean> {
-    const result = getCodexBinaryPath();
-    return result !== null;
+    // SDK handles binary resolution internally
+    // Just check if we can instantiate the client
+    try {
+      this.getClient();
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   async getAuthStatus(): Promise<AuthStatus> {
@@ -83,15 +167,6 @@ export class CodexProvider implements AIProvider {
 
   /**
    * Get provider-specific configuration (MCP servers from ~/.codex/config.toml)
-   *
-   * Codex MCP config structure in TOML:
-   * ```toml
-   * [mcp_servers.context7]
-   * command = "npx"
-   * args = ["-y", "@upstash/context7-mcp@1.0.25"]
-   * ```
-   *
-   * Note: Unlike Claude, Codex MCP config is global (not per-project)
    */
   async getProviderConfig(
     _projectPath: string,
@@ -99,7 +174,6 @@ export class CodexProvider implements AIProvider {
     try {
       const configPath = path.join(os.homedir(), ".codex", "config.toml");
 
-      // Check if config file exists
       const exists = await fs
         .stat(configPath)
         .then(() => true)
@@ -109,7 +183,6 @@ export class CodexProvider implements AIProvider {
         return null;
       }
 
-      // Read and parse TOML config
       const content = await fs.readFile(configPath, "utf-8");
       const config = TOML.parse(content) as {
         mcp_servers?: Record<
@@ -118,7 +191,6 @@ export class CodexProvider implements AIProvider {
         >;
       };
 
-      // Extract MCP servers if present
       const mcpServers = config.mcp_servers || {};
 
       if (Object.keys(mcpServers).length > 0) {
@@ -134,33 +206,63 @@ export class CodexProvider implements AIProvider {
     }
   }
 
+  /**
+   * Map our sandbox mode to SDK's SandboxMode type
+   */
+  private mapSandboxMode(options: ChatSessionOptions): CodexSandboxMode {
+    if (options.sandboxMode) {
+      return options.sandboxMode as CodexSandboxMode;
+    }
+    // Plan mode: read-only, Agent mode: workspace-write
+    return options.mode === "plan" ? "read-only" : "workspace-write";
+  }
+
+  /**
+   * Map our approval policy to SDK's ApprovalMode type
+   */
+  private mapApprovalPolicy(
+    options: ChatSessionOptions,
+  ): ApprovalMode | undefined {
+    if (options.approvalPolicy) {
+      return options.approvalPolicy as ApprovalMode;
+    }
+    // For agent mode with full access, use "never"
+    if (
+      options.mode === "agent" &&
+      options.sandboxMode === "danger-full-access"
+    ) {
+      return "never";
+    }
+    // Default: let SDK decide
+    return undefined;
+  }
+
+  /**
+   * Map our reasoning effort to SDK's ModelReasoningEffort type
+   */
+  private mapReasoningEffort(
+    effort: string | undefined,
+  ): ModelReasoningEffort | undefined {
+    if (!effort) return undefined;
+    // SDK supports: "minimal" | "low" | "medium" | "high" | "xhigh"
+    const validEfforts = ["minimal", "low", "medium", "high", "xhigh"];
+    if (validEfforts.includes(effort)) {
+      return effort as ModelReasoningEffort;
+    }
+    return undefined;
+  }
+
   async *chat(
     options: CodexSessionOptions,
   ): AsyncGenerator<UIMessageChunk, void, unknown> {
     const abortController = options.abortController;
     const session = {
       abortController,
-      process: undefined as ChildProcess | undefined,
+      thread: undefined as Thread | undefined,
     };
     activeSessions.set(options.subChatId, session);
 
     try {
-      // Get Codex binary path
-      const binaryResult = getCodexBinaryPath();
-      if (!binaryResult) {
-        yield {
-          type: "error",
-          errorText:
-            "Codex CLI not found. Install via: npm install -g @openai/codex",
-        };
-        yield { type: "finish" };
-        return;
-      }
-
-      console.log(
-        `[codex] Using ${binaryResult.source} binary: ${binaryResult.path}`,
-      );
-
       // Get API key
       const apiKey = getCodexOAuthToken();
       if (!apiKey) {
@@ -173,36 +275,48 @@ export class CodexProvider implements AIProvider {
         return;
       }
 
-      // Build environment
-      const env = buildCodexEnv({ apiKey });
-
       // Log in dev mode
       if (process.env.NODE_ENV !== "production") {
+        const env = buildCodexEnv({ apiKey });
         logCodexEnv(env, `[${options.subChatId}] `);
       }
 
-      // Build CLI arguments
-      const args = this.buildCliArgs(options);
-      console.log(`[codex] Running: ${binaryResult.path} ${args.join(" ")}`);
+      // Get SDK client
+      const client = this.getClient();
 
-      // Spawn Codex process
-      const codexProcess = spawn(binaryResult.path, args, {
-        cwd: options.cwd,
-        env,
-        stdio: ["pipe", "pipe", "pipe"],
-      });
+      // Build thread options
+      const threadOptions: ThreadOptions = {
+        model: options.model,
+        workingDirectory: options.cwd,
+        sandboxMode: this.mapSandboxMode(options),
+        approvalPolicy: this.mapApprovalPolicy(options),
+        modelReasoningEffort: this.mapReasoningEffort(options.reasoningEffort),
+        additionalDirectories: options.addDirs,
+        skipGitRepoCheck: true, // Allow non-git directories
+        // SDK enhancement options
+        ...(options.networkAccessEnabled !== undefined && {
+          networkAccessEnabled: options.networkAccessEnabled,
+        }),
+        ...(options.webSearchMode && {
+          webSearchMode: options.webSearchMode as CodexWebSearchMode,
+        }),
+      };
 
-      session.process = codexProcess;
+      console.log("[codex] Thread options:", JSON.stringify(threadOptions));
 
-      // Handle abort
-      abortController.signal.addEventListener("abort", () => {
-        if (codexProcess && !codexProcess.killed) {
-          codexProcess.kill("SIGTERM");
-        }
-      });
+      // Create or resume thread
+      let thread: Thread;
+      if (options.sessionId) {
+        console.log(`[codex] Resuming thread: ${options.sessionId}`);
+        thread = client.resumeThread(options.sessionId, threadOptions);
+      } else {
+        console.log("[codex] Starting new thread");
+        thread = client.startThread(threadOptions);
+      }
+
+      session.thread = thread;
 
       // Emit synthetic session-init with MCP config
-      // Codex CLI doesn't emit session-init like Claude SDK does, so we synthesize it
       const mcpConfig = await this.getProviderConfig(options.cwd);
       if (
         mcpConfig?.mcpServers &&
@@ -211,15 +325,13 @@ export class CodexProvider implements AIProvider {
         const mcpServers = Object.entries(mcpConfig.mcpServers).map(
           ([name]) => ({
             name,
-            // Status will update as tools are discovered during streaming
-            // Codex MCP tools appear as mcp__servername__toolname in events
             status: "connected" as const,
           }),
         );
 
         yield {
           type: "session-init",
-          tools: [], // Will be populated as tools are discovered
+          tools: [],
           mcpServers,
           plugins: [],
           skills: [],
@@ -230,61 +342,43 @@ export class CodexProvider implements AIProvider {
         );
       }
 
+      // Build turn options
+      const turnOptions: TurnOptions = {
+        signal: abortController.signal,
+        ...(options.outputSchema && { outputSchema: options.outputSchema }),
+      };
+
+      // Prepare input (handle images if provided)
+      let sdkInput: CodexInput = options.prompt;
+      let imageCleanup: (() => Promise<void>) | undefined;
+
+      if (options.images && options.images.length > 0) {
+        console.log(`[codex] Preparing ${options.images.length} images...`);
+        const { paths, cleanup } = await prepareImages(options.images);
+        imageCleanup = cleanup;
+        sdkInput = [
+          ...paths.map((p) => ({ type: "local_image" as const, path: p })),
+          { type: "text" as const, text: options.prompt },
+        ];
+        console.log(
+          `[codex] Images written to temp files: ${paths.join(", ")}`,
+        );
+      }
+
+      // Run streaming turn
+      console.log(`[codex] Running prompt: ${options.prompt.slice(0, 100)}...`);
+      const { events } = await thread.runStreamed(sdkInput, turnOptions);
+
       // Create transformer
       const transform = createCodexTransformer();
 
-      // Buffer for incomplete JSON lines
-      let buffer = "";
-
-      // Process stdout as JSON events
-      const processStream = async function* (
-        stream: NodeJS.ReadableStream,
-      ): AsyncGenerator<any> {
-        for await (const chunk of stream) {
-          buffer += chunk.toString();
-
-          // Split by newlines and process complete JSON objects
-          const lines = buffer.split("\n");
-          buffer = lines.pop() || ""; // Keep incomplete line in buffer
-
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed) continue;
-
-            try {
-              const event = JSON.parse(trimmed);
-              yield event;
-            } catch {
-              // Not JSON, might be plain text output
-              console.log(`[codex] Non-JSON output: ${trimmed}`);
-            }
-          }
-        }
-
-        // Process remaining buffer
-        if (buffer.trim()) {
-          try {
-            const event = JSON.parse(buffer.trim());
-            yield event;
-          } catch {
-            console.log(`[codex] Final non-JSON output: ${buffer}`);
-          }
-        }
-      };
-
-      // Collect stderr
-      const stderrLines: string[] = [];
-      codexProcess.stderr?.on("data", (data) => {
-        const text = data.toString();
-        stderrLines.push(text);
-        options.onStderr?.(text);
-        console.error("[codex stderr]", text);
-      });
-
       // Process events and transform to UIMessageChunk
       try {
-        for await (const event of processStream(codexProcess.stdout!)) {
-          if (abortController.signal.aborted) break;
+        for await (const event of events) {
+          if (abortController.signal.aborted) {
+            console.log("[codex] Aborted, stopping event processing");
+            break;
+          }
 
           console.log(
             `[codex] Event: ${event.type}`,
@@ -304,19 +398,13 @@ export class CodexProvider implements AIProvider {
             errorText: `Codex streaming error: ${err.message}`,
           };
         }
+      } finally {
+        // Cleanup temp images
+        if (imageCleanup) {
+          console.log("[codex] Cleaning up temp images...");
+          await imageCleanup();
+        }
       }
-
-      // Wait for process to exit
-      await new Promise<void>((resolve) => {
-        codexProcess.on("close", (code) => {
-          console.log(`[codex] Process exited with code ${code}`);
-          if (code !== 0 && !abortController.signal.aborted) {
-            // Process exited with error, but we may have already emitted the error
-            console.error(`[codex] Non-zero exit code: ${code}`);
-          }
-          resolve();
-        });
-      });
     } catch (error) {
       const err = error as Error;
       yield {
@@ -332,106 +420,13 @@ export class CodexProvider implements AIProvider {
   cancel(subChatId: string): void {
     const session = activeSessions.get(subChatId);
     if (session) {
+      console.log(`[codex] Cancelling session: ${subChatId}`);
       session.abortController.abort();
-      if (session.process && !session.process.killed) {
-        session.process.kill("SIGTERM");
-      }
       activeSessions.delete(subChatId);
     }
   }
 
   isActive(subChatId: string): boolean {
     return activeSessions.has(subChatId);
-  }
-
-  /**
-   * Build CLI arguments for Codex command
-   *
-   * Uses `codex exec` for non-interactive execution with JSON output.
-   * For continuing conversations, uses `codex exec resume <SESSION_ID> <PROMPT>`.
-   *
-   * IMPORTANT: The `resume` subcommand has LIMITED flags compared to `exec`:
-   * - exec: supports --sandbox, --ask-for-approval, --model, --full-auto, --json
-   * - exec resume: only supports --model, --full-auto, --json (NO sandbox/approval flags!)
-   *
-   * See: codex exec --help, codex exec resume --help
-   */
-  private buildCliArgs(options: ChatSessionOptions): string[] {
-    const args: string[] = [];
-
-    // Use exec subcommand for non-interactive JSON output
-    args.push("exec");
-
-    // Check if this is a resume (continuing existing session)
-    const isResume = !!options.sessionId;
-
-    if (isResume) {
-      // Resume subcommand to continue the conversation
-      args.push("resume");
-      args.push(options.sessionId!);
-    }
-
-    // Add model if specified
-    if (options.model) {
-      args.push("--model", options.model);
-    }
-
-    // Sandbox flag is ONLY available for new sessions, not resume!
-    if (!isResume) {
-      // Sandbox mode configuration (-s, --sandbox)
-      // Options: read-only, workspace-write, danger-full-access
-      if (options.sandboxMode) {
-        args.push("--sandbox", options.sandboxMode);
-      } else if (options.mode === "plan") {
-        // Plan mode: read-only sandbox prevents file modifications
-        args.push("--sandbox", "read-only");
-      } else {
-        // Agent mode: workspace-write allows modifications within cwd
-        args.push("--sandbox", "workspace-write");
-      }
-    }
-
-    // Approval policy handling for codex exec:
-    // - --full-auto: equivalent to approval=on-request + sandbox=workspace-write
-    // - --dangerously-bypass-approvals-and-sandbox: skip ALL approvals (dangerous!)
-    // - For other policies, we use --full-auto as the closest safe option
-    //
-    // Note: --ask-for-approval (-a) is only available in interactive mode, not exec mode
-    if (
-      options.approvalPolicy === "never" &&
-      options.sandboxMode === "danger-full-access"
-    ) {
-      // Only use dangerous bypass when user explicitly wants no approvals AND full access
-      args.push("--dangerously-bypass-approvals-and-sandbox");
-    } else if (options.mode === "agent") {
-      // For agent mode, use --full-auto for automatic execution with safe defaults
-      args.push("--full-auto");
-    }
-
-    // Reasoning effort via --config (works for both new and resume sessions)
-    // Options: low, medium, high
-    if (options.reasoningEffort) {
-      args.push(
-        "--config",
-        `model_reasoning_effort="${options.reasoningEffort}"`,
-      );
-    }
-
-    // Additional working directories (from /add-dir command)
-    if (options.addDirs && options.addDirs.length > 0) {
-      for (const dir of options.addDirs) {
-        args.push("--add-dir", dir);
-      }
-    }
-
-    // Output as JSON events for streaming
-    args.push("--json");
-
-    // Add prompt as positional argument at the end
-    // New session: codex exec [OPTIONS] [PROMPT]
-    // Resume: codex exec resume <SESSION_ID> [OPTIONS] [PROMPT]
-    args.push(options.prompt);
-
-    return args;
   }
 }

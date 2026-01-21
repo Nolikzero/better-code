@@ -45,7 +45,7 @@ export const providersRouter = router({
    * Get status for a single provider
    */
   getStatus: publicProcedure
-    .input(z.object({ providerId: z.enum(["claude", "codex"]) }))
+    .input(z.object({ providerId: z.enum(["claude", "codex", "opencode"]) }))
     .query(async ({ input }): Promise<FlatProviderStatus | null> => {
       const status = await providerRegistry.getStatus(
         input.providerId as ProviderId,
@@ -66,7 +66,7 @@ export const providersRouter = router({
    * Check if a provider is available and authenticated
    */
   isReady: publicProcedure
-    .input(z.object({ providerId: z.enum(["claude", "codex"]) }))
+    .input(z.object({ providerId: z.enum(["claude", "codex", "opencode"]) }))
     .query(async ({ input }) => {
       const status = await providerRegistry.getStatus(
         input.providerId as ProviderId,
@@ -105,11 +105,22 @@ export const providersRouter = router({
    * Get models for a specific provider
    */
   getModels: publicProcedure
-    .input(z.object({ providerId: z.enum(["claude", "codex"]) }))
+    .input(z.object({ providerId: z.enum(["claude", "codex", "opencode"]) }))
     .query(async ({ input }) => {
       const status = await providerRegistry.getStatus(
         input.providerId as ProviderId,
       );
       return status?.config.models || [];
     }),
+
+  /**
+   * Get OpenCode providers with their models and connection status
+   * Returns providers grouped with models, sorted by connection status
+   */
+  getOpenCodeProviders: publicProcedure.query(async () => {
+    const { fetchProvidersWithDetails } = await import(
+      "../../providers/opencode/client"
+    );
+    return fetchProvidersWithDetails();
+  }),
 });

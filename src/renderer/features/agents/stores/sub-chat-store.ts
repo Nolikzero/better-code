@@ -1,3 +1,4 @@
+import type { ProviderId } from "@shared/types";
 import { create } from "zustand";
 
 export interface SubChatMeta {
@@ -6,7 +7,7 @@ export interface SubChatMeta {
   created_at?: string;
   updated_at?: string;
   mode?: "plan" | "agent" | string;
-  providerId?: "claude" | "codex" | string;
+  providerId?: ProviderId;
 }
 
 interface AgentSubChatStore {
@@ -30,10 +31,7 @@ interface AgentSubChatStore {
   addToAllSubChats: (subChat: SubChatMeta) => void;
   updateSubChatName: (subChatId: string, name: string) => void;
   updateSubChatMode: (subChatId: string, mode: "plan" | "agent") => void;
-  updateSubChatProvider: (
-    subChatId: string,
-    providerId: "claude" | "codex",
-  ) => void;
+  updateSubChatProvider: (subChatId: string, providerId: ProviderId) => void;
   updateSubChatTimestamp: (subChatId: string) => void;
   reset: () => void;
 }

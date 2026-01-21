@@ -7,6 +7,7 @@ import {
 import { ArchiveIcon } from "../../../components/ui/icons";
 import { TypewriterText } from "../../../components/ui/typewriter-text";
 import { cn } from "../../../lib/utils";
+import { SubChatContextMenu } from "../../agents/ui/sub-chat-context-menu";
 import { ChatIcon } from "./chat-icon";
 import { SubchatInlineItem } from "./subchat-inline-item";
 
@@ -54,7 +55,6 @@ interface ChatTreeItemProps {
   // For context menus
   onContextMenu?: (e: React.MouseEvent) => void;
   onSubChatContextMenu?: (e: React.MouseEvent, subChatId: string) => void;
-  renderSubChatContextMenu?: (subChat: SubChatMeta) => React.ReactNode;
   onDeleteSubChat?: (subChatId: string) => void;
 }
 
@@ -83,7 +83,6 @@ export const ChatTreeItem = React.memo(function ChatTreeItem({
   onCreateSubChat,
   onContextMenu,
   onSubChatContextMenu,
-  renderSubChatContextMenu,
   onDeleteSubChat,
 }: ChatTreeItemProps) {
   const [isHovered, setIsHovered] = useState(false);
@@ -269,12 +268,22 @@ export const ChatTreeItem = React.memo(function ChatTreeItem({
               />
             );
 
-            // If renderSubChatContextMenu is provided, wrap with ContextMenu
-            if (renderSubChatContextMenu) {
+            // Render context menu directly - this avoids recreating render props
+            // and allows React.memo to work properly
+            if (onDeleteSubChat) {
               return (
                 <ContextMenu key={subChat.id}>
                   <ContextMenuTrigger asChild>{subChatItem}</ContextMenuTrigger>
-                  {renderSubChatContextMenu(subChat)}
+                  <SubChatContextMenu
+                    subChat={subChat}
+                    isPinned={false}
+                    onTogglePin={() => {}}
+                    onRename={() => {}}
+                    onArchive={() => {}}
+                    onArchiveOthers={() => {}}
+                    onDelete={onDeleteSubChat}
+                    isOnlyChat={subChats.length <= 1}
+                  />
                 </ContextMenu>
               );
             }

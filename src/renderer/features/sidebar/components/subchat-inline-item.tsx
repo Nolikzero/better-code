@@ -57,8 +57,8 @@ export const SubchatInlineItem = React.memo(function SubchatInlineItem({
   onDelete,
 }: SubchatInlineItemProps) {
   const hasFileStats =
-    (fileAdditions && fileAdditions > 0) ||
-    (fileDeletions && fileDeletions > 0);
+    (fileAdditions != null && fileAdditions > 0) ||
+    (fileDeletions != null && fileDeletions > 0);
 
   return (
     <div
@@ -139,12 +139,12 @@ export const SubchatInlineItem = React.memo(function SubchatInlineItem({
             <>
               {updatedAt && <span>·</span>}
               <span className="flex items-center gap-0.5">
-                {fileAdditions && fileAdditions > 0 && (
+                {fileAdditions != null && fileAdditions > 0 && (
                   <span className="text-green-600 dark:text-green-500">
                     +{fileAdditions}
                   </span>
                 )}
-                {fileDeletions && fileDeletions > 0 && (
+                {fileDeletions != null && fileDeletions > 0 && (
                   <span className="text-red-600 dark:text-red-500">
                     -{fileDeletions}
                   </span>

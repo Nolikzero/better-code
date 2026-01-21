@@ -4,94 +4,14 @@
  * when messages are saved, avoiding expensive JSON parsing on queries.
  */
 
-export interface FileStats {
-  additions: number;
-  deletions: number;
-  fileCount: number;
-}
+import {
+  computeFileStatsFromMessages,
+  type FileStats,
+  type Message,
+} from "../../../shared/utils/diff-stats";
 
-interface MessagePart {
-  type: string;
-  input?: {
-    file_path?: string;
-    old_string?: string;
-    new_string?: string;
-    content?: string;
-  };
-  text?: string;
-}
-
-interface Message {
-  role: string;
-  parts?: MessagePart[];
-}
-
-/**
- * Compute file change statistics from messages.
- * Extracts file edit/write operations and calculates line additions/deletions.
- */
-function computeFileStats(messages: Message[]): FileStats {
-  // Track file states to calculate final diff
-  const fileStates = new Map<
-    string,
-    { originalContent: string | null; currentContent: string }
-  >();
-
-  for (const msg of messages) {
-    if (msg.role !== "assistant") continue;
-    for (const part of msg.parts || []) {
-      if (part.type === "tool-Edit" || part.type === "tool-Write") {
-        const filePath = part.input?.file_path;
-        if (!filePath) continue;
-        // Skip session files
-        if (
-          filePath.includes("claude-sessions") ||
-          filePath.includes("Application Support")
-        )
-          continue;
-
-        const oldString = part.input?.old_string || "";
-        const newString = part.input?.new_string || part.input?.content || "";
-
-        const existing = fileStates.get(filePath);
-        if (existing) {
-          existing.currentContent = newString;
-        } else {
-          fileStates.set(filePath, {
-            originalContent: part.type === "tool-Write" ? null : oldString,
-            currentContent: newString,
-          });
-        }
-      }
-    }
-  }
-
-  // Calculate stats
-  let additions = 0;
-  let deletions = 0;
-  let fileCount = 0;
-
-  for (const [, state] of fileStates) {
-    const original = state.originalContent || "";
-    if (original === state.currentContent) continue;
-
-    const oldLines = original ? original.split("\n").length : 0;
-    const newLines = state.currentContent
-      ? state.currentContent.split("\n").length
-      : 0;
-
-    if (!original) {
-      // New file
-      additions += newLines;
-    } else {
-      additions += newLines;
-      deletions += oldLines;
-    }
-    fileCount += 1;
-  }
-
-  return { additions, deletions, fileCount };
-}
+// Re-export for backwards compatibility
+export type { FileStats };
 
 /**
  * Check if messages contain a pending plan approval.
@@ -136,7 +56,7 @@ export function computeAllStats(messages: Message[]): {
   hasPendingPlanApproval: boolean;
 } {
   return {
-    fileStats: computeFileStats(messages),
+    fileStats: computeFileStatsFromMessages(messages),
     hasPendingPlanApproval: computeHasPendingPlan(messages),
   };
 }

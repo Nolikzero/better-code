@@ -222,7 +222,7 @@ export const api = {
         return {
           mutateAsync: async (args: {
             userMessage: string;
-            providerId?: "claude" | "codex";
+            providerId?: "claude" | "codex" | "opencode";
             projectPath?: string;
           }) => {
             return mutation.mutateAsync({
@@ -260,7 +260,7 @@ export const api = {
         return {
           mutate: (args?: {
             subChatId: string;
-            providerId: "claude" | "codex";
+            providerId: "claude" | "codex" | "opencode";
           }) => {
             if (args?.subChatId && args?.providerId) {
               mutation.mutate({

@@ -9,6 +9,7 @@ import path from "path";
 import { z } from "zod";
 import { chats, getDatabase, subChats } from "../../db";
 import { computeAllStats } from "../../db/computed-stats";
+import { chatStatsEmitter } from "../../events";
 import {
   buildClaudeEnv,
   createTransformer,
@@ -155,6 +156,40 @@ const pendingToolApprovals = new Map<
   }
 >();
 
+// Track pending OpenCode questions (different from Claude's Promise-based flow)
+// OpenCode questions require HTTP API calls to respond, not Promise resolution
+const pendingOpenCodeQuestions = new Map<
+  string,
+  {
+    questionId: string;
+    directory?: string;
+    questions: Array<{
+      question: string;
+      header: string;
+      options: Array<{ label: string; description: string }>;
+      multiSelect: boolean;
+    }>;
+  }
+>();
+
+/**
+ * Register a pending OpenCode question for response routing
+ * Called by OpenCode provider when yielding ask-user-question chunks
+ */
+export function registerPendingOpenCodeQuestion(
+  toolUseId: string,
+  questionId: string,
+  questions: Array<{
+    question: string;
+    header: string;
+    options: Array<{ label: string; description: string }>;
+    multiSelect: boolean;
+  }>,
+  directory?: string,
+): void {
+  pendingOpenCodeQuestions.set(toolUseId, { questionId, questions, directory });
+}
+
 const clearPendingApprovals = (message: string, subChatId?: string) => {
   for (const [toolUseId, pending] of pendingToolApprovals) {
     if (subChatId && pending.subChatId !== subChatId) continue;
@@ -187,7 +222,7 @@ export const chatRouter = router({
         model: z.string().optional(),
         maxThinkingTokens: z.number().optional(), // Enable extended thinking
         images: z.array(imageAttachmentSchema).optional(), // Image attachments
-        providerId: z.enum(["claude", "codex"]).optional(), // AI provider selection
+        providerId: z.enum(["claude", "codex", "opencode"]).optional(), // AI provider selection
         addDirs: z.array(z.string()).optional(), // Additional working directories
         // Codex-specific settings
         sandboxMode: z
@@ -199,6 +234,10 @@ export const chatRouter = router({
         reasoningEffort: z
           .enum(["none", "minimal", "low", "medium", "high", "xhigh"])
           .optional(),
+        // Codex SDK enhancement options
+        outputSchema: z.record(z.string(), z.unknown()).optional(),
+        networkAccessEnabled: z.boolean().optional(),
+        webSearchMode: z.enum(["disabled", "cached", "live"]).optional(),
       }),
     )
     .subscription(({ input }) => {
@@ -278,6 +317,10 @@ export const chatRouter = router({
               .get();
             const existingMessages = JSON.parse(existing?.messages || "[]");
             const existingSessionId = existing?.sessionId || null;
+            // Load emittedDiffKeys for OpenCode deduplication across turns
+            const existingEmittedDiffKeys: string[] = JSON.parse(
+              existing?.emittedDiffKeys || "[]",
+            );
 
             // Check if last message is already this user message (avoid duplicate)
             const lastMsg = existingMessages[existingMessages.length - 1];
@@ -361,6 +404,13 @@ export const chatRouter = router({
                   sandboxMode: input.sandboxMode,
                   approvalPolicy: input.approvalPolicy,
                   reasoningEffort: input.reasoningEffort,
+                  // Codex SDK enhancement options
+                  images: input.images,
+                  outputSchema: input.outputSchema,
+                  networkAccessEnabled: input.networkAccessEnabled,
+                  webSearchMode: input.webSearchMode,
+                  // OpenCode-specific: persisted diff keys for deduplication
+                  emittedDiffKeys: existingEmittedDiffKeys,
                 })) {
                   if (abortController.signal.aborted) break;
 
@@ -389,15 +439,29 @@ export const chatRouter = router({
                         providerCurrentText = "";
                       }
                       break;
-                    case "tool-input-available":
-                      providerParts.push({
-                        type: `tool-${chunk.toolName}`,
-                        toolCallId: chunk.toolCallId,
-                        toolName: chunk.toolName,
-                        input: chunk.input,
-                        state: "call",
-                      });
+                    case "tool-input-available": {
+                      // Find existing part by toolCallId to avoid duplicates
+                      const existingTool = providerParts.find(
+                        (p: any) =>
+                          p.type?.startsWith("tool-") &&
+                          p.toolCallId === chunk.toolCallId,
+                      );
+                      if (existingTool) {
+                        // Update existing part
+                        existingTool.input = chunk.input;
+                        existingTool.state = "call";
+                      } else {
+                        // Create new part
+                        providerParts.push({
+                          type: `tool-${chunk.toolName}`,
+                          toolCallId: chunk.toolCallId,
+                          toolName: chunk.toolName,
+                          input: chunk.input,
+                          state: "call",
+                        });
+                      }
                       break;
+                    }
                     case "tool-output-available": {
                       const toolPart = providerParts.find(
                         (p: any) =>
@@ -451,9 +515,22 @@ export const chatRouter = router({
                       fileAdditions: fileStats.additions,
                       fileDeletions: fileStats.deletions,
                       fileCount: fileStats.fileCount,
+                      // Persist emittedDiffKeys for OpenCode deduplication across turns
+                      ...(providerMetadata.emittedDiffKeys && {
+                        emittedDiffKeys: JSON.stringify(
+                          providerMetadata.emittedDiffKeys,
+                        ),
+                      }),
                     })
                     .where(eq(subChats.id, input.subChatId))
                     .run();
+
+                  // Emit stats update event for real-time sidebar updates
+                  chatStatsEmitter.emitStatsUpdate({
+                    type: "file-stats",
+                    chatId: input.chatId,
+                    subChatId: input.subChatId,
+                  });
                 } else {
                   db.update(subChats)
                     .set({
@@ -1033,7 +1110,7 @@ export const chatRouter = router({
                         currentText = "";
                       }
                       break;
-                    case "tool-input-available":
+                    case "tool-input-available": {
                       // DEBUG: Log tool calls
                       console.log(
                         `[SD] M:TOOL_CALL sub=${subId} toolName="${chunk.toolName}" mode=${input.mode} callId=${chunk.toolCallId}`,
@@ -1050,14 +1127,28 @@ export const chatRouter = router({
                         exitPlanModeToolCallId = chunk.toolCallId;
                       }
 
-                      parts.push({
-                        type: `tool-${chunk.toolName}`,
-                        toolCallId: chunk.toolCallId,
-                        toolName: chunk.toolName,
-                        input: chunk.input,
-                        state: "call",
-                      });
+                      // Find existing part by toolCallId to avoid duplicates
+                      const existingTool = parts.find(
+                        (p) =>
+                          p.type?.startsWith("tool-") &&
+                          p.toolCallId === chunk.toolCallId,
+                      );
+                      if (existingTool) {
+                        // Update existing part
+                        existingTool.input = chunk.input;
+                        existingTool.state = "call";
+                      } else {
+                        // Create new part
+                        parts.push({
+                          type: `tool-${chunk.toolName}`,
+                          toolCallId: chunk.toolCallId,
+                          toolName: chunk.toolName,
+                          input: chunk.input,
+                          state: "call",
+                        });
+                      }
                       break;
+                    }
                     case "tool-output-available": {
                       const toolPart = parts.find(
                         (p) =>
@@ -1247,6 +1338,13 @@ export const chatRouter = router({
                   .set({ updatedAt: new Date() })
                   .where(eq(chats.id, input.chatId))
                   .run();
+
+                // Emit stats update event for real-time sidebar updates
+                chatStatsEmitter.emitStatsUpdate({
+                  type: "file-stats",
+                  chatId: input.chatId,
+                  subChatId: input.subChatId,
+                });
               }
 
               console.log(
@@ -1327,6 +1425,13 @@ export const chatRouter = router({
               .where(eq(chats.id, input.chatId))
               .run();
 
+            // Emit stats update event for real-time sidebar updates
+            chatStatsEmitter.emitStatsUpdate({
+              type: "file-stats",
+              chatId: input.chatId,
+              subChatId: input.subChatId,
+            });
+
             const duration = ((Date.now() - streamStart) / 1000).toFixed(1);
             const reason = planCompleted ? "plan_complete" : "ok";
             console.log(
@@ -1380,7 +1485,7 @@ export const chatRouter = router({
     .input(
       z.object({
         projectPath: z.string(),
-        providerId: z.enum(["claude", "codex"]).default("claude"),
+        providerId: z.enum(["claude", "codex", "opencode"]).default("claude"),
       }),
     )
     .query(async ({ input }) => {
@@ -1505,7 +1610,73 @@ export const chatRouter = router({
         updatedInput: z.unknown().optional(),
       }),
     )
-    .mutation(({ input }) => {
+    .mutation(async ({ input }) => {
+      // First check if this is an OpenCode question
+      const openCodeQuestion = pendingOpenCodeQuestions.get(input.toolUseId);
+      if (openCodeQuestion) {
+        pendingOpenCodeQuestions.delete(input.toolUseId);
+
+        // Import dynamically to avoid circular dependencies
+        const { replyToQuestion, rejectQuestion } = await import(
+          "../../providers/opencode/client"
+        );
+
+        if (input.approved) {
+          // Extract answers from updatedInput
+          // The frontend sends { questions, answers } where answers is Record<string, string|string[]>
+          const updatedInput = input.updatedInput as {
+            questions?: Array<{ header: string }>;
+            answers?: Record<string, string | string[]>;
+          };
+          const answers = updatedInput?.answers || {};
+
+          // Build answers array: for each question, get selected labels as string[]
+          const answersArray: string[][] = openCodeQuestion.questions.map(
+            (q, i) => {
+              // Try all possible key formats - frontend uses q.question (full question text)
+              const answer =
+                answers[q.question] ||
+                answers[`q${i}`] ||
+                answers[q.header] ||
+                [];
+              if (Array.isArray(answer)) {
+                return answer as string[];
+              }
+              // Split comma-separated string into array for multi-select questions
+              if (typeof answer === "string" && answer) {
+                return answer
+                  .split(",")
+                  .map((s) => s.trim())
+                  .filter(Boolean);
+              }
+              return [];
+            },
+          );
+
+          console.log("[opencode] Replying to question:", {
+            questionId: openCodeQuestion.questionId,
+            directory: openCodeQuestion.directory,
+            answersArray,
+            rawAnswers: answers,
+          });
+
+          const success = await replyToQuestion(
+            openCodeQuestion.questionId,
+            answersArray,
+            openCodeQuestion.directory,
+          );
+          return { ok: success };
+        }
+
+        // User rejected/skipped the question
+        const success = await rejectQuestion(
+          openCodeQuestion.questionId,
+          openCodeQuestion.directory,
+        );
+        return { ok: success };
+      }
+
+      // Existing Claude flow - resolve pending Promise
       const pending = pendingToolApprovals.get(input.toolUseId);
       if (!pending) {
         return { ok: false };

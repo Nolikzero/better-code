@@ -71,6 +71,13 @@
       "when": 1768852987724,
       "tag": "0009_cloudy_beyonder",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1768997257088,
+      "tag": "0010_graceful_squadron_supreme",
+      "breakpoints": true
     }
   ]
 }

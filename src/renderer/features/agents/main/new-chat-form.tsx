@@ -20,7 +20,7 @@ import {
 import {
   defaultProviderIdAtom,
   lastSelectedModelByProviderAtom,
-  PROVIDER_MODELS,
+  type ProviderId,
 } from "../../../lib/atoms";
 import { cn } from "../../../lib/utils";
 import {
@@ -38,6 +38,7 @@ import {
 } from "../atoms";
 import { ProjectSelector } from "../components/project-selector";
 import { WorkModeSelector } from "../components/work-mode-selector";
+import { useProviders } from "../hooks/use-providers";
 
 const selectedTeamIdAtom = atom<string | null>(null);
 // import { agentsSettingsDialogOpenAtom, agentsSettingsDialogActiveTabAtom } from "@/lib/atoms/agents-settings-dialog"
@@ -66,7 +67,9 @@ import {
 import { CreateBranchDialog } from "../components/create-branch-dialog";
 import { ModeToggleDropdown } from "../components/mode-toggle-dropdown";
 import { ModelSelectorDropdown } from "../components/model-selector-dropdown";
+import { OpenCodeModelSelector } from "../components/opencode-model-selector";
 import { ProviderSelectorDropdown } from "../components/provider-selector-dropdown";
+import { WebSearchModeSelector } from "../components/web-search-mode-selector";
 import { useAgentsFileUpload } from "../hooks/use-agents-file-upload";
 import { useFocusInputOnEnter } from "../hooks/use-focus-input-on-enter";
 import { useMentionDropdown } from "../hooks/use-mention-dropdown";
@@ -136,17 +139,17 @@ export function NewChatForm({
       setSelectedProject(null);
     }
   }, [selectedProject, projectsList, validatedProject, setSelectedProject]);
-  // Provider & model selection (from global atoms)
+  // Provider & model selection (from global atoms + tRPC)
   const [defaultProvider, setDefaultProvider] = useAtom(defaultProviderIdAtom);
   const [modelByProvider, setModelByProvider] = useAtom(
     lastSelectedModelByProviderAtom,
   );
+  const { providers, getModels } = useProviders();
 
-  // Derive current provider and model from global atoms
+  // Derive current provider and model from tRPC data
   const _currentProvider =
-    PROVIDERS.find((p) => p.id === defaultProvider) || PROVIDERS[0];
-  const providerModels =
-    PROVIDER_MODELS[defaultProvider] || PROVIDER_MODELS.claude;
+    providers.find((p) => p.id === defaultProvider) || PROVIDERS[0];
+  const providerModels = getModels(defaultProvider);
   const currentModelId =
     modelByProvider[defaultProvider] || providerModels[0]?.id;
   const _currentModel =
@@ -344,6 +347,12 @@ export function NewChatForm({
       enabled: !!validatedProject?.path,
       staleTime: 30_000, // Cache for 30 seconds
     },
+  );
+
+  // Fetch recent chats for current project (for display below input)
+  const { data: recentChats } = trpc.chats.listWithSubChats.useQuery(
+    { projectId: validatedProject?.id ?? "" },
+    { enabled: !!validatedProject?.id },
   );
 
   // Check if workspace already exists for selected branch (local mode only)
@@ -654,7 +663,7 @@ export function NewChatForm({
             name: sc.name || "New Chat",
             created_at: sc.createdAt?.toISOString() || new Date().toISOString(),
             mode: (sc.mode as "plan" | "agent") || "agent",
-            providerId: sc.providerId as "claude" | "codex" | undefined,
+            providerId: sc.providerId as ProviderId | undefined,
           })) || [];
         store.setAllSubChats(subChatMeta);
         store.addToOpenSubChats(newSubChatId);
@@ -769,6 +778,10 @@ export function NewChatForm({
     }
 
     // Create chat with selected project, branch, and initial message
+    console.log(
+      "[new-chat-form] Creating chat with providerId:",
+      defaultProvider,
+    );
     createChatMutation.mutate({
       projectId: selectedProject.id,
       name: message.trim().slice(0, 50), // Use first 50 chars as chat name
@@ -1084,17 +1097,32 @@ export function NewChatForm({
                       />
 
                       {/* Model selector */}
-                      <ModelSelectorDropdown
-                        providerId={defaultProvider}
-                        models={providerModels}
-                        currentModelId={currentModelId}
-                        onModelChange={(modelId) => {
-                          setModelByProvider({
-                            ...modelByProvider,
-                            [defaultProvider]: modelId,
-                          });
-                        }}
-                      />
+                      {defaultProvider === "opencode" ? (
+                        <OpenCodeModelSelector
+                          currentModelId={currentModelId}
+                          onModelChange={(modelId) => {
+                            setModelByProvider({
+                              ...modelByProvider,
+                              opencode: modelId,
+                            });
+                          }}
+                        />
+                      ) : (
+                        <ModelSelectorDropdown
+                          providerId={defaultProvider}
+                          models={providerModels}
+                          currentModelId={currentModelId}
+                          onModelChange={(modelId) => {
+                            setModelByProvider({
+                              ...modelByProvider,
+                              [defaultProvider]: modelId,
+                            });
+                          }}
+                        />
+                      )}
+
+                      {/* Web search mode selector (Codex only) */}
+                      {defaultProvider === "codex" && <WebSearchModeSelector />}
                     </>
                   }
                   acceptedFileTypes="image/jpeg,image/png"
@@ -1284,6 +1312,31 @@ export function NewChatForm({
                   </span>
                 )}
               </div>
+
+              {/* Recent chats for this project */}
+              {recentChats && recentChats.length > 0 && (
+                <div className="mt-6 space-y-2">
+                  <h3 className="text-xs font-medium text-muted-foreground px-1">
+                    Recent
+                  </h3>
+                  <div className="space-y-1">
+                    {recentChats.slice(0, 5).map((chat) => (
+                      <button
+                        key={chat.id}
+                        onClick={() => setSelectedChatId(chat.id)}
+                        className="w-full flex items-center gap-2 px-2 py-1.5 text-sm text-left rounded-md hover:bg-muted/50 transition-colors"
+                      >
+                        <span className="truncate flex-1">{chat.name}</span>
+                        {chat.branch && (
+                          <span className="text-xs text-muted-foreground truncate">
+                            {chat.branch}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* File mention dropdown */}
               {/* Desktop: use projectPath for local file search */}

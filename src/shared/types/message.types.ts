@@ -30,6 +30,8 @@ export type MessageMetadata = {
   finalTextId?: string;
   // Model info
   model?: string;
+  // OpenCode-specific: persisted diff keys for deduplication across turns
+  emittedDiffKeys?: string[];
 };
 
 // AI SDK UIMessageChunk format
@@ -86,4 +88,22 @@ export type UIMessageChunk =
       mcpServers: MCPServer[];
       plugins: { name: string; path: string }[];
       skills: string[];
+    }
+  // OpenCode todo updates (from todo.updated event)
+  | {
+      type: "todo-update";
+      todos: Array<{
+        content: string;
+        status: "pending" | "in_progress" | "completed";
+        activeForm?: string;
+      }>;
+    }
+  // OpenCode session diff updates (from session.diff event)
+  | {
+      type: "session-diff";
+      diffs: Array<{
+        file: string;
+        additions: number;
+        deletions: number;
+      }>;
     };

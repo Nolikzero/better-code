@@ -41,3 +41,10 @@ export const agentsQuickSwitchSelectedIndexAtom = atom<number>(0);
 // Quick switch dialog - Sub-chats
 export const subChatsQuickSwitchOpenAtom = atom<boolean>(false);
 export const subChatsQuickSwitchSelectedIndexAtom = atom<number>(0);
+
+// ============================================
+// QUICK OPEN (FILE SEARCH)
+// ============================================
+
+// Quick open dialog - file search with Cmd+P
+export const quickOpenDialogOpenAtom = atom<boolean>(false);

@@ -135,3 +135,69 @@ export async function gitUnstageAll(worktreePath: string): Promise<void> {
   const git = simpleGit(worktreePath);
   await git.reset(["HEAD"]);
 }
+
+/**
+ * Stash all uncommitted changes.
+ *
+ * Uses `git stash push` with optional message.
+ * Includes both staged and unstaged changes.
+ */
+export async function gitStash(
+  worktreePath: string,
+  message?: string,
+): Promise<void> {
+  assertRegisteredWorktree(worktreePath);
+
+  const git = simpleGit(worktreePath);
+  const args = ["stash", "push"];
+  if (message) {
+    args.push("-m", message);
+  }
+  await git.raw(args);
+}
+
+/**
+ * Pop (apply and remove) the most recent stash.
+ *
+ * Uses `git stash pop` to apply the most recent stash
+ * and remove it from the stash list.
+ */
+export async function gitStashPop(worktreePath: string): Promise<void> {
+  assertRegisteredWorktree(worktreePath);
+
+  const git = simpleGit(worktreePath);
+  await git.raw(["stash", "pop"]);
+}
+
+/**
+ * Check if there are any stashes in the repository.
+ *
+ * Uses `git stash list` and checks if the output is non-empty.
+ */
+export async function gitHasStash(worktreePath: string): Promise<boolean> {
+  assertRegisteredWorktree(worktreePath);
+
+  const git = simpleGit(worktreePath);
+  const result = await git.raw(["stash", "list"]);
+  return result.trim().length > 0;
+}
+
+/**
+ * Stage multiple files for commit.
+ *
+ * Uses `git add -- <paths>` to stage multiple files at once.
+ */
+export async function gitStageFiles(
+  worktreePath: string,
+  filePaths: string[],
+): Promise<void> {
+  assertRegisteredWorktree(worktreePath);
+
+  // Validate all paths before staging
+  for (const filePath of filePaths) {
+    assertValidGitPath(filePath);
+  }
+
+  const git = simpleGit(worktreePath);
+  await git.add(["--", ...filePaths]);
+}

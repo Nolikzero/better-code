@@ -20,12 +20,12 @@ import { AgentsHeaderControls } from "../ui/agents-header-controls";
 import { McpServersIndicator } from "../ui/mcp-servers-indicator";
 import { MobileChatHeader } from "../ui/mobile-chat-header";
 import { ProviderIndicator } from "../ui/provider-indicator";
-import { SubChatSelector } from "../ui/sub-chat-selector";
 import { CHAT_LAYOUT } from "../ui/user-message";
 import { WorkspaceContextBadge } from "../ui/workspace-context-badge";
 
 export interface ChatHeaderProps {
   chatId: string;
+  subChatId?: string;
   isMobileFullscreen: boolean;
   isSubChatsSidebarOpen: boolean;
   isSidebarOpen: boolean;
@@ -63,6 +63,7 @@ export interface ChatHeaderProps {
 
 export function ChatHeader({
   chatId,
+  subChatId,
   isMobileFullscreen,
   isSubChatsSidebarOpen,
   isSidebarOpen,
@@ -75,7 +76,6 @@ export function ChatHeader({
   onOpenPreview,
   sandboxId,
   canOpenDiff,
-  isDiffSidebarOpen,
   diffStats,
   onOpenDiff,
   canOpenTerminal,
@@ -132,17 +132,6 @@ export function ChatHeader({
                 hasUnseenChanges={hasAnyUnseenChanges}
                 isSubChatsSidebarOpen={isSubChatsSidebarOpen}
               />
-              <SubChatSelector
-                onCreateNew={onCreateNewSubChat}
-                isMobile={false}
-                onBackToChats={onBackToChats}
-                onOpenPreview={onOpenPreview}
-                canOpenPreview={canOpenPreview}
-                onOpenDiff={onOpenDiff}
-                canOpenDiff={canOpenDiff}
-                isDiffSidebarOpen={isDiffSidebarOpen}
-                diffStats={diffStats}
-              />
               {/* Workspace context badge */}
               <WorkspaceContextBadge
                 branch={branch}
@@ -155,7 +144,7 @@ export function ChatHeader({
                 providerId={effectiveProvider}
               />
               {/* Provider indicator */}
-              <ProviderIndicator chatId={chatId} />
+              <ProviderIndicator chatId={chatId} subChatId={subChatId} />
             </>
           )}
         </div>

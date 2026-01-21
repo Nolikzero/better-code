@@ -2,20 +2,21 @@
 
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type DiffStatsUI,
+  type ParsedDiffFile,
+  parseUnifiedDiff,
+} from "../../../../shared/utils";
 import { trpcClient } from "../../../lib/trpc";
-import { agentsDiffSidebarWidthAtom, subChatFilesAtom } from "../atoms";
-import { splitUnifiedDiffByFile } from "../ui/agent-diff-view";
+import {
+  agentsDiffSidebarWidthAtom,
+  refreshDiffTriggerAtom,
+  subChatFilesAtom,
+} from "../atoms";
 
-// Types
-export interface DiffStats {
-  fileCount: number;
-  additions: number;
-  deletions: number;
-  isLoading: boolean;
-  hasChanges: boolean;
-}
-
-export type ParsedFileDiff = ReturnType<typeof splitUnifiedDiffByFile>[number];
+// Re-export types for backwards compatibility
+export type DiffStats = DiffStatsUI;
+export type ParsedFileDiff = ParsedDiffFile;
 
 export interface UseDiffManagementOptions {
   chatId: string;
@@ -85,6 +86,9 @@ export function useDiffManagement({
   const subChatFiles = useAtomValue(subChatFilesAtom);
   // Initialize to Date.now() to prevent double-fetch on mount
   const lastDiffFetchTimeRef = useRef<number>(Date.now());
+
+  // Subscribe to refresh trigger from external components (discard changes, etc.)
+  const refreshDiffTrigger = useAtomValue(refreshDiffTriggerAtom);
 
   // ResizeObserver to track diff sidebar width in real-time
   useEffect(() => {
@@ -171,7 +175,7 @@ export function useDiffManagement({
 
       if (rawDiff?.trim()) {
         // Parse diff to get file list and stats
-        const parsedFiles = splitUnifiedDiffByFile(rawDiff);
+        const parsedFiles = parseUnifiedDiff(rawDiff);
 
         // Store parsed files to avoid re-parsing in AgentDiffView
         setParsedFileDiffs(parsedFiles);
@@ -275,6 +279,18 @@ export function useDiffManagement({
   useEffect(() => {
     fetchDiffStats();
   }, [fetchDiffStats]);
+
+  // Refetch when refresh trigger is incremented (from external components like discard changes)
+  const isInitialMountRef = useRef(true);
+  useEffect(() => {
+    // Skip the initial mount - the effect above handles that
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false;
+      return;
+    }
+    // Trigger was incremented, refetch diff
+    fetchDiffStats();
+  }, [refreshDiffTrigger, fetchDiffStats]);
 
   // Calculate total file count across all sub-chats for change detection
   const totalSubChatFileCount = useMemo(() => {

@@ -3,6 +3,7 @@ import type {
   ProviderId,
   ReasoningEffort,
   SandboxMode,
+  WebSearchMode,
 } from "@shared/types";
 import { atomWithStorage } from "jotai/utils";
 
@@ -20,6 +21,7 @@ export type {
   ProviderId,
   ReasoningEffort,
   SandboxMode,
+  WebSearchMode,
 } from "@shared/types";
 
 // ============================================
@@ -72,6 +74,7 @@ export const lastSelectedModelByProviderAtom = atomWithStorage<
   {
     claude: "sonnet",
     codex: "gpt-5.2-codex",
+    opencode: "", // Dynamic - will be set when user selects a model
   },
   undefined,
   { getOnInit: true },
@@ -98,6 +101,13 @@ export const codexApprovalPolicyAtom = atomWithStorage<ApprovalPolicy>(
 export const codexReasoningEffortAtom = atomWithStorage<ReasoningEffort>(
   "codex:reasoning-effort",
   "medium", // Default: balanced
+  undefined,
+  { getOnInit: true },
+);
+
+export const codexWebSearchModeAtom = atomWithStorage<WebSearchMode>(
+  "codex:web-search-mode",
+  "disabled", // Default: no web search
   undefined,
   { getOnInit: true },
 );

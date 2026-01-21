@@ -6,6 +6,7 @@ import {
   codexApprovalPolicyAtom,
   codexReasoningEffortAtom,
   codexSandboxModeAtom,
+  codexWebSearchModeAtom,
   defaultProviderIdAtom,
   extendedThinkingEnabledAtom,
   lastSelectedModelByProviderAtom,
@@ -23,10 +24,12 @@ import {
   addedDirectoriesAtomFamily,
   askUserQuestionResultsAtom,
   compactingSubChatsAtom,
+  currentTodosAtomFamily,
   lastSelectedModelIdAtom,
   MODEL_ID_MAP,
   pendingAuthRetryMessageAtom,
   pendingUserQuestionsAtom,
+  refreshDiffTriggerAtom,
 } from "../atoms";
 import { useAgentSubChatStore } from "../stores/sub-chat-store";
 
@@ -184,6 +187,10 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
       effectiveProvider === "codex"
         ? appStore.get(codexReasoningEffortAtom)
         : undefined;
+    const webSearchMode =
+      effectiveProvider === "codex"
+        ? appStore.get(codexWebSearchModeAtom)
+        : undefined;
 
     // Get added directories for this sub-chat
     const addDirs = appStore.get(
@@ -222,6 +229,7 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
             ...(sandboxMode && { sandboxMode }),
             ...(approvalPolicy && { approvalPolicy }),
             ...(reasoningEffort && { reasoningEffort }),
+            ...(webSearchMode && { webSearchMode }),
           },
           {
             onData: (chunk: UIMessageChunk) => {
@@ -296,6 +304,26 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
                   skills: chunk.skills,
                   providerId: effectiveProvider,
                 });
+              }
+
+              // Handle todo updates from OpenCode - sync with AgentTodoTool via atom
+              if (chunk.type === "todo-update") {
+                const todosAtom = currentTodosAtomFamily(this.config.subChatId);
+                const currentState = appStore.get(todosAtom);
+                appStore.set(todosAtom, {
+                  todos: chunk.todos,
+                  creationToolCallId: currentState.creationToolCallId, // Preserve creation ID
+                });
+                // Don't pass to stream - handled via atom update
+                return;
+              }
+
+              // Handle session diff updates from OpenCode - trigger diff refresh
+              if (chunk.type === "session-diff") {
+                const currentTrigger = appStore.get(refreshDiffTriggerAtom);
+                appStore.set(refreshDiffTriggerAtom, currentTrigger + 1);
+                // Don't pass to stream - handled via atom update
+                return;
               }
 
               // Clear pending questions ONLY when agent has moved on

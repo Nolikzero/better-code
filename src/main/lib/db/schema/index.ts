@@ -111,6 +111,8 @@ export const subChats = sqliteTable(
     fileCount: integer("file_count").default(0),
     // Additional working directories for context (JSON array of paths)
     addedDirs: text("added_dirs").default("[]"),
+    // Emitted diff keys for deduplication across message turns (JSON array)
+    emittedDiffKeys: text("emitted_diff_keys").default("[]"),
   },
   (table) => ({
     chatIdIdx: index("sub_chats_chat_id_idx").on(table.chatId),

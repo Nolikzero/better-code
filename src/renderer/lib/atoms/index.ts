@@ -8,6 +8,8 @@ export {
   // Sidebar atoms
   agentsSidebarOpenAtom,
   agentsSidebarWidthAtom,
+  chatsSidebarOpenAtom,
+  chatsSidebarWidthAtom,
 
   // Preview atoms
 
@@ -50,6 +52,7 @@ export {
   agentsSettingsDialogActiveTabAtom,
   agentsSettingsDialogOpenAtom,
   agentsShortcutsDialogOpenAtom,
+  quickOpenDialogOpenAtom,
   type SettingsTab,
   subChatsQuickSwitchOpenAtom,
   subChatsQuickSwitchSelectedIndexAtom,
@@ -63,6 +66,7 @@ export {
   codexApprovalPolicyAtom,
   codexReasoningEffortAtom,
   codexSandboxModeAtom,
+  codexWebSearchModeAtom,
   defaultProviderIdAtom,
   lastSelectedModelByProviderAtom,
   PROVIDER_INFO,
@@ -73,6 +77,7 @@ export {
   SANDBOX_MODES,
   type SandboxMode,
   subChatProviderOverridesAtom,
+  type WebSearchMode,
 } from "./providers.atoms";
 // Selection atoms
 export {

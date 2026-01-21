@@ -62,9 +62,11 @@ function matchesHotkey(e: KeyboardEvent, hotkey: string): boolean {
 export interface AgentsHotkeysManagerConfig {
   setSelectedChatId?: (id: string | null) => void;
   setSidebarOpen?: (open: boolean | ((prev: boolean) => boolean)) => void;
+  setChatsSidebarOpen?: (open: boolean | ((prev: boolean) => boolean)) => void;
   setSettingsDialogOpen?: (open: boolean) => void;
   setSettingsActiveTab?: (tab: SettingsTab) => void;
   setShortcutsDialogOpen?: (open: boolean) => void;
+  setQuickOpenDialogOpen?: (open: boolean) => void;
   selectedChatId?: string | null;
 }
 
@@ -90,6 +92,7 @@ export function useAgentsHotkeys(
     (): AgentActionContext => ({
       setSelectedChatId: config.setSelectedChatId,
       setSidebarOpen: config.setSidebarOpen,
+      setChatsSidebarOpen: config.setChatsSidebarOpen,
       setSettingsDialogOpen: config.setSettingsDialogOpen,
       setSettingsActiveTab: config.setSettingsActiveTab,
       setShortcutsDialogOpen: config.setShortcutsDialogOpen,
@@ -98,6 +101,7 @@ export function useAgentsHotkeys(
     [
       config.setSelectedChatId,
       config.setSidebarOpen,
+      config.setChatsSidebarOpen,
       config.setSettingsDialogOpen,
       config.setSettingsActiveTab,
       config.setShortcutsDialogOpen,
@@ -133,7 +137,7 @@ export function useAgentsHotkeys(
     return cleanup;
   }, [enabled, handleHotkeyAction]);
 
-  // Direct listener for Cmd+\ - toggle sidebar
+  // Direct listener for Cmd+\ - toggle left sidebar
   React.useEffect(() => {
     if (!enabled) return;
 
@@ -153,6 +157,28 @@ export function useAgentsHotkeys(
     window.addEventListener("keydown", handleToggleSidebar, true);
     return () =>
       window.removeEventListener("keydown", handleToggleSidebar, true);
+  }, [enabled, handleHotkeyAction]);
+
+  // Direct listener for Cmd+Shift+\ - toggle right chats sidebar
+  React.useEffect(() => {
+    if (!enabled) return;
+
+    const handleToggleChatsSidebar = (e: KeyboardEvent) => {
+      if (
+        (e.metaKey || e.ctrlKey) &&
+        (e.key === "\\" || e.code === "Backslash") &&
+        e.shiftKey &&
+        !e.altKey
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleHotkeyAction("toggle-chats-sidebar");
+      }
+    };
+
+    window.addEventListener("keydown", handleToggleChatsSidebar, true);
+    return () =>
+      window.removeEventListener("keydown", handleToggleChatsSidebar, true);
   }, [enabled, handleHotkeyAction]);
 
   // Direct listener for ? - open shortcuts
@@ -205,6 +231,36 @@ export function useAgentsHotkeys(
     return () => window.removeEventListener("keydown", handleSettings, true);
   }, [enabled, handleHotkeyAction]);
 
+  // Direct listener for Cmd+P - quick open (file search)
+  React.useEffect(() => {
+    if (!enabled || !config.setQuickOpenDialogOpen) return;
+
+    const handleQuickOpen = (e: KeyboardEvent) => {
+      // Desktop: Cmd+P (without Alt, without Shift)
+      // Web: Opt+Cmd+P (with Alt, without Shift)
+      const isDesktop = typeof window !== "undefined" && !!window.desktopApi;
+
+      const isDesktopShortcut =
+        isDesktop &&
+        (e.metaKey || e.ctrlKey) &&
+        e.code === "KeyP" &&
+        !e.shiftKey &&
+        !e.altKey;
+
+      const isWebShortcut =
+        !isDesktop && e.altKey && e.metaKey && e.code === "KeyP" && !e.shiftKey;
+
+      if (isDesktopShortcut || isWebShortcut) {
+        e.preventDefault();
+        e.stopPropagation();
+        config.setQuickOpenDialogOpen?.(true);
+      }
+    };
+
+    window.addEventListener("keydown", handleQuickOpen, true);
+    return () => window.removeEventListener("keydown", handleQuickOpen, true);
+  }, [enabled, config.setQuickOpenDialogOpen]);
+
   // General hotkey handler for remaining actions
   const actionsWithHotkeys = useMemo(
     () =>
@@ -213,6 +269,7 @@ export function useAgentsHotkeys(
           action.hotkey !== undefined &&
           action.id !== "create-new-agent" &&
           action.id !== "toggle-sidebar" &&
+          action.id !== "toggle-chats-sidebar" &&
           action.id !== "open-shortcuts" &&
           action.id !== "open-settings",
       ),

@@ -1,16 +1,31 @@
+import type {
+  AgentMessageItem,
+  CommandExecutionItem,
+  ErrorItem,
+  FileChangeItem,
+  McpToolCallItem,
+  ReasoningItem,
+  ThreadEvent,
+  ThreadItem,
+  TodoListItem,
+  Usage,
+  WebSearchItem,
+} from "@openai/codex-sdk";
 import type { MessageMetadata, UIMessageChunk } from "../claude/types";
 
 /**
  * Creates a transformer that converts OpenAI Codex SDK events to UIMessageChunk format.
  * This allows Codex responses to be rendered using the same UI components as Claude.
  *
- * Codex SDK event types (from @openai/codex):
- * - item.started: A new item (message, command, file_edit) has started
+ * SDK event types:
+ * - thread.started: A new thread has started (contains thread_id for resumption)
+ * - turn.started: A turn has started
+ * - item.started: A new item (message, command, file_change) has started
  * - item.updated: An item has been updated (delta content)
  * - item.completed: An item has completed
- * - turn.started: A turn has started
- * - turn.completed: A turn has completed
+ * - turn.completed: A turn has completed (contains usage stats)
  * - turn.failed: A turn has failed
+ * - error: Fatal stream error
  */
 export function createCodexTransformer() {
   let started = false;
@@ -41,7 +56,359 @@ export function createCodexTransformer() {
     }
   }
 
-  return function* transform(event: any): Generator<UIMessageChunk> {
+  // Helper to get tool name for file change
+  function getFileChangeToolName(kind: string): string {
+    switch (kind) {
+      case "add":
+        return "Write";
+      case "delete":
+        return "Delete";
+      case "update":
+      default:
+        return "Edit";
+    }
+  }
+
+  // Helper to handle item events
+  function* handleItemStarted(item: ThreadItem): Generator<UIMessageChunk> {
+    switch (item.type) {
+      case "agent_message":
+        // Start text streaming
+        yield* endTextBlock();
+        textId = genId();
+        yield { type: "text-start", id: textId };
+        textStarted = true;
+        itemContent.set(item.id, "");
+        break;
+
+      case "command_execution":
+        // Bash command execution
+        yield* endTextBlock();
+        if (!emittedToolIds.has(item.id)) {
+          yield {
+            type: "tool-input-start",
+            toolCallId: item.id,
+            toolName: "Bash",
+          };
+        }
+        break;
+
+      case "reasoning":
+        // Reasoning/thinking
+        yield* endTextBlock();
+        if (!emittedToolIds.has(item.id)) {
+          yield {
+            type: "tool-input-start",
+            toolCallId: item.id,
+            toolName: "Thinking",
+          };
+        }
+        itemContent.set(item.id, "");
+        break;
+
+      case "file_change":
+        // File changes - SDK groups multiple changes into one item
+        yield* endTextBlock();
+        // We'll emit individual tool calls for each file in the changes array
+        break;
+
+      case "mcp_tool_call": {
+        // MCP tool calls
+        yield* endTextBlock();
+        const mcpItem = item as McpToolCallItem;
+        const toolName = `mcp__${mcpItem.server}__${mcpItem.tool}`;
+        if (!emittedToolIds.has(item.id)) {
+          yield {
+            type: "tool-input-start",
+            toolCallId: item.id,
+            toolName,
+          };
+        }
+        break;
+      }
+
+      case "web_search":
+        // Web search tool
+        yield* endTextBlock();
+        if (!emittedToolIds.has(item.id)) {
+          yield {
+            type: "tool-input-start",
+            toolCallId: item.id,
+            toolName: "WebSearch",
+          };
+        }
+        break;
+
+      case "todo_list":
+        // Todo list - we can emit as a special tool
+        yield* endTextBlock();
+        if (!emittedToolIds.has(item.id)) {
+          yield {
+            type: "tool-input-start",
+            toolCallId: item.id,
+            toolName: "TodoWrite",
+          };
+        }
+        break;
+
+      case "error":
+        // Non-fatal error item
+        yield* endTextBlock();
+        break;
+    }
+  }
+
+  function* handleItemUpdated(item: ThreadItem): Generator<UIMessageChunk> {
+    switch (item.type) {
+      case "agent_message": {
+        // Stream text delta
+        const agentItem = item as AgentMessageItem;
+        if (textStarted && textId && agentItem.text) {
+          const prevContent = itemContent.get(item.id) || "";
+          const newContent = agentItem.text;
+          const delta = newContent.slice(prevContent.length);
+          if (delta) {
+            yield { type: "text-delta", id: textId, delta };
+            itemContent.set(item.id, newContent);
+          }
+        }
+        break;
+      }
+
+      case "command_execution": {
+        // Stream command input
+        const cmdItem = item as CommandExecutionItem;
+        if (cmdItem.command && !emittedToolIds.has(item.id)) {
+          yield {
+            type: "tool-input-delta",
+            toolCallId: item.id,
+            inputTextDelta: cmdItem.command,
+          };
+        }
+        break;
+      }
+
+      case "reasoning": {
+        // Stream reasoning delta
+        const reasonItem = item as ReasoningItem;
+        if (reasonItem.text) {
+          const prevContent = itemContent.get(item.id) || "";
+          const newContent = reasonItem.text;
+          const delta = newContent.slice(prevContent.length);
+          if (delta) {
+            yield {
+              type: "tool-input-delta",
+              toolCallId: item.id,
+              inputTextDelta: delta,
+            };
+            itemContent.set(item.id, newContent);
+          }
+        }
+        break;
+      }
+    }
+  }
+
+  function* handleItemCompleted(item: ThreadItem): Generator<UIMessageChunk> {
+    switch (item.type) {
+      case "agent_message": {
+        const agentItem = item as AgentMessageItem;
+        // If item.completed comes directly without item.started,
+        // emit the full text content
+        if (agentItem.text && !itemContent.has(item.id)) {
+          yield* endTextBlock();
+          const id = genId();
+          yield { type: "text-start", id };
+          yield { type: "text-delta", id, delta: agentItem.text };
+          yield { type: "text-end", id };
+        } else if (textStarted) {
+          // Normal flow: end the text block that was started
+          yield* endTextBlock();
+        }
+        break;
+      }
+
+      case "command_execution": {
+        const cmdItem = item as CommandExecutionItem;
+        // Emit complete command
+        if (!emittedToolIds.has(item.id)) {
+          emittedToolIds.add(item.id);
+          yield {
+            type: "tool-input-available",
+            toolCallId: item.id,
+            toolName: "Bash",
+            input: {
+              command: cmdItem.command || "",
+            },
+          };
+          // Emit output
+          yield {
+            type: "tool-output-available",
+            toolCallId: item.id,
+            output: {
+              stdout: cmdItem.aggregated_output || "",
+              exitCode: cmdItem.exit_code ?? 0,
+            },
+          };
+        }
+        break;
+      }
+
+      case "reasoning": {
+        const reasonItem = item as ReasoningItem;
+        // Emit complete reasoning
+        if (!emittedToolIds.has(item.id)) {
+          emittedToolIds.add(item.id);
+          const reasoningText =
+            itemContent.get(item.id) || reasonItem.text || "";
+          yield {
+            type: "tool-input-available",
+            toolCallId: item.id,
+            toolName: "Thinking",
+            input: { text: reasoningText },
+          };
+          yield {
+            type: "tool-output-available",
+            toolCallId: item.id,
+            output: { completed: true },
+          };
+        }
+        break;
+      }
+
+      case "file_change": {
+        const fileItem = item as FileChangeItem;
+        // Emit a tool call for each file change
+        if (!emittedToolIds.has(item.id)) {
+          emittedToolIds.add(item.id);
+          for (const change of fileItem.changes) {
+            const changeId = `${item.id}_${change.path}`;
+            const toolName = getFileChangeToolName(change.kind);
+            yield {
+              type: "tool-input-available",
+              toolCallId: changeId,
+              toolName,
+              input: {
+                file_path: change.path,
+                kind: change.kind,
+              },
+            };
+            yield {
+              type: "tool-output-available",
+              toolCallId: changeId,
+              output: {
+                success: fileItem.status === "completed",
+              },
+            };
+          }
+        }
+        break;
+      }
+
+      case "mcp_tool_call": {
+        const mcpItem = item as McpToolCallItem;
+        const toolName = `mcp__${mcpItem.server}__${mcpItem.tool}`;
+        if (!emittedToolIds.has(item.id)) {
+          emittedToolIds.add(item.id);
+          yield {
+            type: "tool-input-available",
+            toolCallId: item.id,
+            toolName,
+            input: mcpItem.arguments,
+          };
+          if (mcpItem.result) {
+            yield {
+              type: "tool-output-available",
+              toolCallId: item.id,
+              output: mcpItem.result,
+            };
+          } else if (mcpItem.error) {
+            yield {
+              type: "tool-output-available",
+              toolCallId: item.id,
+              output: { error: mcpItem.error.message },
+            };
+          }
+        }
+        break;
+      }
+
+      case "web_search": {
+        const searchItem = item as WebSearchItem;
+        if (!emittedToolIds.has(item.id)) {
+          emittedToolIds.add(item.id);
+          yield {
+            type: "tool-input-available",
+            toolCallId: item.id,
+            toolName: "WebSearch",
+            input: {
+              query: searchItem.query || "",
+            },
+          };
+          yield {
+            type: "tool-output-available",
+            toolCallId: item.id,
+            output: { completed: true },
+          };
+        }
+        break;
+      }
+
+      case "todo_list": {
+        const todoItem = item as TodoListItem;
+        if (!emittedToolIds.has(item.id)) {
+          emittedToolIds.add(item.id);
+          yield {
+            type: "tool-input-available",
+            toolCallId: item.id,
+            toolName: "TodoWrite",
+            input: {
+              todos: todoItem.items.map((t) => ({
+                content: t.text,
+                status: t.completed ? "completed" : "pending",
+              })),
+            },
+          };
+          yield {
+            type: "tool-output-available",
+            toolCallId: item.id,
+            output: { success: true },
+          };
+        }
+        break;
+      }
+
+      case "error": {
+        const errorItem = item as ErrorItem;
+        yield {
+          type: "error",
+          errorText: errorItem.message,
+        };
+        break;
+      }
+    }
+  }
+
+  function* handleTurnCompleted(usage: Usage): Generator<UIMessageChunk> {
+    yield* endTextBlock();
+
+    const metadata: MessageMetadata = {
+      // Use threadId captured from thread.started event
+      sessionId: threadId || undefined,
+      inputTokens: usage.input_tokens,
+      outputTokens: usage.output_tokens,
+      totalTokens: usage.input_tokens + usage.output_tokens,
+      cachedInputTokens: usage.cached_input_tokens,
+      durationMs: startTime ? Date.now() - startTime : undefined,
+      resultSubtype: "success",
+    };
+
+    yield { type: "message-metadata", messageMetadata: metadata };
+    yield { type: "finish-step" };
+    yield { type: "finish", messageMetadata: metadata };
+  }
+
+  return function* transform(event: ThreadEvent): Generator<UIMessageChunk> {
     // Emit start once
     if (!started) {
       started = true;
@@ -52,525 +419,46 @@ export function createCodexTransformer() {
 
     // Handle different Codex event types
     switch (event.type) {
-      // ===== THREAD STARTED =====
-      case "thread.started": {
+      case "thread.started":
         // Capture thread_id for session continuation
         threadId = event.thread_id || null;
         break;
-      }
 
-      // ===== ITEM STARTED =====
-      case "item.started": {
-        const item = event.item;
-        if (!item) break;
-
-        switch (item.type) {
-          case "message":
-          case "agent_message":
-            // Start text streaming
-            yield* endTextBlock();
-            textId = genId();
-            yield { type: "text-start", id: textId };
-            textStarted = true;
-            itemContent.set(item.id, "");
-            break;
-
-          case "command_execution":
-            // Bash command execution
-            yield* endTextBlock();
-            if (!emittedToolIds.has(item.id)) {
-              yield {
-                type: "tool-input-start",
-                toolCallId: item.id,
-                toolName: "Bash",
-              };
-            }
-            break;
-
-          case "file_edit":
-            // File editing
-            yield* endTextBlock();
-            if (!emittedToolIds.has(item.id)) {
-              yield {
-                type: "tool-input-start",
-                toolCallId: item.id,
-                toolName: "Edit",
-              };
-            }
-            break;
-
-          case "file_read":
-            // File reading
-            yield* endTextBlock();
-            if (!emittedToolIds.has(item.id)) {
-              yield {
-                type: "tool-input-start",
-                toolCallId: item.id,
-                toolName: "Read",
-              };
-            }
-            break;
-
-          case "reasoning":
-            // Reasoning/thinking
-            yield* endTextBlock();
-            if (!emittedToolIds.has(item.id)) {
-              yield {
-                type: "tool-input-start",
-                toolCallId: item.id,
-                toolName: "Thinking",
-              };
-            }
-            itemContent.set(item.id, "");
-            break;
-
-          case "apply_patch":
-          case "apply_patch_call":
-            // V4A diff format patching
-            yield* endTextBlock();
-            if (!emittedToolIds.has(item.id)) {
-              yield {
-                type: "tool-input-start",
-                toolCallId: item.id,
-                toolName: "ApplyPatch",
-              };
-            }
-            break;
-
-          case "file_write":
-          case "file_create":
-            // File creation/write (different from edit)
-            yield* endTextBlock();
-            if (!emittedToolIds.has(item.id)) {
-              yield {
-                type: "tool-input-start",
-                toolCallId: item.id,
-                toolName: "Write",
-              };
-            }
-            break;
-
-          case "web_search":
-            // Web search tool
-            yield* endTextBlock();
-            if (!emittedToolIds.has(item.id)) {
-              yield {
-                type: "tool-input-start",
-                toolCallId: item.id,
-                toolName: "WebSearch",
-              };
-            }
-            break;
-
-          case "file_tree":
-          case "list_directory":
-            // File tree / directory listing
-            yield* endTextBlock();
-            if (!emittedToolIds.has(item.id)) {
-              yield {
-                type: "tool-input-start",
-                toolCallId: item.id,
-                toolName: "Glob",
-              };
-            }
-            break;
-
-          case "local_shell_call":
-            // Local shell (sandboxed)
-            yield* endTextBlock();
-            if (!emittedToolIds.has(item.id)) {
-              yield {
-                type: "tool-input-start",
-                toolCallId: item.id,
-                toolName: "Bash",
-              };
-            }
-            break;
-
-          case "browser_action":
-          case "browser":
-            // Browser automation
-            yield* endTextBlock();
-            if (!emittedToolIds.has(item.id)) {
-              yield {
-                type: "tool-input-start",
-                toolCallId: item.id,
-                toolName: "Browser",
-              };
-            }
-            break;
-        }
+      case "turn.started":
+        // Turn started - nothing specific to emit
         break;
-      }
 
-      // ===== ITEM UPDATED (delta content) =====
-      case "item.updated": {
-        const item = event.item;
-        if (!item) break;
-
-        // Codex uses "text" field, fallback to "content"
-        const itemText = item.text ?? item.content;
-
-        switch (item.type) {
-          case "message":
-          case "agent_message":
-            // Stream text delta
-            if (textStarted && textId && itemText) {
-              const prevContent = itemContent.get(item.id) || "";
-              const newContent = itemText;
-              const delta = newContent.slice(prevContent.length);
-              if (delta) {
-                yield { type: "text-delta", id: textId, delta };
-                itemContent.set(item.id, newContent);
-              }
-            }
-            break;
-
-          case "command_execution":
-            // Stream command input
-            if (item.command && !emittedToolIds.has(item.id)) {
-              yield {
-                type: "tool-input-delta",
-                toolCallId: item.id,
-                inputTextDelta: item.command,
-              };
-            }
-            break;
-
-          case "reasoning":
-            // Stream reasoning delta
-            if (itemText) {
-              const prevContent = itemContent.get(item.id) || "";
-              const newContent = itemText;
-              const delta = newContent.slice(prevContent.length);
-              if (delta) {
-                yield {
-                  type: "tool-input-delta",
-                  toolCallId: item.id,
-                  inputTextDelta: delta,
-                };
-                itemContent.set(item.id, newContent);
-              }
-            }
-            break;
-        }
+      case "item.started":
+        yield* handleItemStarted(event.item);
         break;
-      }
 
-      // ===== ITEM COMPLETED =====
-      case "item.completed": {
-        const item = event.item;
-        if (!item) break;
-
-        // Codex uses "text" field, fallback to "content"
-        const itemText = item.text ?? item.content;
-
-        switch (item.type) {
-          case "message":
-          case "agent_message":
-            // If item.completed comes directly without item.started,
-            // emit the full text content
-            if (itemText && !itemContent.has(item.id)) {
-              yield* endTextBlock();
-              const id = genId();
-              yield { type: "text-start", id };
-              yield { type: "text-delta", id, delta: itemText };
-              yield { type: "text-end", id };
-            } else if (textStarted) {
-              // Normal flow: end the text block that was started
-              yield* endTextBlock();
-            }
-            break;
-
-          case "command_execution":
-            // Emit complete command
-            if (!emittedToolIds.has(item.id)) {
-              emittedToolIds.add(item.id);
-              yield {
-                type: "tool-input-available",
-                toolCallId: item.id,
-                toolName: "Bash",
-                input: {
-                  command: item.command || "",
-                  description: item.description || "",
-                },
-              };
-              // Emit output
-              yield {
-                type: "tool-output-available",
-                toolCallId: item.id,
-                output: {
-                  stdout: item.aggregated_output || item.stdout || "",
-                  stderr: item.stderr || "",
-                  exitCode: item.exit_code ?? 0,
-                },
-              };
-            }
-            break;
-
-          case "file_edit":
-            // Emit complete file edit
-            if (!emittedToolIds.has(item.id)) {
-              emittedToolIds.add(item.id);
-              yield {
-                type: "tool-input-available",
-                toolCallId: item.id,
-                toolName: "Edit",
-                input: {
-                  file_path: item.path || item.file_path || "",
-                  old_string: item.old_content || "",
-                  new_string: item.new_content || "",
-                },
-              };
-              yield {
-                type: "tool-output-available",
-                toolCallId: item.id,
-                output: { success: true },
-              };
-            }
-            break;
-
-          case "file_read":
-            // Emit complete file read
-            if (!emittedToolIds.has(item.id)) {
-              emittedToolIds.add(item.id);
-              yield {
-                type: "tool-input-available",
-                toolCallId: item.id,
-                toolName: "Read",
-                input: {
-                  file_path: item.path || item.file_path || "",
-                },
-              };
-              yield {
-                type: "tool-output-available",
-                toolCallId: item.id,
-                output: item.content || "",
-              };
-            }
-            break;
-
-          case "reasoning":
-            // Emit complete reasoning
-            if (!emittedToolIds.has(item.id)) {
-              emittedToolIds.add(item.id);
-              const reasoningText = itemContent.get(item.id) || itemText || "";
-              yield {
-                type: "tool-input-available",
-                toolCallId: item.id,
-                toolName: "Thinking",
-                input: { text: reasoningText },
-              };
-              yield {
-                type: "tool-output-available",
-                toolCallId: item.id,
-                output: { completed: true },
-              };
-            }
-            break;
-
-          case "apply_patch":
-          case "apply_patch_call":
-            // V4A diff format patching
-            if (!emittedToolIds.has(item.id)) {
-              emittedToolIds.add(item.id);
-              // V4A format includes action (create_file, update_file, delete_file)
-              // and the diff content with context lines
-              yield {
-                type: "tool-input-available",
-                toolCallId: item.id,
-                toolName: "ApplyPatch",
-                input: {
-                  file_path: item.path || item.file_path || "",
-                  action: item.action || "update_file",
-                  diff: item.diff || item.patch || "",
-                },
-              };
-              yield {
-                type: "tool-output-available",
-                toolCallId: item.id,
-                output: {
-                  success:
-                    item.status === "completed" || item.success !== false,
-                  error: item.error,
-                },
-              };
-            }
-            break;
-
-          case "file_write":
-          case "file_create":
-            // File creation/write
-            if (!emittedToolIds.has(item.id)) {
-              emittedToolIds.add(item.id);
-              yield {
-                type: "tool-input-available",
-                toolCallId: item.id,
-                toolName: "Write",
-                input: {
-                  file_path: item.path || item.file_path || "",
-                  content: item.content || "",
-                },
-              };
-              yield {
-                type: "tool-output-available",
-                toolCallId: item.id,
-                output: { success: true },
-              };
-            }
-            break;
-
-          case "web_search":
-            // Web search results
-            if (!emittedToolIds.has(item.id)) {
-              emittedToolIds.add(item.id);
-              yield {
-                type: "tool-input-available",
-                toolCallId: item.id,
-                toolName: "WebSearch",
-                input: {
-                  query: item.query || "",
-                },
-              };
-              yield {
-                type: "tool-output-available",
-                toolCallId: item.id,
-                output: item.results || item.content || [],
-              };
-            }
-            break;
-
-          case "file_tree":
-          case "list_directory":
-            // Directory listing
-            if (!emittedToolIds.has(item.id)) {
-              emittedToolIds.add(item.id);
-              yield {
-                type: "tool-input-available",
-                toolCallId: item.id,
-                toolName: "Glob",
-                input: {
-                  path: item.path || item.directory || "",
-                  pattern: item.pattern || "**/*",
-                },
-              };
-              yield {
-                type: "tool-output-available",
-                toolCallId: item.id,
-                output: item.files || item.entries || item.content || [],
-              };
-            }
-            break;
-
-          case "local_shell_call":
-            // Local sandboxed shell
-            if (!emittedToolIds.has(item.id)) {
-              emittedToolIds.add(item.id);
-              yield {
-                type: "tool-input-available",
-                toolCallId: item.id,
-                toolName: "Bash",
-                input: {
-                  command: item.command || "",
-                  description: item.description || "",
-                },
-              };
-              yield {
-                type: "tool-output-available",
-                toolCallId: item.id,
-                output: {
-                  stdout: item.stdout || item.output || "",
-                  stderr: item.stderr || "",
-                  exitCode: item.exit_code ?? 0,
-                },
-              };
-            }
-            break;
-
-          case "browser_action":
-          case "browser":
-            // Browser automation
-            if (!emittedToolIds.has(item.id)) {
-              emittedToolIds.add(item.id);
-              yield {
-                type: "tool-input-available",
-                toolCallId: item.id,
-                toolName: "Browser",
-                input: {
-                  url: item.url || "",
-                  action: item.action || "navigate",
-                  selector: item.selector,
-                },
-              };
-              yield {
-                type: "tool-output-available",
-                toolCallId: item.id,
-                output: {
-                  screenshot: item.screenshot,
-                  content: item.content,
-                  success: item.success !== false,
-                },
-              };
-            }
-            break;
-        }
+      case "item.updated":
+        yield* handleItemUpdated(event.item);
         break;
-      }
 
-      // ===== TURN COMPLETED =====
-      case "turn.completed": {
-        yield* endTextBlock();
-
-        const usage = event.usage || {};
-        const metadata: MessageMetadata = {
-          // Use threadId captured from thread.started event
-          sessionId: threadId || event.session_id || event.thread_id,
-          inputTokens: usage.input_tokens,
-          outputTokens: usage.output_tokens,
-          totalTokens: usage.total_tokens,
-          // Enhanced token tracking
-          cachedInputTokens: usage.cached_tokens || usage.cached_input_tokens,
-          reasoningTokens: usage.reasoning_tokens,
-          // Cost tracking
-          totalCostUsd: event.total_cost_usd || usage.total_cost_usd,
-          inputCostUsd: usage.input_cost_usd,
-          outputCostUsd: usage.output_cost_usd,
-          // Timing
-          durationMs: startTime ? Date.now() - startTime : undefined,
-          resultSubtype: "success",
-          // Model info
-          model: event.model,
-        };
-
-        yield { type: "message-metadata", messageMetadata: metadata };
-        yield { type: "finish-step" };
-        yield { type: "finish", messageMetadata: metadata };
+      case "item.completed":
+        yield* handleItemCompleted(event.item);
         break;
-      }
 
-      // ===== TURN FAILED =====
+      case "turn.completed":
+        yield* handleTurnCompleted(event.usage);
+        break;
+
       case "turn.failed": {
         yield* endTextBlock();
-
-        const errorMessage =
-          event.error?.message || event.message || "Codex execution failed";
-
+        const errorMessage = event.error?.message || "Codex execution failed";
         yield {
           type: "error",
           errorText: errorMessage,
         };
-
         yield { type: "finish-step" };
         yield { type: "finish" };
         break;
       }
 
-      // ===== ERROR =====
       case "error": {
         yield* endTextBlock();
-
-        const errorMessage =
-          event.error?.message || event.message || "Unknown error";
+        const errorMessage = event.message || "Unknown error";
 
         // Check for auth errors
         if (

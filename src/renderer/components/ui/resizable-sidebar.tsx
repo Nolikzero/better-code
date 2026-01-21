@@ -72,7 +72,9 @@ export function ResizableSidebar({
   const [localWidth, setLocalWidth] = useState<number | null>(null);
 
   // Use local width during resize, otherwise use persisted width
-  const currentWidth = localWidth ?? sidebarWidth;
+  // Always clamp to min/max bounds to handle mode changes (e.g., icon-only to expanded)
+  const rawWidth = localWidth ?? sidebarWidth;
+  const currentWidth = Math.max(minWidth, Math.min(maxWidth, rawWidth));
 
   // Calculate tooltip position dynamically based on sidebar position
   const tooltipPosition = useMemo(() => {

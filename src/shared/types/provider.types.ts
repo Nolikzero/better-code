@@ -1,5 +1,5 @@
 // Provider identification
-export type ProviderId = "claude" | "codex";
+export type ProviderId = "claude" | "codex" | "opencode";
 
 // Codex-specific types
 export type SandboxMode =
@@ -20,6 +20,8 @@ export type ReasoningEffort =
   | "medium"
   | "high"
   | "xhigh";
+
+export type WebSearchMode = "disabled" | "cached" | "live";
 
 // Model definition
 export interface ProviderModel {

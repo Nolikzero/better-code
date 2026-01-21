@@ -3,10 +3,12 @@ import log from "electron-log";
 import { existsSync, readFileSync, readlinkSync, unlinkSync } from "fs";
 import { join } from "path";
 
-// Redirect console to electron-log in production
-// Logs will be written to ~/Library/Logs/BetterCode/main.log
+// Enable file logging in both dev and production
+log.transports.file.level = "info";
+console.log("[electron-log] Log file:", log.transports.file.getFile()?.path);
+
+// Redirect console to electron-log in production only
 if (app.isPackaged) {
-  log.transports.file.level = "info";
   Object.assign(console, log.functions);
 }
 
@@ -17,7 +19,7 @@ import {
   setupFocusUpdateCheck,
 } from "./lib/auto-updater";
 import { closeDatabase, initDatabase } from "./lib/db";
-import { initializeProviders } from "./lib/providers/init";
+import { initializeProviders, shutdownProviders } from "./lib/providers/init";
 import { createMainWindow, getWindow } from "./windows/main";
 
 // Electron Forge Vite plugin global for dev detection
@@ -324,6 +326,7 @@ if (gotTheLock) {
   // Cleanup before quit
   app.on("before-quit", async () => {
     console.log("[App] Shutting down...");
+    await shutdownProviders();
     await closeDatabase();
   });
 

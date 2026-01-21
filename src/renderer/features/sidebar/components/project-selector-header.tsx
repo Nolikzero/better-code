@@ -1,5 +1,5 @@
-import { useAtom } from "jotai";
-import { ChevronDown, FolderGit2, GitBranch, Plus } from "lucide-react";
+import { useAtom, useAtomValue } from "jotai";
+import { ChevronDown, Folder, FolderGit2, GitBranch, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import {
   Command,
@@ -15,9 +15,19 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "../../../components/ui/popover";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../../../components/ui/tooltip";
+import { api } from "../../../lib/mock-api";
 import { trpc } from "../../../lib/trpc";
 import { cn } from "../../../lib/utils";
-import { selectedProjectAtom } from "../../agents/atoms";
+import {
+  selectedAgentChatIdAtom,
+  selectedProjectAtom,
+} from "../../agents/atoms";
 
 function ProjectIcon({
   gitOwner,
@@ -44,10 +54,12 @@ function ProjectIcon({
 
 interface ProjectSelectorHeaderProps {
   onNewWorkspace?: () => void;
+  isIconOnly?: boolean;
 }
 
 export function ProjectSelectorHeader({
   onNewWorkspace,
+  isIconOnly = false,
 }: ProjectSelectorHeaderProps) {
   const [selectedProject, setSelectedProject] = useAtom(selectedProjectAtom);
   const [open, setOpen] = useState(false);
@@ -56,16 +68,12 @@ export function ProjectSelectorHeader({
   const { data: projects, isLoading: isLoadingProjects } =
     trpc.projects.list.useQuery();
 
-  // Fetch current branch for the selected project
-  const { data: branchData } = trpc.changes.getBranches.useQuery(
-    { worktreePath: selectedProject?.path ?? "" },
-    {
-      enabled: !!selectedProject?.path,
-      refetchInterval: 10000, // Refresh every 10s to catch branch changes
-    },
+  // Get current chat to access branch
+  const selectedChatId = useAtomValue(selectedAgentChatIdAtom);
+  const { data: chatData } = api.agents.getAgentChat.useQuery(
+    { chatId: selectedChatId! },
+    { enabled: !!selectedChatId },
   );
-
-  const currentBranch = branchData?.currentBranch;
 
   const filteredProjects = useMemo(() => {
     if (!projects) return [];
@@ -144,6 +152,130 @@ export function ProjectSelectorHeader({
     return exists ? selectedProject : null;
   }, [selectedProject, projects, isLoadingProjects]);
 
+  // Show chat branch if available, otherwise show project path
+  const displayInfo = useMemo(() => {
+    if (chatData?.branch) {
+      return { type: "branch" as const, value: chatData.branch };
+    }
+    if (validSelection?.path) {
+      return { type: "path" as const, value: validSelection.path };
+    }
+    return null;
+  }, [chatData?.branch, validSelection?.path]);
+
+  // Icon-only mode: render just the project icon with popover
+  if (isIconOnly) {
+    // No projects - show folder icon to add
+    if (
+      !validSelection &&
+      (!projects || projects.length === 0) &&
+      !isLoadingProjects
+    ) {
+      return (
+        <div className="px-2 pt-2 flex flex-col items-center">
+          <TooltipProvider>
+            <Tooltip delayDuration={300}>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={handleOpenFolder}
+                  disabled={openFolder.isPending}
+                  className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                >
+                  <FolderPlusIcon className="h-5 w-5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                {openFolder.isPending ? "Adding..." : "Add repository"}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      );
+    }
+
+    // Show project icon with popover (always render, even if no selection yet)
+    return (
+      <div className="px-2 pt-2 flex flex-col items-center">
+        <Popover
+          open={open}
+          onOpenChange={(isOpen) => {
+            setOpen(isOpen);
+            if (!isOpen) setSearchQuery("");
+          }}
+        >
+          <PopoverTrigger asChild>
+            <button
+              className="p-2 rounded-md hover:bg-muted/50 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70 outline-offset-2"
+              type="button"
+              title={validSelection?.name || "Select repository"}
+            >
+              <ProjectIcon
+                gitOwner={validSelection?.gitOwner}
+                gitProvider={validSelection?.gitProvider}
+                className="h-5 w-5"
+              />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-64 p-0" align="start" sideOffset={4}>
+            <Command shouldFilter={false}>
+              <CommandInput
+                placeholder="Search repositories..."
+                value={searchQuery}
+                onValueChange={setSearchQuery}
+              />
+              <CommandList className="max-h-[300px] overflow-y-auto">
+                {isLoadingProjects ? (
+                  <div className="px-2.5 py-4 text-center text-sm text-muted-foreground">
+                    Loading...
+                  </div>
+                ) : filteredProjects.length > 0 ? (
+                  <CommandGroup>
+                    {filteredProjects.map((project) => {
+                      const isSelected = validSelection?.id === project.id;
+                      return (
+                        <CommandItem
+                          key={project.id}
+                          value={`${project.name} ${project.path}`}
+                          onSelect={() => handleSelectProject(project.id)}
+                          className="gap-2"
+                        >
+                          <ProjectIcon
+                            gitOwner={project.gitOwner}
+                            gitProvider={project.gitProvider}
+                          />
+                          <span className="truncate flex-1">
+                            {project.name}
+                          </span>
+                          {isSelected && (
+                            <CheckIcon className="h-4 w-4 shrink-0" />
+                          )}
+                        </CommandItem>
+                      );
+                    })}
+                  </CommandGroup>
+                ) : (
+                  <CommandEmpty>No repositories found.</CommandEmpty>
+                )}
+              </CommandList>
+              <div className="border-t border-border/50 py-1">
+                <button
+                  onClick={handleOpenFolder}
+                  disabled={openFolder.isPending}
+                  className="flex items-center gap-1.5 min-h-[32px] py-[5px] px-1.5 mx-1 w-[calc(100%-8px)] rounded-md text-sm cursor-default select-none outline-hidden dark:hover:bg-neutral-800 hover:text-foreground transition-colors"
+                >
+                  <FolderPlusIcon className="h-4 w-4 text-muted-foreground" />
+                  <span>
+                    {openFolder.isPending ? "Adding..." : "Add repository"}
+                  </span>
+                </button>
+              </div>
+            </Command>
+          </PopoverContent>
+        </Popover>
+      </div>
+    );
+  }
+
   // No projects - show "Add repository" prompt
   if (
     !validSelection &&
@@ -189,10 +321,14 @@ export function ProjectSelectorHeader({
               <span className="truncate font-medium">
                 {validSelection?.name || "Select repository"}
               </span>
-              {currentBranch && (
+              {displayInfo && (
                 <span className="flex items-center gap-1 text-xs text-muted-foreground truncate">
-                  <GitBranch className="h-3 w-3 shrink-0" />
-                  {currentBranch}
+                  {displayInfo.type === "branch" ? (
+                    <GitBranch className="h-3 w-3 shrink-0" />
+                  ) : (
+                    <Folder className="h-3 w-3 shrink-0" />
+                  )}
+                  {displayInfo.value}
                 </span>
               )}
             </div>

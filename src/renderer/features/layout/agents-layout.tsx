@@ -1,8 +1,9 @@
-import { useAtom, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AgentsSettingsDialog } from "../../components/dialogs/agents-settings-dialog";
 import { AgentsShortcutsDialog } from "../../components/dialogs/agents-shortcuts-dialog";
 import { ClaudeLoginModal } from "../../components/dialogs/claude-login-modal";
+import { QuickOpenDialog } from "../../components/ui/quick-open-dialog";
 import { ResizableSidebar } from "../../components/ui/resizable-sidebar";
 import { TooltipProvider } from "../../components/ui/tooltip";
 import { UpdateBanner } from "../../components/update-banner";
@@ -12,28 +13,45 @@ import {
   agentsShortcutsDialogOpenAtom,
   agentsSidebarOpenAtom,
   agentsSidebarWidthAtom,
+  chatsSidebarOpenAtom,
+  chatsSidebarWidthAtom,
   isDesktopAtom,
   isFullscreenAtom,
   onboardingCompletedAtom,
+  quickOpenDialogOpenAtom,
 } from "../../lib/atoms";
 import { useIsMobile } from "../../lib/hooks/use-mobile";
 import { useUpdateChecker } from "../../lib/hooks/use-update-checker";
 import { trpc } from "../../lib/trpc";
 import { isDesktopApp } from "../../lib/utils/platform";
-import { selectedAgentChatIdAtom, selectedProjectAtom } from "../agents/atoms";
+import {
+  activeChatDiffDataAtom,
+  leftSidebarExpandedWidthAtom,
+  selectedAgentChatIdAtom,
+  selectedProjectAtom,
+} from "../agents/atoms";
 import { useAgentsHotkeys } from "../agents/lib/agents-hotkeys-manager";
 import { useAgentSubChatStore } from "../agents/stores/sub-chat-store";
 import { AgentsContent } from "../agents/ui/agents-content";
 import { AgentsSidebar } from "../sidebar/agents-sidebar";
+import { ChatsSidebar } from "../sidebar/chats-sidebar";
 
 // ============================================================================
 // Constants
 // ============================================================================
 
-const SIDEBAR_MIN_WIDTH = 160;
-const SIDEBAR_MAX_WIDTH = 300;
+// Left sidebar - expanded (with file list, when there are changes)
+const LEFT_SIDEBAR_EXPANDED_MIN_WIDTH = 200;
+const LEFT_SIDEBAR_EXPANDED_MAX_WIDTH = 350;
+
+const LEFT_SIDEBAR_CLOSE_HOTKEY = "⌘\\";
+
+// Right sidebar - chats list
+const RIGHT_SIDEBAR_MIN_WIDTH = 200;
+const RIGHT_SIDEBAR_MAX_WIDTH = 320;
+const RIGHT_SIDEBAR_CLOSE_HOTKEY = "⌘⇧\\";
+
 const SIDEBAR_ANIMATION_DURATION = 0;
-const SIDEBAR_CLOSE_HOTKEY = "⌘\\";
 
 // ============================================================================
 // Component
@@ -81,13 +99,35 @@ export function AgentsLayout() {
   // Check for updates on mount and periodically
   useUpdateChecker();
 
+  // Left sidebar state (project selector)
   const [sidebarOpen, setSidebarOpen] = useAtom(agentsSidebarOpenAtom);
   const [_sidebarWidth, _setSidebarWidth] = useAtom(agentsSidebarWidthAtom);
+
+  // Check if diff data exists with changes (for dynamic left sidebar width)
+  const activeDiffData = useAtomValue(activeChatDiffDataAtom);
+  const hasChanges = activeDiffData?.diffStats.hasChanges ?? false;
+
+  // Read selectedChatId early for sidebar visibility logic
+  const selectedChatIdValue = useAtomValue(selectedAgentChatIdAtom);
+  // Dynamic sidebar width based on whether project is selected or changes exist
+  // Icon-only mode: fixed width, not resizable
+  // Expanded mode: resizable within min/max bounds
+  const leftSidebarMinWidth = LEFT_SIDEBAR_EXPANDED_MIN_WIDTH;
+  const leftSidebarMaxWidth = LEFT_SIDEBAR_EXPANDED_MAX_WIDTH;
+  const leftSidebarWidthAtom = leftSidebarExpandedWidthAtom;
+
+  // Right sidebar state (chats)
+  const [chatsSidebarOpen, setChatsSidebarOpen] = useAtom(chatsSidebarOpenAtom);
+  const [_chatsSidebarWidth, _setChatsSidebarWidth] = useAtom(
+    chatsSidebarWidthAtom,
+  );
+
   const [settingsOpen, setSettingsOpen] = useAtom(agentsSettingsDialogOpenAtom);
   const setSettingsActiveTab = useSetAtom(agentsSettingsDialogActiveTabAtom);
   const [shortcutsOpen, setShortcutsOpen] = useAtom(
     agentsShortcutsDialogOpenAtom,
   );
+  const setQuickOpenDialogOpen = useSetAtom(quickOpenDialogOpenAtom);
   const [selectedChatId, setSelectedChatId] = useAtom(selectedAgentChatIdAtom);
   const [selectedProject, setSelectedProject] = useAtom(selectedProjectAtom);
   const setOnboardingCompleted = useSetAtom(onboardingCompletedAtom);
@@ -163,18 +203,6 @@ export function AgentsLayout() {
     fetchUser();
   }, []);
 
-  // Auto-open sidebar when project is selected, close when no project
-  // Only act after projects have loaded to avoid closing sidebar during initial load
-  useEffect(() => {
-    if (!projects) return; // Don't change sidebar state while loading
-
-    if (validatedProject) {
-      setSidebarOpen(true);
-    } else {
-      setSidebarOpen(false);
-    }
-  }, [validatedProject, projects, setSidebarOpen]);
-
   // Handle sign out
   const handleSignOut = useCallback(async () => {
     // Clear selected project and onboarding on logout
@@ -211,7 +239,9 @@ export function AgentsLayout() {
     setSettingsDialogOpen: setSettingsOpen,
     setSettingsActiveTab,
     setShortcutsDialogOpen: setShortcutsOpen,
+    setQuickOpenDialogOpen,
     selectedChatId,
+    setChatsSidebarOpen,
   });
 
   // Handle notification clicks - navigate to the chat/subchat
@@ -242,6 +272,14 @@ export function AgentsLayout() {
     setSidebarOpen(false);
   }, [setSidebarOpen]);
 
+  useEffect(() => {
+    setSidebarOpen(!!selectedChatId);
+  }, [selectedChatId, setChatsSidebarOpen]);
+
+  const handleCloseChatsSidebar = useCallback(() => {
+    setChatsSidebarOpen(false);
+  }, [setChatsSidebarOpen]);
+
   return (
     <TooltipProvider delayDuration={300}>
       <AgentsSettingsDialog
@@ -253,16 +291,17 @@ export function AgentsLayout() {
         onClose={() => setShortcutsOpen(false)}
       />
       <ClaudeLoginModal />
+      <QuickOpenDialog />
       <div className="flex w-full h-full relative overflow-hidden bg-background select-none">
-        {/* Left Sidebar (Agents) */}
+        {/* Left Sidebar (Project Selector + File Tree + Changes) */}
         <ResizableSidebar
           isOpen={!isMobile && sidebarOpen}
           onClose={handleCloseSidebar}
-          widthAtom={agentsSidebarWidthAtom}
-          minWidth={SIDEBAR_MIN_WIDTH}
-          maxWidth={SIDEBAR_MAX_WIDTH}
+          widthAtom={leftSidebarWidthAtom}
+          minWidth={leftSidebarMinWidth}
+          maxWidth={leftSidebarMaxWidth}
           side="left"
-          closeHotkey={SIDEBAR_CLOSE_HOTKEY}
+          closeHotkey={LEFT_SIDEBAR_CLOSE_HOTKEY}
           animationDuration={SIDEBAR_ANIMATION_DURATION}
           initialWidth={0}
           exitWidth={0}
@@ -274,6 +313,7 @@ export function AgentsLayout() {
             desktopUser={desktopUser}
             onSignOut={handleSignOut}
             onToggleSidebar={handleCloseSidebar}
+            hasChanges={hasChanges}
           />
         </ResizableSidebar>
 
@@ -281,6 +321,25 @@ export function AgentsLayout() {
         <div className="flex-1 overflow-hidden flex flex-col min-w-0">
           <AgentsContent />
         </div>
+
+        {/* Right Sidebar (Chats) - hidden when no chat selected */}
+        <ResizableSidebar
+          isOpen={!isMobile && chatsSidebarOpen && !!selectedChatIdValue}
+          onClose={handleCloseChatsSidebar}
+          widthAtom={chatsSidebarWidthAtom}
+          minWidth={RIGHT_SIDEBAR_MIN_WIDTH}
+          maxWidth={RIGHT_SIDEBAR_MAX_WIDTH}
+          side="right"
+          closeHotkey={RIGHT_SIDEBAR_CLOSE_HOTKEY}
+          animationDuration={SIDEBAR_ANIMATION_DURATION}
+          initialWidth={0}
+          exitWidth={0}
+          showResizeTooltip={true}
+          className="overflow-hidden bg-background border-l"
+          style={{ borderLeftWidth: "0.5px" }}
+        >
+          <ChatsSidebar onToggleSidebar={handleCloseChatsSidebar} />
+        </ResizableSidebar>
 
         {/* Update Banner */}
         <UpdateBanner />

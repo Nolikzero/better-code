@@ -3,7 +3,6 @@
 import { useAtomValue } from "jotai";
 import { memo, useMemo } from "react";
 import { Button } from "../../../components/ui/button";
-import { ClaudeCodeIcon, CodexIcon } from "../../../components/ui/icons";
 import {
   Tooltip,
   TooltipContent,
@@ -15,11 +14,14 @@ import {
   lastSelectedModelByProviderAtom,
   PROVIDER_INFO,
   PROVIDER_MODELS,
+  subChatProviderOverridesAtom,
 } from "../../../lib/atoms";
 import { cn } from "../../../lib/utils";
+import { getProviderIcon } from "./provider-icons";
 
 interface ProviderIndicatorProps {
   chatId: string;
+  subChatId?: string;
   className?: string;
 }
 
@@ -31,16 +33,21 @@ interface ProviderIndicatorProps {
  */
 export const ProviderIndicator = memo(function ProviderIndicator({
   chatId,
+  subChatId,
   className,
 }: ProviderIndicatorProps) {
   const defaultProvider = useAtomValue(defaultProviderIdAtom);
   const chatOverrides = useAtomValue(chatProviderOverridesAtom);
+  const subChatOverrides = useAtomValue(subChatProviderOverridesAtom);
   const modelsByProvider = useAtomValue(lastSelectedModelByProviderAtom);
 
-  // Determine effective provider (per-chat override or global default)
+  // Determine effective provider (per-subchat override -> per-chat override -> global default)
   const effectiveProvider = useMemo(() => {
+    if (subChatId && subChatOverrides[subChatId]) {
+      return subChatOverrides[subChatId];
+    }
     return chatOverrides[chatId] || defaultProvider;
-  }, [chatOverrides, chatId, defaultProvider]);
+  }, [subChatOverrides, subChatId, chatOverrides, chatId, defaultProvider]);
 
   // Get provider info
   const providerInfo = PROVIDER_INFO[effectiveProvider];
@@ -49,11 +56,11 @@ export const ProviderIndicator = memo(function ProviderIndicator({
   const modelInfo = models?.find((m) => m.id === selectedModel);
 
   // Get the appropriate icon
-  const ProviderIcon =
-    effectiveProvider === "codex" ? CodexIcon : ClaudeCodeIcon;
+  const providerIcon = getProviderIcon(effectiveProvider, "h-3.5 w-3.5");
 
-  // Check if this chat has an override
-  const hasOverride = chatId in chatOverrides;
+  // Check if this subchat or chat has an override
+  const hasOverride =
+    (subChatId && subChatId in subChatOverrides) || chatId in chatOverrides;
 
   return (
     <Tooltip delayDuration={500}>
@@ -67,7 +74,7 @@ export const ProviderIndicator = memo(function ProviderIndicator({
           )}
           aria-label={`AI Provider: ${providerInfo.name}`}
         >
-          <ProviderIcon className="h-3.5 w-3.5" aria-hidden="true" />
+          {providerIcon}
           <span>{modelInfo?.displayName || selectedModel}</span>
           {hasOverride && (
             <span

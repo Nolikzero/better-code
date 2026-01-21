@@ -16,7 +16,11 @@ import {
 import { useCodeTheme } from "../../../lib/hooks/use-code-theme";
 import { highlightCode } from "../../../lib/themes/shiki-theme-loader";
 import { cn } from "../../../lib/utils";
-import { agentsDiffSidebarOpenAtom, agentsFocusedDiffFileAtom } from "../atoms";
+import {
+  agentsFocusedDiffFileAtom,
+  centerDiffSelectedFileAtom,
+  mainContentActiveTabAtom,
+} from "../atoms";
 import { getFileIconByExtension } from "../mentions";
 import { AgentToolInterrupted } from "./agent-tool-interrupted";
 import { getToolStatus } from "./agent-tool-registry";
@@ -199,8 +203,9 @@ export const AgentEditTool = memo(function AgentEditTool({
   const { isPending, isInterrupted } = getToolStatus(part, chatStatus);
   const codeTheme = useCodeTheme();
 
-  // Atoms for opening diff sidebar and focusing on file
-  const setDiffSidebarOpen = useSetAtom(agentsDiffSidebarOpenAtom);
+  // Atoms for navigating to changes tab and focusing on file
+  const setActiveTab = useSetAtom(mainContentActiveTabAtom);
+  const setCenterDiffSelectedFile = useSetAtom(centerDiffSelectedFileAtom);
   const setFocusedDiffFile = useSetAtom(agentsFocusedDiffFileAtom);
 
   // Determine mode: Write (create new file) vs Edit (modify existing)
@@ -250,12 +255,18 @@ export const AgentEditTool = memo(function AgentEditTool({
     return filePath;
   }, [filePath]);
 
-  // Handler to open diff sidebar and focus on this file
+  // Handler to navigate to changes tab and focus on this file
   const handleOpenInDiff = useCallback(() => {
     if (!displayPath) return;
-    setDiffSidebarOpen(true);
+    setCenterDiffSelectedFile(displayPath);
     setFocusedDiffFile(displayPath);
-  }, [displayPath, setDiffSidebarOpen, setFocusedDiffFile]);
+    setActiveTab("changes");
+  }, [
+    displayPath,
+    setCenterDiffSelectedFile,
+    setFocusedDiffFile,
+    setActiveTab,
+  ]);
 
   // Get file icon component and language
   // Pass true to not show default icon for unknown file types

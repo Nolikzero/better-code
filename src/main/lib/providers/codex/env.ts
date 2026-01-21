@@ -32,6 +32,50 @@ function isExecutable(filePath: string): boolean {
 }
 
 /**
+ * Get node version manager bin paths (nvm, fnm, volta)
+ * These are where npm global packages like codex are installed
+ */
+function getNodeManagerPaths(binaryName: string): string[] {
+  const home = os.homedir();
+  const paths: string[] = [];
+
+  // nvm paths (~/.nvm/versions/node/*/bin)
+  const nvmDir = process.env.NVM_DIR || path.join(home, ".nvm");
+  const nvmVersionsDir = path.join(nvmDir, "versions", "node");
+  try {
+    if (fs.existsSync(nvmVersionsDir)) {
+      const versions = fs.readdirSync(nvmVersionsDir);
+      versions.sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
+      paths.push(
+        ...versions.map((v) => path.join(nvmVersionsDir, v, "bin", binaryName)),
+      );
+    }
+  } catch {}
+
+  // fnm paths (~/.local/share/fnm/node-versions/*/installation/bin)
+  const fnmDir =
+    process.env.FNM_DIR ||
+    path.join(home, ".local", "share", "fnm", "node-versions");
+  try {
+    if (fs.existsSync(fnmDir)) {
+      const versions = fs.readdirSync(fnmDir);
+      versions.sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
+      paths.push(
+        ...versions.map((v) =>
+          path.join(fnmDir, v, "installation", "bin", binaryName),
+        ),
+      );
+    }
+  } catch {}
+
+  // volta paths (~/.volta/bin)
+  const voltaBin = path.join(home, ".volta", "bin", binaryName);
+  paths.push(voltaBin);
+
+  return paths;
+}
+
+/**
  * Parse environment variables from shell output
  */
 function parseEnvOutput(output: string): Record<string, string> {
@@ -92,7 +136,7 @@ function getCodexShellEnvironment(): Record<string, string> {
     // Fallback: return minimal required env
     const home = os.homedir();
 
-    // Build fallback PATH including nvm paths
+    // Build fallback PATH
     const fallbackPaths = [
       `${home}/.local/bin`,
       "/opt/homebrew/bin",
@@ -102,10 +146,6 @@ function getCodexShellEnvironment(): Record<string, string> {
       "/usr/sbin",
       "/sbin",
     ];
-
-    // Add nvm bin paths to fallback
-    const nvmBinPaths = getNodeManagerPaths("").map((p) => path.dirname(p));
-    fallbackPaths.unshift(...nvmBinPaths);
 
     const fallbackPath = fallbackPaths.join(":");
 
@@ -124,13 +164,6 @@ function getCodexShellEnvironment(): Record<string, string> {
 }
 
 /**
- * Clear cached shell environment (useful for testing)
- */
-function _clearCodexEnvCache(): void {
-  cachedShellEnv = null;
-}
-
-/**
  * Get path to the bundled Codex binary (if we choose to bundle it)
  */
 function getBundledCodexBinaryPath(): string {
@@ -146,50 +179,6 @@ function getBundledCodexBinaryPath(): string {
 
   const binaryName = platform === "win32" ? "codex.exe" : "codex";
   return path.join(resourcesPath, binaryName);
-}
-
-/**
- * Get node version manager bin paths (nvm, fnm, volta)
- * These are where npm global packages like codex are installed
- */
-function getNodeManagerPaths(binaryName: string): string[] {
-  const home = os.homedir();
-  const paths: string[] = [];
-
-  // nvm paths (~/.nvm/versions/node/*/bin)
-  const nvmDir = process.env.NVM_DIR || path.join(home, ".nvm");
-  const nvmVersionsDir = path.join(nvmDir, "versions", "node");
-  try {
-    if (fs.existsSync(nvmVersionsDir)) {
-      const versions = fs.readdirSync(nvmVersionsDir);
-      versions.sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
-      paths.push(
-        ...versions.map((v) => path.join(nvmVersionsDir, v, "bin", binaryName)),
-      );
-    }
-  } catch {}
-
-  // fnm paths (~/.local/share/fnm/node-versions/*/installation/bin)
-  const fnmDir =
-    process.env.FNM_DIR ||
-    path.join(home, ".local", "share", "fnm", "node-versions");
-  try {
-    if (fs.existsSync(fnmDir)) {
-      const versions = fs.readdirSync(fnmDir);
-      versions.sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
-      paths.push(
-        ...versions.map((v) =>
-          path.join(fnmDir, v, "installation", "bin", binaryName),
-        ),
-      );
-    }
-  } catch {}
-
-  // volta paths (~/.volta/bin)
-  const voltaBin = path.join(home, ".volta", "bin", binaryName);
-  paths.push(voltaBin);
-
-  return paths;
 }
 
 /**
@@ -381,16 +370,58 @@ export function getCodexBinaryPath(): CodexBinaryResult | null {
 }
 
 /**
- * Clear cached binary path (useful for testing)
+ * Check if a string is an OpenAI API key (not an OAuth token)
  */
-function _clearCodexBinaryCache(): void {
-  cachedBinaryResult = undefined;
+function isApiKey(value: string): boolean {
+  return value.startsWith("sk-");
 }
 
 /**
- * Read Codex OAuth token from system credential store
+ * Get only the API key (not OAuth tokens).
+ * Returns null if user is authenticated via OAuth (the binary will handle auth).
  *
- * Codex CLI credential storage (per https://developers.openai.com/codex/auth/):
+ * Use this when passing credentials to the SDK - OAuth tokens should NOT be
+ * passed as OPENAI_API_KEY because the binary handles OAuth auth internally
+ * by reading from ~/.codex/auth.json.
+ */
+export function getCodexApiKey(): string | null {
+  // 1. Check environment variable first
+  if (process.env.OPENAI_API_KEY && isApiKey(process.env.OPENAI_API_KEY)) {
+    console.log("[codex] Found API key in environment");
+    return process.env.OPENAI_API_KEY;
+  }
+
+  // 2. Try reading from Codex auth.json file
+  const codexHome = process.env.CODEX_HOME || path.join(os.homedir(), ".codex");
+  const authPath = path.join(codexHome, "auth.json");
+
+  try {
+    if (fs.existsSync(authPath)) {
+      const content = fs.readFileSync(authPath, "utf-8");
+      const auth = JSON.parse(content);
+
+      // Only return if it's a real API key
+      const apiKey = auth?.OPENAI_API_KEY;
+      if (apiKey && isApiKey(apiKey)) {
+        console.log("[codex] Found API key in auth.json");
+        return apiKey;
+      }
+    }
+  } catch {
+    // File not found or parse error
+  }
+
+  // No API key found - user likely authenticated via OAuth
+  // The binary will handle OAuth auth by reading from ~/.codex/auth.json
+  console.log("[codex] No API key found, binary will use OAuth from auth.json");
+  return null;
+}
+
+/**
+ * Check if user has any valid Codex authentication (API key or OAuth token).
+ * Used for auth status checks.
+ *
+ * Codex CLI credential storage:
  * 1. OPENAI_API_KEY environment variable
  * 2. macOS Keychain (service: "openai-codex")
  * 3. ~/.codex/auth.json (file-based storage)
@@ -455,12 +486,9 @@ export function getCodexOAuthToken(): string | null {
         const content = fs.readFileSync(authPath, "utf-8");
         const auth = JSON.parse(content);
 
-        // Check various possible key names
-        // Priority: direct API key > OAuth tokens
-        const apiKey =
-          auth?.OPENAI_API_KEY || auth?.api_key || auth?.openai_api_key;
-
-        if (apiKey) {
+        // Check for API key (but it might be null in auth.json)
+        const apiKey = auth?.OPENAI_API_KEY;
+        if (apiKey && isApiKey(apiKey)) {
           console.log(`[codex] Found API key in ${path.basename(authPath)}`);
           return apiKey;
         }
@@ -491,7 +519,7 @@ export function getCodexOAuthToken(): string | null {
 }
 
 /**
- * Build environment variables for Codex process
+ * Build environment variables for Codex SDK subprocess
  */
 export function buildCodexEnv(options?: {
   apiKey?: string;

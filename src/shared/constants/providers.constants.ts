@@ -6,6 +6,7 @@ import type {
 } from "../types";
 
 // Provider model definitions
+// Note: OpenCode models are fetched dynamically from the server
 export const PROVIDER_MODELS: Record<
   ProviderId,
   { id: string; name: string; displayName: string }[]
@@ -33,6 +34,8 @@ export const PROVIDER_MODELS: Record<
     },
     { id: "gpt-5.2", name: "gpt-5.2", displayName: "GPT-5.2" },
   ],
+  // OpenCode models are dynamic - fetched from server at runtime
+  opencode: [],
 };
 
 // Provider display info
@@ -47,6 +50,11 @@ export const PROVIDER_INFO: Record<
   codex: {
     name: "OpenAI Codex",
     description: "OpenAI's Codex CLI for coding assistance",
+  },
+  opencode: {
+    name: "OpenCode",
+    description:
+      "Multi-provider AI coding agent (Anthropic, OpenAI, Google, etc.)",
   },
 };
 

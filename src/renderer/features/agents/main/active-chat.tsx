@@ -5,8 +5,16 @@
 import { Chat, useChat } from "@ai-sdk/react";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { ChevronDown } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { toast } from "sonner";
+import { useStickToBottom } from "use-stick-to-bottom";
 import { Button } from "../../../components/ui/button";
 import {
   AgentIcon,
@@ -24,7 +32,6 @@ import {
   chatProviderOverridesAtom,
   defaultProviderIdAtom,
   lastSelectedModelByProviderAtom,
-  PROVIDER_MODELS,
   type ProviderId,
   soundNotificationsEnabledAtom,
   subChatProviderOverridesAtom,
@@ -40,24 +47,28 @@ import { useDesktopNotifications } from "../../sidebar/hooks/use-desktop-notific
 import { terminalSidebarOpenAtom } from "../../terminal/atoms";
 import { TerminalSidebar } from "../../terminal/terminal-sidebar";
 import {
+  activeChatDiffDataAtom,
   addedDirectoriesAtomFamily,
   agentsPreviewSidebarOpenAtom,
   agentsPreviewSidebarWidthAtom,
   agentsSubChatsSidebarModeAtom,
   agentsSubChatUnseenChangesAtom,
   agentsUnseenChangesAtom,
+  askUserQuestionResultsAtom,
+  changesSectionCollapsedAtom,
   clearLoading,
   compactingSubChatsAtom,
-  diffSidebarOpenAtomFamily,
   historyNavAtomFamily,
   isPlanModeAtom,
   justCreatedIdsAtom,
   loadingSubChatsAtom,
+  mainContentActiveTabAtom,
   pendingAuthRetryMessageAtom,
   pendingPlanApprovalsAtom,
   pendingPrMessageAtom,
   pendingReviewMessageAtom,
   pendingUserQuestionsAtom,
+  prActionsAtom,
   promptHistoryAtomFamily,
   QUESTIONS_SKIPPED_MESSAGE,
   selectedAgentChatIdAtom,
@@ -78,15 +89,17 @@ import {
 } from "../components/chat-input";
 import { ModeToggleDropdown } from "../components/mode-toggle-dropdown";
 import { ModelSelectorDropdown } from "../components/model-selector-dropdown";
+import { OpenCodeModelSelector } from "../components/opencode-model-selector";
 import { ProviderSelectorDropdown } from "../components/provider-selector-dropdown";
+import { WebSearchModeSelector } from "../components/web-search-mode-selector";
 import { useAgentsFileUpload } from "../hooks/use-agents-file-upload";
 import { useBranchSwitchConfirmation } from "../hooks/use-branch-switch-confirmation";
 import { useChangedFilesTracking } from "../hooks/use-changed-files-tracking";
-import { useChatScroll } from "../hooks/use-chat-scroll";
 import { useDiffManagement } from "../hooks/use-diff-management";
 import { useFocusInputOnEnter } from "../hooks/use-focus-input-on-enter";
 import { useMentionDropdown } from "../hooks/use-mention-dropdown";
 import { usePrActions } from "../hooks/use-pr-actions";
+import { useProviders } from "../hooks/use-providers";
 import { useSlashCommandDropdown } from "../hooks/use-slash-command-dropdown";
 import { useSubChatKeyboard } from "../hooks/use-subchat-keyboard";
 import { useToggleFocusOnCmdEsc } from "../hooks/use-toggle-focus-on-cmd-esc";
@@ -112,7 +125,7 @@ import { AgentPreview } from "../ui/agent-preview";
 import { AgentUserQuestion } from "../ui/agent-user-question";
 import { BranchSwitchDialog } from "../ui/branch-switch-dialog";
 import { ChatTitleEditor } from "../ui/chat-title-editor";
-import { DiffSidebar } from "../ui/diff-sidebar";
+// DiffSidebar moved to left sidebar - see LeftSidebarChangesView
 import { PLAYBACK_SPEEDS, type PlaybackSpeed } from "../ui/message-controls";
 import { getProviderIcon } from "../ui/provider-icons";
 import { SubChatStatusCard } from "../ui/sub-chat-status-card";
@@ -246,8 +259,6 @@ function ChatViewInner({
   const hasTriggeredRenameRef = useRef(false);
   const hasTriggeredAutoGenerateRef = useRef(false);
 
-  // Chat container ref for scroll management hook
-  const chatContainerRef = useRef<HTMLDivElement | null>(null);
   const editorRef = useRef<AgentsMentionsEditorHandle>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const _prevChatKeyRef = useRef<string | null>(null);
@@ -445,6 +456,7 @@ function ChatViewInner({
   const [modelByProvider, setModelByProvider] = useAtom(
     lastSelectedModelByProviderAtom,
   );
+  const { getModels } = useProviders();
 
   // Use per-subchat override first, then per-chat override, otherwise global default
   const effectiveProvider = useMemo(
@@ -490,6 +502,28 @@ function ChatViewInner({
     [subChatId, setSubChatProviderOverrides, updateSubChatProviderMutation],
   );
 
+  // Memoized handler for OpenCode model changes (prevents re-render cascade)
+  const handleOpenCodeModelChange = useCallback(
+    (modelId: string) => {
+      setModelByProvider((prev) => ({
+        ...prev,
+        opencode: modelId,
+      }));
+    },
+    [setModelByProvider],
+  );
+
+  // Memoized handler for regular model selector changes
+  const handleModelChange = useCallback(
+    (modelId: string) => {
+      setModelByProvider((prev) => ({
+        ...prev,
+        [effectiveProvider]: modelId,
+      }));
+    },
+    [setModelByProvider, effectiveProvider],
+  );
+
   // Reset to agent mode when switching to Codex provider (Codex doesn't support plan mode)
   useEffect(() => {
     if (effectiveProvider === "codex" && isPlanMode) {
@@ -497,9 +531,29 @@ function ChatViewInner({
     }
   }, [effectiveProvider, isPlanMode, setIsPlanMode]);
 
-  // Derive current provider models and model from effective provider
-  const providerModels =
-    PROVIDER_MODELS[effectiveProvider] || PROVIDER_MODELS.claude;
+  // Initialize provider from sub-chat metadata when switching sub-chats
+  // This must be after setSubChatProviderOverrides is declared
+  const lastInitializedProviderRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (subChatId && subChatId !== lastInitializedProviderRef.current) {
+      const subChat = useAgentSubChatStore
+        .getState()
+        .allSubChats.find((sc) => sc.id === subChatId);
+
+      // Initialize provider from sub-chat metadata (restored from database)
+      if (subChat?.providerId) {
+        setSubChatProviderOverrides((prev) => ({
+          ...prev,
+          [subChatId]: subChat.providerId as ProviderId,
+        }));
+      }
+
+      lastInitializedProviderRef.current = subChatId;
+    }
+  }, [subChatId, setSubChatProviderOverrides]);
+
+  // Derive current provider models and model from effective provider (via tRPC)
+  const providerModels = getModels(effectiveProvider);
   const currentModelId =
     modelByProvider[effectiveProvider] || providerModels[0]?.id;
 
@@ -670,12 +724,10 @@ function ChatViewInner({
     // experimental_throttle: 200,
   });
 
-  // Scroll management hook - handles auto-scroll, position persistence, smart scroll
-  const { scrollToBottom } = useChatScroll({
-    containerRef: chatContainerRef,
-    subChatId,
-    messages,
-    status,
+  // Scroll management via use-stick-to-bottom for smooth auto-scrolling
+  const { scrollRef, contentRef, scrollToBottom } = useStickToBottom({
+    initial: "instant",
+    resize: "smooth",
   });
 
   // Stream debug: log status changes
@@ -877,11 +929,20 @@ function ChatViewInner({
   const handleQuestionsAnswer = useCallback(
     async (answers: Record<string, string>) => {
       if (!pendingQuestions) return;
+      const toolUseId = pendingQuestions.toolUseId;
+
       await trpcClient.chat.respondToolApproval.mutate({
-        toolUseId: pendingQuestions.toolUseId,
+        toolUseId,
         approved: true,
         updatedInput: { questions: pendingQuestions.questions, answers },
       });
+
+      // Store result immediately for display (don't wait for stream)
+      const currentResults = appStore.get(askUserQuestionResultsAtom);
+      const newResults = new Map(currentResults);
+      newResults.set(toolUseId, { answers });
+      appStore.set(askUserQuestionResultsAtom, newResults);
+
       setPendingQuestions(null);
     },
     [pendingQuestions, setPendingQuestions],
@@ -1662,27 +1723,27 @@ function ChatViewInner({
         </div>
       )}
 
-      {/* Messages */}
+      {/* Messages - using use-stick-to-bottom for smooth auto-scrolling */}
       <div
-        ref={(el) => {
-          chatContainerRef.current = el;
-        }}
+        ref={scrollRef}
         className="flex-1 overflow-y-auto w-full relative allow-text-selection outline-hidden"
         tabIndex={-1}
         data-chat-container
       >
-        <ChatMessages
-          messages={messages}
-          status={status}
-          subChatId={subChatId}
-          sandboxSetupStatus={sandboxSetupStatus}
-          sandboxSetupError={sandboxSetupError}
-          onRetrySetup={onRetrySetup}
-          isMobile={isMobile}
-          isSubChatsSidebarOpen={isSubChatsSidebarOpen}
-          ttsPlaybackRate={ttsPlaybackRate}
-          onPlaybackRateChange={handlePlaybackRateChange}
-        />
+        <div ref={contentRef}>
+          <ChatMessages
+            messages={messages}
+            status={status}
+            subChatId={subChatId}
+            sandboxSetupStatus={sandboxSetupStatus}
+            sandboxSetupError={sandboxSetupError}
+            onRetrySetup={onRetrySetup}
+            isMobile={isMobile}
+            isSubChatsSidebarOpen={isSubChatsSidebarOpen}
+            ttsPlaybackRate={ttsPlaybackRate}
+            onPlaybackRateChange={handlePlaybackRateChange}
+          />
+        </div>
       </div>
 
       {/* User questions panel - shows when AskUserQuestion tool is called */}
@@ -1786,11 +1847,13 @@ function ChatViewInner({
             <ChatInputActions
               leftContent={
                 <>
-                  {/* Provider selector - per-subchat provider selection */}
-                  <ProviderSelectorDropdown
-                    providerId={effectiveProvider}
-                    onProviderChange={handleProviderChange}
-                  />
+                  {/* Provider selector - only show for new chats (no messages yet) */}
+                  {messages.length === 0 && (
+                    <ProviderSelectorDropdown
+                      providerId={effectiveProvider}
+                      onProviderChange={handleProviderChange}
+                    />
+                  )}
 
                   {/* Mode toggle (Agent/Plan) - hidden for Codex which doesn't support plan mode */}
                   {effectiveProvider !== "codex" && (
@@ -1801,19 +1864,24 @@ function ChatViewInner({
                   )}
 
                   {/* Model selector */}
-                  <ModelSelectorDropdown
-                    providerId={effectiveProvider}
-                    models={providerModels}
-                    currentModelId={currentModelId}
-                    onModelChange={(modelId) => {
-                      setModelByProvider({
-                        ...modelByProvider,
-                        [effectiveProvider]: modelId,
-                      });
-                    }}
-                    open={isModelDropdownOpen}
-                    onOpenChange={setIsModelDropdownOpen}
-                  />
+                  {effectiveProvider === "opencode" ? (
+                    <OpenCodeModelSelector
+                      currentModelId={currentModelId}
+                      onModelChange={handleOpenCodeModelChange}
+                    />
+                  ) : (
+                    <ModelSelectorDropdown
+                      providerId={effectiveProvider}
+                      models={providerModels}
+                      currentModelId={currentModelId}
+                      onModelChange={handleModelChange}
+                      open={isModelDropdownOpen}
+                      onOpenChange={setIsModelDropdownOpen}
+                    />
+                  )}
+
+                  {/* Web search mode selector (Codex only) */}
+                  {effectiveProvider === "codex" && <WebSearchModeSelector />}
 
                   {/* Added directories badge (for /add-dir command) */}
                   <AddedDirectoriesBadge subChatId={subChatId} />
@@ -1967,12 +2035,16 @@ export function ChatView({
   const [isPreviewSidebarOpen, setIsPreviewSidebarOpen] = useAtom(
     agentsPreviewSidebarOpenAtom,
   );
-  // Per-chat diff sidebar state - each chat remembers its own open/close state
-  const diffSidebarAtom = useMemo(
-    () => diffSidebarOpenAtomFamily(chatId),
-    [chatId],
+  // Changes section collapsed state in left sidebar
+  const [isChangesSectionCollapsed, setIsChangesSectionCollapsed] = useAtom(
+    changesSectionCollapsedAtom,
   );
-  const [isDiffSidebarOpen, setIsDiffSidebarOpen] = useAtom(diffSidebarAtom);
+  // For backwards compatibility with existing code
+  const isDiffSidebarOpen = !isChangesSectionCollapsed;
+  const setIsDiffSidebarOpen = useCallback(
+    (open: boolean) => setIsChangesSectionCollapsed(!open),
+    [setIsChangesSectionCollapsed],
+  );
   const [isTerminalSidebarOpen, setIsTerminalSidebarOpen] = useAtom(
     terminalSidebarOpenAtom,
   );
@@ -2037,6 +2109,7 @@ export function ChatView({
     updated_at?: Date | string | null;
     messages?: any;
     stream_id?: string | null;
+    providerId?: string | null;
   }>;
 
   // Get PR status when PR exists (for checking if it's open/merged/closed)
@@ -2081,9 +2154,29 @@ export function ChatView({
     },
   });
 
+  // Use refs to store mutations, avoiding dependencies on unstable tRPC mutation objects
+  const mergePrMutationRef = useRef(mergePrMutation);
+  mergePrMutationRef.current = mergePrMutation;
+
+  const generateSubChatNameMutationRef = useRef(generateSubChatNameMutation);
+  generateSubChatNameMutationRef.current = generateSubChatNameMutation;
+
+  const renameSubChatMutationRef = useRef(renameSubChatMutation);
+  renameSubChatMutationRef.current = renameSubChatMutation;
+
+  const renameChatMutationRef = useRef(renameChatMutation);
+  renameChatMutationRef.current = renameChatMutation;
+
+  // Use refs for tRPC utils to avoid unstable dependencies
+  const utilsAgentsRef = useRef(utils.agents);
+  utilsAgentsRef.current = utils.agents;
+
+  const trpcUtilsChatsRef = useRef(trpcUtils.chats);
+  trpcUtilsChatsRef.current = trpcUtils.chats;
+
   const handleMergePr = useCallback(() => {
-    mergePrMutation.mutate({ chatId, method: "squash" });
-  }, [chatId, mergePrMutation]);
+    mergePrMutationRef.current.mutate({ chatId, method: "squash" });
+  }, [chatId]);
 
   // Restore archived workspace mutation (silent - no toast)
   const restoreWorkspaceMutation = trpc.chats.restore.useMutation({
@@ -2104,9 +2197,13 @@ export function ChatView({
     },
   });
 
+  // Use ref to store mutation, avoiding dependency on unstable tRPC mutation object
+  const restoreWorkspaceMutationRef = useRef(restoreWorkspaceMutation);
+  restoreWorkspaceMutationRef.current = restoreWorkspaceMutation;
+
   const handleRestoreWorkspace = useCallback(() => {
-    restoreWorkspaceMutation.mutate({ id: chatId });
-  }, [chatId, restoreWorkspaceMutation]);
+    restoreWorkspaceMutationRef.current.mutate({ id: chatId });
+  }, [chatId]);
 
   // Check if this workspace is archived
   const isArchived = !!agentChat?.archivedAt;
@@ -2210,8 +2307,6 @@ export function ChatView({
     diffContent,
     parsedFileDiffs,
     prefetchedFileContents,
-    diffSidebarWidth,
-    diffSidebarRef,
     fetchDiffStatsRef,
   } = useDiffManagement({
     chatId,
@@ -2219,6 +2314,25 @@ export function ChatView({
     sandboxId,
     isDiffSidebarOpen,
   });
+
+  // Subscribe to git status changes for real-time diff updates
+  const gitWatcherSubscriberId = useId();
+  trpc.changes.watchGitStatus.useSubscription(
+    {
+      worktreePath: worktreePath ?? "",
+      subscriberId: gitWatcherSubscriberId,
+    },
+    {
+      enabled: !!worktreePath,
+      onData: () => {
+        // Refetch diff data when git status changes
+        fetchDiffStatsRef.current?.();
+      },
+      onError: (error) => {
+        console.error("[ActiveChat] Git watch error:", error);
+      },
+    },
+  );
 
   // PR actions hook - handles create PR, commit to PR, review
   const {
@@ -2229,6 +2343,96 @@ export function ChatView({
     handleCommitToPr,
     handleReview,
   } = usePrActions({ chatId });
+
+  // Sync diff data to global atom for left sidebar changes view
+  const setActiveChatDiffData = useSetAtom(activeChatDiffDataAtom);
+  useEffect(() => {
+    if (canOpenDiff) {
+      setActiveChatDiffData({
+        chatId,
+        worktreePath,
+        sandboxId,
+        repository,
+        diffStats,
+        diffContent,
+        parsedFileDiffs,
+        prefetchedFileContents,
+      });
+    } else {
+      setActiveChatDiffData(null);
+    }
+    return () => {
+      // Don't clear if changes or file tab is active (ChatView is unmounting to show CenterDiffView/CenterFileView)
+      const activeTab = appStore.get(mainContentActiveTabAtom);
+      if (activeTab === "changes" || activeTab === "file") {
+        return;
+      }
+      // Don't clear if switching to another chat - let the new chat's effect overwrite with its data
+      // Only clear if navigating away entirely (no chat selected)
+      const currentSelectedChatId = appStore.get(selectedAgentChatIdAtom);
+      if (currentSelectedChatId && currentSelectedChatId !== chatId) {
+        return; // Switching chats - don't clear, new chat will overwrite
+      }
+      setActiveChatDiffData(null);
+    };
+  }, [
+    chatId,
+    worktreePath,
+    sandboxId,
+    repository,
+    diffStats,
+    diffContent,
+    parsedFileDiffs,
+    prefetchedFileContents,
+    canOpenDiff,
+    setActiveChatDiffData,
+  ]);
+
+  // Sync PR actions to global atom for left sidebar changes view
+  // Use useMemo to create stable object reference, only recreating when values actually change
+  const setPrActions = useSetAtom(prActionsAtom);
+  const prActionsValue = useMemo(() => {
+    if (!canOpenDiff) return null;
+    return {
+      prUrl: agentChat?.prUrl ?? null,
+      prNumber: agentChat?.prNumber ?? null,
+      hasPrNumber,
+      isPrOpen,
+      isCreatingPr,
+      isCommittingToPr,
+      isMergingPr: mergePrMutation.isPending,
+      isReviewing,
+      onCreatePr: handleCreatePr,
+      onCommitToPr: handleCommitToPr,
+      onMergePr: handleMergePr,
+      onReview: handleReview,
+    };
+  }, [
+    canOpenDiff,
+    agentChat?.prUrl,
+    agentChat?.prNumber,
+    hasPrNumber,
+    isPrOpen,
+    isCreatingPr,
+    isCommittingToPr,
+    mergePrMutation.isPending,
+    isReviewing,
+    handleCreatePr,
+    handleCommitToPr,
+    handleMergePr,
+    handleReview,
+  ]);
+
+  useEffect(() => {
+    setPrActions(prActionsValue);
+    return () => {
+      // Don't clear if changes tab is active (ChatView is unmounting to show CenterDiffView)
+      const activeTab = appStore.get(mainContentActiveTabAtom);
+      if (activeTab !== "changes") {
+        setPrActions(null);
+      }
+    };
+  }, [prActionsValue, setPrActions]);
 
   // Initialize store when chat data loads
   useEffect(() => {
@@ -2294,6 +2498,9 @@ export function ChatView({
           (sc.mode as "plan" | "agent" | undefined) ||
           existingLocal?.mode ||
           "agent",
+        providerId:
+          (sc.providerId as ProviderId | undefined) ||
+          existingLocal?.providerId,
       };
     });
     const dbSubChatIds = new Set(dbSubChats.map((sc) => sc.id));
@@ -2500,6 +2707,7 @@ export function ChatView({
       chatId,
       name: "New Chat",
       mode: subChatMode,
+      providerId: effectiveProvider,
     });
     const newId = newSubChat.id;
 
@@ -2512,37 +2720,42 @@ export function ChatView({
       name: "New Chat",
       created_at: new Date().toISOString(),
       mode: subChatMode,
+      providerId: effectiveProvider,
     });
 
     // Also add to listWithSubChats query cache for sidebar
     const projectId = agentChat?.projectId;
     if (projectId) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      trpcUtils.chats.listWithSubChats.setData({ projectId }, (old: any) => {
-        if (!old) return old;
-        return old.map((chat: any) =>
-          chat.id === chatId
-            ? {
-                ...chat,
-                subChats: [
-                  ...(chat.subChats || []),
-                  {
-                    id: newId,
-                    chatId,
-                    name: "New Chat",
-                    mode: subChatMode,
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                    hasPendingPlanApproval: false,
-                    fileAdditions: null,
-                    fileDeletions: null,
-                    fileCount: null,
-                  },
-                ],
-              }
-            : chat,
-        );
-      });
+      trpcUtilsChatsRef.current.listWithSubChats.setData(
+        { projectId },
+        (old: any) => {
+          if (!old) return old;
+          return old.map((chat: any) =>
+            chat.id === chatId
+              ? {
+                  ...chat,
+                  subChats: [
+                    ...(chat.subChats || []),
+                    {
+                      id: newId,
+                      chatId,
+                      name: "New Chat",
+                      mode: subChatMode,
+                      providerId: effectiveProvider,
+                      createdAt: new Date(),
+                      updatedAt: new Date(),
+                      hasPendingPlanApproval: false,
+                      fileAdditions: null,
+                      fileDeletions: null,
+                      fileCount: null,
+                    },
+                  ],
+                }
+              : chat,
+          );
+        },
+      );
     }
 
     // Add to open tabs and set as active
@@ -2656,8 +2869,8 @@ export function ChatView({
     notifyPlanComplete,
     agentChat?.name,
     agentChat?.projectId,
-    trpcUtils.chats.listWithSubChats,
     branchSwitchForSubChat,
+    effectiveProvider,
   ]);
 
   // Handler for confirming branch switch and creating sub-chat
@@ -2669,10 +2882,14 @@ export function ChatView({
     const store = useAgentSubChatStore.getState();
     const subChatMode = appStore.get(isPlanModeAtom) ? "plan" : "agent";
 
+    // Get provider from current effective provider state
+    const currentProvider = effectiveProvider;
+
     const newSubChat = await trpcClient.chats.createSubChat.mutate({
       chatId,
       name: "New Chat",
       mode: subChatMode,
+      providerId: currentProvider,
     });
     const newId = newSubChat.id;
 
@@ -2683,11 +2900,12 @@ export function ChatView({
       name: "New Chat",
       created_at: new Date().toISOString(),
       mode: subChatMode,
+      providerId: currentProvider,
     });
 
     store.addToOpenSubChats(newId);
     store.setActiveSubChat(newId);
-  }, [branchSwitchForSubChat, chatId, setJustCreatedIds]);
+  }, [branchSwitchForSubChat, chatId, setJustCreatedIds, effectiveProvider]);
 
   // Multi-select state for sub-chats (for Cmd+W bulk close)
   const selectedSubChatIds = useAtomValue(selectedSubChatIdsAtom);
@@ -2756,22 +2974,23 @@ export function ChatView({
   }, [diffStats.hasChanges, isDiffSidebarOpen]);
 
   // Keyboard shortcut: Create PR (preview)
-  // Web: Opt+Cmd+P (browser uses Cmd+P for print)
-  // Desktop: Cmd+P
+  // Web: Opt+Cmd+Shift+P (Cmd+P is now Quick Open)
+  // Desktop: Cmd+Shift+P
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const isDesktop = isDesktopApp();
 
-      // Desktop: Cmd+P (without Alt)
+      // Desktop: Cmd+Shift+P (without Alt)
       const isDesktopShortcut =
         isDesktop &&
         e.metaKey &&
+        e.shiftKey &&
         e.code === "KeyP" &&
         !e.altKey &&
-        !e.shiftKey &&
         !e.ctrlKey;
-      // Web: Opt+Cmd+P (with Alt)
-      const isWebShortcut = e.altKey && e.metaKey && e.code === "KeyP";
+      // Web: Opt+Cmd+Shift+P (with Alt and Shift)
+      const isWebShortcut =
+        e.altKey && e.metaKey && e.shiftKey && e.code === "KeyP";
 
       if (isDesktopShortcut || isWebShortcut) {
         e.preventDefault();
@@ -2825,17 +3044,17 @@ export function ChatView({
         userMessage,
         isFirstSubChat: isFirst,
         generateName: async (msg) => {
-          return generateSubChatNameMutation.mutateAsync({
+          return generateSubChatNameMutationRef.current.mutateAsync({
             userMessage: msg,
             providerId: effectiveProvider,
             projectPath: originalProjectPath || worktreePath || undefined,
           });
         },
         renameSubChat: async (input) => {
-          await renameSubChatMutation.mutateAsync(input);
+          await renameSubChatMutationRef.current.mutateAsync(input);
         },
         renameChat: async (input) => {
-          await renameChatMutation.mutateAsync(input);
+          await renameChatMutationRef.current.mutateAsync(input);
         },
         updateSubChatName: (subChatIdToUpdate, name) => {
           console.log("[updateSubChatName] Called with:", {
@@ -2851,7 +3070,7 @@ export function ChatView({
           console.log("[updateSubChatName] projectId:", projectId);
           if (projectId) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            trpcUtils.chats.listWithSubChats.setData(
+            trpcUtilsChatsRef.current.listWithSubChats.setData(
               { projectId },
               (old: any) => {
                 console.log(
@@ -2891,44 +3110,47 @@ export function ChatView({
           }
           // Also update query cache so init effect doesn't overwrite
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          utils.agents.getAgentChat.setData({ chatId }, (old: any) => {
-            if (!old) return old;
-            const existsInCache = old.subChats.some(
-              (sc: SubChatItem) => sc.id === subChatIdToUpdate,
-            );
-            if (!existsInCache) {
-              // Sub-chat not in cache yet (DB save still in flight) - add it
+          utilsAgentsRef.current.getAgentChat.setData(
+            { chatId },
+            (old: any) => {
+              if (!old) return old;
+              const existsInCache = old.subChats.some(
+                (sc: SubChatItem) => sc.id === subChatIdToUpdate,
+              );
+              if (!existsInCache) {
+                // Sub-chat not in cache yet (DB save still in flight) - add it
+                return {
+                  ...old,
+                  subChats: [
+                    ...old.subChats,
+                    {
+                      id: subChatIdToUpdate,
+                      name,
+                      createdAt: new Date(),
+                      updatedAt: new Date(),
+                      messages: [],
+                      mode: "agent",
+                      streamId: null,
+                      chatId: chatId,
+                    },
+                  ],
+                };
+              }
               return {
                 ...old,
-                subChats: [
-                  ...old.subChats,
-                  {
-                    id: subChatIdToUpdate,
-                    name,
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                    messages: [],
-                    mode: "agent",
-                    streamId: null,
-                    chatId: chatId,
-                  },
-                ],
+                subChats: old.subChats.map((sc: SubChatItem) =>
+                  sc.id === subChatIdToUpdate ? { ...sc, name } : sc,
+                ),
               };
-            }
-            return {
-              ...old,
-              subChats: old.subChats.map((sc: SubChatItem) =>
-                sc.id === subChatIdToUpdate ? { ...sc, name } : sc,
-              ),
-            };
-          });
+            },
+          );
         },
         updateChatName: (chatIdToUpdate, name) => {
           // Optimistic update for sidebar list (listWithSubChats query)
           const projectId = agentChat?.projectId;
           if (projectId) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            trpcUtils.chats.listWithSubChats.setData(
+            trpcUtilsChatsRef.current.listWithSubChats.setData(
               { projectId },
               (old: any) => {
                 if (!old) return old;
@@ -2940,7 +3162,7 @@ export function ChatView({
           }
           // Optimistic update for sidebar (list query)
           // On desktop, selectedTeamId is always null, so we update unconditionally
-          utils.agents.getAgentChats.setData(
+          utilsAgentsRef.current.getAgentChats.setData(
             { teamId: selectedTeamId },
             (old: ChatListItem[] | undefined) => {
               if (!old) return old;
@@ -2950,7 +3172,7 @@ export function ChatView({
             },
           );
           // Optimistic update for header (single chat query)
-          utils.agents.getAgentChat.setData(
+          utilsAgentsRef.current.getAgentChat.setData(
             { chatId: chatIdToUpdate },
             (old) => {
               if (!old) return old;
@@ -2965,13 +3187,7 @@ export function ChatView({
       agentSubChats,
       agentChat,
       effectiveProvider,
-      generateSubChatNameMutation,
-      renameSubChatMutation,
-      renameChatMutation,
       selectedTeamId,
-      utils.agents.getAgentChats,
-      utils.agents.getAgentChat,
-      trpcUtils.chats.listWithSubChats,
       originalProjectPath,
       worktreePath,
     ],
@@ -3015,6 +3231,7 @@ export function ChatView({
             {!shouldHideChatHeader && (
               <ChatHeader
                 chatId={chatId}
+                subChatId={activeSubChatId ?? undefined}
                 isMobileFullscreen={isMobileFullscreen}
                 isSubChatsSidebarOpen={subChatsSidebarMode === "sidebar"}
                 isSidebarOpen={isSidebarOpen}
@@ -3137,36 +3354,6 @@ export function ChatView({
               </>
             )}
           </div>
-
-          {/* Diff Sidebar - hidden on mobile fullscreen and when diff is not available */}
-          {canOpenDiff && !isMobileFullscreen && (
-            <DiffSidebar
-              chatId={chatId}
-              sandboxId={sandboxId}
-              worktreePath={worktreePath}
-              repository={repository}
-              diffStats={diffStats}
-              diffContent={diffContent}
-              parsedFileDiffs={parsedFileDiffs}
-              prefetchedFileContents={prefetchedFileContents}
-              isOpen={isDiffSidebarOpen}
-              onClose={() => setIsDiffSidebarOpen(false)}
-              diffSidebarWidth={diffSidebarWidth}
-              diffSidebarRef={diffSidebarRef}
-              prUrl={agentChat?.prUrl}
-              prNumber={agentChat?.prNumber}
-              hasPrNumber={hasPrNumber}
-              isPrOpen={isPrOpen}
-              onCreatePr={handleCreatePr}
-              onCommitToPr={handleCommitToPr}
-              onMergePr={handleMergePr}
-              onReview={handleReview}
-              isCreatingPr={isCreatingPr}
-              isCommittingToPr={isCommittingToPr}
-              isReviewing={isReviewing}
-              isMergingPr={mergePrMutation.isPending}
-            />
-          )}
 
           {/* Preview Sidebar - hidden on mobile fullscreen and when preview is not available */}
           {canOpenPreview && !isMobileFullscreen && (

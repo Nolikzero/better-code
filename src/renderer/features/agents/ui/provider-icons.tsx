@@ -11,6 +11,16 @@ const CodexIcon = (props: React.SVGProps<SVGSVGElement>) => (
 );
 
 /**
+ * OpenCode provider icon - multi-provider AI coding agent
+ */
+const OpenCodeIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 240 300" fill="none" {...props}>
+    <path d="M180 240H60V120H180V240Z" fill="currentColor" fillOpacity={0.4} />
+    <path d="M180 60H60V240H180V60ZM240 300H0V0H240V300Z" fill="currentColor" />
+  </svg>
+);
+
+/**
  * Returns the appropriate icon component for a given provider
  */
 export function getProviderIcon(
@@ -22,17 +32,21 @@ export function getProviderIcon(
       return <ClaudeCodeIcon className={className} />;
     case "codex":
       return <CodexIcon className={className} />;
+    case "opencode":
+      return <OpenCodeIcon className={className} />;
     default:
       return <ClaudeCodeIcon className={className} />;
   }
 }
 
 /**
- * Provider definitions for UI
+ * Provider definitions for UI (static fallback)
+ * Prefer using useProviders() hook for dynamic provider data from tRPC.
  * Used for dropdowns and selection menus
  */
 export const PROVIDERS: { id: ProviderId; name: string; hasModels: boolean }[] =
   [
     { id: "claude", name: "Claude Code", hasModels: true },
     { id: "codex", name: "OpenAI Codex", hasModels: true },
+    { id: "opencode", name: "OpenCode", hasModels: true },
   ];

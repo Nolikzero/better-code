@@ -107,6 +107,10 @@ const SHORTCUTS = {
     desktop: { hotkey: "ctrl+tab", display: "⌃Tab" },
   },
   preview: {
+    web: { hotkey: "opt+cmd+shift+p", display: "⌥⌘⇧P" },
+    desktop: { hotkey: "cmd+shift+p", display: "⌘⇧P" },
+  },
+  quickOpen: {
     web: { hotkey: "opt+cmd+p", display: "⌥⌘P" },
     desktop: { hotkey: "cmd+p", display: "⌘P" },
   },

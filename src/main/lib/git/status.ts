@@ -1,3 +1,4 @@
+import { observable } from "@trpc/server/observable";
 import simpleGit from "simple-git";
 import { z } from "zod";
 import type {
@@ -5,6 +6,7 @@ import type {
   GitChangesStatus,
 } from "../../../shared/changes-types";
 import { publicProcedure, router } from "../trpc";
+import { fileWatcher, type GitChangeEvent } from "../watcher/file-watcher";
 import { assertRegisteredWorktree, secureFs } from "./security";
 import { applyNumstatToFiles } from "./utils/apply-numstat";
 import {
@@ -102,6 +104,38 @@ export const createStatusRouter = () => {
         ]);
 
         return files;
+      }),
+
+    /**
+     * Subscribe to git status changes for real-time updates
+     */
+    watchGitStatus: publicProcedure
+      .input(
+        z.object({
+          worktreePath: z.string(),
+          subscriberId: z.string(),
+        }),
+      )
+      .subscription(({ input }) => {
+        const { worktreePath, subscriberId } = input;
+
+        return observable<GitChangeEvent>((emit) => {
+          const eventName = `git:${worktreePath}`;
+
+          const onGitChange = (event: GitChangeEvent) => {
+            emit.next(event);
+          };
+
+          // Start watching and subscribe to events
+          fileWatcher.watchGitStatus(worktreePath, subscriberId);
+          fileWatcher.on(eventName, onGitChange);
+
+          // Return cleanup function
+          return () => {
+            fileWatcher.off(eventName, onGitChange);
+            fileWatcher.unwatchGitStatus(worktreePath, subscriberId);
+          };
+        });
       }),
   });
 };

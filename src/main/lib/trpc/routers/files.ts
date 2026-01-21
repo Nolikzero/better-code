@@ -1,6 +1,11 @@
-import { readdir, stat } from "node:fs/promises";
+import { readdir, readFile, stat } from "node:fs/promises";
 import { basename, join, relative } from "node:path";
+import { observable } from "@trpc/server/observable";
 import { z } from "zod";
+import {
+  type DirectoryChangeEvent,
+  fileWatcher,
+} from "../../watcher/file-watcher";
 import { publicProcedure, router } from "../index";
 
 // Directories to ignore when scanning
@@ -281,5 +286,187 @@ export const filesRouter = router({
     .mutation(({ input }) => {
       fileListCache.delete(input.projectPath);
       return { success: true };
+    }),
+
+  /**
+   * List immediate children of a directory (non-recursive, for lazy loading)
+   */
+  listDirectory: publicProcedure
+    .input(
+      z.object({
+        projectPath: z.string(),
+        relativePath: z.string().default(""),
+        showHidden: z.boolean().default(false),
+      }),
+    )
+    .query(async ({ input }) => {
+      const { projectPath, relativePath, showHidden } = input;
+
+      if (!projectPath) {
+        return [];
+      }
+
+      const targetPath = relativePath
+        ? join(projectPath, relativePath)
+        : projectPath;
+
+      try {
+        const pathStat = await stat(targetPath);
+        if (!pathStat.isDirectory()) {
+          return [];
+        }
+
+        const dirEntries = await readdir(targetPath, { withFileTypes: true });
+        const entries: Array<{
+          name: string;
+          path: string;
+          type: "file" | "folder";
+          isHidden: boolean;
+        }> = [];
+
+        for (const entry of dirEntries) {
+          const isHidden = entry.name.startsWith(".");
+          const entryRelPath = relativePath
+            ? join(relativePath, entry.name)
+            : entry.name;
+
+          if (entry.isDirectory()) {
+            // Skip ignored directories
+            if (IGNORED_DIRS.has(entry.name)) continue;
+            // Skip hidden directories unless showHidden is true
+            if (isHidden && !showHidden) {
+              // Allow .github, .vscode
+              if (
+                !entry.name.startsWith(".github") &&
+                !entry.name.startsWith(".vscode")
+              ) {
+                continue;
+              }
+            }
+
+            entries.push({
+              name: entry.name,
+              path: entryRelPath,
+              type: "folder",
+              isHidden,
+            });
+          } else if (entry.isFile()) {
+            // Skip ignored files
+            if (IGNORED_FILES.has(entry.name)) continue;
+            // Skip hidden files unless showHidden is true
+            if (isHidden && !showHidden) continue;
+
+            // Check extension
+            const ext = entry.name.includes(".")
+              ? `.${entry.name.split(".").pop()?.toLowerCase()}`
+              : "";
+            if (IGNORED_EXTENSIONS.has(ext)) {
+              if (!ALLOWED_LOCK_FILES.has(entry.name)) continue;
+            }
+
+            entries.push({
+              name: entry.name,
+              path: entryRelPath,
+              type: "file",
+              isHidden,
+            });
+          }
+        }
+
+        // Sort: folders first, then alphabetically
+        entries.sort((a, b) => {
+          if (a.type !== b.type) {
+            return a.type === "folder" ? -1 : 1;
+          }
+          return a.name.localeCompare(b.name);
+        });
+
+        return entries;
+      } catch (error) {
+        console.error("[files] Error listing directory:", error);
+        return [];
+      }
+    }),
+
+  /**
+   * Read file content for viewing in the center panel
+   */
+  readFileContent: publicProcedure
+    .input(
+      z.object({
+        projectPath: z.string(),
+        relativePath: z.string(),
+      }),
+    )
+    .query(async ({ input }) => {
+      const { projectPath, relativePath } = input;
+
+      if (!projectPath || !relativePath) {
+        return { content: "", error: "Invalid path" };
+      }
+
+      const filePath = join(projectPath, relativePath);
+
+      try {
+        const fileStat = await stat(filePath);
+        if (!fileStat.isFile()) {
+          return { content: "", error: "Not a file" };
+        }
+
+        // Check if file is too large (> 1MB)
+        if (fileStat.size > 1024 * 1024) {
+          return { content: "", error: "File too large to display" };
+        }
+
+        // Check if file is binary by reading first few bytes
+        const buffer = await readFile(filePath);
+        const isBinary = buffer.some(
+          (byte) =>
+            byte === 0 ||
+            (byte < 32 && byte !== 9 && byte !== 10 && byte !== 13),
+        );
+
+        if (isBinary) {
+          return { content: "", error: "Binary file - cannot display" };
+        }
+
+        const content = buffer.toString("utf-8");
+        return { content, error: null };
+      } catch (error) {
+        console.error("[files] Error reading file:", error);
+        return { content: "", error: "Failed to read file" };
+      }
+    }),
+
+  /**
+   * Subscribe to directory changes for real-time file tree updates
+   */
+  watchDirectory: publicProcedure
+    .input(
+      z.object({
+        directoryPath: z.string(),
+        subscriberId: z.string(),
+      }),
+    )
+    .subscription(({ input }) => {
+      const { directoryPath, subscriberId } = input;
+
+      return observable<DirectoryChangeEvent>((emit) => {
+        const eventName = `directory:${directoryPath}`;
+
+        const onDirectoryChange = (event: DirectoryChangeEvent) => {
+          emit.next(event);
+        };
+
+        // Start watching and subscribe to events
+        fileWatcher.watchDirectory(directoryPath, subscriberId);
+        fileWatcher.on(eventName, onDirectoryChange);
+
+        // Return cleanup function
+        return () => {
+          fileWatcher.off(eventName, onDirectoryChange);
+          fileWatcher.unwatchDirectory(directoryPath, subscriberId);
+        };
+      });
     }),
 });

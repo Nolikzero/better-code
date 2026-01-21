@@ -6,7 +6,13 @@ import { isUpstreamMissingError } from "./git-utils";
 import { fetchGitHubPRStatus } from "./github";
 import type { GitProvider } from "./index";
 import { fetchGitHostStatus, getCompareUrl } from "./providers";
-import { assertRegisteredWorktree } from "./security";
+import {
+  assertRegisteredWorktree,
+  gitHasStash,
+  gitStageFiles,
+  gitStash,
+  gitStashPop,
+} from "./security";
 
 async function hasUpstreamBranch(
   git: ReturnType<typeof simpleGit>,
@@ -40,6 +46,70 @@ export const createGitOperationsRouter = () => {
           return { success: true, hash: result.commit };
         },
       ),
+
+    // Commit with selected files only (stages specified files, then commits)
+    commitSelected: publicProcedure
+      .input(
+        z.object({
+          worktreePath: z.string(),
+          files: z.array(z.string()),
+          message: z.string(),
+        }),
+      )
+      .mutation(
+        async ({ input }): Promise<{ success: boolean; hash: string }> => {
+          assertRegisteredWorktree(input.worktreePath);
+
+          if (input.files.length === 0) {
+            throw new Error("No files selected for commit");
+          }
+
+          // Stage only the selected files
+          await gitStageFiles(input.worktreePath, input.files);
+
+          // Commit the staged files
+          const git = simpleGit(input.worktreePath);
+          const result = await git.commit(input.message);
+          return { success: true, hash: result.commit };
+        },
+      ),
+
+    // Stash all uncommitted changes
+    stash: publicProcedure
+      .input(
+        z.object({
+          worktreePath: z.string(),
+          message: z.string().optional(),
+        }),
+      )
+      .mutation(async ({ input }): Promise<{ success: boolean }> => {
+        await gitStash(input.worktreePath, input.message);
+        return { success: true };
+      }),
+
+    // Pop (apply and remove) the most recent stash
+    stashPop: publicProcedure
+      .input(
+        z.object({
+          worktreePath: z.string(),
+        }),
+      )
+      .mutation(async ({ input }): Promise<{ success: boolean }> => {
+        await gitStashPop(input.worktreePath);
+        return { success: true };
+      }),
+
+    // Check if there are any stashes
+    hasStash: publicProcedure
+      .input(
+        z.object({
+          worktreePath: z.string(),
+        }),
+      )
+      .query(async ({ input }): Promise<{ hasStash: boolean }> => {
+        const hasStash = await gitHasStash(input.worktreePath);
+        return { hasStash };
+      }),
 
     push: publicProcedure
       .input(

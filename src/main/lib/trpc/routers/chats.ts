@@ -1,4 +1,5 @@
 import { TRPCError } from "@trpc/server";
+import { observable } from "@trpc/server/observable";
 import { execSync } from "child_process";
 import { and, desc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { app } from "electron";
@@ -7,6 +8,7 @@ import path from "path";
 import simpleGit from "simple-git";
 import { z } from "zod";
 import { chats, getDatabase, projects, subChats } from "../../db";
+import { type ChatStatsEvent, chatStatsEmitter } from "../../events";
 import {
   checkBranchCheckoutSafety,
   checkoutBranch,
@@ -109,6 +111,7 @@ export const chatsRouter = router({
             fileDeletions: subChats.fileDeletions,
             fileCount: subChats.fileCount,
             addedDirs: subChats.addedDirs,
+            providerId: subChats.providerId,
           },
         })
         .from(chats)
@@ -136,6 +139,7 @@ export const chatsRouter = router({
             fileDeletions: number | null;
             fileCount: number | null;
             addedDirs: string | null;
+            providerId: string | null;
           }>;
         }
       >();
@@ -273,7 +277,10 @@ export const chatsRouter = router({
         selectedBranch: z.string().optional(), // Branch to switch to in local mode
         createNewBranch: z.boolean().optional(), // Create selectedBranch as new branch from current
         mode: z.enum(["plan", "agent"]).default("agent"),
-        providerId: z.enum(["claude", "codex"]).optional().default("claude"),
+        providerId: z
+          .enum(["claude", "codex", "opencode"])
+          .optional()
+          .default("claude"),
       }),
     )
     .mutation(async ({ input }) => {
@@ -734,7 +741,7 @@ export const chatsRouter = router({
     .input(
       z.object({
         chatId: z.string(),
-        providerId: z.enum(["claude", "codex"]),
+        providerId: z.enum(["claude", "codex", "opencode"]),
       }),
     )
     .mutation(({ input }) => {
@@ -832,7 +839,7 @@ export const chatsRouter = router({
         chatId: z.string(),
         name: z.string().optional(),
         mode: z.enum(["plan", "agent"]).default("agent"),
-        providerId: z.enum(["claude", "codex"]).optional(),
+        providerId: z.enum(["claude", "codex", "opencode"]).optional(),
       }),
     )
     .mutation(({ input }) => {
@@ -900,7 +907,10 @@ export const chatsRouter = router({
    */
   updateSubChatProvider: publicProcedure
     .input(
-      z.object({ id: z.string(), providerId: z.enum(["claude", "codex"]) }),
+      z.object({
+        id: z.string(),
+        providerId: z.enum(["claude", "codex", "opencode"]),
+      }),
     )
     .mutation(({ input }) => {
       const db = getDatabase();
@@ -993,7 +1003,10 @@ export const chatsRouter = router({
     .input(
       z.object({
         userMessage: z.string(),
-        providerId: z.enum(["claude", "codex"]).optional().default("claude"),
+        providerId: z
+          .enum(["claude", "codex", "opencode"])
+          .optional()
+          .default("claude"),
         projectPath: z.string().optional(),
       }),
     )
@@ -1376,5 +1389,104 @@ export const chatsRouter = router({
         subChatId: row.subChatId,
         chatId: row.chatId,
       }));
+    }),
+
+  /**
+   * Subscribe to real-time updates for file stats and pending plan approvals.
+   * Replaces polling with event-driven updates for better performance.
+   */
+  watchChatStats: publicProcedure
+    .input(z.object({ openSubChatIds: z.array(z.string()) }))
+    .subscription(({ input }) => {
+      const openSubChatIdsSet = new Set(input.openSubChatIds);
+
+      return observable<{
+        fileStats: Array<{
+          chatId: string;
+          additions: number;
+          deletions: number;
+          fileCount: number;
+        }>;
+        planApprovals: Array<{ subChatId: string; chatId: string }>;
+      }>((emit) => {
+        const db = getDatabase();
+
+        // Helper to fetch current stats
+        const fetchAndEmit = () => {
+          // Get file stats
+          const fileRows = db
+            .select({
+              chatId: chats.id,
+              subChatId: subChats.id,
+              additions: subChats.fileAdditions,
+              deletions: subChats.fileDeletions,
+              fileCount: subChats.fileCount,
+            })
+            .from(chats)
+            .leftJoin(subChats, eq(subChats.chatId, chats.id))
+            .where(isNull(chats.archivedAt))
+            .all()
+            .filter(
+              (row) => !row.subChatId || openSubChatIdsSet.has(row.subChatId),
+            );
+
+          // Aggregate stats per workspace
+          const statsMap = new Map<
+            string,
+            { additions: number; deletions: number; fileCount: number }
+          >();
+          for (const row of fileRows) {
+            if (!row.chatId) continue;
+            const existing = statsMap.get(row.chatId) || {
+              additions: 0,
+              deletions: 0,
+              fileCount: 0,
+            };
+            existing.additions += row.additions || 0;
+            existing.deletions += row.deletions || 0;
+            existing.fileCount += row.fileCount || 0;
+            statsMap.set(row.chatId, existing);
+          }
+          const fileStats = Array.from(statsMap.entries()).map(
+            ([chatId, stats]) => ({ chatId, ...stats }),
+          );
+
+          // Get pending plan approvals
+          const planRows = db
+            .select({
+              subChatId: subChats.id,
+              chatId: subChats.chatId,
+            })
+            .from(subChats)
+            .innerJoin(chats, eq(chats.id, subChats.chatId))
+            .where(
+              and(
+                eq(subChats.hasPendingPlanApproval, true),
+                isNull(chats.archivedAt),
+              ),
+            )
+            .all()
+            .filter((row) => openSubChatIdsSet.has(row.subChatId));
+
+          emit.next({ fileStats, planApprovals: planRows });
+        };
+
+        // Emit initial data
+        fetchAndEmit();
+
+        // Listen for updates
+        const handler = (event: ChatStatsEvent) => {
+          if (openSubChatIdsSet.has(event.subChatId)) {
+            fetchAndEmit();
+          }
+        };
+
+        chatStatsEmitter.on("stats-update", handler);
+
+        // Return cleanup function
+        return () => {
+          chatStatsEmitter.off("stats-update", handler);
+        };
+      });
     }),
 });

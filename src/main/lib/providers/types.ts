@@ -20,6 +20,7 @@ import type {
   ReasoningEffort,
   SandboxMode,
   UIMessageChunk,
+  WebSearchMode,
 } from "@shared/types";
 
 // Chat session options (provider-agnostic, main-process specific due to AbortController)
@@ -41,6 +42,12 @@ export interface ChatSessionOptions {
   sandboxMode?: SandboxMode;
   approvalPolicy?: ApprovalPolicy;
   reasoningEffort?: ReasoningEffort;
+  // Codex SDK enhancement options
+  outputSchema?: Record<string, unknown>;
+  networkAccessEnabled?: boolean;
+  webSearchMode?: WebSearchMode;
+  // OpenCode-specific: persisted diff keys for deduplication across turns
+  emittedDiffKeys?: string[];
 }
 
 // Provider interface - must be implemented by all providers

@@ -161,30 +161,75 @@ function isShikiBundledTheme(themeId: string): boolean {
 function getShikiThemeForHighlighting(themeId: string): string {
   // If there's a direct mapping to a bundled theme, use it
   if (themeId in THEME_TO_SHIKI_MAP) {
+    console.log(
+      "[getShikiThemeForHighlighting] Using mapped theme:",
+      THEME_TO_SHIKI_MAP[themeId],
+    );
     return THEME_TO_SHIKI_MAP[themeId];
   }
 
   // If it's already a shiki bundled theme, use it directly
   if (isShikiBundledTheme(themeId)) {
+    console.log("[getShikiThemeForHighlighting] Using bundled theme:", themeId);
     return themeId;
   }
 
-  // If the theme is loaded in our cache (has tokenColors), use it directly
+  // If the theme is loaded in our cache, check if it has valid tokenColors
+  // A proper syntax highlighting theme needs at least ~10 tokenColor rules
+  const MIN_TOKEN_COLORS_FOR_HIGHLIGHTING = 10;
   if (fullThemesCache.has(themeId)) {
-    return themeId;
+    const cachedTheme = fullThemesCache.get(themeId);
+    const tokenColorsCount = cachedTheme?.tokenColors?.length ?? 0;
+    console.log("[getShikiThemeForHighlighting] Found in cache:", {
+      themeId,
+      hasTokenColors: !!cachedTheme?.tokenColors,
+      tokenColorsLength: tokenColorsCount,
+      themeType: cachedTheme?.type,
+    });
+    // Only use the cached theme if it has enough tokenColors for syntax highlighting
+    if (tokenColorsCount >= MIN_TOKEN_COLORS_FOR_HIGHLIGHTING) {
+      return themeId;
+    }
+    // Theme is loaded but has insufficient tokenColors - fall back based on theme type
+    const themeType = cachedTheme?.type;
+    const fallback = themeType === "light" ? "github-light" : "github-dark";
+    console.log(
+      "[getShikiThemeForHighlighting] Insufficient tokenColors (" +
+        tokenColorsCount +
+        "), falling back to:",
+      fallback,
+    );
+    return fallback;
   }
 
   // Check the theme type and use appropriate default
   const builtinTheme = getBuiltinThemeById(themeId);
   if (builtinTheme) {
-    // If the theme has tokenColors, load it and use it
-    if (builtinTheme.tokenColors && builtinTheme.tokenColors.length > 0) {
+    const builtinTokenColorsCount = builtinTheme.tokenColors?.length ?? 0;
+    // If the theme has enough tokenColors, load it and use it
+    if (builtinTokenColorsCount >= MIN_TOKEN_COLORS_FOR_HIGHLIGHTING) {
+      console.log(
+        "[getShikiThemeForHighlighting] Using builtin theme with tokenColors:",
+        themeId,
+        builtinTokenColorsCount,
+      );
       return themeId; // Will be loaded by ensureThemeLoaded
     }
-    return builtinTheme.type === "light" ? "github-light" : "github-dark";
+    const fallback =
+      builtinTheme.type === "light" ? "github-light" : "github-dark";
+    console.log(
+      "[getShikiThemeForHighlighting] Builtin insufficient tokenColors (" +
+        builtinTokenColorsCount +
+        "), falling back to:",
+      fallback,
+    );
+    return fallback;
   }
 
   // Default to github-dark
+  console.log(
+    "[getShikiThemeForHighlighting] No theme found, defaulting to github-dark",
+  );
   return "github-dark";
 }
 
@@ -249,6 +294,16 @@ export async function highlightCode(
   // Get the theme to use for highlighting
   const shikiTheme = getShikiThemeForHighlighting(themeId);
 
+  // Check if theme has tokenColors
+  const cachedTheme = fullThemesCache.get(themeId);
+  console.log("[shiki-theme-loader] highlightCode:", {
+    themeId,
+    shikiTheme,
+    language,
+    cachedThemeHasTokenColors: cachedTheme?.tokenColors?.length ?? 0,
+    loadedThemes: highlighter.getLoadedThemes(),
+  });
+
   const loadedLangs = highlighter.getLoadedLanguages();
   const lang = loadedLangs.includes(language) ? language : "plaintext";
 
@@ -260,6 +315,36 @@ export async function highlightCode(
   // Extract just the code content from shiki's output (remove wrapper)
   const match = html.match(/<code[^>]*>([\s\S]*?)<\/code>/);
   return match ? match[1] : code;
+}
+
+/**
+ * Highlight code with native Shiki line structure for CSS-based line numbers.
+ * Returns the full <pre><code> structure with each line wrapped in a span.line element.
+ * Use CSS counters to display line numbers.
+ */
+export async function highlightCodeWithLineNumbers(
+  code: string,
+  language: string,
+  themeId: string,
+): Promise<string> {
+  const highlighter = await getHighlighter();
+
+  // Ensure the theme is loaded (if it's a custom theme with tokenColors)
+  await ensureThemeLoaded(themeId);
+
+  // Get the theme to use for highlighting
+  const shikiTheme = getShikiThemeForHighlighting(themeId);
+
+  const loadedLangs = highlighter.getLoadedLanguages();
+  const lang = loadedLangs.includes(language) ? language : "plaintext";
+
+  // Return full HTML with pre/code structure - each line gets a span.line element
+  const html = highlighter.codeToHtml(code, {
+    lang,
+    theme: shikiTheme,
+  });
+
+  return html;
 }
 
 /**

@@ -1,6 +1,11 @@
+export { ChangesFileList } from "./changes-file-list";
 export { ChatIcon } from "./chat-icon";
 export { ChatTreeItem, type SubChatMeta } from "./chat-tree-item";
+export { GitActionsToolbar } from "./git-actions-toolbar";
+export { LeftSidebarChangesView } from "./left-sidebar-changes-view";
+export { LeftSidebarTabs } from "./left-sidebar-tabs";
 export { MultiSelectFooter } from "./multi-select-footer";
+export { ProjectFileTree } from "./project-file-tree";
 export { ProjectSelectorHeader } from "./project-selector-header";
 export { SidebarListItem } from "./sidebar-list-item";
 export { SidebarListSection } from "./sidebar-list-section";

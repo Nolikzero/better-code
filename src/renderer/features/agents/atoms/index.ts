@@ -1,5 +1,6 @@
 import { atom } from "jotai";
 import { atomFamily, atomWithStorage } from "jotai/utils";
+import type { FileChange } from "../../../../shared/utils";
 
 // Selected agent chat ID - null means "new chat" view (persisted to restore on reload)
 export const selectedAgentChatIdAtom = atomWithStorage<string | null>(
@@ -203,7 +204,23 @@ export const agentsSidebarOpenAtom = atomWithStorage<boolean>(
 // Sidebar width with localStorage persistence
 export const agentsSidebarWidthAtom = atomWithStorage<number>(
   "agents-sidebar-width",
-  224,
+  180,
+  undefined,
+  { getOnInit: true },
+);
+
+// Chats sidebar (right) state
+export const chatsSidebarOpenAtom = atomWithStorage<boolean>(
+  "chats-sidebar-open",
+  true,
+  undefined,
+  { getOnInit: true },
+);
+
+// Chats sidebar (right) width with localStorage persistence
+export const chatsSidebarWidthAtom = atomWithStorage<number>(
+  "chats-sidebar-width",
+  250,
   undefined,
   { getOnInit: true },
 );
@@ -271,6 +288,77 @@ export const agentsDiffSidebarOpenAtom = atomWithStorage<boolean>(
 // Focused file path in diff sidebar (for scroll-to-file feature)
 // Set by AgentEditTool on click, consumed by AgentDiffView
 export const agentsFocusedDiffFileAtom = atom<string | null>(null);
+
+// Center diff view open state - when true, shows diff viewer in main content instead of chat
+export const centerDiffViewOpenAtom = atom<boolean>(false);
+
+// Selected file path for center diff view (which file to highlight/scroll to)
+// Different from agentsFocusedDiffFileAtom - this persists the selection
+export const centerDiffSelectedFileAtom = atom<string | null>(null);
+
+// Hovered file path for sync between sidebar and center diff view
+// When hovering a file in either view, both highlight and scroll to it
+export const hoveredDiffFileAtom = atom<string | null>(null);
+
+// ========================================
+// Git Actions State
+// ========================================
+
+// Selected files for git operations (Set of file paths)
+export const selectedDiffFilesAtom = atom<Set<string>>(new Set<string>());
+
+// Toggle selection helper (write-only atom)
+export const toggleDiffFileSelectionAtom = atom(
+  null,
+  (get, set, filePath: string) => {
+    const currentSet = get(selectedDiffFilesAtom);
+    const newSet = new Set(currentSet);
+    if (newSet.has(filePath)) {
+      newSet.delete(filePath);
+    } else {
+      newSet.add(filePath);
+    }
+    set(selectedDiffFilesAtom, newSet);
+  },
+);
+
+// Select all files helper (write-only atom)
+export const selectAllDiffFilesAtom = atom(
+  null,
+  (_get, set, files: string[]) => {
+    set(selectedDiffFilesAtom, new Set(files));
+  },
+);
+
+// Deselect all files helper (write-only atom)
+export const deselectAllDiffFilesAtom = atom(null, (_get, set) => {
+  set(selectedDiffFilesAtom, new Set<string>());
+});
+
+// Commit message input
+export const commitMessageAtom = atom<string>("");
+
+// Git actions loading states
+export interface GitActionsLoadingState {
+  isCommitting: boolean;
+  isStashing: boolean;
+  isUnstashing: boolean;
+  isPushing: boolean;
+}
+
+export const gitActionsLoadingAtom = atom<GitActionsLoadingState>({
+  isCommitting: false,
+  isStashing: false,
+  isUnstashing: false,
+  isPushing: false,
+});
+
+// Whether there are stashes available (for enabling/disabling Pop button)
+export const hasStashAtom = atom<boolean>(false);
+
+// ========================================
+// Sub-chats display
+// ========================================
 
 // Sub-chats display mode - tabs (horizontal) or sidebar (vertical list)
 export const agentsSubChatsSidebarModeAtom = atomWithStorage<
@@ -418,12 +506,8 @@ export const agentsDebugModeAtom = atomWithStorage<AgentsDebugMode>(
 
 // Changed files per sub-chat for tracking edits/writes
 // Map<subChatId, FileChange[]>
-export interface SubChatFileChange {
-  filePath: string;
-  displayPath: string;
-  additions: number;
-  deletions: number;
-}
+// SubChatFileChange is an alias for FileChange from shared types for backwards compatibility
+export type SubChatFileChange = FileChange;
 
 export const subChatFilesAtom = atom<Map<string, SubChatFileChange[]>>(
   new Map(),
@@ -590,3 +674,131 @@ export const addedDirectoriesAtomFamily = atomFamily((subChatId: string) =>
     },
   ),
 );
+
+// ============================================================================
+// Left Sidebar Changes View State
+// ============================================================================
+
+// Import types from use-diff-management hook
+import type { DiffStats, ParsedFileDiff } from "../hooks/use-diff-management";
+
+// Re-export for convenience
+export type { DiffStats, ParsedFileDiff };
+
+// Shared diff data from active chat (set by active-chat.tsx, read by left sidebar)
+export interface ActiveChatDiffData {
+  chatId: string;
+  worktreePath: string | null;
+  sandboxId: string | undefined;
+  repository: string | undefined;
+  diffStats: DiffStats;
+  diffContent: string | null;
+  parsedFileDiffs: ParsedFileDiff[] | null;
+  prefetchedFileContents: Record<string, string>;
+}
+
+export const activeChatDiffDataAtom = atom<ActiveChatDiffData | null>(null);
+
+// Trigger to refresh diff data - increment to trigger refetch
+// Used by components that modify the worktree (discard changes, etc.)
+export const refreshDiffTriggerAtom = atom<number>(0);
+
+// PR actions state (set by active-chat.tsx, read by left sidebar)
+export interface PrActionsState {
+  // PR state
+  prUrl: string | null;
+  prNumber: number | null;
+  hasPrNumber: boolean;
+  isPrOpen: boolean;
+  // Loading states
+  isCreatingPr: boolean;
+  isCommittingToPr: boolean;
+  isMergingPr: boolean;
+  isReviewing: boolean;
+  // Actions
+  onCreatePr: () => void;
+  onCommitToPr: () => void;
+  onMergePr: () => void;
+  onReview: () => void;
+}
+
+export const prActionsAtom = atom<PrActionsState | null>(null);
+
+// Left sidebar expanded width (when showing diffs)
+export const leftSidebarExpandedWidthAtom = atomWithStorage<number>(
+  "agents:leftSidebarExpandedWidth",
+  350,
+  undefined,
+  { getOnInit: true },
+);
+
+// Changes section collapsed state in left sidebar
+export const changesSectionCollapsedAtom = atomWithStorage<boolean>(
+  "agents:changesSectionCollapsed",
+  false,
+  undefined,
+  { getOnInit: true },
+);
+
+// ============================================================================
+// Left Sidebar Project Tree State
+// ============================================================================
+
+// Active tab in left sidebar ('project' = file tree, 'changes' = git changes)
+export type LeftSidebarTab = "project" | "changes";
+export const leftSidebarActiveTabAtom = atomWithStorage<LeftSidebarTab>(
+  "agents:leftSidebarActiveTab",
+  "project",
+  undefined,
+  { getOnInit: true },
+);
+
+// Expanded folders per project (persisted)
+// Maps projectPath -> array of expanded folder relative paths
+export const expandedFoldersAtom = atomWithStorage<Record<string, string[]>>(
+  "agents:expandedFolders",
+  {},
+  undefined,
+  { getOnInit: true },
+);
+
+// atomFamily to get/set expanded folders per project
+export const expandedFoldersAtomFamily = atomFamily((projectPath: string) =>
+  atom(
+    (get) => get(expandedFoldersAtom)[projectPath] ?? [],
+    (get, set, update: string[] | ((prev: string[]) => string[])) => {
+      const current = get(expandedFoldersAtom);
+      const prevPaths = current[projectPath] ?? [];
+      const newPaths =
+        typeof update === "function" ? update(prevPaths) : update;
+      set(expandedFoldersAtom, { ...current, [projectPath]: newPaths });
+    },
+  ),
+);
+
+// ============================================================================
+// Center File Viewer State
+// ============================================================================
+
+// Center file view open state - when true, shows file viewer in main content
+export const centerFileViewOpenAtom = atom<boolean>(false);
+
+// File path for center file view (relative to project)
+export const centerFilePathAtom = atom<string | null>(null);
+
+// Target line number for center file view (null = no specific line)
+// Set by QuickOpenDialog when user types "filename:123" syntax
+export const centerFileLineAtom = atom<number | null>(null);
+
+// Trigger reveal in project tree - set to relative file path
+// When set, ProjectFileTree expands all parent folders, scrolls to file, and highlights it
+export const revealFileInTreeAtom = atom<string | null>(null);
+
+// ============================================================================
+// Main Content Tabs State
+// ============================================================================
+
+// Main content active tab - controls which view is shown in center area
+// Order: Chat | File | Changes
+export type MainContentTab = "chat" | "file" | "changes";
+export const mainContentActiveTabAtom = atom<MainContentTab>("chat");

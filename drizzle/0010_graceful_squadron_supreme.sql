@@ -1,0 +1,1 @@
+ALTER TABLE `sub_chats` ADD `emitted_diff_keys` text DEFAULT '[]';

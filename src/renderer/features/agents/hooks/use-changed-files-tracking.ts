@@ -1,28 +1,16 @@
 import { useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  calculateDiffStats,
+  isSessionFile,
+  type Message,
+  toDisplayPath,
+} from "../../../../shared/utils";
+import {
   type SubChatFileChange,
   subChatFilesAtom,
   subChatToChatMapAtom,
 } from "../atoms";
-
-// import { REPO_ROOT_PATH } from "@/lib/codesandbox-constants"
-const REPO_ROOT_PATH = "/workspace"; // Desktop mock
-
-interface MessagePart {
-  type: string;
-  input?: {
-    file_path?: string;
-    old_string?: string;
-    new_string?: string;
-    content?: string;
-  };
-}
-
-interface Message {
-  role: string;
-  parts?: MessagePart[];
-}
 
 /**
  * Custom hook to track changed files from Edit/Write tool calls in a sub-chat
@@ -38,72 +26,10 @@ export function useChangedFilesTracking(
   const setSubChatFiles = useSetAtom(subChatFilesAtom);
   const setSubChatToChatMap = useSetAtom(subChatToChatMapAtom);
 
-  // Helper to get display path (removes sandbox prefixes)
-  const getDisplayPath = useCallback((filePath: string): string => {
-    if (!filePath) return "";
-
-    // Use constant from codesandbox-constants
-    const prefixes = [`${REPO_ROOT_PATH}/`, "/project/sandbox/", "/project/"];
-
-    for (const prefix of prefixes) {
-      if (filePath.startsWith(prefix)) {
-        return filePath.slice(prefix.length);
-      }
-    }
-
-    // Heuristic: find common root directories
-    if (filePath.startsWith("/")) {
-      const parts = filePath.split("/");
-      const rootIndicators = ["apps", "packages", "src", "lib", "components"];
-      const rootIndex = parts.findIndex((p) => rootIndicators.includes(p));
-      if (rootIndex > 0) {
-        return parts.slice(rootIndex).join("/");
-      }
-    }
-
-    return filePath;
-  }, []);
-
-  // Calculate diff stats from old_string and new_string
-  // For Edit: old_string lines are deletions, new_string lines are additions
-  // For Write: counts lines in new content as additions
-  const calculateDiffStats = useCallback(
-    (
-      oldStr: string,
-      newStr: string,
-    ): { additions: number; deletions: number } => {
-      if (oldStr === newStr) return { additions: 0, deletions: 0 };
-
-      const oldLines = oldStr ? oldStr.split("\n").length : 0;
-      const newLines = newStr ? newStr.split("\n").length : 0;
-
-      // Simple heuristic: if old is empty, it's a new file (Write)
-      if (!oldStr) {
-        return { additions: newLines, deletions: 0 };
-      }
-
-      // For edits: old lines are removed, new lines are added
-      return {
-        additions: newLines,
-        deletions: oldLines,
-      };
-    },
-    [],
-  );
-
   // State to hold the calculated changed files (only updated when streaming ends)
   const [changedFiles, setChangedFiles] = useState<SubChatFileChange[]>([]);
   const wasStreamingRef = useRef(false);
   const isInitializedRef = useRef(false);
-
-  // Check if a file path is a session/plan file that should be excluded
-  const isSessionFile = useCallback((filePath: string): boolean => {
-    // Exclude files in claude-sessions (plan files stored in app's local storage)
-    if (filePath.includes("claude-sessions")) return true;
-    // Exclude files in Application Support directory
-    if (filePath.includes("Application Support")) return true;
-    return false;
-  }, []);
 
   // Calculate changed files from messages
   const calculateChangedFiles = useCallback(() => {
@@ -140,7 +66,7 @@ export function useChangedFilesTracking(
               // For Write (new file), original is null; for Edit, it's the old_string
               originalContent: part.type === "tool-Write" ? null : oldString,
               currentContent: newString,
-              displayPath: getDisplayPath(filePath),
+              displayPath: toDisplayPath(filePath),
             });
           }
         }
@@ -167,7 +93,7 @@ export function useChangedFilesTracking(
     }
 
     return result;
-  }, [messages, getDisplayPath, calculateDiffStats, isSessionFile]);
+  }, [messages]);
 
   // Only recalculate when streaming ends (transition from true to false)
   // Also calculate on initial mount if not streaming

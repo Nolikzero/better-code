@@ -21,10 +21,10 @@ export function AgentsHeaderControls({
   isSidebarOpen,
   onToggleSidebar,
   hasUnseenChanges = false,
-  isSubChatsSidebarOpen = false,
+  isSubChatsSidebarOpen: _isSubChatsSidebarOpen = false,
 }: AgentsHeaderControlsProps) {
-  // Only show open button when both sidebars are closed
-  if (isSidebarOpen || isSubChatsSidebarOpen) return null;
+  // Show open button when left sidebar is closed
+  if (isSidebarOpen) return null;
 
   return (
     <TooltipProvider>
@@ -36,6 +36,10 @@ export function AgentsHeaderControls({
             onClick={onToggleSidebar}
             className="h-6 w-6 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] text-foreground shrink-0 rounded-md relative"
             aria-label="Open sidebar"
+            style={{
+              // @ts-expect-error - WebKit-specific property to allow clicks in drag region
+              WebkitAppRegion: "no-drag",
+            }}
           >
             <AlignJustify className="h-4 w-4" />
             {/* Unseen changes indicator */}

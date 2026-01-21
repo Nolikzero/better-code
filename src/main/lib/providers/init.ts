@@ -1,5 +1,6 @@
 import { ClaudeProvider } from "./claude";
 import { CodexProvider } from "./codex";
+import { OpenCodeProvider } from "./opencode";
 /**
  * Provider initialization
  *
@@ -31,11 +32,43 @@ export async function initializeProviders(): Promise<void> {
   providerRegistry.register(codexProvider);
   console.log("[providers] Registered Codex provider");
 
+  // Register OpenCode provider
+  const openCodeProvider = new OpenCodeProvider();
+  providerRegistry.register(openCodeProvider);
+  console.log("[providers] Registered OpenCode provider");
+
+  // Initialize OpenCode (starts server if needed)
+  // Do this asynchronously to not block startup
+  openCodeProvider.initialize().catch((error) => {
+    console.error("[providers] OpenCode initialization failed:", error);
+    // Don't fail startup - provider will be marked as unavailable
+  });
+
   // Set Claude as default
   providerRegistry.setDefault("claude");
 
   initialized = true;
   console.log("[providers] Initialization complete");
+}
+
+/**
+ * Shutdown all providers (call during app quit)
+ */
+export async function shutdownProviders(): Promise<void> {
+  console.log("[providers] Shutting down providers...");
+
+  for (const provider of providerRegistry.getAll()) {
+    if (provider.shutdown) {
+      try {
+        await provider.shutdown();
+        console.log(`[providers] Shutdown ${provider.id} provider`);
+      } catch (error) {
+        console.error(`[providers] Failed to shutdown ${provider.id}:`, error);
+      }
+    }
+  }
+
+  console.log("[providers] All providers shutdown complete");
 }
 
 /**

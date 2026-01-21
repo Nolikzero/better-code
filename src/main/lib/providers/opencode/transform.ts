@@ -231,6 +231,17 @@ export function createOpenCodeTransformer(
   // Maps question ID to array of question texts
   const pendingQuestions = new Map<string, string[]>();
 
+  // Track latest assistant message for token/cost metadata
+  let latestAssistantMessage: {
+    cost?: number;
+    tokens?: {
+      input: number;
+      output: number;
+      reasoning: number;
+      cache: { read: number; write: number };
+    };
+  } | null = null;
+
   const genId = () =>
     `text-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
@@ -597,6 +608,16 @@ export function createOpenCodeTransformer(
             resultSubtype: "success",
             // Include emittedDiffKeys for persistence across turns
             emittedDiffKeys: Array.from(emittedDiffKeys),
+            // Token/cost data from message.updated event
+            inputTokens: latestAssistantMessage?.tokens?.input,
+            outputTokens: latestAssistantMessage?.tokens?.output,
+            totalTokens: latestAssistantMessage?.tokens
+              ? latestAssistantMessage.tokens.input +
+                latestAssistantMessage.tokens.output
+              : undefined,
+            totalCostUsd: latestAssistantMessage?.cost,
+            cachedInputTokens: latestAssistantMessage?.tokens?.cache?.read,
+            reasoningTokens: latestAssistantMessage?.tokens?.reasoning,
           };
 
           yield { type: "message-metadata", messageMetadata: metadata };
@@ -790,13 +811,37 @@ export function createOpenCodeTransformer(
         // These events don't need UI representation
         break;
 
+      // ===== MESSAGE UPDATED (contains final token/cost data) =====
+      case "message.updated": {
+        // SDK type: EventMessageUpdated.properties.info is Message (UserMessage | AssistantMessage)
+        const msgEvent = event as unknown as {
+          properties: {
+            info: {
+              role?: string;
+              cost?: number;
+              tokens?: {
+                input: number;
+                output: number;
+                reasoning: number;
+                cache: { read: number; write: number };
+              };
+            };
+          };
+        };
+        const msg = msgEvent.properties.info;
+        if (msg?.role === "assistant" && msg.tokens) {
+          latestAssistantMessage = {
+            cost: msg.cost,
+            tokens: msg.tokens,
+          };
+        }
+        break;
+      }
+
       default: {
         // Unknown event type - log for debugging
         const eventType = (event as { type: string }).type;
-        if (
-          eventType !== "message.updated" &&
-          eventType !== "file.watcher.updated"
-        ) {
+        if (eventType !== "file.watcher.updated") {
           logger.info(`Unhandled event type: ${eventType}`);
         }
       }

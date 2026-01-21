@@ -270,25 +270,25 @@ function ChatViewInner({
   // Input expansion state for overlay mode (compact bar that expands on hover)
   const [isInputExpanded, setIsInputExpanded] = useState(false);
   const collapseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Track if scrolled to bottom for auto-expand in overlay mode
+  const [isAtBottom, setIsAtBottom] = useState(true);
 
   // Handlers for stable hover behavior with delayed collapse
   const handleInputAreaMouseEnter = useCallback(() => {
-    if (!isOverlayMode) return;
     // Cancel any pending collapse
     if (collapseTimeoutRef.current) {
       clearTimeout(collapseTimeoutRef.current);
       collapseTimeoutRef.current = null;
     }
     setIsInputExpanded(true);
-  }, [isOverlayMode]);
+  }, []);
 
   const handleInputAreaMouseLeave = useCallback(() => {
-    if (!isOverlayMode) return;
     // Delay collapse to avoid flickering
     collapseTimeoutRef.current = setTimeout(() => {
       setIsInputExpanded(false);
     }, 150);
-  }, [isOverlayMode]);
+  }, []);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -797,6 +797,26 @@ function ChatViewInner({
     initial: "instant",
     resize: "smooth",
   });
+
+  // Track scroll position to auto-expand input when at bottom (non-overlay mode only)
+  useEffect(() => {
+    if (isOverlayMode) return; // Only for non-overlay mode
+    const scrollEl = scrollRef.current;
+    if (!scrollEl) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = scrollEl;
+      // Consider "at bottom" if within 100px of the bottom
+      const nearBottom = scrollHeight - scrollTop - clientHeight < 100;
+      setIsAtBottom(nearBottom);
+    };
+
+    // Check initial position
+    handleScroll();
+
+    scrollEl.addEventListener("scroll", handleScroll, { passive: true });
+    return () => scrollEl.removeEventListener("scroll", handleScroll);
+  }, [isOverlayMode, scrollRef]);
 
   // Stream debug: log status changes
   const prevStatusRef = useRef(status);
@@ -1882,8 +1902,9 @@ function ChatViewInner({
         onMouseEnter={handleInputAreaMouseEnter}
         onMouseLeave={handleInputAreaMouseLeave}
       >
-        {/* Compact bar - shown in overlay mode when collapsed */}
-        {isOverlayMode && !isInputExpanded && (
+        {/* Compact bar - shown when not hovered, and in normal mode also requires not at bottom */}
+        {((isOverlayMode && !isInputExpanded) ||
+          (!isOverlayMode && !isAtBottom && !isInputExpanded)) && (
           <div className="px-2 pb-2 border-border/50 pt-2">
             <div className="w-full max-w-2xl mx-auto">
               <div className="h-8 px-3 bg-background flex items-center gap-2 text-sm text-muted-foreground rounded-xs border border-border/50 cursor-text hover:border-foreground/30 transition-colors">
@@ -1897,9 +1918,10 @@ function ChatViewInner({
 
         {/* Expanded content - SubChatStatusCard + Input */}
         <AnimatePresence initial={false}>
-          {(!isOverlayMode || isInputExpanded) && (
+          {((isOverlayMode && isInputExpanded) ||
+            (!isOverlayMode && (isAtBottom || isInputExpanded))) && (
             <motion.div
-              initial={isOverlayMode ? { height: 0, opacity: 0 } : false}
+              initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}

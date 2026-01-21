@@ -69,6 +69,32 @@ export function ChatInputRoot({
     (e: React.DragEvent) => {
       e.preventDefault();
       setIsDragOver(false);
+
+      // Check for file mention data (dragged from project tree)
+      // Try custom MIME type first, then text/plain with prefix for Electron compatibility
+      let mentionData = e.dataTransfer.getData("application/x-file-mention");
+      if (!mentionData) {
+        const textData = e.dataTransfer.getData("text/plain");
+        if (textData?.startsWith("__FILE_MENTION__")) {
+          mentionData = textData.slice("__FILE_MENTION__".length);
+        }
+      }
+
+      if (mentionData) {
+        try {
+          const mention = JSON.parse(mentionData);
+          editorRef.current?.appendMention(mention);
+          // Focus after adding mention
+          requestAnimationFrame(() => {
+            editorRef.current?.focus();
+          });
+          return;
+        } catch {
+          // If parsing fails, fall through to file handling
+        }
+      }
+
+      // Handle dropped files
       let droppedFiles = Array.from(e.dataTransfer.files);
       if (filterDroppedFiles) {
         droppedFiles = filterDroppedFiles(droppedFiles);

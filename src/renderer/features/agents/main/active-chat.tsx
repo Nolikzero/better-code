@@ -67,6 +67,7 @@ import {
   loadingSubChatsAtom,
   mainContentActiveTabAtom,
   pendingAuthRetryMessageAtom,
+  pendingFileMentionsAtom,
   pendingPlanApprovalsAtom,
   pendingPrMessageAtom,
   pendingReviewMessageAtom,
@@ -873,6 +874,24 @@ function ChatViewInner({
       });
     }
   }, [pendingReviewMessage, isStreaming, sendMessage, setPendingReviewMessage]);
+
+  // Watch for pending file mentions (from project tree context menu)
+  const [pendingFileMentions, setPendingFileMentions] = useAtom(
+    pendingFileMentionsAtom,
+  );
+
+  useEffect(() => {
+    if (pendingFileMentions.length === 0) return;
+
+    // Focus and append all mentions to editor
+    editorRef.current?.focus();
+    for (const mention of pendingFileMentions) {
+      editorRef.current?.appendMention(mention);
+    }
+
+    // Clear the pending mentions
+    setPendingFileMentions([]);
+  }, [pendingFileMentions, setPendingFileMentions]);
 
   // Pending user questions from AskUserQuestion tool
   const [pendingQuestions, setPendingQuestions] = useAtom(

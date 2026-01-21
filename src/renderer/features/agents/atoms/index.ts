@@ -840,3 +840,14 @@ export const codeSnippetsAtomFamily = atomFamily((subChatId: string) =>
     },
   ),
 );
+
+// ============================================================================
+// Pending File Mentions (for adding files from project tree to chat)
+// ============================================================================
+
+// Import type for FileMentionOption
+import type { FileMentionOption } from "../mentions/types";
+
+// Pending file mentions to be added to chat input
+// Set by project tree context menu or drag, consumed by active-chat
+export const pendingFileMentionsAtom = atom<FileMentionOption[]>([]);

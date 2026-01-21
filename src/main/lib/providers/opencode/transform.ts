@@ -257,11 +257,6 @@ export function createOpenCodeTransformer(
     // Get event type as string for handling new v2 event types not in v1 union
     const eventType = (event as { type: string }).type;
 
-    logger.info(`Processing event`, {
-      type: event.type,
-      payload: JSON.stringify(event),
-    });
-
     // Handle question events (v2 events not in v1 Event union type)
     if (eventType === "question.asked") {
       const questionEvent = event as unknown as EventQuestionAsked;

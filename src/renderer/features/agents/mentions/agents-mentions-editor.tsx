@@ -633,6 +633,42 @@ export const AgentsMentionsEditor = memo(
             triggerStartIndex.current = null;
             onCloseTrigger();
           },
+
+          // Append mention at end of editor (used for adding files from project tree)
+          appendMention: (option: FileMentionOption) => {
+            if (!editorRef.current) return;
+
+            // Create mention node
+            const mentionNode = createMentionNode(option);
+
+            // Add space before if editor has content
+            const hasExistingContent = editorRef.current.textContent?.trim();
+            if (hasExistingContent) {
+              const spaceBefore = document.createTextNode(" ");
+              editorRef.current.appendChild(spaceBefore);
+            }
+
+            // Append mention at end
+            editorRef.current.appendChild(mentionNode);
+
+            // Add trailing space
+            const spaceAfter = document.createTextNode(" ");
+            editorRef.current.appendChild(spaceAfter);
+
+            // Move cursor to end
+            const sel = window.getSelection();
+            if (sel) {
+              const newRange = document.createRange();
+              newRange.setStartAfter(spaceAfter);
+              newRange.collapse(true);
+              sel.removeAllRanges();
+              sel.addRange(newRange);
+            }
+
+            // Update hasContent
+            setHasContent(true);
+            onContentChange?.(true);
+          },
         }),
         [onCloseTrigger, onCloseSlashTrigger, onContentChange],
       );

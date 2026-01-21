@@ -37,6 +37,7 @@ export interface AgentsMentionsEditorHandle {
   focus: () => void;
   blur: () => void;
   insertMention: (option: FileMentionOption) => void;
+  appendMention: (option: FileMentionOption) => void; // Append mention at end of editor
   getValue: () => string;
   setValue: (value: string) => void;
   clear: () => void;

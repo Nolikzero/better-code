@@ -5,12 +5,6 @@ import { join } from "path";
 
 // Enable file logging in both dev and production
 log.transports.file.level = "info";
-console.log("[electron-log] Log file:", log.transports.file.getFile()?.path);
-
-// Redirect console to electron-log in production only
-if (app.isPackaged) {
-  Object.assign(console, log.functions);
-}
 
 import {
   checkForUpdates,

@@ -2,7 +2,7 @@
 
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { ChevronRight, FolderOpen } from "lucide-react";
+import { ChevronRight, FolderOpen, MessageSquarePlus } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -11,6 +11,12 @@ import {
   useRef,
   useState,
 } from "react";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "../../../components/ui/context-menu";
 import { FilesIcon } from "../../../components/ui/icons";
 import { api } from "../../../lib/mock-api";
 import { trpc, trpcClient } from "../../../lib/trpc";
@@ -19,12 +25,14 @@ import {
   centerFilePathAtom,
   expandedFoldersAtomFamily,
   mainContentActiveTabAtom,
+  pendingFileMentionsAtom,
   revealFileInTreeAtom,
   selectedAgentChatIdAtom,
   selectedProjectAtom,
 } from "../../agents/atoms";
 import { getFileIconByExtension } from "../../agents/mentions/icons/file-icons";
 import { FolderClosedIcon } from "../../agents/mentions/icons/folder-icons";
+import type { FileMentionOption } from "../../agents/mentions/types";
 
 interface FileTreeEntry {
   name: string;
@@ -71,6 +79,7 @@ export function ProjectFileTree() {
   const setActiveTab = useSetAtom(mainContentActiveTabAtom);
   const [centerFilePath, setCenterFilePath] = useAtom(centerFilePathAtom);
   const [revealFilePath, setRevealFilePath] = useAtom(revealFileInTreeAtom);
+  const setPendingFileMentions = useSetAtom(pendingFileMentionsAtom);
   const parentRef = useRef<HTMLDivElement>(null);
   const subscriberId = useId();
 
@@ -263,6 +272,49 @@ export function ProjectFileTree() {
       setActiveTab("file");
     },
     [setCenterFilePath, setActiveTab],
+  );
+
+  // Create a FileMentionOption from a file/folder entry
+  const createMentionOption = useCallback(
+    (entry: FileTreeEntry): FileMentionOption => {
+      const isFolder = entry.type === "folder";
+      const fileName = entry.name;
+      return {
+        id: `${isFolder ? "folder" : "file"}:local:${entry.path}`,
+        label: fileName,
+        path: entry.path,
+        repository: "local",
+        truncatedPath: entry.path.includes("/")
+          ? entry.path.substring(0, entry.path.lastIndexOf("/"))
+          : "",
+        type: isFolder ? "folder" : "file",
+      };
+    },
+    [],
+  );
+
+  // Handle "Add to Chat" context menu action
+  const handleAddToChat = useCallback(
+    (entry: FileTreeEntry) => {
+      if (!selectedChatId) return;
+      const mention = createMentionOption(entry);
+      setPendingFileMentions((prev) => [...prev, mention]);
+    },
+    [selectedChatId, createMentionOption, setPendingFileMentions],
+  );
+
+  // Handle drag start - set file mention data
+  const handleDragStart = useCallback(
+    (e: React.DragEvent, entry: FileTreeEntry) => {
+      const mention = createMentionOption(entry);
+      const mentionJson = JSON.stringify(mention);
+      // Use text/plain with prefix for better compatibility in Electron
+      e.dataTransfer.setData("text/plain", `__FILE_MENTION__${mentionJson}`);
+      // Also set custom type as backup
+      e.dataTransfer.setData("application/x-file-mention", mentionJson);
+      e.dataTransfer.effectAllowed = "copy";
+    },
+    [createMentionOption],
   );
 
   // Clear cache when browse path changes (project or worktree change)
@@ -490,70 +542,85 @@ export function ProjectFileTree() {
                 transform: `translateY(${virtualItem.start}px)`,
               }}
             >
-              <button
-                onClick={() =>
-                  isFolder
-                    ? handleToggleFolder(entry.path)
-                    : handleFileClick(entry.path)
-                }
-                className={cn(
-                  "w-full h-full flex items-center gap-1.5 px-2 text-left text-sm",
-                  "hover:bg-foreground/5 transition-colors duration-300",
-                  "focus:outline-none focus:bg-foreground/5",
-                  // Currently opened file - subtle persistent highlight
-                  centerFilePath === entry.path &&
-                    highlightedFilePath !== entry.path &&
-                    "bg-foreground/8",
-                  // Reveal highlight - more prominent temporary highlight
-                  highlightedFilePath === entry.path &&
-                    "bg-primary/15 border-l-2 border-primary",
-                )}
-                style={{
-                  paddingLeft: `${8 + depth * 16}px`,
-                }}
-              >
-                {/* Folder chevron or file icon */}
-                {isFolder ? (
-                  <>
-                    <ChevronRight
-                      className={cn(
-                        "h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-150",
-                        isExpanded && "rotate-90",
-                      )}
-                    />
-                    {isExpanded ? (
-                      <FolderOpen className="h-4 w-4 shrink-0 text-foreground/70" />
+              <ContextMenu>
+                <ContextMenuTrigger asChild>
+                  <button
+                    onClick={() =>
+                      isFolder
+                        ? handleToggleFolder(entry.path)
+                        : handleFileClick(entry.path)
+                    }
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, entry)}
+                    className={cn(
+                      "w-full h-full flex items-center gap-1.5 px-2 text-left text-sm",
+                      "hover:bg-foreground/5 transition-colors duration-300",
+                      "focus:outline-none focus:bg-foreground/5",
+                      // Currently opened file - subtle persistent highlight
+                      centerFilePath === entry.path &&
+                        highlightedFilePath !== entry.path &&
+                        "bg-foreground/8",
+                      // Reveal highlight - more prominent temporary highlight
+                      highlightedFilePath === entry.path &&
+                        "bg-primary/15 border-l-2 border-primary",
+                    )}
+                    style={{
+                      paddingLeft: `${8 + depth * 16}px`,
+                    }}
+                  >
+                    {/* Folder chevron or file icon */}
+                    {isFolder ? (
+                      <>
+                        <ChevronRight
+                          className={cn(
+                            "h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-150",
+                            isExpanded && "rotate-90",
+                          )}
+                        />
+                        {isExpanded ? (
+                          <FolderOpen className="h-4 w-4 shrink-0 text-foreground/70" />
+                        ) : (
+                          <FolderClosedIcon className="h-4 w-4 shrink-0 text-foreground/70" />
+                        )}
+                      </>
                     ) : (
-                      <FolderClosedIcon className="h-4 w-4 shrink-0 text-foreground/70" />
+                      <>
+                        {/* Spacer for alignment with folders */}
+                        <span className="w-3.5 shrink-0" />
+                        {FileIcon && (
+                          <FileIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        )}
+                      </>
                     )}
-                  </>
-                ) : (
-                  <>
-                    {/* Spacer for alignment with folders */}
-                    <span className="w-3.5 shrink-0" />
-                    {FileIcon && (
-                      <FileIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+
+                    {/* Entry name */}
+                    <span
+                      className={cn(
+                        "truncate min-w-0 font-mono text-xs",
+                        isFolder ? "text-foreground" : "text-foreground/90",
+                      )}
+                    >
+                      {entry.name}
+                    </span>
+
+                    {/* Loading indicator */}
+                    {isLoading && (
+                      <span className="ml-auto shrink-0">
+                        <span className="animate-spin inline-block w-3 h-3 border border-muted-foreground/30 border-t-muted-foreground rounded-full" />
+                      </span>
                     )}
-                  </>
-                )}
-
-                {/* Entry name */}
-                <span
-                  className={cn(
-                    "truncate min-w-0 font-mono text-xs",
-                    isFolder ? "text-foreground" : "text-foreground/90",
-                  )}
-                >
-                  {entry.name}
-                </span>
-
-                {/* Loading indicator */}
-                {isLoading && (
-                  <span className="ml-auto shrink-0">
-                    <span className="animate-spin inline-block w-3 h-3 border border-muted-foreground/30 border-t-muted-foreground rounded-full" />
-                  </span>
-                )}
-              </button>
+                  </button>
+                </ContextMenuTrigger>
+                <ContextMenuContent className="w-48">
+                  <ContextMenuItem
+                    onClick={() => handleAddToChat(entry)}
+                    disabled={!selectedChatId}
+                  >
+                    <MessageSquarePlus className="mr-2 h-4 w-4" />
+                    Add to Chat
+                  </ContextMenuItem>
+                </ContextMenuContent>
+              </ContextMenu>
             </div>
           );
         })}

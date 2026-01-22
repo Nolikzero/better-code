@@ -14,14 +14,12 @@ interface AgentsHeaderControlsProps {
   isSidebarOpen: boolean;
   onToggleSidebar: () => void;
   hasUnseenChanges?: boolean;
-  isSubChatsSidebarOpen?: boolean;
 }
 
 export function AgentsHeaderControls({
   isSidebarOpen,
   onToggleSidebar,
   hasUnseenChanges = false,
-  isSubChatsSidebarOpen: _isSubChatsSidebarOpen = false,
 }: AgentsHeaderControlsProps) {
   // Show open button when left sidebar is closed
   if (isSidebarOpen) return null;

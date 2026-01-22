@@ -66,7 +66,6 @@ export interface ChatMessagesProps {
   sandboxSetupError?: string;
   onRetrySetup?: () => void;
   isMobile?: boolean;
-  isSubChatsSidebarOpen?: boolean;
   ttsPlaybackRate: PlaybackSpeed;
   onPlaybackRateChange: (rate: PlaybackSpeed) => void;
 }
@@ -79,7 +78,6 @@ export function ChatMessages({
   sandboxSetupError,
   onRetrySetup,
   isMobile = false,
-  isSubChatsSidebarOpen = false,
   ttsPlaybackRate,
   onPlaybackRateChange,
 }: ChatMessagesProps) {
@@ -119,7 +117,7 @@ export function ChatMessages({
   }, [messages]);
 
   return (
-    <div className="px-2 max-w-2xl mx-auto -mb-4 pb-8 space-y-4">
+    <div className="px-2 max-w-2xl 2xl:max-w-4xl mx-auto -mb-4 pb-8 space-y-4">
       <div>
         {/* Render message groups - each group has user message sticky within it */}
         {messageGroups.map((group, groupIndex) => {
@@ -135,7 +133,6 @@ export function ChatMessages({
                 onRetrySetup={onRetrySetup}
                 hasAssistantResponse={group.assistantMsgs.length > 0}
                 isMobile={isMobile}
-                isSubChatsSidebarOpen={isSubChatsSidebarOpen}
               />
 
               {/* Assistant messages in this group */}

@@ -4,6 +4,7 @@ import type { ProviderId } from "@shared/types";
 import { TerminalSquare } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 import {
+  IconCloseSidebarRight,
   IconOpenSidebarRight,
   IconTextUndo,
 } from "../../../components/ui/icons";
@@ -27,7 +28,6 @@ export interface ChatHeaderProps {
   chatId: string;
   subChatId?: string;
   isMobileFullscreen: boolean;
-  isSubChatsSidebarOpen: boolean;
   isSidebarOpen: boolean;
   onToggleSidebar: () => void;
   hasAnyUnseenChanges: boolean;
@@ -50,8 +50,9 @@ export interface ChatHeaderProps {
   worktreePath: string | null;
   branch?: string | null;
   baseBranch?: string | null;
-  // SubChats sidebar controls
-  onOpenSubChatsSidebar: () => void;
+  // Chats sidebar (right) controls
+  isChatsSidebarOpen: boolean;
+  onToggleChatsSidebar: () => void;
   // Archive controls
   isArchived: boolean;
   onRestoreWorkspace: () => void;
@@ -65,7 +66,6 @@ export function ChatHeader({
   chatId,
   subChatId,
   isMobileFullscreen,
-  isSubChatsSidebarOpen,
   isSidebarOpen,
   onToggleSidebar,
   hasAnyUnseenChanges,
@@ -84,7 +84,8 @@ export function ChatHeader({
   worktreePath,
   branch,
   baseBranch,
-  onOpenSubChatsSidebar,
+  isChatsSidebarOpen,
+  onToggleChatsSidebar,
   isArchived,
   onRestoreWorkspace,
   isRestoring,
@@ -95,16 +96,11 @@ export function ChatHeader({
     <div
       className={cn(
         "relative z-20 pointer-events-none",
-        // Mobile: always flex; Desktop: absolute when sidebar open, flex when closed
-        !isMobileFullscreen && isSubChatsSidebarOpen
-          ? `absolute top-0 left-0 right-0 ${CHAT_LAYOUT.headerPaddingSidebarOpen}`
-          : `shrink-0 ${CHAT_LAYOUT.headerPaddingSidebarClosed}`,
+        `shrink-0 ${CHAT_LAYOUT.headerPaddingSidebarClosed}`,
       )}
     >
-      {/* Gradient background - only when not absolute */}
-      {(isMobileFullscreen || !isSubChatsSidebarOpen) && (
-        <div className="absolute inset-0" />
-      )}
+      {/* Gradient background */}
+      <div className="absolute inset-0" />
       <div className="pointer-events-auto flex items-center justify-between relative">
         <div className="flex-1 min-w-0 flex items-center gap-2">
           {/* Mobile header - simplified with chat name as trigger */}
@@ -130,7 +126,6 @@ export function ChatHeader({
                 isSidebarOpen={isSidebarOpen}
                 onToggleSidebar={onToggleSidebar}
                 hasUnseenChanges={hasAnyUnseenChanges}
-                isSubChatsSidebarOpen={isSubChatsSidebarOpen}
               />
               {/* Workspace context badge */}
               <WorkspaceContextBadge
@@ -202,21 +197,28 @@ export function ChatHeader({
             </TooltipContent>
           </Tooltip>
         )}
-        {/* Open SubChats Sidebar Button - shows when sidebar is closed (desktop only) */}
-        {!isMobileFullscreen && !isSubChatsSidebarOpen && (
+        {/* Chats Sidebar Toggle Button - shows on desktop only */}
+        {!isMobileFullscreen && (
           <Tooltip delayDuration={500}>
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={onOpenSubChatsSidebar}
+                onClick={onToggleChatsSidebar}
                 className="h-6 w-6 p-0 hover:bg-foreground/10 transition-colors text-foreground shrink-0 rounded-md ml-2"
-                aria-label="Open chats pane"
+                aria-label={isChatsSidebarOpen ? "Close chats" : "Open chats"}
               >
-                <IconOpenSidebarRight className="h-4 w-4" />
+                {isChatsSidebarOpen ? (
+                  <IconCloseSidebarRight className="h-4 w-4" />
+                ) : (
+                  <IconOpenSidebarRight className="h-4 w-4" />
+                )}
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="bottom">Open chats pane</TooltipContent>
+            <TooltipContent side="bottom">
+              {isChatsSidebarOpen ? "Close chats" : "Open chats"}
+              <Kbd>⌘⇧\</Kbd>
+            </TooltipContent>
           </Tooltip>
         )}
         {/* Restore Button - shows when viewing archived workspace (desktop only) */}

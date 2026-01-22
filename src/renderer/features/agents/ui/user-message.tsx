@@ -39,7 +39,6 @@ interface UserMessageProps {
   onRetrySetup?: () => void;
   hasAssistantResponse: boolean;
   isMobile?: boolean;
-  isSubChatsSidebarOpen?: boolean;
 }
 
 export const UserMessage = memo(function UserMessage({
@@ -50,7 +49,6 @@ export const UserMessage = memo(function UserMessage({
   onRetrySetup,
   hasAssistantResponse,
   isMobile = false,
-  isSubChatsSidebarOpen = false,
 }: UserMessageProps) {
   // User message data
   const textContent = msg.parts
@@ -100,9 +98,7 @@ export const UserMessage = memo(function UserMessage({
           "sticky",
           isMobile
             ? CHAT_LAYOUT.stickyTopMobile
-            : isSubChatsSidebarOpen
-              ? CHAT_LAYOUT.stickyTopSidebarOpen
-              : CHAT_LAYOUT.stickyTopSidebarClosed,
+            : CHAT_LAYOUT.stickyTopSidebarClosed,
         )}
       >
         <AgentUserMessageBubble

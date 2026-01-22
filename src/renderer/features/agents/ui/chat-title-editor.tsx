@@ -132,7 +132,7 @@ export function ChatTitleEditor({
   return (
     <div
       ref={containerRef}
-      className={cn("max-w-2xl mx-auto px-4", heightClass)}
+      className={cn("max-w-2xl 2xl:max-w-4xl mx-auto px-4", heightClass)}
     >
       {isEditing ? (
         <input

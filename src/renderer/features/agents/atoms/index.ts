@@ -357,23 +357,6 @@ export const gitActionsLoadingAtom = atom<GitActionsLoadingState>({
 // Whether there are stashes available (for enabling/disabling Pop button)
 export const hasStashAtom = atom<boolean>(false);
 
-// ========================================
-// Sub-chats display
-// ========================================
-
-// Sub-chats display mode - tabs (horizontal) or sidebar (vertical list)
-export const agentsSubChatsSidebarModeAtom = atomWithStorage<
-  "tabs" | "sidebar"
->("agents-subchats-mode", "tabs", undefined, { getOnInit: true });
-
-// Sub-chats sidebar width (right side of chat area)
-export const agentsSubChatsSidebarWidthAtom = atomWithStorage<number>(
-  "agents-subchats-sidebar-width",
-  230,
-  undefined,
-  { getOnInit: true },
-);
-
 // Track chats with unseen changes (finished streaming but user hasn't opened them)
 // Updated by onFinish callback in Chat instances
 export const agentsUnseenChangesAtom = atom<Set<string>>(new Set<string>());

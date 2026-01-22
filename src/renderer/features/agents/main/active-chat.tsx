@@ -52,12 +52,12 @@ import {
   addedDirectoriesAtomFamily,
   agentsPreviewSidebarOpenAtom,
   agentsPreviewSidebarWidthAtom,
-  agentsSubChatsSidebarModeAtom,
   agentsSubChatUnseenChangesAtom,
   agentsUnseenChangesAtom,
   askUserQuestionResultsAtom,
   changesSectionCollapsedAtom,
   chatInputHeightAtom,
+  chatsSidebarOpenAtom,
   clearLoading,
   codeSnippetsAtomFamily,
   compactingSubChatsAtom,
@@ -230,7 +230,6 @@ function ChatViewInner({
   sandboxSetupStatus = "ready",
   sandboxSetupError,
   onRetrySetup,
-  isSubChatsSidebarOpen = false,
   sandboxId,
   projectPath,
   isArchived = false,
@@ -253,7 +252,6 @@ function ChatViewInner({
   sandboxSetupStatus?: "cloning" | "ready" | "error";
   sandboxSetupError?: string;
   onRetrySetup?: () => void;
-  isSubChatsSidebarOpen?: boolean;
   sandboxId?: string;
   projectPath?: string;
   isArchived?: boolean;
@@ -1837,12 +1835,7 @@ function ChatViewInner({
       {/* Chat title - flex above scroll area (desktop only) */}
       {/* Hidden in overlay mode (File/Changes tabs) */}
       {!isMobile && !isOverlayMode && (
-        <div
-          className={cn(
-            "shrink-0 pb-2",
-            isSubChatsSidebarOpen ? "pt-[52px]" : "pt-2",
-          )}
-        >
+        <div className="shrink-0 pb-2 pt-2">
           <ChatTitleEditor
             name={subChatName}
             placeholder="New Chat"
@@ -1869,7 +1862,7 @@ function ChatViewInner({
           <div ref={contentRef}>
             {/* Worktree init progress - shows when init command is running */}
             <div className="px-4 pt-4">
-              <div className="w-full max-w-2xl mx-auto">
+              <div className="w-full max-w-2xl xl:max-w-4xl mx-auto">
                 <WorktreeInitProgress chatId={parentChatId} />
               </div>
             </div>
@@ -1881,7 +1874,6 @@ function ChatViewInner({
               sandboxSetupError={sandboxSetupError}
               onRetrySetup={onRetrySetup}
               isMobile={isMobile}
-              isSubChatsSidebarOpen={isSubChatsSidebarOpen}
               ttsPlaybackRate={ttsPlaybackRate}
               onPlaybackRateChange={handlePlaybackRateChange}
             />
@@ -1902,7 +1894,7 @@ function ChatViewInner({
               : "bottom-26",
           )}
         >
-          <div className="w-full px-2 max-w-2xl mx-auto">
+          <div className="w-full px-2 max-w-2xl xl:max-w-4xl mx-auto">
             <AgentUserQuestion
               pendingQuestions={pendingQuestions}
               onAnswer={handleQuestionsAnswer}
@@ -2252,8 +2244,8 @@ export function ChatView({
   const [isTerminalSidebarOpen, setIsTerminalSidebarOpen] = useAtom(
     terminalSidebarOpenAtom,
   );
-  const [subChatsSidebarMode, setSubChatsSidebarMode] = useAtom(
-    agentsSubChatsSidebarModeAtom,
+  const [isChatsSidebarOpen, setIsChatsSidebarOpen] = useAtom(
+    chatsSidebarOpenAtom,
   );
   // Clear "unseen changes" when chat is opened
   useEffect(() => {
@@ -3414,10 +3406,7 @@ export function ChatView({
 
   // Determine if chat header should be hidden
   const shouldHideChatHeader =
-    subChatsSidebarMode === "sidebar" &&
-    isPreviewSidebarOpen &&
-    isDiffSidebarOpen &&
-    !isMobileFullscreen;
+    isPreviewSidebarOpen && isDiffSidebarOpen && !isMobileFullscreen;
 
   // No early return - let the UI render with loading state handled by activeChat check below
 
@@ -3437,7 +3426,6 @@ export function ChatView({
                 chatId={chatId}
                 subChatId={activeSubChatId ?? undefined}
                 isMobileFullscreen={isMobileFullscreen}
-                isSubChatsSidebarOpen={subChatsSidebarMode === "sidebar"}
                 isSidebarOpen={isSidebarOpen}
                 onToggleSidebar={onToggleSidebar}
                 hasAnyUnseenChanges={hasAnyUnseenChanges}
@@ -3457,7 +3445,8 @@ export function ChatView({
                 worktreePath={worktreePath}
                 branch={branch}
                 baseBranch={baseBranch}
-                onOpenSubChatsSidebar={() => setSubChatsSidebarMode("sidebar")}
+                isChatsSidebarOpen={isChatsSidebarOpen}
+                onToggleChatsSidebar={() => setIsChatsSidebarOpen(!isChatsSidebarOpen)}
                 isArchived={isArchived}
                 onRestoreWorkspace={handleRestoreWorkspace}
                 isRestoring={restoreWorkspaceMutation.isPending}
@@ -3480,7 +3469,6 @@ export function ChatView({
                 repository={repository}
                 streamId={agentChatStore.getStreamId(activeSubChatId)}
                 isMobile={isMobileFullscreen}
-                isSubChatsSidebarOpen={subChatsSidebarMode === "sidebar"}
                 sandboxId={sandboxId || undefined}
                 projectPath={worktreePath || undefined}
                 isArchived={isArchived}
@@ -3497,7 +3485,7 @@ export function ChatView({
 
                 {/* Disabled input while loading */}
                 <div className="px-2 pb-2">
-                  <div className="w-full max-w-2xl mx-auto">
+                  <div className="w-full max-w-2xl xl:max-w-4xl mx-auto">
                     <div className="relative w-full">
                       <PromptInput
                         className="border bg-input-background relative z-10 p-2 rounded-xs opacity-50 pointer-events-none"

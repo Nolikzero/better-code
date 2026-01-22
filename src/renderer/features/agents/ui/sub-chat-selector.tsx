@@ -33,7 +33,6 @@ import { trpc } from "../../../lib/trpc";
 import { cn } from "../../../lib/utils";
 import { getShortcutKey } from "../../../lib/utils/platform";
 import {
-  agentsSubChatsSidebarModeAtom,
   agentsSubChatUnseenChangesAtom,
   loadingSubChatsAtom,
   pendingUserQuestionsAtom,
@@ -97,9 +96,6 @@ export function SubChatSelector({
   const [loadingSubChats] = useAtom(loadingSubChatsAtom);
   const subChatUnseenChanges = useAtomValue(agentsSubChatUnseenChangesAtom);
   const setSubChatUnseenChanges = useSetAtom(agentsSubChatUnseenChangesAtom);
-  const [subChatsSidebarMode, _setSubChatsSidebarMode] = useAtom(
-    agentsSubChatsSidebarModeAtom,
-  );
   const pendingQuestions = useAtomValue(pendingUserQuestionsAtom);
 
   // Pending plan approvals from DB - only for open sub-chats
@@ -299,12 +295,9 @@ export function SubChatSelector({
     [onSwitchFromHistory],
   );
 
-  // Hotkey: / to open history popover when sidebar is closed (tabs mode)
+  // Hotkey: / to open history popover
   useEffect(() => {
     const handleHistoryHotkey = (e: KeyboardEvent) => {
-      // Only in tabs mode (sidebar closed)
-      if (subChatsSidebarMode !== "tabs") return;
-
       if (
         e.key === "/" &&
         !e.metaKey &&
@@ -331,7 +324,7 @@ export function SubChatSelector({
     window.addEventListener("keydown", handleHistoryHotkey, true);
     return () =>
       window.removeEventListener("keydown", handleHistoryHotkey, true);
-  }, [subChatsSidebarMode]);
+  }, []);
 
   // Keyboard shortcut: Cmd+Shift+T / Ctrl+Shift+T for new sub-chat
   // Scroll to active tab when it changes
@@ -461,8 +454,8 @@ export function SubChatSelector({
         WebkitAppRegion: "drag",
       }}
     >
-      {/* Burger button - hidden when sub-chats sidebar is open (it moves into sidebar) */}
-      {onBackToChats && subChatsSidebarMode === "tabs" && (
+      {/* Burger button */}
+      {onBackToChats && (
         <Button
           variant="ghost"
           size="icon"
@@ -494,10 +487,7 @@ export function SubChatSelector({
         {/* Scrollable tabs container - with padding-right for plus button */}
         <div
           ref={tabsContainerRef}
-          className={cn(
-            "flex items-center px-1 py-1 -my-1 gap-1 flex-1 min-w-0 overflow-x-auto scrollbar-hide pr-12",
-            subChatsSidebarMode === "sidebar" && !isMobile && "hidden",
-          )}
+          className="flex items-center px-1 py-1 -my-1 gap-1 flex-1 min-w-0 overflow-x-auto scrollbar-hide pr-12"
         >
           {hasNoChats
             ? null
@@ -682,8 +672,7 @@ export function SubChatSelector({
         </div>
 
         {/* Plus button - absolute positioned on right with gradient cover */}
-        {(isMobile || (!isMobile && subChatsSidebarMode === "tabs")) && (
-          <div className="absolute right-0 top-0 bottom-0 flex items-center z-20">
+        <div className="absolute right-0 top-0 bottom-0 flex items-center z-20">
             {/* Gradient to cover content peeking from the left */}
             <div className="w-6 h-full" />
             <div className="h-full flex items-center">
@@ -705,18 +694,16 @@ export function SubChatSelector({
               </Tooltip>
             </div>
           </div>
-        )}
       </div>
 
-      {/* Action buttons - always visible on mobile, on desktop only in tabs mode */}
-      {(isMobile || (!isMobile && subChatsSidebarMode === "tabs")) && (
-        <div
-          className="flex items-center gap-1"
-          style={{
-            // @ts-expect-error - WebKit-specific property
-            WebkitAppRegion: "no-drag",
-          }}
-        >
+      {/* Action buttons */}
+      <div
+        className="flex items-center gap-1"
+        style={{
+          // @ts-expect-error - WebKit-specific property
+          WebkitAppRegion: "no-drag",
+        }}
+      >
           <SearchCombobox
             isOpen={isHistoryOpen}
             onOpenChange={setIsHistoryOpen}
@@ -795,7 +782,6 @@ export function SubChatSelector({
             }
           />
         </div>
-      )}
 
       {/* Diff button - always visible on desktop when sandbox exists, disabled if no changes */}
       {!isMobile && canOpenDiff && !isDiffSidebarOpen && (

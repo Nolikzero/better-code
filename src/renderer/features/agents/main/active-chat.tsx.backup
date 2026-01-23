@@ -48,6 +48,7 @@ import { TerminalSidebar } from "../../terminal/terminal-sidebar";
 import {
   type AgentMode,
   activeChatDiffDataAtom,
+  addedDirectoriesAtomFamily,
   agentModeAtom,
   agentsPreviewSidebarOpenAtom,
   agentsPreviewSidebarWidthAtom,
@@ -65,6 +66,9 @@ import {
   loadingSubChatsAtom,
   mainContentActiveTabAtom,
   pendingAuthRetryMessageAtom,
+  pendingFileMentionsAtom,
+  pendingPrMessageAtom,
+  pendingReviewMessageAtom,
   pendingUserQuestionsAtom,
   prActionsAtom,
   promptHistoryAtomFamily,
@@ -90,25 +94,26 @@ import { ModelSelectorDropdown } from "../components/model-selector-dropdown";
 import { OpenCodeModelSelector } from "../components/opencode-model-selector";
 import { ProviderSelectorDropdown } from "../components/provider-selector-dropdown";
 import { WebSearchModeSelector } from "../components/web-search-mode-selector";
-import { useAgentModeManagement } from "../hooks/use-agent-mode-management";
 import { useAgentsFileUpload } from "../hooks/use-agents-file-upload";
 import { useBranchSwitchConfirmation } from "../hooks/use-branch-switch-confirmation";
 import { useChangedFilesTracking } from "../hooks/use-changed-files-tracking";
 import { useDiffManagement } from "../hooks/use-diff-management";
-import { useDraftManagement } from "../hooks/use-draft-management";
 import { useFocusInputOnEnter } from "../hooks/use-focus-input-on-enter";
 import { useMentionDropdown } from "../hooks/use-mention-dropdown";
 import { useMessageHandling } from "../hooks/use-message-handling";
-import { usePendingMessages } from "../hooks/use-pending-messages";
 import { usePlanApproval } from "../hooks/use-plan-approval";
 import { usePrActions } from "../hooks/use-pr-actions";
 import { useProviderModelSelection } from "../hooks/use-provider-model-selection";
 import { useRalphAutoStart } from "../hooks/use-ralph-auto-start";
 import { useScrollTracking } from "../hooks/use-scroll-tracking";
 import { useSlashCommandDropdown } from "../hooks/use-slash-command-dropdown";
-import { useSubChatInitialization } from "../hooks/use-subchat-initialization";
 import { useSubChatKeyboard } from "../hooks/use-subchat-keyboard";
 import { useToggleFocusOnCmdEsc } from "../hooks/use-toggle-focus-on-cmd-esc";
+import {
+  clearSubChatDraft,
+  getSubChatDraft,
+  saveSubChatDraft,
+} from "../lib/drafts";
 import { IPCChatTransport } from "../lib/ipc-chat-transport";
 import {
   AgentsFileMention,
@@ -300,9 +305,18 @@ function ChatViewInner({
   const prevSubChatIdRef = useRef<string | null>(null);
 
   // Track input height for overlay positioning (when File/Changes tabs overlay the chat)
-  const _setInputHeight = useSetAtom(chatInputHeightAtom);
+  const setInputHeight = useSetAtom(chatInputHeightAtom);
   // For switching to chat tab after sending message in overlay mode
   const _setActiveTab = useSetAtom(mainContentActiveTabAtom);
+  useEffect(() => {
+    if (!inputContainerRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      const height = entries[0]?.contentRect.height ?? 120;
+      setInputHeight(height);
+    });
+    observer.observe(inputContainerRef.current);
+    return () => observer.disconnect();
+  }, [setInputHeight]);
 
   // TTS playback rate state (persists across messages and sessions via localStorage)
   const [ttsPlaybackRate, setTtsPlaybackRate] = useState<PlaybackSpeed>(() => {
@@ -384,6 +398,110 @@ function ChatViewInner({
   const historyKey = `chat:${parentChatId}`;
   const [history, _addToHistory] = useAtom(promptHistoryAtomFamily(historyKey));
   const [navState, setNavState] = useAtom(historyNavAtomFamily(historyKey));
+
+  // Added directories for /add-dir command (per sub-chat)
+  const [addedDirs, setAddedDirs] = useAtom(
+    addedDirectoriesAtomFamily(subChatId),
+  );
+
+  // Reset navigation when switching sub-chats
+  useEffect(() => {
+    setNavState({ index: -1, savedInput: "" });
+  }, [subChatId, setNavState]);
+
+  // Mutation for updating sub-chat mode in database
+  const updateSubChatModeMutation = api.agents.updateSubChatMode.useMutation({
+    onSuccess: () => {
+      // Invalidate to refetch with new mode from DB
+      utils.agents.getAgentChat.invalidate({ chatId: parentChatId });
+    },
+    onError: (error, variables) => {
+      // Don't revert if sub-chat not found in DB - it may not be persisted yet
+      // This is expected for new sub-chats that haven't been saved to DB
+      if (error.message === "Sub-chat not found") {
+        console.warn("Sub-chat not found in DB, keeping local mode state");
+        return;
+      }
+
+      // Revert local state on error to maintain sync with database
+      const subChat = useAgentSubChatStore
+        .getState()
+        .allSubChats.find((sc) => sc.id === variables.subChatId);
+      if (subChat) {
+        // Revert to previous mode
+        const revertedMode: AgentMode =
+          variables.mode === "plan"
+            ? "agent"
+            : variables.mode === "agent"
+              ? "plan"
+              : "agent";
+        useAgentSubChatStore
+          .getState()
+          .updateSubChatMode(variables.subChatId, revertedMode);
+        // Update ref BEFORE setAgentMode to prevent useEffect from triggering
+        lastAgentModeRef.current = revertedMode;
+        setAgentMode(revertedMode);
+      }
+      console.error("Failed to update sub-chat mode:", error.message);
+    },
+  });
+
+  // Track last initialized sub-chat to prevent re-initialization
+  const lastInitializedRef = useRef<string | null>(null);
+
+  // Initialize mode from sub-chat metadata ONLY when switching sub-chats
+  useEffect(() => {
+    if (subChatId && subChatId !== lastInitializedRef.current) {
+      const subChat = useAgentSubChatStore
+        .getState()
+        .allSubChats.find((sc) => sc.id === subChatId);
+
+      if (subChat?.mode) {
+        setAgentMode(subChat.mode as AgentMode);
+      }
+
+      // Initialize addedDirs from database (stored as JSON string)
+      if ((subChat as any)?.addedDirs) {
+        try {
+          const dirs = JSON.parse((subChat as any).addedDirs);
+          if (Array.isArray(dirs)) {
+            setAddedDirs(dirs);
+          }
+        } catch {
+          // Ignore parse errors
+        }
+      } else {
+        setAddedDirs([]);
+      }
+
+      lastInitializedRef.current = subChatId;
+    }
+    // Dependencies: Only subChatId - setAgentMode and setAddedDirs are stable, useAgentSubChatStore is external
+  }, [subChatId, setAgentMode, setAddedDirs]);
+
+  // Track last mode to detect actual user changes (not store updates)
+  const lastAgentModeRef = useRef<AgentMode>(agentMode);
+
+  // Update mode for current sub-chat when USER changes agentMode
+  useEffect(() => {
+    // Skip if agentMode didn't actually change
+    if (lastAgentModeRef.current === agentMode) {
+      return;
+    }
+
+    lastAgentModeRef.current = agentMode;
+
+    if (subChatId) {
+      // Update local store immediately (optimistic update)
+      useAgentSubChatStore.getState().updateSubChatMode(subChatId, agentMode);
+
+      // Save to database with error handling to maintain consistency
+      if (!subChatId.startsWith("temp-")) {
+        updateSubChatModeMutation.mutate({ subChatId, mode: agentMode });
+      }
+    }
+    // Dependencies: updateSubChatModeMutation.mutate is stable, useAgentSubChatStore is external
+  }, [agentMode, subChatId, updateSubChatModeMutation.mutate]);
 
   // Handler for mode changes
   const handleAgentModeChange = useCallback(
@@ -485,12 +603,93 @@ function ChatViewInner({
   }
   chatRef.current = chat;
 
-  // Refs for draft management hook
+  // Save/restore drafts when switching between sub-chats or workspaces
+  // Use refs to capture current values for cleanup function
   const currentSubChatIdRef = useRef<string>(subChatId);
   const currentChatIdRef = useRef<string | null>(parentChatId);
   const currentDraftTextRef = useRef<string>("");
   currentSubChatIdRef.current = subChatId;
   currentChatIdRef.current = parentChatId;
+
+  // Save draft on blur (when focus leaves editor) - updates ref and localStorage
+  const handleEditorBlur = useCallback(() => {
+    const draft = editorRef.current?.getValue() || "";
+    const chatId = currentChatIdRef.current;
+    const subChatIdValue = currentSubChatIdRef.current;
+
+    // Update ref for unmount save
+    currentDraftTextRef.current = draft;
+
+    if (!chatId) return;
+
+    if (draft.trim()) {
+      saveSubChatDraft(chatId, subChatIdValue, draft);
+    } else {
+      clearSubChatDraft(chatId, subChatIdValue);
+    }
+  }, []);
+
+  // Sync draft ref on every content change so unmount cleanup has fresh value
+  // (editorRef is null during unmount, so we need to keep ref in sync)
+  const handleContentChange = useCallback((hasContent: boolean) => {
+    setHasContent(hasContent);
+    // Sync the draft text ref for unmount save
+    const draft = editorRef.current?.getValue() || "";
+    currentDraftTextRef.current = draft;
+  }, []);
+
+  // Save draft on unmount (when switching workspaces)
+  // Read directly from editor first (handles hotkey switch where blur didn't fire),
+  // fall back to ref if editor is already gone
+  useEffect(() => {
+    return () => {
+      const editorValue = editorRef.current?.getValue();
+      const refValue = currentDraftTextRef.current;
+      const draft = editorValue || refValue;
+      const chatId = currentChatIdRef.current;
+      const subChatIdValue = currentSubChatIdRef.current;
+
+      if (!chatId || !draft?.trim()) return;
+
+      saveSubChatDraft(chatId, subChatIdValue, draft);
+    };
+  }, []);
+
+  // Restore draft when subChatId changes (switching between sub-chats)
+  const prevSubChatIdForDraftRef = useRef<string | null>(null);
+  useEffect(() => {
+    // Save draft from previous sub-chat before switching (within same workspace)
+    if (
+      prevSubChatIdForDraftRef.current &&
+      prevSubChatIdForDraftRef.current !== subChatId
+    ) {
+      const prevChatId = currentChatIdRef.current;
+      const prevSubChatId = prevSubChatIdForDraftRef.current;
+      const prevDraft = editorRef.current?.getValue() || "";
+
+      if (prevDraft.trim() && prevChatId) {
+        saveSubChatDraft(prevChatId, prevSubChatId, prevDraft);
+      }
+    }
+
+    // Restore draft for new sub-chat - read directly from localStorage
+    const savedDraft = parentChatId
+      ? getSubChatDraft(parentChatId, subChatId)
+      : null;
+
+    if (savedDraft) {
+      editorRef.current?.setValue(savedDraft);
+      currentDraftTextRef.current = savedDraft;
+    } else if (
+      prevSubChatIdForDraftRef.current &&
+      prevSubChatIdForDraftRef.current !== subChatId
+    ) {
+      editorRef.current?.clear();
+      currentDraftTextRef.current = "";
+    }
+
+    prevSubChatIdForDraftRef.current = subChatId;
+  }, [subChatId, parentChatId]);
 
   // Use subChatId as stable key to prevent HMR-induced duplicate resume requests
   // resume: !!streamId to reconnect to active streams (background streaming support)
@@ -569,33 +768,6 @@ function ChatViewInner({
     isOverlayMode,
   });
 
-  // Agent mode management hook - handles mode initialization and persistence
-  const { addedDirs, setAddedDirs } = useAgentModeManagement({
-    subChatId,
-    parentChatId,
-    agentMode,
-    setAgentMode,
-    utils,
-  });
-
-  // Draft management hook - handles draft persistence and input height tracking
-  useDraftManagement({
-    subChatId,
-    parentChatId,
-    editorRef,
-    inputContainerRef,
-    currentDraftTextRef,
-    currentChatIdRef,
-    currentSubChatIdRef,
-  });
-
-  // Pending messages hook - handles pending PR/review messages and file mentions
-  usePendingMessages({
-    isStreaming: status === "streaming" || status === "submitted",
-    sendMessage,
-    editorRef,
-  });
-
   // Stream debug: log status changes
   const prevStatusRef = useRef(status);
   useEffect(() => {
@@ -631,6 +803,58 @@ function ChatViewInner({
       clearLoading(setLoadingSubChats, subChatId);
     }
   }, [isStreaming, subChatId, setLoadingSubChats]);
+
+  // Watch for pending PR message and send it
+  const [pendingPrMessage, setPendingPrMessage] = useAtom(pendingPrMessageAtom);
+
+  useEffect(() => {
+    if (pendingPrMessage && !isStreaming) {
+      // Clear the pending message immediately to prevent double-sending
+      setPendingPrMessage(null);
+
+      // Send the message to Claude
+      sendMessage({
+        role: "user",
+        parts: [{ type: "text", text: pendingPrMessage }],
+      });
+    }
+  }, [pendingPrMessage, isStreaming, sendMessage, setPendingPrMessage]);
+
+  // Watch for pending Review message and send it
+  const [pendingReviewMessage, setPendingReviewMessage] = useAtom(
+    pendingReviewMessageAtom,
+  );
+
+  useEffect(() => {
+    if (pendingReviewMessage && !isStreaming) {
+      // Clear the pending message immediately to prevent double-sending
+      setPendingReviewMessage(null);
+
+      // Send the message to Claude
+      sendMessage({
+        role: "user",
+        parts: [{ type: "text", text: pendingReviewMessage }],
+      });
+    }
+  }, [pendingReviewMessage, isStreaming, sendMessage, setPendingReviewMessage]);
+
+  // Watch for pending file mentions (from project tree context menu)
+  const [pendingFileMentions, setPendingFileMentions] = useAtom(
+    pendingFileMentionsAtom,
+  );
+
+  useEffect(() => {
+    if (pendingFileMentions.length === 0) return;
+
+    // Focus and append all mentions to editor
+    editorRef.current?.focus();
+    for (const mention of pendingFileMentions) {
+      editorRef.current?.appendMention(mention);
+    }
+
+    // Clear the pending mentions
+    setPendingFileMentions([]);
+  }, [pendingFileMentions, setPendingFileMentions]);
 
   // Pending user questions from AskUserQuestion tool
   const [pendingQuestions, setPendingQuestions] = useAtom(
@@ -1446,7 +1670,7 @@ function ChatViewInner({
                     handleSlashTrigger(searchText, rect)
                   }
                   onCloseSlashTrigger={handleCloseSlashTrigger}
-                  onContentChange={setHasContent}
+                  onContentChange={handleContentChange}
                   onSubmit={stableHandleSend}
                   onShiftTab={() => {
                     const nextMode: AgentMode = (() => {
@@ -1466,6 +1690,7 @@ function ChatViewInner({
                   onArrowUp={handleArrowUp}
                   onArrowDown={handleArrowDown}
                   onPaste={handlePaste}
+                  onBlur={handleEditorBlur}
                   isMobile={isMobile}
                 />
                 <ChatInputActions
@@ -1764,13 +1989,6 @@ export function ChatView({
 
   // Check if this workspace is archived
   const isArchived = !!agentChat?.archivedAt;
-
-  // Sub-chat initialization hook - initializes store from database when chat loads
-  useSubChatInitialization({
-    chatId,
-    agentChat,
-    agentSubChats,
-  });
 
   // Restore provider from database when chat loads
   const chatProviderOverrides = useAtomValue(chatProviderOverridesAtom);

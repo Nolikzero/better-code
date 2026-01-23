@@ -434,6 +434,29 @@ export async function fetchProvidersWithDetails(
 }
 
 /**
+ * Summarize (compact) a session to reduce token usage
+ */
+export async function summarizeSession(
+  sessionId: string,
+  directory?: string,
+): Promise<boolean> {
+  try {
+    const client = getClient();
+    await client.session.summarize({
+      path: { id: sessionId },
+      query: { directory },
+    });
+    return true;
+  } catch (error) {
+    console.error(
+      `[opencode-client] Failed to summarize session ${sessionId}:`,
+      error,
+    );
+    return false;
+  }
+}
+
+/**
  * Parse model string into providerID and modelID
  * Handles formats: "providerID/modelID" or just "modelID"
  */

@@ -311,6 +311,17 @@ export class CodexProvider implements AIProvider {
     activeSessions.set(options.subChatId, session);
 
     try {
+      // Reject /compact - not supported by Codex SDK
+      if (options.prompt.trim() === "/compact") {
+        yield {
+          type: "error",
+          errorText:
+            "Context compaction is not supported by the Codex provider.",
+        } as UIMessageChunk;
+        yield { type: "finish" } as UIMessageChunk;
+        return;
+      }
+
       // Get API key
       const apiKey = getCodexOAuthToken();
       if (!apiKey) {

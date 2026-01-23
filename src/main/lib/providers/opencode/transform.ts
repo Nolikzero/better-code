@@ -579,11 +579,17 @@ export function createOpenCodeTransformer(
           const errorMsg = retryPart.error?.data?.message || "unknown error";
           logger.info(`Retry attempt ${retryPart.attempt || "?"}: ${errorMsg}`);
         } else if (part.type === "compaction") {
-          // Compaction indicator - informational
+          yield* endTextBlock();
           const compactionPart = part as { auto?: boolean };
           logger.info(
             `Compaction occurred (auto: ${compactionPart.auto ?? true})`,
           );
+          const compactId = `compact-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+          yield {
+            type: "system-Compact",
+            toolCallId: compactId,
+            state: "output-available",
+          };
         }
         break;
       }

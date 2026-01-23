@@ -19,6 +19,7 @@ import {
   getAuthStatus as getClientAuthStatus,
   getSession,
   parseModelId,
+  summarizeSession,
 } from "./client";
 import { getOpenCodeBinaryPath } from "./env";
 import { getServerInstance } from "./server";
@@ -246,6 +247,67 @@ export class OpenCodeProvider implements AIProvider {
       }
 
       session.sessionId = sessionId;
+
+      // Handle /compact command
+      if (options.prompt.trim() === "/compact") {
+        const compactId = `compact-${Date.now()}`;
+
+        yield {
+          type: "system-Compact",
+          toolCallId: compactId,
+          state: "input-streaming",
+        } as UIMessageChunk;
+
+        const success = await summarizeSession(sessionId, options.cwd);
+
+        if (success) {
+          // Wait for session to become idle (compaction complete)
+          const client = getClient();
+          const eventStream = await client.global.event();
+
+          const timeout = setTimeout(() => {
+            abortController.abort();
+          }, 30000);
+
+          try {
+            for await (const event of eventStream.stream) {
+              if (abortController.signal.aborted) break;
+
+              const globalEvent = event as GlobalEvent;
+              const payload = globalEvent.payload;
+
+              if (payload.type === "session.status") {
+                const props = payload.properties as Record<string, unknown>;
+                if (props.sessionID === sessionId) {
+                  const status = props.status as string | undefined;
+                  if (status === "idle") break;
+                }
+              }
+            }
+          } catch (streamError) {
+            if (!abortController.signal.aborted) {
+              console.error("[opencode] Compact stream error:", streamError);
+            }
+          } finally {
+            clearTimeout(timeout);
+          }
+        } else {
+          yield {
+            type: "error",
+            errorText:
+              "Failed to compact session. The session may not have enough context to summarize.",
+          } as UIMessageChunk;
+        }
+
+        yield {
+          type: "system-Compact",
+          toolCallId: compactId,
+          state: "output-available",
+        } as UIMessageChunk;
+
+        yield { type: "finish" } as UIMessageChunk;
+        return;
+      }
 
       // Parse model
       const modelInfo = options.model ? parseModelId(options.model) : undefined;

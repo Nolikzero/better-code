@@ -207,10 +207,7 @@ if (gotTheLock) {
       ];
       // On Windows/Linux, add quit to File menu
       if (process.platform !== "darwin") {
-        fileSubmenu.push(
-          { type: "separator" },
-          { role: "quit" },
-        );
+        fileSubmenu.push({ type: "separator" }, { role: "quit" });
       }
       template.push({ label: "File", submenu: fileSubmenu });
 

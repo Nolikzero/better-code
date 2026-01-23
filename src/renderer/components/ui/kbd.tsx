@@ -51,7 +51,8 @@ function renderShortcut(children: React.ReactNode): React.ReactNode {
         const needsSeparator = nextToken && !textMap[nextToken];
         parts.push(
           <span key={index}>
-            {textMap[token]}{needsSeparator ? "+" : ""}
+            {textMap[token]}
+            {needsSeparator ? "+" : ""}
           </span>,
         );
       } else if (token) {

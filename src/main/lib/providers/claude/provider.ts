@@ -5,13 +5,13 @@ import { app } from "electron";
 import * as fs from "fs/promises";
 import os from "os";
 import path from "path";
+import { isWindows } from "../../platform";
 import type {
   AIProvider,
   AuthStatus,
   ChatSessionOptions,
   ProviderConfig,
 } from "../types";
-import { isWindows } from "../../platform";
 import { buildClaudeEnv, getClaudeBinaryPath, logClaudeEnv } from "./env";
 import { logRawClaudeMessage } from "./raw-logger";
 import { createTransformer } from "./transform";
@@ -579,7 +579,11 @@ export class ClaudeProvider implements AIProvider {
           .then(() => true)
           .catch(() => false);
         if (skillsSourceExists && !skillsTargetExists) {
-          await fs.symlink(skillsSource, skillsTarget, isWindows ? "junction" : "dir");
+          await fs.symlink(
+            skillsSource,
+            skillsTarget,
+            isWindows ? "junction" : "dir",
+          );
           console.log(
             `[claude] Symlinked skills: ${skillsTarget} -> ${skillsSource}`,
           );
@@ -599,7 +603,11 @@ export class ClaudeProvider implements AIProvider {
           .then(() => true)
           .catch(() => false);
         if (agentsSourceExists && !agentsTargetExists) {
-          await fs.symlink(agentsSource, agentsTarget, isWindows ? "junction" : "dir");
+          await fs.symlink(
+            agentsSource,
+            agentsTarget,
+            isWindows ? "junction" : "dir",
+          );
           console.log(
             `[claude] Symlinked agents: ${agentsTarget} -> ${agentsSource}`,
           );

@@ -4,13 +4,13 @@ import { useAtomValue } from "jotai";
 import { Archive, ArrowUp, GitCommitHorizontal, Package } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { Button } from "../../../components/ui/button";
-import { isMacOS } from "../../../lib/utils/platform";
 import { IconSpinner } from "../../../components/ui/icons";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "../../../components/ui/tooltip";
+import { isMacOS } from "../../../lib/utils/platform";
 import { selectedDiffFilesAtom } from "../../agents/atoms";
 import { useGitActions } from "../../agents/hooks/use-git-actions";
 

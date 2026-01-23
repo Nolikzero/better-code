@@ -6,10 +6,11 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { useTheme } from "next-themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fullThemeDataAtom } from "@/lib/atoms";
+import { hasTransparentAlpha } from "@/lib/themes/terminal-theme-mapper";
 import { trpc } from "@/lib/trpc";
 import { terminalCwdAtom } from "./atoms";
 import { sanitizeForTitle } from "./commandBuffer";
-import { getTerminalThemeFromVSCode } from "./config";
+import { getTerminalThemeWithTransparency } from "./config";
 import {
   createTerminalInstance,
   getDefaultTerminalBg,
@@ -53,6 +54,15 @@ export function Terminal({
 
   // VS Code theme data (if a full theme is selected)
   const fullThemeData = useAtomValue(fullThemeDataAtom);
+
+  // Determine if the terminal should use transparency (Liquid Glass themes)
+  const isTransparent = useMemo(() => {
+    if (!fullThemeData?.vibrancy?.enabled) return false;
+    const bg =
+      fullThemeData?.colors?.["terminal.background"] ||
+      fullThemeData?.colors?.["editor.background"];
+    return hasTransparentAlpha(bg || "");
+  }, [fullThemeData]);
 
   // Ref for terminalCwd to avoid effect re-runs when cwd changes
   const terminalCwdRef = useRef(terminalCwd);
@@ -145,12 +155,19 @@ export function Terminal({
     // Create xterm instance
     console.log("[Terminal:useEffect] Creating terminal instance...", {
       isDark,
+      isTransparent,
     });
+    const initialThemeResult = getTerminalThemeWithTransparency(
+      fullThemeData?.colors,
+      isDark,
+    );
     const { xterm, fitAddon, serializeAddon, cleanup } = createTerminalInstance(
       container,
       {
         cwd: terminalCwdRef.current || cwd,
         isDark,
+        isTransparent,
+        initialTheme: initialThemeResult.theme,
         onFileLinkClick: (path, line, column) => {
           console.log("[Terminal] File link clicked:", path, line, column);
           // TODO: Open file in editor
@@ -334,16 +351,25 @@ export function Terminal({
     };
     // Note: terminalCwd is accessed via ref to avoid remounting on cwd changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paneId, cwd, workspaceId, tabId, initialCwd, initialCommands, isDark]);
+  }, [
+    paneId,
+    cwd,
+    workspaceId,
+    tabId,
+    initialCwd,
+    initialCommands,
+    isDark,
+    isTransparent,
+  ]);
 
   // Update theme when isDark changes or VS Code theme changes (without recreating terminal)
   useEffect(() => {
     if (xtermRef.current) {
-      const newTheme = getTerminalThemeFromVSCode(
+      const result = getTerminalThemeWithTransparency(
         fullThemeData?.colors,
         isDark,
       );
-      xtermRef.current.options.theme = newTheme;
+      xtermRef.current.options.theme = result.theme;
     }
   }, [isDark, fullThemeData]);
 
@@ -388,6 +414,10 @@ export function Terminal({
   );
 
   const terminalBg = useMemo(() => {
+    // When transparency is active, let vibrancy/CSS handle the background
+    if (isTransparent) {
+      return "transparent";
+    }
     // Use VS Code theme terminal background if available
     if (fullThemeData?.colors?.["terminal.background"]) {
       return fullThemeData.colors["terminal.background"];
@@ -396,13 +426,14 @@ export function Terminal({
       return fullThemeData.colors["editor.background"];
     }
     return getDefaultTerminalBg(isDark);
-  }, [isDark, fullThemeData]);
+  }, [isDark, fullThemeData, isTransparent]);
 
   return (
     <div
       role="application"
       className="relative h-full w-full overflow-hidden"
       style={{ backgroundColor: terminalBg }}
+      data-terminal-vibrancy={isTransparent ? "active" : undefined}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >

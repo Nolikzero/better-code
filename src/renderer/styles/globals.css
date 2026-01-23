@@ -538,3 +538,42 @@ html.vibrancy-active:not(.dark) [data-radix-popper-content-wrapper] > * {
 html.vibrancy-active:not(.dark) [data-sonner-toast] {
   background-color: hsl(0 0% 100% / 0.9);
 }
+
+/* ========================================
+   TERMINAL VIBRANCY STYLES
+   Transparent terminal with macOS blur effect
+   ======================================== */
+
+/* When vibrancy is active, make terminal and xterm internals transparent */
+html.vibrancy-active [data-terminal-vibrancy="active"],
+html.vibrancy-active [data-terminal-vibrancy="active"] .xterm-viewport,
+html.vibrancy-active [data-terminal-vibrancy="active"] .xterm-screen {
+  background-color: transparent !important;
+}
+
+/* ========================================
+   TERMINAL VIBRANCY FALLBACK (Windows/Linux)
+   CSS backdrop-filter glass effect for non-macOS
+   ======================================== */
+
+.vibrancy-fallback:not(.vibrancy-active) [data-terminal-vibrancy="active"] {
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+
+.vibrancy-fallback.dark:not(.vibrancy-active) [data-terminal-vibrancy="active"] {
+  background-color: rgba(18, 18, 18, 0.7) !important;
+}
+
+.vibrancy-fallback:not(.dark):not(.vibrancy-active) [data-terminal-vibrancy="active"] {
+  background-color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Reduced transparency preference - terminal */
+@media (prefers-reduced-transparency: reduce) {
+  html.vibrancy-active [data-terminal-vibrancy="active"],
+  html.vibrancy-active [data-terminal-vibrancy="active"] .xterm-viewport,
+  html.vibrancy-active [data-terminal-vibrancy="active"] .xterm-screen {
+    background-color: hsl(var(--background)) !important;
+  }
+}

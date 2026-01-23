@@ -1,5 +1,20 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- External app detection and launching — open files in VS Code, Xcode, Sublime Text, etc. directly from the app
+- "Open In" context menu and dropdown UI components for detected external editors
+- Terminal vibrancy/transparency support for Liquid Glass themes (macOS native blur effect)
+- CSS backdrop-filter fallback for terminal transparency on Windows/Linux
+- Reduced transparency media query support for terminal
+
+### Changed
+
+- Terminal renderer skips GPU-accelerated rendering when transparency is active (GPU renderers don't support alpha)
+- Terminal background defers to vibrancy/CSS when Liquid Glass theme is active
+
 ## [0.0.2] — Packaging fixes
 
 ### Fixed

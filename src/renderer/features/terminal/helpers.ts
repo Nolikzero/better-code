@@ -86,6 +86,7 @@ export interface CreateTerminalOptions {
   cwd?: string;
   initialTheme?: ITheme | null;
   isDark?: boolean;
+  isTransparent?: boolean;
   onFileLinkClick?: (path: string, line?: number, column?: number) => void;
   onUrlClick?: (url: string) => void;
 }
@@ -106,7 +107,13 @@ export function createTerminalInstance(
   container: HTMLDivElement,
   options: CreateTerminalOptions = {},
 ): TerminalInstance {
-  const { initialTheme, isDark = true, onFileLinkClick, onUrlClick } = options;
+  const {
+    initialTheme,
+    isDark = true,
+    isTransparent = false,
+    onFileLinkClick,
+    onUrlClick,
+  } = options;
 
   // Debug: Check container dimensions
   const rect = container.getBoundingClientRect();
@@ -118,7 +125,11 @@ export function createTerminalInstance(
 
   // Use provided theme, or get theme based on isDark
   const theme = initialTheme ?? getTerminalTheme(isDark);
-  const terminalOptions = { ...TERMINAL_OPTIONS, theme };
+  const terminalOptions = {
+    ...TERMINAL_OPTIONS,
+    theme,
+    allowTransparency: isTransparent,
+  };
 
   // 1. Create xterm instance
   console.log("[Terminal:create] Step 1: Creating XTerm instance");
@@ -146,9 +157,16 @@ export function createTerminalInstance(
   const serializeAddon = new SerializeAddon();
   xterm.loadAddon(serializeAddon);
 
-  // 5. Load GPU-accelerated renderer
-  console.log("[Terminal:create] Step 5: Loading renderer");
-  const renderer = loadRenderer(xterm);
+  // 5. Load GPU-accelerated renderer (skip when transparent - GPU renderers don't support transparency)
+  let renderer: { dispose: () => void } = { dispose: () => {} };
+  if (!isTransparent) {
+    console.log("[Terminal:create] Step 5: Loading renderer");
+    renderer = loadRenderer(xterm);
+  } else {
+    console.log(
+      "[Terminal:create] Step 5: Skipping GPU renderer (transparency mode)",
+    );
+  }
 
   // Debug: Check dimensions after renderer
   const coreAfter = (

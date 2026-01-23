@@ -1,6 +1,9 @@
 import type { ITerminalOptions, ITheme } from "@xterm/xterm";
 import { FONT_TERMINAL } from "@/lib/fonts";
-import { extractTerminalTheme } from "@/lib/themes/terminal-theme-mapper";
+import {
+  extractTerminalThemeWithTransparency,
+  type TerminalThemeResult,
+} from "@/lib/themes/terminal-theme-mapper";
 
 /**
  * Dark terminal theme synchronized with the app's design system.
@@ -102,17 +105,22 @@ export function getTerminalTheme(isDark: boolean): ITheme {
 }
 
 /**
- * Get terminal theme from VS Code theme colors
- * Falls back to default themes if colors are not provided
+ * Get terminal theme with transparency info from VS Code theme colors.
+ * Returns theme, transparency flag, and container background color.
  */
-export function getTerminalThemeFromVSCode(
+export function getTerminalThemeWithTransparency(
   themeColors: Record<string, string> | null | undefined,
   isDark: boolean,
-): ITheme {
+): TerminalThemeResult {
   if (!themeColors) {
-    return getTerminalTheme(isDark);
+    const theme = getTerminalTheme(isDark);
+    return {
+      theme,
+      isTransparent: false,
+      containerBackground: theme.background || (isDark ? "#121212" : "#fafafa"),
+    };
   }
-  return extractTerminalTheme(themeColors);
+  return extractTerminalThemeWithTransparency(themeColors);
 }
 
 export const TERMINAL_OPTIONS: ITerminalOptions = {

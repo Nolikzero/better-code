@@ -177,6 +177,51 @@ export function extractTerminalTheme(
 }
 
 /**
+ * Check if a hex color has a transparent alpha channel (8-char hex with alpha < 0xFF)
+ */
+export function hasTransparentAlpha(hex: string): boolean {
+  if (!hex) return false;
+  const clean = hex.replace(/^#/, "");
+  if (clean.length !== 8) return false;
+  return parseInt(clean.slice(6, 8), 16) < 255;
+}
+
+/**
+ * Result of extracting a terminal theme with transparency info
+ */
+export interface TerminalThemeResult {
+  theme: ITheme;
+  isTransparent: boolean;
+  containerBackground: string;
+}
+
+/**
+ * Extract terminal theme with transparency awareness.
+ * When the terminal background has alpha < 1, sets xterm background to transparent
+ * and returns metadata for the container to handle the glass effect.
+ */
+export function extractTerminalThemeWithTransparency(
+  themeColors: Record<string, string>,
+): TerminalThemeResult {
+  const theme = extractTerminalTheme(themeColors);
+  const rawBg =
+    themeColors["terminal.background"] || themeColors["editor.background"];
+  const isTransparent = hasTransparentAlpha(rawBg || "");
+
+  if (isTransparent) {
+    theme.background = "transparent";
+  }
+
+  return {
+    theme,
+    isTransparent,
+    containerBackground: isTransparent
+      ? "transparent"
+      : theme.background || "#121212",
+  };
+}
+
+/**
  * Check if a VS Code theme has terminal colors defined
  */
 function _hasTerminalColors(themeColors: Record<string, string>): boolean {

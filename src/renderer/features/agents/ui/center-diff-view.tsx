@@ -234,7 +234,7 @@ export function CenterDiffView() {
   } = effectiveData;
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-background">
+    <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-3 h-12 border-b border-border/50 shrink-0">
         {/* Left: Back button and stats */}

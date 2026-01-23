@@ -19,10 +19,10 @@ export function LeftSidebarTabs({ changesCount = 0 }: LeftSidebarTabsProps) {
 
   return (
     <div className="px-2 pb-2">
-      <div className="relative bg-muted rounded h-7 p-0.5 flex">
+      <div className="relative h-7 p-0.5 flex">
         {/* Sliding background indicator */}
         <div
-          className="absolute inset-y-0.5 rounded bg-background shadow transition-all duration-200 ease-in-out"
+          className="absolute inset-y-0.5 rounded shadow transition-all duration-200 ease-in-out"
           style={{
             width: "calc(50% - 2px)",
             left: activeTab === "project" ? "2px" : "calc(50%)",

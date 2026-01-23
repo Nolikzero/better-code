@@ -975,7 +975,7 @@ export function ChatsSidebar({
                   }
                 }}
                 className={cn(
-                  "w-full rounded-lg text-sm bg-muted border border-input placeholder:text-muted-foreground/40",
+                  "w-full rounded-lg text-sm border border-input placeholder:text-muted-foreground/40",
                   isMobileFullscreen ? "h-10" : "h-7",
                 )}
               />

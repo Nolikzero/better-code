@@ -85,7 +85,7 @@ export const AgentUserMessageBubble = memo(function AgentUserMessageBubble({
               ref={contentRef}
               onClick={() => showGradient && setIsExpanded(true)}
               className={cn(
-                "relative max-h-[60px] overflow-hidden bg-input-background border px-3 py-2 rounded-xs whitespace-pre-wrap text-sm transition-[filter]",
+                "relative max-h-[60px] overflow-hidden border px-3 py-2 rounded-xs whitespace-pre-wrap text-sm transition-[filter]",
                 showGradient && "cursor-pointer hover:brightness-110",
               )}
             >

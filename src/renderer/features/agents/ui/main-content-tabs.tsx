@@ -143,10 +143,10 @@ export function MainContentTabs() {
 
   return (
     <div className="px-3 pt-2 pb-1 border-b border-border/50">
-      <div className="relative bg-muted rounded h-8 p-0.5 flex">
+      <div className="relative rounded h-8 p-0.5 flex">
         {/* Sliding background indicator */}
         <div
-          className="absolute inset-y-0.5 rounded bg-background shadow transition-all duration-200 ease-in-out"
+          className="absolute inset-y-0.5 rounded shadow transition-all duration-200 ease-in-out"
           style={{
             width: `calc(${tabWidth}% - 2px)`,
             left:

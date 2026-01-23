@@ -866,6 +866,8 @@ function ChatViewInner({
 
   const isStreaming = status === "streaming" || status === "submitted";
 
+  const [isInputFocused, setIsInputFocused] = useState(false);
+
   // Stable stop handler - shared by SubChatStatusCard and AgentSendButton
   const handleStop = useCallback(async () => {
     agentChatStore.setManuallyAborted(subChatId, true);
@@ -2250,6 +2252,7 @@ ${instructions} Remember to output \`<story-complete>${nextStory.id}</story-comp
                     changedFiles={changedFilesForSubChat}
                     worktreePath={projectPath}
                     isOverlayMode={messages?.length !== 0}
+                    isInputFocused={isInputFocused}
                     onStop={handleStop}
                   />
                 </div>
@@ -2272,6 +2275,7 @@ ${instructions} Remember to output \`<story-complete>${nextStory.id}</story-comp
               <ChatInputRoot
                 maxHeight={200}
                 onSubmit={stableHandleSend}
+                onFocusChange={setIsInputFocused}
                 contextItems={
                   images.length > 0 ||
                   files.length > 0 ||

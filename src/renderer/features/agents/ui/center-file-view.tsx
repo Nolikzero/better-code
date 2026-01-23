@@ -258,7 +258,7 @@ export function CenterFileView() {
   // Show error state
   if (fileData?.error) {
     return (
-      <div className="flex flex-col h-full overflow-hidden bg-background">
+      <div className="flex flex-col h-full overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-3 h-12 border-b border-border/50 shrink-0">
           <div className="flex items-center gap-3">
@@ -294,7 +294,7 @@ export function CenterFileView() {
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-background">
+    <div className="flex flex-col h-full overflow-hidden bg-background/50">
       {/* Header */}
       <div className="flex items-center justify-between px-3 h-12 border-b border-border/50 shrink-0">
         {/* Left: Back button and file info */}
@@ -408,6 +408,7 @@ export function CenterFileView() {
                 fontSize: "12px",
                 lineHeight: highlightedCode ? "1px" : "16px",
                 padding: "16px",
+                backgroundColor: "transparent",
                 tabSize: 2,
               }}
             >

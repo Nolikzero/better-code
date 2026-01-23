@@ -267,9 +267,9 @@ export function DiffSidebar({
             )}
             {/* View toggle - visible when sidebar is wide enough (>=480px) */}
             {diffSidebarWidth >= 480 && (
-              <div className="relative bg-muted rounded-md h-7 p-0.5 flex">
+              <div className="relative rounded-md h-7 p-0.5 flex">
                 <div
-                  className="absolute inset-y-0.5 rounded bg-background shadow transition-all duration-200 ease-in-out"
+                  className="absolute inset-y-0.5 rounded shadow transition-all duration-200 ease-in-out"
                   style={{
                     width: "calc(50% - 2px)",
                     left: diffMode === DiffModeEnum.Split ? "2px" : "calc(50%)",

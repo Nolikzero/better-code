@@ -947,7 +947,9 @@ export function AgentsContent() {
         {/* Tab bar - only show when chat is selected (not for project-level view) */}
         {(hasFile || hasChanges || viewingMode.type !== "uncommitted") &&
           (activeSubChatId || !selectedChatId) &&
-          !(!selectedChatId && !sidebarOpen && activeTab === "chat") && <MainContentTabs />}
+          !(!selectedChatId && !sidebarOpen && activeTab === "chat") && (
+            <MainContentTabs />
+          )}
 
         {/* Content area */}
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">

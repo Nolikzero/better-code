@@ -95,7 +95,7 @@ export function GitActionsToolbar({
           placeholder="Commit message..."
           disabled={isDisabled}
           rows={1}
-          className={`w-full px-2 py-1.5 text-xs bg-muted/50 border rounded-md resize-none overflow-hidden focus:outline-none focus:ring-1 focus:ring-primary/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+          className={`w-full px-2 py-1.5 text-xs border rounded-md resize-none overflow-hidden focus:outline-none focus:ring-1 focus:ring-primary/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
             isFocused ? "border-primary/50" : "border-border/50"
           }`}
           style={{ minHeight: "32px", maxHeight: "120px" }}
@@ -103,7 +103,7 @@ export function GitActionsToolbar({
         {/* Keyboard hint */}
         {isFocused && commitMessage.trim() && (
           <div className="absolute right-2 bottom-1.5 text-[10px] text-muted-foreground">
-            <kbd className="px-1 py-0.5 bg-muted rounded text-[9px]">
+            <kbd className="px-1 py-0.5 rounded text-[9px]">
               {navigator.platform.includes("Mac") ? "⌘" : "Ctrl"}+Enter
             </kbd>
           </div>

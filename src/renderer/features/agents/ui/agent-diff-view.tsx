@@ -1226,7 +1226,7 @@ export const AgentDiffView = forwardRef<AgentDiffViewRef, AgentDiffViewProps>(
     return (
       <div
         className={cn(
-          "flex flex-col bg-background overflow-hidden min-w-0",
+          "flex flex-col overflow-hidden min-w-0",
           isMobile ? "h-full w-full" : "h-full",
         )}
       >
@@ -1280,9 +1280,9 @@ export const AgentDiffView = forwardRef<AgentDiffViewRef, AgentDiffViewProps>(
               </div>
 
               {/* Split/Unified toggle */}
-              <div className="relative bg-muted rounded-md h-7 p-0.5 flex">
+              <div className="relative rounded-md h-7 p-0.5 flex">
                 <div
-                  className="absolute inset-y-0.5 rounded bg-background shadow transition-all duration-200 ease-in-out"
+                  className="absolute inset-y-0.5 rounded shadow transition-all duration-200 ease-in-out"
                   style={{
                     width: "calc(50% - 2px)",
                     left: diffMode === DiffModeEnum.Split ? "2px" : "calc(50%)",
@@ -1319,12 +1319,12 @@ export const AgentDiffView = forwardRef<AgentDiffViewRef, AgentDiffViewProps>(
                 className="sticky top-0 left-0 right-0 h-0 z-20 pointer-events-none"
                 aria-hidden="true"
               >
-                <div className="absolute -top-2 left-0 right-0 h-2 bg-background" />
+                <div className="absolute -top-2 left-0 right-0 h-2" />
               </div>
 
               {/* Filter indicator when showing sub-chat files */}
               {filteredDiffFiles && filteredDiffFiles.length > 0 && (
-                <div className="flex items-center justify-between gap-2 px-2 py-1.5 mb-2 rounded-md bg-primary/10 border border-primary/20">
+                <div className="flex items-center justify-between gap-2 px-2 py-1.5 mb-2 rounded-md  border border-primary/20">
                   <span className="text-xs text-primary">
                     Showing {fileDiffs.length} of {allFileDiffs.length} files
                     from this chat

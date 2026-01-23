@@ -41,12 +41,14 @@ interface SubChatStatusCardProps {
   changedFiles: SubChatFileChange[];
   worktreePath?: string | null;
   isOverlayMode?: boolean;
+  isInputFocused?: boolean;
   onStop?: () => void;
 }
 
 export const SubChatStatusCard = memo(function SubChatStatusCard({
   isStreaming,
   isOverlayMode = false,
+  isInputFocused = false,
   isCompacting,
   changedFiles,
   onStop,
@@ -87,8 +89,9 @@ export const SubChatStatusCard = memo(function SubChatStatusCard({
   return (
     <div
       className={cn(
-        "rounded-t-xl border border-b-0 border-border bg-muted/30 overflow-hidden flex flex-col pb-4",
-        isOverlayMode && "bg-background",
+        "rounded-t-xl border border-b-0 border-border bg-muted/30 overflow-hidden flex flex-col pb-4 transition-colors duration-150",
+        isOverlayMode && "bg-background/30",
+        isInputFocused && "bg-background",
       )}
     >
       {/* Expanded file list - renders above header, expands upward */}

@@ -1,6 +1,12 @@
 "use client";
 
-import { type ReactNode, type RefObject, useCallback, useState } from "react";
+import {
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 import {
   PromptInput,
   PromptInputContextItems,
@@ -33,6 +39,9 @@ export interface ChatInputRootProps {
   isUploading?: boolean;
   isOverlayMode?: boolean;
   disabled?: boolean;
+
+  // Callbacks
+  onFocusChange?: (focused: boolean) => void;
 }
 
 export function ChatInputRoot({
@@ -51,9 +60,14 @@ export function ChatInputRoot({
   isUploading = false,
   isOverlayMode = false,
   disabled = false,
+  onFocusChange,
 }: ChatInputRootProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+
+  useEffect(() => {
+    onFocusChange?.(isFocused);
+  }, [isFocused, onFocusChange]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -150,10 +164,10 @@ export function ChatInputRoot({
         >
           <PromptInput
             className={cn(
-              "border bg-input-background relative z-10 p-2 rounded-xs transition-[border-color] duration-150",
+              "border border-foreground/10 relative z-10 p-2 rounded-xs transition-[border-color] duration-150",
               isDragOver && "border-dashed border-primary/50",
               isFocused && !isDragOver && "border-dashed border-foreground/30",
-              isOverlayMode && "bg-background",
+              isOverlayMode && "bg-background/50 focus-within:bg-background",
               className,
             )}
             maxHeight={maxHeight}

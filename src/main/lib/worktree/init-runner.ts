@@ -1,6 +1,7 @@
 import { EventEmitter } from "node:events";
 import os from "node:os";
 import * as pty from "node-pty";
+import { getShellEnvironment } from "../git/shell-env";
 import { getDefaultShell } from "../terminal/env";
 
 export interface WorktreeInitEvent {
@@ -60,10 +61,12 @@ class WorktreeInitRunner extends EventEmitter {
       data: `$ ${command}\n`,
     } as WorktreeInitEvent);
 
-    // Build environment with context variables
+    // Build environment with context variables and full shell PATH
     const shell = getDefaultShell();
+    const shellEnv = await getShellEnvironment();
     const env: Record<string, string> = {
       ...(process.env as Record<string, string>),
+      ...(shellEnv.PATH ? { PATH: shellEnv.PATH } : {}),
       PROJECT_DIR: projectPath,
       WORKTREE_PATH: worktreePath,
       BRANCH_NAME: branchName,

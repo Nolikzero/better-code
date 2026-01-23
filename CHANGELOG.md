@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.0.2] — Packaging fixes
+
+### Fixed
+
+- Fix `electron-builder: command not found` in GitHub Actions CI
+- Fix release asset upload failing with 403 (missing `contents: write` permission)
+- Fix `ralph.png` not resolving in packaged app (absolute path → relative path)
+- Fix `bun: command not found` (exit code 127) during workspace init in packaged app — shell PATH now derived from user's login shell
+
+### Changed
+
+- macOS builds target Apple Silicon (arm64) only — Intel x64 dropped (GitHub retired x64 macOS runners)
+
 ## [0.0.1] — Your desktop AI coding companion is here
 
 The first public release of BetterCode — a local-first desktop app that gives you a proper workspace for coding with AI agents.

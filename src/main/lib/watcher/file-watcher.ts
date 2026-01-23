@@ -171,7 +171,7 @@ class FileWatcher extends EventEmitter {
         ],
         persistent: true,
         ignoreInitial: true,
-        depth: 2, // Allow some depth for refs/heads changes
+        depth: 2, // Shallow depth for .git/refs changes; file edits detected via IPC
         awaitWriteFinish: {
           stabilityThreshold: 100,
           pollInterval: 50,
@@ -193,7 +193,7 @@ class FileWatcher extends EventEmitter {
           worktreePath: normalizedPath,
         };
         this.emit(`git:${normalizedPath}`, event);
-      }, 300); // Slightly longer debounce for git to handle multiple file changes
+      }, 1000); // Debounce git events to coalesce rapid file writes during agent streaming
 
       this.debounceTimers.set(debounceKey, timer);
     };

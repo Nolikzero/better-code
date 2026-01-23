@@ -85,6 +85,13 @@
       "when": 1769038127056,
       "tag": "0011_little_zuras",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1769112890578,
+      "tag": "0012_ambiguous_thundra",
+      "breakpoints": true
     }
   ]
 }

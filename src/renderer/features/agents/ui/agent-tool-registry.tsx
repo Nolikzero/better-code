@@ -18,6 +18,7 @@ import {
   GlobeIcon,
   IconEditFile,
   PlanningIcon,
+  RalphIcon,
   SearchIcon,
   SparklesIcon,
   WriteFileIcon,
@@ -466,5 +467,20 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
       return text.length > 50 ? `${text.slice(0, 47)}...` : text;
     },
     variant: "collapsible",
+  },
+
+  // Ralph PRD Status - shows PRD generation progress and result
+  "tool-RalphPrdStatus": {
+    icon: RalphIcon,
+    title: (part) => {
+      const isPending =
+        part.state !== "output-available" && part.state !== "output-error";
+      return isPending ? "Generating PRD..." : "PRD Generated";
+    },
+    subtitle: (part) => {
+      const goal = part.output?.goal || part.input?.goal || "";
+      return goal.length > 40 ? `${goal.slice(0, 37)}...` : goal;
+    },
+    variant: "simple",
   },
 };

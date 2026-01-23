@@ -106,4 +106,33 @@ export type UIMessageChunk =
         additions: number;
         deletions: number;
       }>;
+    }
+  // Ralph automation events
+  | { type: "ralph-complete" }
+  | { type: "ralph-story-complete"; storyId: string; autoStartNext?: boolean }
+  | {
+      type: "ralph-progress";
+      storyId: string | null;
+      summary: string;
+      learnings: string[];
+    }
+  | { type: "ralph-prompt-injected"; text: string }
+  | { type: "ralph-prd-generating"; message: string }
+  | {
+      type: "ralph-prd-generated";
+      prd: {
+        goal: string;
+        branchName: string;
+        stories: Array<{
+          id: string;
+          title: string;
+          description: string;
+          priority: number;
+          acceptanceCriteria: string[];
+          type?: string;
+          passes: boolean;
+          notes?: string;
+        }>;
+      };
+      autoStartImplementation?: boolean;
     };

@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { memo, type ReactNode } from "react";
 import { Button } from "../../../../components/ui/button";
 import { AttachIcon } from "../../../../components/ui/icons";
 import { PromptInputActions } from "../../../../components/ui/prompt-input";
@@ -39,7 +39,7 @@ export interface ChatInputActionsProps {
  * Action bar for the chat input with mode toggle, model selector,
  * attach button, and send/stop button.
  */
-export function ChatInputActions({
+export const ChatInputActions = memo(function ChatInputActions({
   leftContent,
   rightContent,
   actionButton,
@@ -94,4 +94,4 @@ export function ChatInputActions({
       </div>
     </PromptInputActions>
   );
-}
+});

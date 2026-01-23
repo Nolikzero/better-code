@@ -1,8 +1,7 @@
-import { TRPCError } from "@trpc/server";
+import type { UIMessageChunk } from "@shared/types";
 import { observable } from "@trpc/server/observable";
-import { execSync } from "child_process";
 import { eq } from "drizzle-orm";
-import { app, BrowserWindow } from "electron";
+import { BrowserWindow } from "electron";
 import * as fs from "fs/promises";
 import * as os from "os";
 import path from "path";
@@ -10,57 +9,11 @@ import { z } from "zod";
 import { chats, getDatabase, subChats } from "../../db";
 import { computeAllStats } from "../../db/computed-stats";
 import { chatStatsEmitter } from "../../events";
-import {
-  buildClaudeEnv,
-  createTransformer,
-  getClaudeBinaryPath,
-  logClaudeEnv,
-  logRawClaudeMessage,
-  type UIMessageChunk,
-} from "../../providers/claude";
 import { providerRegistry } from "../../providers/registry";
 import type { ProviderId } from "../../providers/types";
+import { RalphOrchestrator } from "../../ralph/orchestrator";
 import { publicProcedure, router } from "../index";
 import { buildAgentsOption } from "./agent-utils";
-
-/**
- * Read Claude Code CLI OAuth token from macOS Keychain
- * The CLI stores credentials in "Claude Code-credentials" keychain entry
- */
-function getCliOAuthToken(): string | null {
-  if (process.platform !== "darwin") {
-    // TODO: Add Windows/Linux keychain support
-    console.log("[claude] Non-macOS platform, skipping keychain lookup");
-    return null;
-  }
-
-  try {
-    const output = execSync(
-      'security find-generic-password -s "Claude Code-credentials" -w',
-      { encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] },
-    ).trim();
-
-    if (!output) return null;
-
-    // Parse JSON and extract access token
-    const credentials = JSON.parse(output);
-    const accessToken = credentials?.claudeAiOauth?.accessToken;
-
-    if (accessToken?.startsWith("sk-ant-oat01-")) {
-      console.log("[claude] Found CLI OAuth token in keychain");
-      return accessToken;
-    }
-
-    return null;
-  } catch (error) {
-    // Keychain entry not found or parse error
-    console.log(
-      "[claude] No CLI credentials found in keychain:",
-      (error as Error).message,
-    );
-    return null;
-  }
-}
 
 /**
  * Parse @[agent:name], @[skill:name], and @[tool:name] mentions from prompt text
@@ -80,7 +33,6 @@ function parseMentions(prompt: string): {
   const folderMentions: string[] = [];
   const toolMentions: string[] = [];
 
-  // Match @[prefix:name] pattern
   const mentionRegex = /@\[(file|folder|skill|agent|tool):([^\]]+)\]/g;
   let match;
 
@@ -100,8 +52,6 @@ function parseMentions(prompt: string): {
         folderMentions.push(name);
         break;
       case "tool":
-        // Validate tool name format: only alphanumeric, underscore, hyphen allowed
-        // This prevents prompt injection via malicious tool names
         if (/^[a-zA-Z0-9_-]+$/.test(name)) {
           toolMentions.push(name);
         }
@@ -109,16 +59,12 @@ function parseMentions(prompt: string): {
     }
   }
 
-  // Clean agent/skill/tool mentions from prompt (they will be added as context or hints)
-  // Keep file/folder mentions as they are useful context
   let cleanedPrompt = prompt
     .replace(/@\[agent:[^\]]+\]/g, "")
     .replace(/@\[skill:[^\]]+\]/g, "")
     .replace(/@\[tool:[^\]]+\]/g, "")
     .trim();
 
-  // Add tool usage hints if tools were mentioned
-  // Tool names are already validated to contain only safe characters
   if (toolMentions.length > 0) {
     const toolHints = toolMentions
       .map((t) => `Use the ${t} tool for this request.`)
@@ -136,14 +82,32 @@ function parseMentions(prompt: string): {
   };
 }
 
-// Dynamic import for ESM module
-const getClaudeQuery = async () => {
-  const sdk = await import("@anthropic-ai/claude-agent-sdk");
-  return sdk.query;
-};
+/**
+ * Build the final prompt with skill/agent instructions
+ */
+function buildFinalPrompt(
+  cleanedPrompt: string,
+  agentMentions: string[],
+  skillMentions: string[],
+): string {
+  let finalPrompt = cleanedPrompt;
 
-// Active sessions for cancellation
-const activeSessions = new Map<string, AbortController>();
+  if (!finalPrompt.trim()) {
+    if (agentMentions.length > 0 && skillMentions.length > 0) {
+      finalPrompt = `Use the ${agentMentions.join(", ")} agent(s) and invoke the "${skillMentions.join('", "')}" skill(s) using the Skill tool for this task.`;
+    } else if (agentMentions.length > 0) {
+      finalPrompt = `Use the ${agentMentions.join(", ")} agent(s) for this task.`;
+    } else if (skillMentions.length > 0) {
+      finalPrompt = `Invoke the "${skillMentions.join('", "')}" skill(s) using the Skill tool for this task.`;
+    }
+  } else if (skillMentions.length > 0) {
+    finalPrompt = `${finalPrompt}\n\nUse the "${skillMentions.join('", "')}" skill(s) for this task.`;
+  }
+
+  return finalPrompt;
+}
+
+// Track pending tool approvals (shared between Claude's canUseTool callback and respondToolApproval endpoint)
 const pendingToolApprovals = new Map<
   string,
   {
@@ -157,7 +121,6 @@ const pendingToolApprovals = new Map<
 >();
 
 // Track pending OpenCode questions (different from Claude's Promise-based flow)
-// OpenCode questions require HTTP API calls to respond, not Promise resolution
 const pendingOpenCodeQuestions = new Map<
   string,
   {
@@ -198,16 +161,94 @@ const clearPendingApprovals = (message: string, subChatId?: string) => {
   }
 };
 
+/**
+ * Create the AskUserQuestion callback for Claude's canUseTool.
+ * Emits question to UI, waits for response, updates accumulated parts.
+ */
+function createAskUserQuestionCallback(
+  subChatId: string,
+  safeEmit: (chunk: UIMessageChunk) => boolean,
+  parts: any[],
+): (
+  toolUseId: string,
+  questions: unknown[],
+) => Promise<{ approved: boolean; message?: string; updatedInput?: unknown }> {
+  return async (toolUseId: string, questions: unknown[]) => {
+    // Emit to UI
+    safeEmit({
+      type: "ask-user-question",
+      toolUseId,
+      questions,
+    } as UIMessageChunk);
+
+    // Wait for response (60s timeout)
+    const response = await new Promise<{
+      approved: boolean;
+      message?: string;
+      updatedInput?: unknown;
+    }>((resolve) => {
+      const timeoutId = setTimeout(() => {
+        pendingToolApprovals.delete(toolUseId);
+        safeEmit({
+          type: "ask-user-question-timeout",
+          toolUseId,
+        } as UIMessageChunk);
+        resolve({ approved: false, message: "Timed out" });
+      }, 60000);
+
+      pendingToolApprovals.set(toolUseId, {
+        subChatId,
+        resolve: (d) => {
+          clearTimeout(timeoutId);
+          resolve(d);
+        },
+      });
+    });
+
+    // Update accumulated parts
+    const askToolPart = parts.find(
+      (p) => p.toolCallId === toolUseId && p.type === "tool-AskUserQuestion",
+    );
+
+    if (!response.approved) {
+      const errorMessage = response.message || "Skipped";
+      if (askToolPart) {
+        askToolPart.result = errorMessage;
+        askToolPart.state = "result";
+      }
+      safeEmit({
+        type: "ask-user-question-result",
+        toolUseId,
+        result: errorMessage,
+      } as UIMessageChunk);
+    } else {
+      const answers = (response.updatedInput as any)?.answers;
+      const answerResult = { answers };
+      if (askToolPart) {
+        askToolPart.result = answerResult;
+        askToolPart.state = "result";
+      }
+      safeEmit({
+        type: "ask-user-question-result",
+        toolUseId,
+        result: answerResult,
+      } as UIMessageChunk);
+    }
+
+    return response;
+  };
+}
+
 // Image attachment schema
 const imageAttachmentSchema = z.object({
   base64Data: z.string(),
-  mediaType: z.string(), // e.g. "image/png", "image/jpeg"
+  mediaType: z.string(),
   filename: z.string().optional(),
 });
 
 export const chatRouter = router({
   /**
-   * Stream chat - handles all providers (Claude, Codex, etc.)
+   * Stream chat - handles all providers (Claude, Codex, OpenCode)
    */
   chat: publicProcedure
     .input(
@@ -216,14 +257,14 @@ export const chatRouter = router({
         chatId: z.string(),
         prompt: z.string(),
         cwd: z.string(),
-        projectPath: z.string().optional(), // Original project path for MCP config lookup
-        mode: z.enum(["plan", "agent"]).default("agent"),
+        projectPath: z.string().optional(),
+        mode: z.enum(["plan", "agent", "ralph"]).default("agent"),
         sessionId: z.string().optional(),
         model: z.string().optional(),
-        maxThinkingTokens: z.number().optional(), // Enable extended thinking
-        images: z.array(imageAttachmentSchema).optional(), // Image attachments
-        providerId: z.enum(["claude", "codex", "opencode"]).optional(), // AI provider selection
-        addDirs: z.array(z.string()).optional(), // Additional working directories
+        maxThinkingTokens: z.number().optional(),
+        images: z.array(imageAttachmentSchema).optional(),
+        providerId: z.enum(["claude", "codex", "opencode"]).optional(),
+        addDirs: z.array(z.string()).optional(),
         // Codex-specific settings
         sandboxMode: z
           .enum(["read-only", "workspace-write", "danger-full-access"])
@@ -244,27 +285,25 @@ export const chatRouter = router({
       return observable<UIMessageChunk>((emit) => {
         const abortController = new AbortController();
         const streamId = crypto.randomUUID();
-        activeSessions.set(input.subChatId, abortController);
 
-        // Stream debug logging
-        const subId = input.subChatId.slice(-8); // Short ID for logs
+        const subId = input.subChatId.slice(-8);
         const streamStart = Date.now();
         let chunkCount = 0;
         let lastChunkType = "";
-        // Shared sessionId for cleanup to save on abort
-        let currentSessionId: string | null = null;
         console.log(
           `[SD] M:START sub=${subId} stream=${streamId.slice(-8)} mode=${input.mode}`,
         );
 
-        // Track if observable is still active (not unsubscribed)
         let isObservableActive = true;
 
-        // Helper to safely emit (no-op if already unsubscribed)
         const safeEmit = (chunk: UIMessageChunk) => {
           if (!isObservableActive) return false;
           try {
-            emit.next(chunk);
+            // Tag every chunk with source subChatId for frontend ownership verification
+            emit.next({
+              ...chunk,
+              _subChatId: input.subChatId,
+            } as unknown as UIMessageChunk);
             return true;
           } catch {
             isObservableActive = false;
@@ -272,39 +311,32 @@ export const chatRouter = router({
           }
         };
 
-        // Helper to safely complete (no-op if already closed)
         const safeComplete = () => {
           try {
             emit.complete();
           } catch {
-            // Already completed or closed
+            // Already completed
           }
         };
 
-        // Helper to emit error to frontend
         const emitError = (error: unknown, context: string) => {
           const errorMessage =
             error instanceof Error ? error.message : String(error);
-          const errorStack = error instanceof Error ? error.stack : undefined;
-
           console.error(`[claude] ${context}:`, errorMessage);
-          if (errorStack) console.error("[claude] Stack:", errorStack);
 
-          // Send detailed error to frontend (safely)
           safeEmit({
             type: "error",
             errorText: `${context}: ${errorMessage}`,
-            // Include extra debug info
             ...(process.env.NODE_ENV !== "production" && {
               debugInfo: {
                 context,
                 cwd: input.cwd,
                 mode: input.mode,
-                PATH: process.env.PATH?.slice(0, 200),
               },
             }),
           } as UIMessageChunk);
         };
+
         (async () => {
           try {
             const db = getDatabase();
@@ -315,20 +347,46 @@ export const chatRouter = router({
               .from(subChats)
               .where(eq(subChats.id, input.subChatId))
               .get();
-            const existingMessages = JSON.parse(existing?.messages || "[]");
-            const existingSessionId = existing?.sessionId || null;
-            // Load emittedDiffKeys for OpenCode deduplication across turns
-            const existingEmittedDiffKeys: string[] = JSON.parse(
-              existing?.emittedDiffKeys || "[]",
+
+            console.log(
+              `[SD] M:LOAD sub=${subId} messages=${existing?.messages ? "found" : "none"}`,
             );
 
-            // Check if last message is already this user message (avoid duplicate)
+            let existingMessages = [];
+
+            try {
+              existingMessages = existing?.messages
+                ? JSON.parse(existing.messages)
+                : [];
+            } catch (e) {
+              console.warn(
+                `[chat] Failed to parse existing messages JSON for subChatId=${input.subChatId}:`,
+                e,
+              );
+            }
+
+            const existingSessionId = existing?.sessionId || null;
+
+            let existingEmittedDiffKeys: string[] = [];
+
+            try {
+              existingEmittedDiffKeys = existing?.emittedDiffKeys
+                ? JSON.parse(existing.emittedDiffKeys)
+                : [];
+            } catch (e) {
+              console.warn(
+                `[chat] Failed to parse existing emittedDiffKeys JSON for subChatId=${input.subChatId}:`,
+                e,
+              );
+            }
+
+            // Check for duplicate user message
             const lastMsg = existingMessages[existingMessages.length - 1];
             const isDuplicate =
               lastMsg?.role === "user" &&
               lastMsg?.parts?.[0]?.text === input.prompt;
 
-            // 2. Create user message and save BEFORE streaming (skip if duplicate)
+            // 2. Create user message and save BEFORE streaming
             let userMessage: any;
             let messagesToSave: any[];
 
@@ -343,7 +401,6 @@ export const chatRouter = router({
               };
               messagesToSave = [...existingMessages, userMessage];
 
-              // Compute stats for computed columns
               const { fileStats, hasPendingPlanApproval } =
                 computeAllStats(messagesToSave);
 
@@ -361,947 +418,322 @@ export const chatRouter = router({
                 .run();
             }
 
-            // ===== PROVIDER ROUTING =====
-            // Route to non-Claude provider if specified
-            if (input.providerId && input.providerId !== "claude") {
-              const provider = providerRegistry.get(
-                input.providerId as ProviderId,
-              );
-              if (!provider) {
-                emitError(
-                  new Error(`Provider '${input.providerId}' not found`),
-                  "Provider not found",
-                );
-                safeEmit({ type: "finish" } as UIMessageChunk);
-                safeComplete();
-                return;
-              }
+            // 3. Ralph orchestration
+            let orchestrator: RalphOrchestrator | null = null;
+            let effectiveMode: "plan" | "agent" | "ralph" = input.mode;
+            let modifiedPrompt = input.prompt;
 
-              console.log(
-                `[SD] M:PROVIDER_START sub=${subId} provider=${input.providerId}`,
-              );
-
-              // Accumulation state for provider
-              const providerParts: any[] = [];
-              let providerCurrentText = "";
-              let providerMetadata: any = {};
-
-              try {
-                // Stream from provider
-                for await (const chunk of provider.chat({
-                  subChatId: input.subChatId,
+            if (input.mode === "ralph") {
+              orchestrator = new RalphOrchestrator(
+                {
                   chatId: input.chatId,
-                  prompt: input.prompt,
+                  subChatId: input.subChatId,
                   cwd: input.cwd,
-                  projectPath: input.projectPath,
-                  mode: input.mode,
-                  sessionId: input.sessionId || existingSessionId || undefined,
-                  model: input.model,
-                  maxThinkingTokens: input.maxThinkingTokens,
-                  abortController,
-                  addDirs: input.addDirs,
-                  // Codex-specific settings from UI
-                  sandboxMode: input.sandboxMode,
-                  approvalPolicy: input.approvalPolicy,
-                  reasoningEffort: input.reasoningEffort,
-                  // Codex SDK enhancement options
-                  images: input.images,
-                  outputSchema: input.outputSchema,
-                  networkAccessEnabled: input.networkAccessEnabled,
-                  webSearchMode: input.webSearchMode,
-                  // OpenCode-specific: persisted diff keys for deduplication
-                  emittedDiffKeys: existingEmittedDiffKeys,
-                })) {
-                  if (abortController.signal.aborted) break;
-
-                  chunkCount++;
-                  lastChunkType = chunk.type;
-
-                  // Emit to frontend
-                  if (!safeEmit(chunk)) {
-                    console.log(
-                      `[SD] M:EMIT_CLOSED sub=${subId} type=${chunk.type}`,
-                    );
-                    break;
-                  }
-
-                  // Accumulate based on chunk type
-                  switch (chunk.type) {
-                    case "text-delta":
-                      providerCurrentText += chunk.delta;
-                      break;
-                    case "text-end":
-                      if (providerCurrentText.trim()) {
-                        providerParts.push({
-                          type: "text",
-                          text: providerCurrentText,
-                        });
-                        providerCurrentText = "";
-                      }
-                      break;
-                    case "tool-input-available": {
-                      // Find existing part by toolCallId to avoid duplicates
-                      const existingTool = providerParts.find(
-                        (p: any) =>
-                          p.type?.startsWith("tool-") &&
-                          p.toolCallId === chunk.toolCallId,
-                      );
-                      if (existingTool) {
-                        // Update existing part
-                        existingTool.input = chunk.input;
-                        existingTool.state = "call";
-                      } else {
-                        // Create new part
-                        providerParts.push({
-                          type: `tool-${chunk.toolName}`,
-                          toolCallId: chunk.toolCallId,
-                          toolName: chunk.toolName,
-                          input: chunk.input,
-                          state: "call",
-                        });
-                      }
-                      break;
-                    }
-                    case "tool-output-available": {
-                      const toolPart = providerParts.find(
-                        (p: any) =>
-                          p.type?.startsWith("tool-") &&
-                          p.toolCallId === chunk.toolCallId,
-                      );
-                      if (toolPart) {
-                        toolPart.result = chunk.output;
-                        toolPart.state = "result";
-                      }
-                      break;
-                    }
-                    case "message-metadata":
-                      providerMetadata = {
-                        ...providerMetadata,
-                        ...chunk.messageMetadata,
-                      };
-                      break;
-                  }
-                }
-
-                // Flush remaining text
-                if (providerCurrentText.trim()) {
-                  providerParts.push({
-                    type: "text",
-                    text: providerCurrentText,
-                  });
-                }
-
-                // Save to DB
-                if (providerParts.length > 0) {
-                  const assistantMessage = {
-                    id: crypto.randomUUID(),
-                    role: "assistant",
-                    parts: providerParts,
-                    metadata: providerMetadata,
-                  };
-                  const finalMessages = [...messagesToSave, assistantMessage];
-
-                  // Compute stats for computed columns
-                  const { fileStats, hasPendingPlanApproval } =
-                    computeAllStats(finalMessages);
-
-                  db.update(subChats)
-                    .set({
-                      messages: JSON.stringify(finalMessages),
-                      sessionId: providerMetadata.sessionId,
-                      streamId: null,
-                      updatedAt: new Date(),
-                      hasPendingPlanApproval,
-                      fileAdditions: fileStats.additions,
-                      fileDeletions: fileStats.deletions,
-                      fileCount: fileStats.fileCount,
-                      // Persist emittedDiffKeys for OpenCode deduplication across turns
-                      ...(providerMetadata.emittedDiffKeys && {
-                        emittedDiffKeys: JSON.stringify(
-                          providerMetadata.emittedDiffKeys,
-                        ),
-                      }),
-                    })
-                    .where(eq(subChats.id, input.subChatId))
-                    .run();
-
-                  // Emit stats update event for real-time sidebar updates
-                  chatStatsEmitter.emitStatsUpdate({
-                    type: "file-stats",
-                    chatId: input.chatId,
-                    subChatId: input.subChatId,
-                  });
-                } else {
-                  db.update(subChats)
-                    .set({
-                      streamId: null,
-                      updatedAt: new Date(),
-                    })
-                    .where(eq(subChats.id, input.subChatId))
-                    .run();
-                }
-
-                // Update parent chat timestamp
-                db.update(chats)
-                  .set({ updatedAt: new Date() })
-                  .where(eq(chats.id, input.chatId))
-                  .run();
-
-                const duration = ((Date.now() - streamStart) / 1000).toFixed(1);
-                console.log(
-                  `[SD] M:PROVIDER_END sub=${subId} provider=${input.providerId} n=${chunkCount} t=${duration}s`,
-                );
-                safeComplete();
-              } catch (error) {
-                emitError(error, `${input.providerId} provider error`);
-                safeEmit({ type: "finish" } as UIMessageChunk);
-                safeComplete();
-              }
-
-              return; // Skip Claude logic
+                  providerId: (input.providerId || "claude") as ProviderId,
+                  originalPrompt: input.prompt,
+                  existingMessages,
+                },
+                safeEmit,
+              );
+              const decision = orchestrator.prepareStream();
+              effectiveMode = decision.effectiveMode;
+              modifiedPrompt = decision.modifiedPrompt;
+              // Store enhanced prompt in user message for history consistency
+              userMessage.parts[0].text = modifiedPrompt;
+              // Notify frontend to update in-memory Chat message
+              safeEmit({
+                type: "ralph-prompt-injected",
+                text: modifiedPrompt,
+              } as UIMessageChunk);
             }
-            // ===== END PROVIDER ROUTING =====
 
-            // 3. Get Claude SDK
-            let claudeQuery;
-            try {
-              claudeQuery = await getClaudeQuery();
-            } catch (sdkError) {
-              emitError(sdkError, "Failed to load Claude SDK");
-              console.log(
-                `[SD] M:END sub=${subId} reason=sdk_load_error n=${chunkCount}`,
+            // 4. Get provider
+            const providerId = input.providerId || "claude";
+            const provider = providerRegistry.get(providerId as ProviderId);
+
+            if (!provider) {
+              emitError(
+                new Error(`Provider '${providerId}' not found`),
+                "Provider not found",
               );
               safeEmit({ type: "finish" } as UIMessageChunk);
               safeComplete();
               return;
             }
 
-            const transform = createTransformer();
+            console.log(
+              `[SD] M:PROVIDER_START sub=${subId} provider=${providerId}`,
+            );
 
-            // 4. Setup accumulation state
-            const parts: any[] = [];
-            let currentText = "";
-            let metadata: any = {};
-
-            // Capture stderr from Claude process for debugging
-            const stderrLines: string[] = [];
-
-            // Parse mentions from prompt (agents, skills, files, folders)
+            // 5. Preprocessing: parse mentions and build prompt
             const { cleanedPrompt, agentMentions, skillMentions } =
-              parseMentions(input.prompt);
+              parseMentions(orchestrator ? modifiedPrompt : input.prompt);
 
-            // Build agents option for SDK (proper registration via options.agents)
+            // Build agents option (for Claude SDK agent registration)
             const agentsOption = await buildAgentsOption(
               agentMentions,
               input.cwd,
             );
 
-            // Log if agents were mentioned
             if (agentMentions.length > 0) {
               console.log(
                 "[claude] Registering agents via SDK:",
                 Object.keys(agentsOption),
               );
             }
-
-            // Log if skills were mentioned
             if (skillMentions.length > 0) {
               console.log("[claude] Skills mentioned:", skillMentions);
             }
 
-            // Build final prompt with skill instructions if needed
-            let finalPrompt = cleanedPrompt;
+            // Build final prompt
+            const finalPrompt = orchestrator
+              ? modifiedPrompt
+              : buildFinalPrompt(cleanedPrompt, agentMentions, skillMentions);
 
-            // Handle empty prompt when only mentions are present
-            if (!finalPrompt.trim()) {
-              if (agentMentions.length > 0 && skillMentions.length > 0) {
-                finalPrompt = `Use the ${agentMentions.join(", ")} agent(s) and invoke the "${skillMentions.join('", "')}" skill(s) using the Skill tool for this task.`;
-              } else if (agentMentions.length > 0) {
-                finalPrompt = `Use the ${agentMentions.join(", ")} agent(s) for this task.`;
-              } else if (skillMentions.length > 0) {
-                finalPrompt = `Invoke the "${skillMentions.join('", "')}" skill(s) using the Skill tool for this task.`;
-              }
-            } else if (skillMentions.length > 0) {
-              // Append skill instruction to existing prompt
-              finalPrompt = `${finalPrompt}\n\nUse the "${skillMentions.join('", "')}" skill(s) for this task.`;
-            }
+            // 6. Load provider-specific config (MCP servers, etc.)
+            const lookupPath = input.projectPath || input.cwd;
+            const providerConfig =
+              await provider.getProviderConfig?.(lookupPath);
 
-            // Build prompt: if there are images, create an AsyncIterable<SDKUserMessage>
-            // Otherwise use simple string prompt
-            let prompt: string | AsyncIterable<any> = finalPrompt;
+            // 7. Accumulation state
+            const parts: any[] = [];
+            let currentText = "";
+            let metadata: any = {};
+            let planCompleted = false;
+            // Track Edit/Write tool IDs to suppress their streaming chunks (performance)
+            const suppressedStreamingTools = new Set<string>();
 
-            if (input.images && input.images.length > 0) {
-              // Create message content array with images first, then text
-              const messageContent: any[] = [
-                ...input.images.map((img) => ({
-                  type: "image" as const,
-                  source: {
-                    type: "base64" as const,
-                    media_type: img.mediaType,
-                    data: img.base64Data,
-                  },
-                })),
-              ];
-
-              // Add text if present
-              if (finalPrompt.trim()) {
-                messageContent.push({
-                  type: "text" as const,
-                  text: finalPrompt,
-                });
-              }
-
-              // Create an async generator that yields a single SDKUserMessage
-              async function* createPromptWithImages() {
-                yield {
-                  type: "user" as const,
-                  message: {
-                    role: "user" as const,
-                    content: messageContent,
-                  },
-                  parent_tool_use_id: null,
-                };
-              }
-
-              prompt = createPromptWithImages();
-            }
-
-            // Build full environment for Claude SDK (includes HOME, PATH, etc.)
-            const claudeEnv = buildClaudeEnv();
-
-            // Debug logging in dev
-            if (process.env.NODE_ENV !== "production") {
-              logClaudeEnv(claudeEnv, `[${input.subChatId}] `);
-            }
-
-            // Create isolated config directory per subChat to prevent session contamination
-            // The Claude binary stores sessions in ~/.claude/ based on cwd, which causes
-            // cross-chat contamination when multiple chats use the same project folder
-            const isolatedConfigDir = path.join(
-              app.getPath("userData"),
-              "claude-sessions",
-              input.subChatId,
-            );
-
-            // MCP servers to pass to SDK (read from ~/.claude.json)
-            let mcpServersForSdk: Record<string, any> | undefined;
-
-            // Ensure isolated config dir exists and symlink skills/agents from ~/.claude/
-            // This is needed because SDK looks for skills at $CLAUDE_CONFIG_DIR/skills/
+            // 8. Stream from provider
             try {
-              await fs.mkdir(isolatedConfigDir, { recursive: true });
-
-              const homeClaudeDir = path.join(os.homedir(), ".claude");
-              const skillsSource = path.join(homeClaudeDir, "skills");
-              const skillsTarget = path.join(isolatedConfigDir, "skills");
-              const agentsSource = path.join(homeClaudeDir, "agents");
-              const agentsTarget = path.join(isolatedConfigDir, "agents");
-
-              // Symlink skills directory if source exists and target doesn't
-              try {
-                const skillsSourceExists = await fs
-                  .stat(skillsSource)
-                  .then(() => true)
-                  .catch(() => false);
-                const skillsTargetExists = await fs
-                  .lstat(skillsTarget)
-                  .then(() => true)
-                  .catch(() => false);
-                if (skillsSourceExists && !skillsTargetExists) {
-                  await fs.symlink(skillsSource, skillsTarget, "dir");
-                  console.log(
-                    `[claude] Symlinked skills: ${skillsTarget} -> ${skillsSource}`,
-                  );
-                }
-              } catch (_symlinkErr) {
-                // Ignore symlink errors (might already exist or permission issues)
-              }
-
-              // Symlink agents directory if source exists and target doesn't
-              try {
-                const agentsSourceExists = await fs
-                  .stat(agentsSource)
-                  .then(() => true)
-                  .catch(() => false);
-                const agentsTargetExists = await fs
-                  .lstat(agentsTarget)
-                  .then(() => true)
-                  .catch(() => false);
-                if (agentsSourceExists && !agentsTargetExists) {
-                  await fs.symlink(agentsSource, agentsTarget, "dir");
-                  console.log(
-                    `[claude] Symlinked agents: ${agentsTarget} -> ${agentsSource}`,
-                  );
-                }
-              } catch (_symlinkErr) {
-                // Ignore symlink errors (might already exist or permission issues)
-              }
-
-              // Read MCP servers from ~/.claude.json for the original project path
-              // These will be passed directly to the SDK via options.mcpServers
-              const claudeJsonSource = path.join(os.homedir(), ".claude.json");
-              try {
-                const claudeJsonSourceExists = await fs
-                  .stat(claudeJsonSource)
-                  .then(() => true)
-                  .catch(() => false);
-
-                if (claudeJsonSourceExists) {
-                  // Read original config
-                  const originalConfig = JSON.parse(
-                    await fs.readFile(claudeJsonSource, "utf-8"),
-                  );
-
-                  // Look for project-specific MCP config using original project path
-                  // Config structure: { "projects": { "/path/to/project": { "mcpServers": {...} } } }
-                  const lookupPath = input.projectPath || input.cwd;
-                  const projectConfig = originalConfig.projects?.[lookupPath];
-
-                  // Debug logging
-                  console.log(
-                    `[claude] MCP config lookup: lookupPath=${lookupPath}, found=${!!projectConfig?.mcpServers}`,
-                  );
-                  if (projectConfig?.mcpServers) {
-                    console.log(
-                      `[claude] MCP servers found: ${Object.keys(projectConfig.mcpServers).join(", ")}`,
-                    );
-                    // Store MCP servers to pass to SDK
-                    mcpServersForSdk = projectConfig.mcpServers;
-                  } else {
-                    // Log available project paths in config for debugging
-                    const projectPaths = Object.keys(
-                      originalConfig.projects || {},
-                    ).filter((k) => originalConfig.projects[k]?.mcpServers);
-                    console.log(
-                      `[claude] No MCP servers for ${lookupPath}. Config has MCP for: ${projectPaths.join(", ") || "(none)"}`,
-                    );
-                  }
-                }
-              } catch (configErr) {
-                console.error("[claude] Failed to read MCP config:", configErr);
-              }
-            } catch (mkdirErr) {
-              console.error(
-                "[claude] Failed to setup isolated config dir:",
-                mkdirErr,
-              );
-            }
-
-            // Get CLI OAuth token from keychain and pass to SDK
-            const cliOAuthToken = getCliOAuthToken();
-
-            // Build final env with OAuth token if available
-            const finalEnv = {
-              ...claudeEnv,
-              CLAUDE_CONFIG_DIR: isolatedConfigDir,
-              ...(cliOAuthToken && {
-                CLAUDE_CODE_OAUTH_TOKEN: cliOAuthToken,
-              }),
-            };
-
-            // Get Claude binary path (bundled or system-installed)
-            const binaryResult = getClaudeBinaryPath();
-            if (!binaryResult) {
-              throw new TRPCError({
-                code: "PRECONDITION_FAILED",
-                message:
-                  "Claude Code binary not found. Install via https://claude.ai/install.sh or run 'bun run claude:download'",
-              });
-            }
-            console.log(
-              `[claude] Using ${binaryResult.source} binary: ${binaryResult.path}`,
-            );
-            const claudeBinaryPath = binaryResult.path;
-
-            const resumeSessionId =
-              input.sessionId || existingSessionId || undefined;
-            console.log(
-              `[SD] Query options - cwd: ${input.cwd}, projectPath: ${input.projectPath || "(not set)"}, mcpServers: ${mcpServersForSdk ? Object.keys(mcpServersForSdk).join(", ") : "(none)"}`,
-            );
-
-            const queryOptions = {
-              prompt,
-              options: {
-                abortController, // Must be inside options!
+              for await (const chunk of provider.chat({
+                subChatId: input.subChatId,
+                chatId: input.chatId,
+                prompt: finalPrompt,
                 cwd: input.cwd,
-                systemPrompt: {
-                  type: "preset" as const,
-                  preset: "claude_code" as const,
-                },
-                // Register mentioned agents with SDK via options.agents
-                ...(Object.keys(agentsOption).length > 0 && {
-                  agents: agentsOption,
-                }),
-                // Pass MCP servers from original project config directly to SDK
-                ...(mcpServersForSdk && { mcpServers: mcpServersForSdk }),
-                // Additional working directories (from /add-dir command)
-                ...(input.addDirs &&
-                  input.addDirs.length > 0 && { addDirs: input.addDirs }),
-                env: finalEnv,
-                permissionMode:
-                  input.mode === "plan"
-                    ? ("plan" as const)
-                    : ("bypassPermissions" as const),
-                ...(input.mode !== "plan" && {
-                  allowDangerouslySkipPermissions: true,
-                }),
-                includePartialMessages: true,
-                // Load skills from project and user directories (native Claude Code skills)
-                settingSources: ["project" as const, "user" as const],
-                canUseTool: async (
-                  toolName: string,
-                  toolInput: Record<string, unknown>,
-                  options: { toolUseID: string },
-                ) => {
-                  if (toolName === "AskUserQuestion") {
-                    const { toolUseID } = options;
-                    // Emit to UI (safely in case observer is closed)
-                    safeEmit({
-                      type: "ask-user-question",
-                      toolUseId: toolUseID,
-                      questions: (toolInput as any).questions,
-                    } as UIMessageChunk);
-
-                    // Wait for response (60s timeout)
-                    const response = await new Promise<{
-                      approved: boolean;
-                      message?: string;
-                      updatedInput?: unknown;
-                    }>((resolve) => {
-                      const timeoutId = setTimeout(() => {
-                        pendingToolApprovals.delete(toolUseID);
-                        // Emit chunk to notify UI that the question has timed out
-                        // This ensures the pending question dialog is cleared
-                        safeEmit({
-                          type: "ask-user-question-timeout",
-                          toolUseId: toolUseID,
-                        } as UIMessageChunk);
-                        resolve({ approved: false, message: "Timed out" });
-                      }, 60000);
-
-                      pendingToolApprovals.set(toolUseID, {
-                        subChatId: input.subChatId,
-                        resolve: (d) => {
-                          clearTimeout(timeoutId);
-                          resolve(d);
-                        },
-                      });
+                projectPath: input.projectPath,
+                mode: effectiveMode === "ralph" ? "agent" : effectiveMode,
+                sessionId: input.sessionId || existingSessionId || undefined,
+                model: input.model,
+                maxThinkingTokens: input.maxThinkingTokens,
+                abortController,
+                addDirs: input.addDirs,
+                images: input.images,
+                // Claude-specific options
+                mcpServers: providerConfig?.mcpServers,
+                agents:
+                  Object.keys(agentsOption).length > 0
+                    ? agentsOption
+                    : undefined,
+                onAskUserQuestion: createAskUserQuestionCallback(
+                  input.subChatId,
+                  safeEmit,
+                  parts,
+                ),
+                onFileChanged: (filePath, toolType, subChatId) => {
+                  const windows = BrowserWindow.getAllWindows();
+                  for (const win of windows) {
+                    win.webContents.send("file-changed", {
+                      filePath,
+                      type: toolType,
+                      subChatId,
                     });
-
-                    // Find the tool part in accumulated parts
-                    const askToolPart = parts.find(
-                      (p) =>
-                        p.toolCallId === toolUseID &&
-                        p.type === "tool-AskUserQuestion",
-                    );
-
-                    if (!response.approved) {
-                      // Update the tool part with error result for skipped/denied
-                      const errorMessage = response.message || "Skipped";
-                      if (askToolPart) {
-                        askToolPart.result = errorMessage;
-                        askToolPart.state = "result";
-                      }
-                      // Emit result to frontend so it updates in real-time
-                      safeEmit({
-                        type: "ask-user-question-result",
-                        toolUseId: toolUseID,
-                        result: errorMessage,
-                      } as UIMessageChunk);
-                      return {
-                        behavior: "deny" as const,
-                        message: errorMessage,
-                      };
-                    }
-
-                    // Update the tool part with answers result for approved
-                    const answers = (response.updatedInput as any)?.answers;
-                    const answerResult = { answers };
-                    if (askToolPart) {
-                      askToolPart.result = answerResult;
-                      askToolPart.state = "result";
-                    }
-                    // Emit result to frontend so it updates in real-time
-                    safeEmit({
-                      type: "ask-user-question-result",
-                      toolUseId: toolUseID,
-                      result: answerResult,
-                    } as UIMessageChunk);
-                    return {
-                      behavior: "allow" as const,
-                      updatedInput: response.updatedInput as
-                        | Record<string, unknown>
-                        | undefined,
-                    };
                   }
-                  return {
-                    behavior: "allow" as const,
-                    updatedInput: toolInput as Record<string, unknown>,
-                  };
                 },
-                stderr: (data: string) => {
-                  stderrLines.push(data);
+                onStderr: (data) => {
                   console.error("[claude stderr]", data);
                 },
-                // Use bundled binary
-                pathToClaudeCodeExecutable: claudeBinaryPath,
-                ...(resumeSessionId && {
-                  resume: resumeSessionId,
-                  continue: true,
-                }),
-                ...(input.model && { model: input.model }),
-                // fallbackModel: "claude-opus-4-5-20251101",
-                ...(input.maxThinkingTokens && {
-                  maxThinkingTokens: input.maxThinkingTokens,
-                }),
-              },
-            };
-
-            // 5. Run Claude SDK
-            let stream;
-            try {
-              stream = claudeQuery(queryOptions);
-            } catch (queryError) {
-              console.error(
-                "[CLAUDE] ✗ Failed to create SDK query:",
-                queryError,
-              );
-              emitError(queryError, "Failed to start Claude query");
-              console.log(
-                `[SD] M:END sub=${subId} reason=query_error n=${chunkCount}`,
-              );
-              safeEmit({ type: "finish" } as UIMessageChunk);
-              safeComplete();
-              return;
-            }
-
-            let messageCount = 0;
-            let _lastError: Error | null = null;
-            let planCompleted = false; // Flag to stop after ExitPlanMode in plan mode
-            let exitPlanModeToolCallId: string | null = null; // Track ExitPlanMode's toolCallId
-
-            try {
-              for await (const msg of stream) {
+                // Codex-specific options
+                sandboxMode: input.sandboxMode,
+                approvalPolicy: input.approvalPolicy,
+                reasoningEffort: input.reasoningEffort,
+                outputSchema: input.outputSchema,
+                networkAccessEnabled: input.networkAccessEnabled,
+                webSearchMode: input.webSearchMode,
+                // OpenCode-specific
+                emittedDiffKeys: existingEmittedDiffKeys,
+              })) {
                 if (abortController.signal.aborted) break;
 
-                messageCount++;
+                chunkCount++;
+                lastChunkType = chunk.type;
 
-                // Log raw message for debugging
-                logRawClaudeMessage(input.chatId, msg);
+                // Ralph orchestration: track plan/story signals
+                orchestrator?.processChunk(chunk);
 
-                // Check for error messages from SDK (error can be embedded in message payload!)
-                const msgAny = msg as any;
-                if (msgAny.type === "error" || msgAny.error) {
-                  // Log full message structure for debugging
+                // Suppress Edit/Write tool input streaming for performance
+                if (
+                  chunk.type === "tool-input-start" &&
+                  (chunk.toolName === "Edit" || chunk.toolName === "Write")
+                ) {
+                  suppressedStreamingTools.add(chunk.toolCallId);
+                  continue;
+                }
+                if (
+                  chunk.type === "tool-input-delta" &&
+                  suppressedStreamingTools.has(chunk.toolCallId)
+                ) {
+                  continue;
+                }
+
+                // Emit to frontend
+                if (!safeEmit(chunk)) {
                   console.log(
-                    `[SD] M:ERROR_MSG sub=${subId}`,
-                    JSON.stringify(msgAny, null, 2),
+                    `[SD] M:EMIT_CLOSED sub=${subId} type=${chunk.type}`,
                   );
-
-                  const sdkError =
-                    msgAny.error || msgAny.message || "Unknown SDK error";
-                  _lastError = new Error(sdkError);
-
-                  // Categorize SDK-level errors
-                  let errorCategory = "SDK_ERROR";
-                  let errorContext = "Claude SDK error";
-
-                  if (
-                    sdkError === "authentication_failed" ||
-                    sdkError.includes("authentication")
-                  ) {
-                    errorCategory = "AUTH_FAILED_SDK";
-                    errorContext =
-                      "Authentication failed - not logged into Claude Code CLI";
-                  } else if (
-                    sdkError === "invalid_api_key" ||
-                    sdkError.includes("api_key")
-                  ) {
-                    errorCategory = "INVALID_API_KEY_SDK";
-                    errorContext = "Invalid API key in Claude Code CLI";
-                  } else if (
-                    sdkError === "rate_limit_exceeded" ||
-                    sdkError.includes("rate")
-                  ) {
-                    errorCategory = "RATE_LIMIT_SDK";
-                    errorContext = "Rate limit exceeded";
-                  } else if (
-                    sdkError === "overloaded" ||
-                    sdkError.includes("overload")
-                  ) {
-                    errorCategory = "OVERLOADED_SDK";
-                    errorContext = "Claude is overloaded, try again later";
-                  }
-
-                  // Emit auth-error for authentication failures, regular error otherwise
-                  if (errorCategory === "AUTH_FAILED_SDK") {
-                    safeEmit({
-                      type: "auth-error",
-                      errorText: errorContext,
-                    } as UIMessageChunk);
-                  } else {
-                    safeEmit({
-                      type: "error",
-                      errorText: errorContext,
-                      debugInfo: {
-                        category: errorCategory,
-                        sdkError: sdkError,
-                        sessionId: msgAny.session_id,
-                        messageId: msgAny.message?.id,
-                      },
-                    } as UIMessageChunk);
-                  }
-
-                  console.log(
-                    `[SD] M:END sub=${subId} reason=sdk_error cat=${errorCategory} n=${chunkCount} err=${sdkError}`,
-                  );
-                  safeEmit({ type: "finish" } as UIMessageChunk);
-                  safeComplete();
-                  return;
-                }
-
-                // Track sessionId
-                if (msgAny.session_id) {
-                  metadata.sessionId = msgAny.session_id;
-                  currentSessionId = msgAny.session_id; // Share with cleanup
-                }
-
-                // Debug: Log system messages from SDK
-                if (msgAny.type === "system") {
-                  // Full log to see all fields including MCP errors
-                  console.log(
-                    `[SD] SYSTEM message: subtype=${msgAny.subtype}`,
-                    JSON.stringify(
-                      {
-                        cwd: msgAny.cwd,
-                        mcp_servers: msgAny.mcp_servers,
-                        tools: msgAny.tools,
-                        plugins: msgAny.plugins,
-                        permissionMode: msgAny.permissionMode,
-                      },
-                      null,
-                      2,
-                    ),
-                  );
-                }
-
-                // Transform and emit + accumulate
-                for (const chunk of transform(msg)) {
-                  chunkCount++;
-                  lastChunkType = chunk.type;
-
-                  // Use safeEmit to prevent throws when observer is closed
-                  if (!safeEmit(chunk)) {
-                    // Observer closed (user clicked Stop), break out of loop
-                    console.log(
-                      `[SD] M:EMIT_CLOSED sub=${subId} type=${chunk.type} n=${chunkCount}`,
-                    );
-                    break;
-                  }
-
-                  // Accumulate based on chunk type
-                  switch (chunk.type) {
-                    case "text-delta":
-                      currentText += chunk.delta;
-                      break;
-                    case "text-end":
-                      if (currentText.trim()) {
-                        parts.push({ type: "text", text: currentText });
-                        currentText = "";
-                      }
-                      break;
-                    case "tool-input-available": {
-                      // DEBUG: Log tool calls
-                      console.log(
-                        `[SD] M:TOOL_CALL sub=${subId} toolName="${chunk.toolName}" mode=${input.mode} callId=${chunk.toolCallId}`,
-                      );
-
-                      // Track ExitPlanMode toolCallId so we can stop when it completes
-                      if (
-                        input.mode === "plan" &&
-                        chunk.toolName === "ExitPlanMode"
-                      ) {
-                        console.log(
-                          `[SD] M:PLAN_TOOL_DETECTED sub=${subId} callId=${chunk.toolCallId}`,
-                        );
-                        exitPlanModeToolCallId = chunk.toolCallId;
-                      }
-
-                      // Find existing part by toolCallId to avoid duplicates
-                      const existingTool = parts.find(
-                        (p) =>
-                          p.type?.startsWith("tool-") &&
-                          p.toolCallId === chunk.toolCallId,
-                      );
-                      if (existingTool) {
-                        // Update existing part
-                        existingTool.input = chunk.input;
-                        existingTool.state = "call";
-                      } else {
-                        // Create new part
-                        parts.push({
-                          type: `tool-${chunk.toolName}`,
-                          toolCallId: chunk.toolCallId,
-                          toolName: chunk.toolName,
-                          input: chunk.input,
-                          state: "call",
-                        });
-                      }
-                      break;
-                    }
-                    case "tool-output-available": {
-                      const toolPart = parts.find(
-                        (p) =>
-                          p.type?.startsWith("tool-") &&
-                          p.toolCallId === chunk.toolCallId,
-                      );
-                      if (toolPart) {
-                        toolPart.result = chunk.output;
-                        toolPart.state = "result";
-
-                        // Notify renderer about file changes for Write/Edit tools
-                        if (
-                          toolPart.type === "tool-Write" ||
-                          toolPart.type === "tool-Edit"
-                        ) {
-                          const filePath = toolPart.input?.file_path;
-                          if (filePath) {
-                            const windows = BrowserWindow.getAllWindows();
-                            for (const win of windows) {
-                              win.webContents.send("file-changed", {
-                                filePath,
-                                type: toolPart.type,
-                                subChatId: input.subChatId,
-                              });
-                            }
-                          }
-                        }
-                      }
-                      // Stop streaming after ExitPlanMode completes in plan mode
-                      // Match by toolCallId since toolName is undefined in output chunks
-                      if (
-                        input.mode === "plan" &&
-                        exitPlanModeToolCallId &&
-                        chunk.toolCallId === exitPlanModeToolCallId
-                      ) {
-                        console.log(
-                          `[SD] M:PLAN_STOP sub=${subId} callId=${chunk.toolCallId} n=${chunkCount} parts=${parts.length}`,
-                        );
-                        planCompleted = true;
-                        // Emit finish chunk so Chat hook properly resets its state
-                        console.log(
-                          `[SD] M:PLAN_FINISH sub=${subId} - emitting finish chunk`,
-                        );
-                        safeEmit({ type: "finish" } as UIMessageChunk);
-                        // Abort the Claude process so it doesn't keep running
-                        console.log(
-                          `[SD] M:PLAN_ABORT sub=${subId} - aborting claude process`,
-                        );
-                        abortController.abort();
-                      }
-                      break;
-                    }
-                    case "message-metadata":
-                      metadata = { ...metadata, ...chunk.messageMetadata };
-                      break;
-                    case "system-Compact": {
-                      // Add system-Compact to parts so it renders in the chat
-                      // Find existing part by toolCallId or add new one
-                      const existingCompact = parts.find(
-                        (p) =>
-                          p.type === "system-Compact" &&
-                          p.toolCallId === chunk.toolCallId,
-                      );
-                      if (existingCompact) {
-                        existingCompact.state = chunk.state;
-                      } else {
-                        parts.push({
-                          type: "system-Compact",
-                          toolCallId: chunk.toolCallId,
-                          state: chunk.state,
-                        });
-                      }
-                      break;
-                    }
-                  }
-                  // Break from chunk loop if plan is done
-                  if (planCompleted) {
-                    console.log(`[SD] M:PLAN_BREAK_CHUNK sub=${subId}`);
-                    break;
-                  }
-                }
-                // Break from stream loop if plan is done
-                if (planCompleted) {
-                  console.log(`[SD] M:PLAN_BREAK_STREAM sub=${subId}`);
                   break;
                 }
-                // Break from stream loop if observer closed (user clicked Stop)
+
+                // Accumulate based on chunk type
+                switch (chunk.type) {
+                  case "text-delta":
+                    currentText += chunk.delta;
+                    break;
+                  case "text-end":
+                    if (currentText.trim()) {
+                      parts.push({ type: "text", text: currentText });
+                      currentText = "";
+                    }
+                    break;
+                  case "tool-input-available": {
+                    const existingTool = parts.find(
+                      (p: any) =>
+                        p.type?.startsWith("tool-") &&
+                        p.toolCallId === chunk.toolCallId,
+                    );
+                    if (existingTool) {
+                      existingTool.input = chunk.input;
+                      existingTool.state = "call";
+                    } else {
+                      parts.push({
+                        type: `tool-${chunk.toolName}`,
+                        toolCallId: chunk.toolCallId,
+                        toolName: chunk.toolName,
+                        input: chunk.input,
+                        state: "call",
+                      });
+                    }
+                    break;
+                  }
+                  case "tool-output-available": {
+                    const toolPart = parts.find(
+                      (p: any) =>
+                        p.type?.startsWith("tool-") &&
+                        p.toolCallId === chunk.toolCallId,
+                    );
+                    if (toolPart) {
+                      toolPart.result = chunk.output;
+                      toolPart.state = "result";
+                    }
+
+                    // Abort stream if plan is complete (Ralph planning phase)
+                    if (orchestrator?.shouldAbortAfterPlanComplete()) {
+                      planCompleted = true;
+                      safeEmit({ type: "finish" } as UIMessageChunk);
+                      abortController.abort();
+                    }
+                    break;
+                  }
+                  case "message-metadata":
+                    metadata = { ...metadata, ...chunk.messageMetadata };
+                    break;
+                  case "system-Compact": {
+                    const existingCompact = parts.find(
+                      (p: any) =>
+                        p.type === "system-Compact" &&
+                        p.toolCallId === chunk.toolCallId,
+                    );
+                    if (existingCompact) {
+                      existingCompact.state = chunk.state;
+                    } else {
+                      parts.push({
+                        type: "system-Compact",
+                        toolCallId: chunk.toolCallId,
+                        state: chunk.state,
+                      });
+                    }
+                    break;
+                  }
+                }
+
+                if (planCompleted) break;
                 if (!isObservableActive) {
                   console.log(`[SD] M:OBSERVER_CLOSED_STREAM sub=${subId}`);
                   break;
                 }
               }
+
+              // Flush remaining text
+              if (currentText.trim()) {
+                parts.push({ type: "text", text: currentText });
+              }
+
+              // Ralph post-stream processing
+              if (orchestrator) {
+                const prdAbort = new AbortController();
+                await orchestrator.finalize(parts, prdAbort);
+              }
+
+              // 9. Save to DB
+              if (parts.length > 0) {
+                const assistantMessage = {
+                  id: crypto.randomUUID(),
+                  role: "assistant",
+                  parts,
+                  metadata,
+                };
+                const finalMessages = [...messagesToSave, assistantMessage];
+
+                const { fileStats, hasPendingPlanApproval } =
+                  computeAllStats(finalMessages);
+
+                db.update(subChats)
+                  .set({
+                    messages: JSON.stringify(finalMessages),
+                    sessionId: metadata.sessionId,
+                    streamId: null,
+                    updatedAt: new Date(),
+                    hasPendingPlanApproval,
+                    fileAdditions: fileStats.additions,
+                    fileDeletions: fileStats.deletions,
+                    fileCount: fileStats.fileCount,
+                    ...(metadata.emittedDiffKeys && {
+                      emittedDiffKeys: JSON.stringify(metadata.emittedDiffKeys),
+                    }),
+                  })
+                  .where(eq(subChats.id, input.subChatId))
+                  .run();
+
+                chatStatsEmitter.emitStatsUpdate({
+                  type: "file-stats",
+                  chatId: input.chatId,
+                  subChatId: input.subChatId,
+                });
+              } else {
+                db.update(subChats)
+                  .set({
+                    sessionId: metadata.sessionId,
+                    streamId: null,
+                    updatedAt: new Date(),
+                  })
+                  .where(eq(subChats.id, input.subChatId))
+                  .run();
+              }
+
+              // Update parent chat timestamp
+              db.update(chats)
+                .set({ updatedAt: new Date() })
+                .where(eq(chats.id, input.chatId))
+                .run();
+
+              const duration = ((Date.now() - streamStart) / 1000).toFixed(1);
+              const reason = planCompleted ? "plan_complete" : "ok";
+              console.log(
+                `[SD] M:END sub=${subId} reason=${reason} n=${chunkCount} last=${lastChunkType} t=${duration}s`,
+              );
+              safeEmit({ type: "finish" } as UIMessageChunk);
+              safeComplete();
             } catch (streamError) {
-              // This catches errors during streaming (like process exit)
-              const err = streamError as Error;
-              const stderrOutput = stderrLines.join("\n");
-
-              // Build detailed error message with category
-              let errorContext = "Claude streaming error";
-              let errorCategory = "UNKNOWN";
-
-              if (err.message?.includes("exited with code")) {
-                errorContext = "Claude Code process crashed";
-                errorCategory = "PROCESS_CRASH";
-              } else if (err.message?.includes("ENOENT")) {
-                errorContext = "Required executable not found in PATH";
-                errorCategory = "EXECUTABLE_NOT_FOUND";
-              } else if (
-                err.message?.includes("authentication") ||
-                err.message?.includes("401")
-              ) {
-                errorContext = "Authentication failed - check your API key";
-                errorCategory = "AUTH_FAILURE";
-              } else if (
-                err.message?.includes("invalid_api_key") ||
-                err.message?.includes("Invalid API Key") ||
-                stderrOutput?.includes("invalid_api_key")
-              ) {
-                errorContext = "Invalid API key";
-                errorCategory = "INVALID_API_KEY";
-              } else if (
-                err.message?.includes("rate_limit") ||
-                err.message?.includes("429")
-              ) {
-                errorContext = "Rate limit exceeded";
-                errorCategory = "RATE_LIMIT";
-              } else if (
-                err.message?.includes("network") ||
-                err.message?.includes("ECONNREFUSED") ||
-                err.message?.includes("fetch failed")
-              ) {
-                errorContext = "Network error - check your connection";
-                errorCategory = "NETWORK_ERROR";
-              }
-
-              // Send error with stderr output to frontend (only if not aborted by user)
-              if (!abortController.signal.aborted) {
-                safeEmit({
-                  type: "error",
-                  errorText: stderrOutput
-                    ? `${errorContext}: ${err.message}\n\nProcess output:\n${stderrOutput}`
-                    : `${errorContext}: ${err.message}`,
-                  debugInfo: {
-                    context: errorContext,
-                    category: errorCategory,
-                    cwd: input.cwd,
-                    mode: input.mode,
-                    stderr: stderrOutput || "(no stderr captured)",
-                  },
-                } as UIMessageChunk);
-              }
-
-              // ALWAYS save accumulated parts before returning (even on abort/error)
+              // Save accumulated parts even on error
               console.log(
                 `[SD] M:CATCH_SAVE sub=${subId} aborted=${abortController.signal.aborted} parts=${parts.length}`,
               );
@@ -1317,7 +749,6 @@ export const chatRouter = router({
                 };
                 const finalMessages = [...messagesToSave, assistantMessage];
 
-                // Compute stats for computed columns
                 const { fileStats, hasPendingPlanApproval } =
                   computeAllStats(finalMessages);
 
@@ -1339,7 +770,6 @@ export const chatRouter = router({
                   .where(eq(chats.id, input.chatId))
                   .run();
 
-                // Emit stats update event for real-time sidebar updates
                 chatStatsEmitter.emitStatsUpdate({
                   type: "file-stats",
                   chatId: input.chatId,
@@ -1347,97 +777,17 @@ export const chatRouter = router({
                 });
               }
 
+              if (!abortController.signal.aborted) {
+                emitError(streamError, `${providerId} provider error`);
+              }
+
+              const duration = ((Date.now() - streamStart) / 1000).toFixed(1);
               console.log(
-                `[SD] M:END sub=${subId} reason=stream_error cat=${errorCategory} n=${chunkCount} last=${lastChunkType}`,
+                `[SD] M:END sub=${subId} reason=stream_error n=${chunkCount} t=${duration}s`,
               );
               safeEmit({ type: "finish" } as UIMessageChunk);
               safeComplete();
-              return;
             }
-
-            // 6. Check if we got any response
-            if (messageCount === 0 && !abortController.signal.aborted) {
-              emitError(
-                new Error("No response received from Claude"),
-                "Empty response",
-              );
-              console.log(
-                `[SD] M:END sub=${subId} reason=no_response n=${chunkCount}`,
-              );
-              safeEmit({ type: "finish" } as UIMessageChunk);
-              safeComplete();
-              return;
-            }
-
-            // 7. Save final messages to DB
-            // ALWAYS save accumulated parts, even on abort (so user sees partial responses after reload)
-            console.log(
-              `[SD] M:SAVE sub=${subId} planCompleted=${planCompleted} aborted=${abortController.signal.aborted} parts=${parts.length}`,
-            );
-
-            // Flush any remaining text
-            if (currentText.trim()) {
-              parts.push({ type: "text", text: currentText });
-            }
-
-            if (parts.length > 0) {
-              const assistantMessage = {
-                id: crypto.randomUUID(),
-                role: "assistant",
-                parts,
-                metadata,
-              };
-
-              const finalMessages = [...messagesToSave, assistantMessage];
-
-              // Compute stats for computed columns
-              const { fileStats, hasPendingPlanApproval } =
-                computeAllStats(finalMessages);
-
-              db.update(subChats)
-                .set({
-                  messages: JSON.stringify(finalMessages),
-                  sessionId: metadata.sessionId,
-                  streamId: null,
-                  updatedAt: new Date(),
-                  hasPendingPlanApproval,
-                  fileAdditions: fileStats.additions,
-                  fileDeletions: fileStats.deletions,
-                  fileCount: fileStats.fileCount,
-                })
-                .where(eq(subChats.id, input.subChatId))
-                .run();
-            } else {
-              // No assistant response - just clear streamId
-              db.update(subChats)
-                .set({
-                  sessionId: metadata.sessionId,
-                  streamId: null,
-                  updatedAt: new Date(),
-                })
-                .where(eq(subChats.id, input.subChatId))
-                .run();
-            }
-
-            // Update parent chat timestamp
-            db.update(chats)
-              .set({ updatedAt: new Date() })
-              .where(eq(chats.id, input.chatId))
-              .run();
-
-            // Emit stats update event for real-time sidebar updates
-            chatStatsEmitter.emitStatsUpdate({
-              type: "file-stats",
-              chatId: input.chatId,
-              subChatId: input.subChatId,
-            });
-
-            const duration = ((Date.now() - streamStart) / 1000).toFixed(1);
-            const reason = planCompleted ? "plan_complete" : "ok";
-            console.log(
-              `[SD] M:END sub=${subId} reason=${reason} n=${chunkCount} last=${lastChunkType} t=${duration}s`,
-            );
-            safeComplete();
           } catch (error) {
             const duration = ((Date.now() - streamStart) / 1000).toFixed(1);
             console.log(
@@ -1446,29 +796,20 @@ export const chatRouter = router({
             emitError(error, "Unexpected error");
             safeEmit({ type: "finish" } as UIMessageChunk);
             safeComplete();
-          } finally {
-            activeSessions.delete(input.subChatId);
           }
         })();
 
         // Cleanup on unsubscribe
         return () => {
-          console.log(
-            `[SD] M:CLEANUP sub=${subId} sessionId=${currentSessionId || "none"}`,
-          );
-          isObservableActive = false; // Prevent emit after unsubscribe
+          console.log(`[SD] M:CLEANUP sub=${subId}`);
+          isObservableActive = false;
           abortController.abort();
-          activeSessions.delete(input.subChatId);
           clearPendingApprovals("Session ended.", input.subChatId);
 
-          // Save sessionId on abort so conversation can be resumed
-          // Clear streamId since we're no longer streaming
+          // Clear streamId on abort so conversation can be resumed
           const db = getDatabase();
           db.update(subChats)
-            .set({
-              streamId: null,
-              ...(currentSessionId && { sessionId: currentSessionId }),
-            })
+            .set({ streamId: null })
             .where(eq(subChats.id, input.subChatId))
             .run();
         };
@@ -1477,9 +818,6 @@ export const chatRouter = router({
 
   /**
    * Get MCP servers configuration for a project
-   * This allows showing MCP servers in UI before starting a chat session
-   *
-   * Supports both Claude (~/.claude.json) and Codex (~/.codex/config.toml)
    */
   getMcpConfig: publicProcedure
     .input(
@@ -1492,59 +830,24 @@ export const chatRouter = router({
       const { projectPath, providerId } = input;
 
       try {
-        // Route to appropriate provider
-        if (providerId === "codex") {
-          // Codex: Use providerRegistry to get config
-          const provider = providerRegistry.get("codex");
-          if (!provider?.getProviderConfig) {
-            return { mcpServers: [], projectPath, providerId };
+        const provider = providerRegistry.get(providerId as ProviderId);
+        if (!provider?.getProviderConfig) {
+          // Fallback: read ~/.claude.json directly for Claude
+          if (providerId === "claude") {
+            return await readClaudeMcpConfig(projectPath, providerId);
           }
-
-          const config = await provider.getProviderConfig(projectPath);
-          if (!config?.mcpServers) {
-            return { mcpServers: [], projectPath, providerId };
-          }
-
-          // Convert to array format with names
-          const mcpServers = Object.entries(config.mcpServers).map(
-            ([name, serverConfig]) => ({
-              name,
-              status: "pending" as const,
-              config: serverConfig as Record<string, unknown>,
-            }),
-          );
-
-          return { mcpServers, projectPath, providerId };
-        }
-
-        // Claude: Read from ~/.claude.json
-        const claudeJsonPath = path.join(os.homedir(), ".claude.json");
-
-        const exists = await fs
-          .stat(claudeJsonPath)
-          .then(() => true)
-          .catch(() => false);
-        if (!exists) {
           return { mcpServers: [], projectPath, providerId };
         }
 
-        const configContent = await fs.readFile(claudeJsonPath, "utf-8");
-        const config = JSON.parse(configContent);
-
-        // Look for project-specific MCP config
-        const projectConfig = config.projects?.[projectPath];
-
-        if (!projectConfig?.mcpServers) {
+        const config = await provider.getProviderConfig(projectPath);
+        if (!config?.mcpServers) {
           return { mcpServers: [], projectPath, providerId };
         }
 
-        // Convert to array format with names
-        const mcpServers = Object.entries(projectConfig.mcpServers).map(
+        const mcpServers = Object.entries(config.mcpServers).map(
           ([name, serverConfig]) => ({
             name,
-            // Status will be "pending" until SDK actually connects
             status: "pending" as const,
-            // Include config details for display (command, args, etc)
             config: serverConfig as Record<string, unknown>,
           }),
         );
@@ -1567,23 +870,13 @@ export const chatRouter = router({
   cancel: publicProcedure
     .input(z.object({ subChatId: z.string() }))
     .mutation(({ input }) => {
-      // Try Claude sessions first (managed by router)
-      const controller = activeSessions.get(input.subChatId);
-      if (controller) {
-        controller.abort();
-        activeSessions.delete(input.subChatId);
-        clearPendingApprovals("Session cancelled.", input.subChatId);
-        return { cancelled: true };
-      }
-
-      // Try all registered providers
       for (const provider of providerRegistry.getAll()) {
         if (provider.isActive(input.subChatId)) {
           provider.cancel(input.subChatId);
+          clearPendingApprovals("Session cancelled.", input.subChatId);
           return { cancelled: true };
         }
       }
-
       return { cancelled: false };
     }),
 
@@ -1593,14 +886,12 @@ export const chatRouter = router({
   isActive: publicProcedure
     .input(z.object({ subChatId: z.string() }))
     .query(({ input }) => {
-      // Check router-managed sessions
-      if (activeSessions.has(input.subChatId)) return true;
-      // Check all registered providers
       for (const provider of providerRegistry.getAll()) {
         if (provider.isActive(input.subChatId)) return true;
       }
       return false;
     }),
+
   respondToolApproval: publicProcedure
     .input(
       z.object({
@@ -1616,24 +907,19 @@ export const chatRouter = router({
       if (openCodeQuestion) {
         pendingOpenCodeQuestions.delete(input.toolUseId);
 
-        // Import dynamically to avoid circular dependencies
         const { replyToQuestion, rejectQuestion } = await import(
           "../../providers/opencode/client"
         );
 
         if (input.approved) {
-          // Extract answers from updatedInput
-          // The frontend sends { questions, answers } where answers is Record<string, string|string[]>
           const updatedInput = input.updatedInput as {
             questions?: Array<{ header: string }>;
             answers?: Record<string, string | string[]>;
           };
           const answers = updatedInput?.answers || {};
 
-          // Build answers array: for each question, get selected labels as string[]
           const answersArray: string[][] = openCodeQuestion.questions.map(
             (q, i) => {
-              // Try all possible key formats - frontend uses q.question (full question text)
               const answer =
                 answers[q.question] ||
                 answers[`q${i}`] ||
@@ -1642,7 +928,6 @@ export const chatRouter = router({
               if (Array.isArray(answer)) {
                 return answer as string[];
               }
-              // Split comma-separated string into array for multi-select questions
               if (typeof answer === "string" && answer) {
                 return answer
                   .split(",")
@@ -1668,7 +953,6 @@ export const chatRouter = router({
           return { ok: success };
         }
 
-        // User rejected/skipped the question
         const success = await rejectQuestion(
           openCodeQuestion.questionId,
           openCodeQuestion.directory,
@@ -1676,7 +960,7 @@ export const chatRouter = router({
         return { ok: success };
       }
 
-      // Existing Claude flow - resolve pending Promise
+      // Claude flow - resolve pending Promise
       const pending = pendingToolApprovals.get(input.toolUseId);
       if (!pending) {
         return { ok: false };
@@ -1690,3 +974,37 @@ export const chatRouter = router({
       return { ok: true };
     }),
 });
+
+/**
+ * Fallback: read MCP config directly from ~/.claude.json
+ * Used when provider.getProviderConfig is not available
+ */
+async function readClaudeMcpConfig(projectPath: string, providerId: string) {
+  const claudeJsonPath = path.join(os.homedir(), ".claude.json");
+
+  const exists = await fs
+    .stat(claudeJsonPath)
+    .then(() => true)
+    .catch(() => false);
+  if (!exists) {
+    return { mcpServers: [], projectPath, providerId };
+  }
+
+  const configContent = await fs.readFile(claudeJsonPath, "utf-8");
+  const config = JSON.parse(configContent);
+  const projectConfig = config.projects?.[projectPath];
+
+  if (!projectConfig?.mcpServers) {
+    return { mcpServers: [], projectPath, providerId };
+  }
+
+  const mcpServers = Object.entries(projectConfig.mcpServers).map(
+    ([name, serverConfig]) => ({
+      name,
+      status: "pending" as const,
+      config: serverConfig as Record<string, unknown>,
+    }),
+  );
+
+  return { mcpServers, projectPath, providerId };
+}

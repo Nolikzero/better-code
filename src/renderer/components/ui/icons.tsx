@@ -1236,6 +1236,29 @@ export function IconChevronDown(props: IconProps) {
   );
 }
 
+export function ChevronLeftIcon(props: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      {...props}
+    >
+      <g transform="scale(1.15) translate(-1.8, -1.8)">
+        <path
+          d="M15 18L9 12L15 6"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </g>
+    </svg>
+  );
+}
+
 function _IconChevronUp(props: IconProps) {
   return (
     <svg
@@ -5366,4 +5389,9 @@ export function SkillIconFilled(props: IconProps) {
       />
     </svg>
   );
+}
+
+// Ralph icon - Ralph Wiggum image
+export function RalphIcon({ className }: { className?: string }) {
+  return <img src="/ralph.png" alt="Ralph" className={className} />;
 }

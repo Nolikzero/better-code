@@ -1,14 +1,9 @@
 import { execFile } from "node:child_process";
-import { randomBytes } from "node:crypto";
 import { mkdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import simpleGit from "simple-git";
-import {
-  adjectives,
-  animals,
-  uniqueNamesGenerator,
-} from "unique-names-generator";
+import { animeWorktreeNames } from "./anime-names";
 import { checkGitLfsAvailable, getShellEnvironment } from "./shell-env";
 
 const execFileAsync = promisify(execFile);
@@ -112,16 +107,23 @@ function isEnoent(error: unknown): boolean {
   );
 }
 
-function generateBranchName(): string {
-  const name = uniqueNamesGenerator({
-    dictionaries: [adjectives, animals],
-    separator: "-",
-    length: 2,
-    style: "lowerCase",
-  });
-  const suffix = randomBytes(3).toString("hex");
+function generateBranchName(usedBranches: Set<string> = new Set()): string {
+  const available = animeWorktreeNames.filter(
+    (name) => !usedBranches.has(name),
+  );
 
-  return `${name}-${suffix}`;
+  if (available.length > 0) {
+    return available[Math.floor(Math.random() * available.length)];
+  }
+
+  // Fallback: all names exhausted - add numeric suffix
+  const baseName =
+    animeWorktreeNames[Math.floor(Math.random() * animeWorktreeNames.length)];
+  let suffix = 2;
+  while (usedBranches.has(`${baseName}-${suffix}`)) {
+    suffix++;
+  }
+  return `${baseName}-${suffix}`;
 }
 
 async function createWorktree(
@@ -264,7 +266,7 @@ async function hasOriginRemote(mainRepoPath: string): Promise<boolean> {
   }
 }
 
-async function getDefaultBranch(mainRepoPath: string): Promise<string> {
+export async function getDefaultBranch(mainRepoPath: string): Promise<string> {
   const git = simpleGit(mainRepoPath);
 
   // First check if we have an origin remote
@@ -871,12 +873,14 @@ export interface WorktreeResult {
  * @param projectId - Project ID for worktree directory
  * @param chatId - Chat ID for worktree directory
  * @param selectedBaseBranch - Optional branch to base the worktree off (defaults to auto-detected default branch)
+ * @param usedBranches - Branch names already in use for this project (to avoid collisions)
  */
 export async function createWorktreeForChat(
   projectPath: string,
   projectId: string,
   chatId: string,
   selectedBaseBranch?: string,
+  usedBranches?: string[],
 ): Promise<WorktreeResult> {
   try {
     const git = simpleGit(projectPath);
@@ -890,7 +894,11 @@ export async function createWorktreeForChat(
     const baseBranch =
       selectedBaseBranch || (await getDefaultBranch(projectPath));
 
-    const branch = generateBranchName();
+    // Collect all used branch names (DB + local git branches) to avoid collisions
+    const localBranches = await git.branchLocal();
+    const allUsed = new Set([...(usedBranches ?? []), ...localBranches.all]);
+
+    const branch = generateBranchName(allUsed);
     const worktreesDir = join(
       process.env.HOME || "",
       ".bettercode",
@@ -918,38 +926,125 @@ export async function createWorktreeForChat(
  * Get diff for a worktree compared to its base branch
  * @param worktreePath - Path to the worktree
  * @param baseBranch - The base branch to compare against (if not provided, uses default branch)
+ * @param options.uncommittedOnly - If true, only show uncommitted changes (return empty when working tree is clean)
+ * @param options.fullDiff - If true, show all changes (committed + uncommitted) vs base branch
  */
 export async function getWorktreeDiff(
   worktreePath: string,
   baseBranch?: string,
+  options?: { uncommittedOnly?: boolean; fullDiff?: boolean },
 ): Promise<{ success: boolean; diff?: string; error?: string }> {
   try {
     const git = simpleGit(worktreePath);
     const status = await git.status();
     const _currentBranch = status.current;
 
+    const lockFileExcludes = [
+      ":!*.lock",
+      ":!*-lock.*",
+      ":!package-lock.json",
+      ":!pnpm-lock.yaml",
+      ":!yarn.lock",
+    ];
+
+    // Full diff mode: show all changes (committed + uncommitted) vs base branch
+    if (options?.fullDiff) {
+      const targetBranch = baseBranch || (await getDefaultBranch(worktreePath));
+
+      if (!status.isClean()) {
+        // Include untracked files via intent-to-add without affecting user staging
+        const untrackedFiles = status.not_added.filter(
+          (f) =>
+            !f.endsWith(".lock") &&
+            !f.includes("-lock.") &&
+            f !== "package-lock.json" &&
+            f !== "pnpm-lock.yaml" &&
+            f !== "yarn.lock",
+        );
+
+        if (untrackedFiles.length > 0) {
+          await git
+            .raw(["add", "--intent-to-add", "--", ...untrackedFiles])
+            .catch(() => {});
+        }
+
+        try {
+          const diff = await git.diff([
+            `origin/${targetBranch}`,
+            "--no-color",
+            "--",
+            ...lockFileExcludes,
+          ]);
+
+          if (untrackedFiles.length > 0) {
+            await git.raw(["reset", "--", ...untrackedFiles]).catch(() => {});
+          }
+          return { success: true, diff: diff || "" };
+        } catch {
+          if (untrackedFiles.length > 0) {
+            await git.raw(["reset", "--", ...untrackedFiles]).catch(() => {});
+          }
+          return { success: true, diff: "" };
+        }
+      }
+
+      // Clean tree: diff HEAD against base
+      try {
+        const diff = await git.diff([
+          `origin/${targetBranch}...HEAD`,
+          "--no-color",
+          "--",
+          ...lockFileExcludes,
+        ]);
+        return { success: true, diff: diff || "" };
+      } catch {
+        return { success: true, diff: "" };
+      }
+    }
+
     // Has uncommitted changes - diff against HEAD
+    // Use git diff HEAD for tracked files (doesn't modify the staging area).
+    // For untracked files, temporarily mark with --intent-to-add so they appear in the diff,
+    // then remove only those markers. This preserves any user-staged files.
     if (!status.isClean()) {
-      await git.add("-A");
+      const untrackedFiles = status.not_added.filter(
+        (f) =>
+          !f.endsWith(".lock") &&
+          !f.includes("-lock.") &&
+          f !== "package-lock.json" &&
+          f !== "pnpm-lock.yaml" &&
+          f !== "yarn.lock",
+      );
+
+      // Mark untracked files as intent-to-add (doesn't stage content, doesn't affect user-staged files)
+      if (untrackedFiles.length > 0) {
+        await git
+          .raw(["add", "--intent-to-add", "--", ...untrackedFiles])
+          .catch(() => {});
+      }
 
       const diff = await git.diff([
-        "--cached",
         "HEAD",
         "--no-color",
         "--",
-        ":!*.lock",
-        ":!*-lock.*",
-        ":!package-lock.json",
-        ":!pnpm-lock.yaml",
-        ":!yarn.lock",
+        ...lockFileExcludes,
       ]);
 
-      await git.reset(["HEAD"]).catch(() => {});
+      // Remove intent-to-add markers only for the files we marked (preserves user staging)
+      if (untrackedFiles.length > 0) {
+        await git.raw(["reset", "--", ...untrackedFiles]).catch(() => {});
+      }
 
       return { success: true, diff: diff || "" };
     }
 
-    // All committed - diff against base branch
+    // Working tree is clean - no uncommitted changes
+    // If uncommittedOnly is true, return empty (project-level view only shows uncommitted changes)
+    if (options?.uncommittedOnly) {
+      return { success: true, diff: "" };
+    }
+
+    // All committed - diff against base branch (for chat worktrees)
     const targetBranch = baseBranch || (await getDefaultBranch(worktreePath));
 
     try {
@@ -957,11 +1052,7 @@ export async function getWorktreeDiff(
         `origin/${targetBranch}...HEAD`,
         "--no-color",
         "--",
-        ":!*.lock",
-        ":!*-lock.*",
-        ":!package-lock.json",
-        ":!pnpm-lock.yaml",
-        ":!yarn.lock",
+        ...lockFileExcludes,
       ]);
       return { success: true, diff: diff || "" };
     } catch {

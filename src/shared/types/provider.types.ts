@@ -1,6 +1,9 @@
 // Provider identification
 export type ProviderId = "claude" | "codex" | "opencode";
 
+// Agent mode - determines how the AI operates
+export type AgentMode = "plan" | "agent" | "ralph";
+
 // Codex-specific types
 export type SandboxMode =
   | "read-only"

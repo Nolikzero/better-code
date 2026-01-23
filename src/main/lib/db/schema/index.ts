@@ -128,6 +128,69 @@ export const subChatsRelations = relations(subChats, ({ one }) => ({
   }),
 }));
 
+// ============ RALPH PRDs ============
+export const ralphPrds = sqliteTable(
+  "ralph_prds",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    chatId: text("chat_id")
+      .notNull()
+      .references(() => chats.id, { onDelete: "cascade" }),
+    branchName: text("branch_name"),
+    goal: text("goal"),
+    stories: text("stories").notNull().default("[]"), // JSON: UserStory[]
+    createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
+      () => new Date(),
+    ),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(
+      () => new Date(),
+    ),
+  },
+  (table) => ({
+    chatIdIdx: index("ralph_prds_chat_id_idx").on(table.chatId),
+  }),
+);
+
+export const ralphPrdsRelations = relations(ralphPrds, ({ one, many }) => ({
+  chat: one(chats, {
+    fields: [ralphPrds.chatId],
+    references: [chats.id],
+  }),
+  progress: many(ralphProgress),
+}));
+
+// ============ RALPH PROGRESS ============
+export const ralphProgress = sqliteTable(
+  "ralph_progress",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    prdId: text("prd_id")
+      .notNull()
+      .references(() => ralphPrds.id, { onDelete: "cascade" }),
+    storyId: text("story_id"),
+    iteration: integer("iteration"),
+    summary: text("summary"),
+    learnings: text("learnings"), // JSON array
+    timestamp: integer("timestamp", { mode: "timestamp" }).$defaultFn(
+      () => new Date(),
+    ),
+  },
+  (table) => ({
+    prdIdIdx: index("ralph_progress_prd_id_idx").on(table.prdId),
+  }),
+);
+
+export const ralphProgressRelations = relations(ralphProgress, ({ one }) => ({
+  prd: one(ralphPrds, {
+    fields: [ralphProgress.prdId],
+    references: [ralphPrds.id],
+  }),
+}));
+
 // ============ CLAUDE CODE CREDENTIALS ============
 // Stores encrypted OAuth token for Claude Code integration
 export const claudeCodeCredentials = sqliteTable("claude_code_credentials", {
@@ -148,3 +211,7 @@ export type SubChat = typeof subChats.$inferSelect;
 export type NewSubChat = typeof subChats.$inferInsert;
 export type ClaudeCodeCredential = typeof claudeCodeCredentials.$inferSelect;
 export type NewClaudeCodeCredential = typeof claudeCodeCredentials.$inferInsert;
+export type RalphPrd = typeof ralphPrds.$inferSelect;
+export type NewRalphPrd = typeof ralphPrds.$inferInsert;
+export type RalphProgressEntry = typeof ralphProgress.$inferSelect;
+export type NewRalphProgressEntry = typeof ralphProgress.$inferInsert;

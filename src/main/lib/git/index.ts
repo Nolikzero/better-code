@@ -13,6 +13,8 @@ import { createStatusRouter } from "./status";
 
 const execAsync = promisify(exec);
 
+// Re-export branch watcher
+export { branchWatcher } from "./branch-watcher";
 // Re-export GitHub utilities
 export * from "./github";
 // Re-export GitLab utilities

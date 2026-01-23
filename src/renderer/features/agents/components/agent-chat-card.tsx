@@ -40,7 +40,7 @@ function ChatIconWithBadge({
 }: {
   isLoading: boolean;
   hasUnseenChanges: boolean;
-  lastMode: "plan" | "agent";
+  lastMode: "plan" | "agent" | "ralph";
   isSelected?: boolean;
   gitOwner?: string | null;
   gitProvider?: string | null;

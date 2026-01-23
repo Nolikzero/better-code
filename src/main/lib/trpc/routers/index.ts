@@ -9,6 +9,7 @@ import { externalRouter } from "./external";
 import { filesRouter } from "./files";
 import { projectsRouter } from "./projects";
 import { providersRouter } from "./providers";
+import { ralphRouter } from "./ralph";
 import { skillsRouter } from "./skills";
 import { terminalRouter } from "./terminal";
 import { windowRouter } from "./window";
@@ -32,6 +33,7 @@ export function createAppRouter(_getWindow: () => BrowserWindow | null) {
     window: windowRouter,
     providers: providersRouter,
     worktreeInit: worktreeInitRouter,
+    ralph: ralphRouter,
     // Git operations - named "changes" to match Superset API
     changes: createGitRouter(),
   });

@@ -1,3 +1,4 @@
+import { memo } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,7 +30,7 @@ interface ModelSelectorDropdownProps {
 /**
  * Dropdown component for selecting a model from a provider's available models.
  */
-export function ModelSelectorDropdown({
+export const ModelSelectorDropdown = memo(function ModelSelectorDropdown({
   providerId,
   models,
   currentModelId,
@@ -73,4 +74,4 @@ export function ModelSelectorDropdown({
       </DropdownMenuContent>
     </DropdownMenu>
   );
-}
+});

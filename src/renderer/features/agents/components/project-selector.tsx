@@ -175,93 +175,112 @@ export function ProjectSelector() {
   }
 
   return (
-    <Popover
-      open={open}
-      onOpenChange={(isOpen) => {
-        setOpen(isOpen);
-        if (!isOpen) setSearchQuery("");
-      }}
-    >
-      <PopoverTrigger asChild>
+    <>
+      {/* Settings button before project selector */}
+      {validSelection && (
         <button
-          className="flex items-center gap-1.5 px-2 py-1 text-sm text-muted-foreground hover:text-foreground transition-[background-color,color] duration-150 ease-out rounded-md hover:bg-muted/50 outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70"
           type="button"
+          onClick={() => {
+            setSettingsProjectId(validSelection.id);
+            setIsNewProject(false);
+            setShowProjectSettings(true);
+          }}
+          className="p-1 text-muted-foreground hover:text-foreground rounded-md hover:bg-muted/50 transition-colors"
+          title="Project settings"
         >
-          <ProjectIcon
-            gitOwner={validSelection?.gitOwner}
-            gitProvider={validSelection?.gitProvider}
-          />
-          <span className="truncate max-w-[120px]">
-            {validSelection?.name || "Select repo"}
-          </span>
-          <IconChevronDown className="h-3 w-3 shrink-0 opacity-50" />
+          <Settings className="h-3.5 w-3.5" />
         </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-64 p-0" align="start">
-        <Command shouldFilter={false}>
-          <CommandInput
-            placeholder="Search repos..."
-            value={searchQuery}
-            onValueChange={setSearchQuery}
-          />
-          <CommandList className="max-h-[300px] overflow-y-auto">
-            {isLoadingProjects ? (
-              <div className="px-2.5 py-4 text-center text-sm text-muted-foreground">
-                Loading...
-              </div>
-            ) : filteredProjects.length > 0 ? (
-              <CommandGroup>
-                {filteredProjects.map((project) => {
-                  const isSelected = validSelection?.id === project.id;
-                  return (
-                    <CommandItem
-                      key={project.id}
-                      value={`${project.name} ${project.path}`}
-                      onSelect={() => handleSelectProject(project.id)}
-                      className="gap-2 group"
-                    >
-                      <ProjectIcon
-                        gitOwner={project.gitOwner}
-                        gitProvider={project.gitProvider}
-                      />
-                      <span className="truncate flex-1">{project.name}</span>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSettingsProjectId(project.id);
-                          setIsNewProject(false);
-                          setShowProjectSettings(true);
-                          setOpen(false);
-                        }}
-                        className="h-6 w-6 p-0 rounded-md opacity-0 group-hover:opacity-100 hover:bg-muted flex items-center justify-center transition-opacity"
-                        title="Project settings"
+      )}
+      <Popover
+        open={open}
+        onOpenChange={(isOpen) => {
+          setOpen(isOpen);
+          if (!isOpen) setSearchQuery("");
+        }}
+      >
+        <PopoverTrigger asChild>
+          <button
+            className="flex items-center gap-1.5 px-2 py-1 text-sm text-muted-foreground hover:text-foreground transition-[background-color,color] duration-150 ease-out rounded-md hover:bg-muted/50 outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70"
+            type="button"
+          >
+            <ProjectIcon
+              gitOwner={validSelection?.gitOwner}
+              gitProvider={validSelection?.gitProvider}
+            />
+            <span className="truncate max-w-[120px]">
+              {validSelection?.name || "Select repo"}
+            </span>
+            <IconChevronDown className="h-3 w-3 shrink-0 opacity-50" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-64 p-0" align="start">
+          <Command shouldFilter={false}>
+            <CommandInput
+              placeholder="Search repos..."
+              value={searchQuery}
+              onValueChange={setSearchQuery}
+            />
+            <CommandList className="max-h-[300px] overflow-y-auto">
+              {isLoadingProjects ? (
+                <div className="px-2.5 py-4 text-center text-sm text-muted-foreground">
+                  Loading...
+                </div>
+              ) : filteredProjects.length > 0 ? (
+                <CommandGroup>
+                  {filteredProjects.map((project) => {
+                    const isSelected = validSelection?.id === project.id;
+                    return (
+                      <CommandItem
+                        key={project.id}
+                        value={`${project.name} ${project.path}`}
+                        onSelect={() => handleSelectProject(project.id)}
+                        className="gap-2 group"
                       >
-                        <Settings className="h-3.5 w-3.5 text-muted-foreground" />
-                      </button>
-                      {isSelected && <CheckIcon className="h-4 w-4 shrink-0" />}
-                    </CommandItem>
-                  );
-                })}
-              </CommandGroup>
-            ) : (
-              <CommandEmpty>No projects found.</CommandEmpty>
-            )}
-          </CommandList>
-          <div className="border-t border-border/50 py-1">
-            <button
-              onClick={handleOpenFolder}
-              disabled={openFolder.isPending}
-              className="flex items-center gap-1.5 min-h-[32px] py-[5px] px-1.5 mx-1 w-[calc(100%-8px)] rounded-md text-sm cursor-default select-none outline-hidden dark:hover:bg-neutral-800 hover:text-foreground transition-colors"
-            >
-              <FolderPlusIcon className="h-4 w-4 text-muted-foreground" />
-              <span>
-                {openFolder.isPending ? "Adding..." : "Add repository"}
-              </span>
-            </button>
-          </div>
-        </Command>
-      </PopoverContent>
+                        <ProjectIcon
+                          gitOwner={project.gitOwner}
+                          gitProvider={project.gitProvider}
+                        />
+                        <span className="truncate flex-1">{project.name}</span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSettingsProjectId(project.id);
+                            setIsNewProject(false);
+                            setShowProjectSettings(true);
+                            setOpen(false);
+                          }}
+                          className="h-6 w-6 p-0 rounded-md opacity-0 group-hover:opacity-100 hover:bg-muted flex items-center justify-center transition-opacity"
+                          title="Project settings"
+                        >
+                          <Settings className="h-3.5 w-3.5 text-muted-foreground" />
+                        </button>
+                        {isSelected && (
+                          <CheckIcon className="h-4 w-4 shrink-0" />
+                        )}
+                      </CommandItem>
+                    );
+                  })}
+                </CommandGroup>
+              ) : (
+                <CommandEmpty>No projects found.</CommandEmpty>
+              )}
+            </CommandList>
+            <div className="border-t border-border/50 py-1">
+              <button
+                onClick={handleOpenFolder}
+                disabled={openFolder.isPending}
+                className="flex items-center gap-1.5 min-h-[32px] py-[5px] px-1.5 mx-1 w-[calc(100%-8px)] rounded-md text-sm cursor-default select-none outline-hidden dark:hover:bg-neutral-800 hover:text-foreground transition-colors"
+              >
+                <FolderPlusIcon className="h-4 w-4 text-muted-foreground" />
+                <span>
+                  {openFolder.isPending ? "Adding..." : "Add repository"}
+                </span>
+              </button>
+            </div>
+          </Command>
+        </PopoverContent>
+      </Popover>
 
       {/* Project Settings Dialog */}
       {settingsProjectId && (
@@ -278,6 +297,6 @@ export function ProjectSelector() {
           isNewProject={isNewProject}
         />
       )}
-    </Popover>
+    </>
   );
 }

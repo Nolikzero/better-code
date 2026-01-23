@@ -10,6 +10,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "../../../components/ui/tooltip";
+import { FONT_MONO } from "../../../lib/fonts";
 import { useCodeTheme } from "../../../lib/hooks/use-code-theme";
 import { api } from "../../../lib/mock-api";
 import { highlightCodeWithLineNumbers } from "../../../lib/themes/shiki-theme-loader";
@@ -383,7 +384,7 @@ export function CenterFileView() {
                   `[&_.line:nth-child(${highlightedLine})]:bg-yellow-500/20`,
               )}
               style={{
-                fontFamily: '"Geist Mono", ui-monospace, monospace',
+                fontFamily: FONT_MONO,
                 fontSize: "12px",
                 lineHeight: "1px",
                 padding: "16px 0",
@@ -403,7 +404,7 @@ export function CenterFileView() {
             <pre
               className="m-0 bg-transparent whitespace-pre"
               style={{
-                fontFamily: '"Geist Mono", ui-monospace, monospace',
+                fontFamily: FONT_MONO,
                 fontSize: "12px",
                 lineHeight: highlightedCode ? "1px" : "16px",
                 padding: "16px",

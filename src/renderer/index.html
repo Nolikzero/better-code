@@ -6,7 +6,7 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; connect-src 'self' ws://localhost:* http://localhost:* https://unpkg.com https://api.anthropic.com; img-src 'self' data: blob: https:; media-src 'self' blob:; font-src 'self' https://fonts.gstatic.com;" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@100..900&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Source+Code+Pro:ital,wght@0,200..900;1,200..900&display=swap" rel="stylesheet">
     <title>BetterCode</title>
     <!-- Prevent theme flash: detect system/stored theme before render -->
     <script>
@@ -30,6 +30,7 @@
         --loading-logo: #71717a;
       }
       body {
+        /* Keep in sync with --font-sans in globals.css and src/renderer/lib/fonts.ts */
         font-family: "Inter", system-ui, sans-serif;
         margin: 0;
         background: var(--loading-bg);
@@ -59,6 +60,7 @@
       }
       .loading-logo path {
         fill: var(--loading-logo);
+        stroke: var(--loading-logo);
       }
       @keyframes pulse {
         0%, 100% { opacity: 0.3; }
@@ -70,8 +72,8 @@
     <div id="root"></div>
     <!-- Loading indicator - separate from root so :empty works -->
     <div class="loading-container">
-      <svg class="loading-logo" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path fill-rule="evenodd" clip-rule="evenodd" d="M358.333 0C381.345 0 400 18.6548 400 41.6667V295.833C400 298.135 398.134 300 395.833 300H270.833C268.532 300 266.667 301.865 266.667 304.167V395.833C266.667 398.134 264.801 400 262.5 400H41.6667C18.6548 400 0 381.345 0 358.333V304.72C0 301.793 1.54269 299.081 4.05273 297.575L153.76 207.747C157.159 205.708 156.02 200.679 152.376 200.065L151.628 200H4.16667C1.86548 200 6.71103e-08 198.135 0 195.833V104.167C1.07376e-06 101.865 1.86548 100 4.16667 100H162.5C164.801 100 166.667 98.1345 166.667 95.8333V4.16667C166.667 1.86548 168.532 1.00666e-07 170.833 0H358.333ZM170.833 100C168.532 100 166.667 101.865 166.667 104.167V295.833C166.667 298.135 168.532 300 170.833 300H262.5C264.801 300 266.667 298.135 266.667 295.833V104.167C266.667 101.865 264.801 100 262.5 100H170.833Z" fill="#71717a"/>
+      <svg class="loading-logo" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+        <path fill-rule="evenodd" d="M30 46L26 52L23 62L22 108L18 115L6 119L4 131L8 138L17 140L22 147L23 195L27 207L34 214L48 219L65 218L73 214L89 197L97 192L110 189L143 189L157 185L165 180L175 167L177 160L177 147L170 132L160 125L160 122L166 117L171 107L172 78L174 72L183 62L190 59L202 59L207 64L209 111L214 122L221 128L214 134L209 145L207 192L204 196L195 197L191 201L191 215L195 219L207 219L217 216L226 208L231 195L232 147L237 140L248 136L249 122L246 118L240 117L233 112L231 104L231 63L229 55L222 44L211 38L194 37L182 43L165 62L153 67L89 66L83 68L77 76L77 121L86 112L103 104L106 99L106 92L108 90L136 91L142 98L142 106L140 110L134 114L102 116L93 120L86 126L79 138L77 146L77 177L75 185L68 194L62 197L53 197L47 193L45 147L41 136L33 128L41 120L45 109L46 65L50 60L58 59L62 56L63 41L59 37L47 37L36 41Z M106 142L112 137L138 138L146 145L146 158L138 165L110 166L106 163Z"/>
       </svg>
     </div>
     <script>

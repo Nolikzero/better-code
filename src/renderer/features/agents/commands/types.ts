@@ -27,6 +27,7 @@ export type BuiltinCommandAction =
   | { type: "clear" }
   | { type: "plan" }
   | { type: "agent" }
+  | { type: "ralph" }
   | { type: "compact" }
   | { type: "add-dir" }
   // Prompt-based commands (send to agent)

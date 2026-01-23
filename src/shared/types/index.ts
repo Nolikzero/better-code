@@ -16,6 +16,7 @@ export type {
   UIMessageChunk,
 } from "./message.types";
 export type {
+  AgentMode,
   ApprovalPolicy,
   AuthStatus,
   ImageAttachment,

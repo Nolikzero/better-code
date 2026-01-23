@@ -7,6 +7,7 @@ import type {
 } from "../../../shared/changes-types";
 import { publicProcedure, router } from "../trpc";
 import { fileWatcher, type GitChangeEvent } from "../watcher/file-watcher";
+import { type BranchChangeEvent, branchWatcher } from "./branch-watcher";
 import { assertRegisteredWorktree, secureFs } from "./security";
 import { applyNumstatToFiles } from "./utils/apply-numstat";
 import {
@@ -14,6 +15,14 @@ import {
   parseGitStatus,
   parseNameStatus,
 } from "./utils/parse-status";
+import { getDefaultBranch } from "./worktree";
+
+// TTL cache for getStatus results to prevent redundant git subprocess calls
+const statusCache = new Map<
+  string,
+  { data: GitChangesStatus; timestamp: number }
+>();
+const STATUS_CACHE_TTL = 1000; // 1 second
 
 export const createStatusRouter = () => {
   return router({
@@ -25,14 +34,17 @@ export const createStatusRouter = () => {
         }),
       )
       .query(async ({ input }): Promise<GitChangesStatus> => {
-        console.log(
-          "[getStatus] Called with worktreePath:",
-          input.worktreePath,
-        );
         assertRegisteredWorktree(input.worktreePath);
 
+        // Return cached result if still fresh
+        const cached = statusCache.get(input.worktreePath);
+        if (cached && Date.now() - cached.timestamp < STATUS_CACHE_TTL) {
+          return cached.data;
+        }
+
         const git = simpleGit(input.worktreePath);
-        const defaultBranch = input.defaultBranch || "main";
+        const defaultBranch =
+          input.defaultBranch || (await getDefaultBranch(input.worktreePath));
 
         const status = await git.status();
         const parsed = parseGitStatus(status);
@@ -64,12 +76,10 @@ export const createStatusRouter = () => {
           pullCount: trackingStatus.pullCount,
           hasUpstream: trackingStatus.hasUpstream,
         };
-        console.log("[getStatus] Returning:", {
-          branch: result.branch,
-          stagedCount: result.staged.length,
-          unstagedCount: result.unstaged.length,
-          untrackedCount: result.untracked.length,
-          commitsCount: result.commits.length,
+
+        statusCache.set(input.worktreePath, {
+          data: result,
+          timestamp: Date.now(),
         });
         return result;
       }),
@@ -88,6 +98,7 @@ export const createStatusRouter = () => {
 
         const nameStatus = await git.raw([
           "diff-tree",
+          "--root",
           "--no-commit-id",
           "--name-status",
           "-r",
@@ -97,6 +108,7 @@ export const createStatusRouter = () => {
 
         await applyNumstatToFiles(git, files, [
           "diff-tree",
+          "--root",
           "--no-commit-id",
           "--numstat",
           "-r",
@@ -104,6 +116,35 @@ export const createStatusRouter = () => {
         ]);
 
         return files;
+      }),
+
+    /**
+     * Lightweight query that only fetches commit history (single git log command).
+     * Use this instead of getStatus when you only need the commit list.
+     */
+    getCommits: publicProcedure
+      .input(
+        z.object({
+          worktreePath: z.string(),
+          defaultBranch: z.string().optional(),
+        }),
+      )
+      .query(async ({ input }) => {
+        assertRegisteredWorktree(input.worktreePath);
+        const git = simpleGit(input.worktreePath);
+        const defaultBranch =
+          input.defaultBranch || (await getDefaultBranch(input.worktreePath));
+
+        try {
+          const logOutput = await git.raw([
+            "log",
+            `origin/${defaultBranch}..HEAD`,
+            "--format=%H|%h|%s|%an|%aI",
+          ]);
+          return { commits: parseGitLog(logOutput), defaultBranch };
+        } catch {
+          return { commits: [], defaultBranch };
+        }
       }),
 
     /**
@@ -134,6 +175,45 @@ export const createStatusRouter = () => {
           return () => {
             fileWatcher.off(eventName, onGitChange);
             fileWatcher.unwatchGitStatus(worktreePath, subscriberId);
+          };
+        });
+      }),
+
+    /**
+     * Subscribe to branch changes for a chat's worktree.
+     * Watches the HEAD file and emits events when the branch changes.
+     */
+    watchBranchChange: publicProcedure
+      .input(
+        z.object({
+          chatId: z.string(),
+          worktreePath: z.string(),
+          subscriberId: z.string(),
+        }),
+      )
+      .subscription(({ input }) => {
+        const { chatId, worktreePath, subscriberId } = input;
+
+        return observable<BranchChangeEvent>((emit) => {
+          const eventName = `branch:${chatId}`;
+
+          const onBranchChange = (event: BranchChangeEvent) => {
+            emit.next(event);
+          };
+
+          branchWatcher
+            .watch(chatId, worktreePath, subscriberId)
+            .catch((err) => {
+              console.error(
+                "[watchBranchChange] Failed to start watcher:",
+                err,
+              );
+            });
+          branchWatcher.on(eventName, onBranchChange);
+
+          return () => {
+            branchWatcher.off(eventName, onBranchChange);
+            branchWatcher.unwatch(chatId, subscriberId);
           };
         });
       }),

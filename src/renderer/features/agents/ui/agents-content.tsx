@@ -38,6 +38,7 @@ import {
   agentsPreviewSidebarOpenAtom,
   agentsSidebarOpenAtom,
   centerFilePathAtom,
+  diffViewingModeAtom,
   mainContentActiveTabAtom,
   previousAgentChatIdAtom,
   projectDiffDataAtom,
@@ -99,9 +100,14 @@ export function AgentsContent() {
 
   // Determine which diff data to use: chat-level when chat selected, project-level otherwise
   const effectiveDiffData = selectedChatId ? chatDiffData : projectDiffData;
-  const hasChanges = effectiveDiffData?.diffStats?.hasChanges ?? false;
+  const hasChanges =
+    (effectiveDiffData?.diffStats?.hasChanges ?? false) ||
+    (effectiveDiffData?.commits?.length ?? 0) > 0;
 
   const hasFile = !!filePath;
+
+  // Track viewing mode to ensure overlay shows when user explicitly navigates to commit/full view
+  const viewingMode = useAtomValue(diffViewingModeAtom);
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -939,7 +945,8 @@ export function AgentsContent() {
         style={{ minWidth: "350px" }}
       >
         {/* Tab bar - only show when chat is selected (not for project-level view) */}
-        {(hasFile || hasChanges) && activeSubChatId && <MainContentTabs />}
+        {(hasFile || hasChanges || viewingMode.type !== "uncommitted") &&
+          activeSubChatId && <MainContentTabs />}
 
         {/* Content area */}
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
@@ -953,7 +960,8 @@ export function AgentsContent() {
               selectedTeamImageUrl={selectedTeam?.image_url}
               isOverlayMode={activeTab !== "chat"}
               overlayContent={
-                activeTab === "changes" && hasChanges ? (
+                activeTab === "changes" &&
+                (hasChanges || viewingMode.type !== "uncommitted") ? (
                   <CenterDiffView />
                 ) : activeTab === "file" && hasFile ? (
                   <CenterFileView />
@@ -965,7 +973,8 @@ export function AgentsContent() {
               key={`new-chat-${newChatFormKeyRef.current}`}
               isOverlayMode={activeTab !== "chat"}
               overlayContent={
-                activeTab === "changes" && hasChanges ? (
+                activeTab === "changes" &&
+                (hasChanges || viewingMode.type !== "uncommitted") ? (
                   <CenterDiffView />
                 ) : activeTab === "file" && hasFile ? (
                   <CenterFileView />

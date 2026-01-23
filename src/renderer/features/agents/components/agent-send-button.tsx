@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowUp } from "lucide-react";
+import { memo } from "react";
 import { Button } from "../../../components/ui/button";
 import { EnterIcon, IconSpinner } from "../../../components/ui/icons";
 import { Kbd } from "../../../components/ui/kbd";
@@ -31,7 +32,7 @@ interface AgentSendButtonProps {
   isPlanMode?: boolean;
 }
 
-export function AgentSendButton({
+export const AgentSendButton = memo(function AgentSendButton({
   isStreaming = false,
   isSubmitting = false,
   disabled = false,
@@ -128,4 +129,4 @@ export function AgentSendButton({
       <TooltipContent side="left">{getTooltipContent()}</TooltipContent>
     </Tooltip>
   );
-}
+});

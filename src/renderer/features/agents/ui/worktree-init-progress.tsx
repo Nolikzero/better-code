@@ -35,6 +35,7 @@ export const WorktreeInitProgress = memo(function WorktreeInitProgress({
   const [isExpanded, setIsExpanded] = useState(false);
   const [output, setOutput] = useState("");
   const [isDismissed, setIsDismissed] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
   const outputRef = useRef<HTMLPreElement>(null);
   const completedRef = useRef(false);
 
@@ -65,6 +66,15 @@ export const WorktreeInitProgress = memo(function WorktreeInitProgress({
     ) {
       completedRef.current = true;
       onComplete?.();
+
+      // Show success state for 3 seconds before hiding
+      if (status.status === "completed") {
+        setShowSuccess(true);
+        const timer = setTimeout(() => {
+          setShowSuccess(false);
+        }, 3000);
+        return () => clearTimeout(timer);
+      }
     }
   }, [status, output, onComplete]);
 
@@ -83,13 +93,13 @@ export const WorktreeInitProgress = memo(function WorktreeInitProgress({
     setIsDismissed(true);
   };
 
-  // Don't render if no status, dismissed, or completed successfully
+  // Don't render if no status, dismissed, or completed successfully (after 3s delay)
   if (!status || isDismissed) {
     return null;
   }
 
-  // Don't show if completed successfully (only show errors)
-  if (status.status === "completed") {
+  // Don't show if completed successfully and the 3-second delay has passed
+  if (status.status === "completed" && !showSuccess) {
     return null;
   }
 
@@ -97,7 +107,7 @@ export const WorktreeInitProgress = memo(function WorktreeInitProgress({
   const isError = status.status === "error";
 
   return (
-    <div className="rounded-lg border border-border bg-muted/30 overflow-hidden mb-4">
+    <div className="max-w-2xl 2xl:max-w-4xl mx-auto px-4 rounded-lg border border-border bg-muted/30 overflow-hidden mb-4">
       {/* Expanded output */}
       <AnimatePresence initial={false}>
         {isExpanded && (

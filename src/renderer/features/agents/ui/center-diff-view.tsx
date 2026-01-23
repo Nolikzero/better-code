@@ -3,19 +3,22 @@
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
   ArrowLeft,
+  ChevronDown,
   Columns2,
   Eye,
+  GitBranch,
   GitCommitHorizontal,
   GitMerge,
   MoreHorizontal,
   Rows2,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../../components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
@@ -37,11 +40,16 @@ import {
   activeChatDiffDataAtom,
   agentsFocusedDiffFileAtom,
   centerDiffSelectedFileAtom,
+  commitDiffDataAtom,
+  diffViewingModeAtom,
+  fullDiffDataAtom,
   mainContentActiveTabAtom,
   prActionsAtom,
   projectDiffDataAtom,
   selectedAgentChatIdAtom,
 } from "../atoms";
+import { useCommitDiff } from "../hooks/use-commit-diff";
+import { useFullDiff } from "../hooks/use-full-diff";
 import {
   AgentDiffView,
   type AgentDiffViewRef,
@@ -65,8 +73,14 @@ export function CenterDiffView() {
   const isProjectLevel = !selectedChatId;
   const diffData = isProjectLevel ? projectDiffData : chatDiffData;
 
-  // Only show PR actions for chat-level diffs
-  const prActions = isProjectLevel ? null : chatPrActions;
+  // Diff viewing mode state
+  const [viewingMode, setViewingMode] = useAtom(diffViewingModeAtom);
+  const commitDiffData = useAtomValue(commitDiffDataAtom);
+  const fullDiffData = useAtomValue(fullDiffDataAtom);
+
+  // Only show PR actions for chat-level diffs in uncommitted mode
+  const prActions =
+    isProjectLevel || viewingMode.type !== "uncommitted" ? null : chatPrActions;
   const setActiveTab = useSetAtom(mainContentActiveTabAtom);
   const [centerDiffSelectedFile, setCenterDiffSelectedFile] = useAtom(
     centerDiffSelectedFileAtom,
@@ -81,21 +95,91 @@ export function CenterDiffView() {
     allExpanded: true,
   });
 
+  // Extract chatId and worktreePath early for hooks
+  const chatId = isProjectLevel
+    ? (projectDiffData?.projectId ?? "")
+    : (chatDiffData?.chatId ?? "");
+  const worktreePath = isProjectLevel
+    ? (projectDiffData?.projectPath ?? null)
+    : (chatDiffData?.worktreePath ?? null);
+  const sandboxId = isProjectLevel ? undefined : chatDiffData?.sandboxId;
+  const repository = isProjectLevel ? undefined : chatDiffData?.repository;
+
+  // Invoke diff hooks based on viewing mode
+  useCommitDiff({
+    chatId,
+    worktreePath,
+    commitHash: viewingMode.type === "commit" ? viewingMode.commitHash : null,
+    enabled: viewingMode.type === "commit",
+  });
+
+  useFullDiff({
+    chatId,
+    worktreePath,
+    enabled: viewingMode.type === "full",
+  });
+
+  // Reset viewing mode when chat changes
+  const prevChatIdRef = useRef(selectedChatId);
+  useEffect(() => {
+    if (prevChatIdRef.current !== selectedChatId) {
+      prevChatIdRef.current = selectedChatId;
+      setViewingMode({ type: "uncommitted" });
+    }
+  }, [selectedChatId, setViewingMode]);
+
+  // Compute effective data based on viewing mode
+  const effectiveData = useMemo(() => {
+    switch (viewingMode.type) {
+      case "commit":
+        if (!commitDiffData) return null;
+        return {
+          diffStats: commitDiffData.diffStats,
+          diffContent: commitDiffData.diffContent,
+          parsedFileDiffs: commitDiffData.parsedFileDiffs,
+          prefetchedFileContents: commitDiffData.prefetchedFileContents,
+          isLoading: commitDiffData.isLoading,
+        };
+      case "full":
+        if (!fullDiffData) return null;
+        return {
+          diffStats: fullDiffData.diffStats,
+          diffContent: fullDiffData.diffContent,
+          parsedFileDiffs: fullDiffData.parsedFileDiffs,
+          prefetchedFileContents: fullDiffData.prefetchedFileContents,
+          isLoading: fullDiffData.isLoading,
+        };
+      default:
+        if (!diffData) return null;
+        return {
+          diffStats: diffData.diffStats,
+          diffContent: diffData.diffContent,
+          parsedFileDiffs: diffData.parsedFileDiffs,
+          prefetchedFileContents: diffData.prefetchedFileContents,
+          isLoading: diffData.diffStats.isLoading,
+        };
+    }
+  }, [viewingMode, diffData, commitDiffData, fullDiffData]);
+
   // Set focused file when center diff view opens with a selected file
+  // Also re-triggers when viewingMode changes (e.g. switching commits)
   useEffect(() => {
     if (centerDiffSelectedFile) {
-      // Small delay to ensure AgentDiffView is mounted
+      // Reset first to ensure AgentDiffView detects the transition
+      setFocusedDiffFile(null);
+      // Delay to allow AgentDiffView to mount after loading completes
       const timer = setTimeout(() => {
         setFocusedDiffFile(centerDiffSelectedFile);
-      }, 100);
+      }, 150);
       return () => clearTimeout(timer);
     }
-  }, [centerDiffSelectedFile, setFocusedDiffFile]);
+  }, [centerDiffSelectedFile, viewingMode, setFocusedDiffFile]);
 
-  // Handle close - switch to chat tab
+  // Handle close - switch to chat tab and reset mode
   const handleClose = () => {
     setActiveTab("chat");
     setCenterDiffSelectedFile(null);
+    setViewingMode({ type: "uncommitted" });
   };
 
   // Handle keyboard escape
@@ -111,8 +195,31 @@ export function CenterDiffView() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  // Return null if no diff data
-  if (!diffData) {
+  // Get the mode label for the dropdown
+  const modeLabel = useMemo(() => {
+    switch (viewingMode.type) {
+      case "commit": {
+        const msg = viewingMode.message;
+        return msg.length > 24 ? `${msg.slice(0, 24)}...` : msg;
+      }
+      case "full":
+        return "All changes";
+      default:
+        return "Uncommitted";
+    }
+  }, [viewingMode]);
+
+  // Return loading state when switching to commit/full mode before data loads
+  if (!effectiveData && viewingMode.type !== "uncommitted") {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <IconSpinner className="w-5 h-5 text-muted-foreground" />
+      </div>
+    );
+  }
+
+  // Return empty state if no diff data in uncommitted mode
+  if (!effectiveData) {
     return (
       <div className="flex-1 flex items-center justify-center text-muted-foreground">
         No changes to display
@@ -120,26 +227,13 @@ export function CenterDiffView() {
     );
   }
 
-  // Extract common diff properties
-  const diffStats = diffData.diffStats;
-  const diffContent = diffData.diffContent;
-  const parsedFileDiffs = diffData.parsedFileDiffs;
-  const prefetchedFileContents = diffData.prefetchedFileContents;
-
-  // For chat-level diffs, use chatId and worktreePath
-  // For project-level diffs, use projectId and projectPath
-  const chatId = isProjectLevel
-    ? ((diffData as typeof projectDiffData)?.projectId ?? "")
-    : ((diffData as typeof chatDiffData)?.chatId ?? "");
-  const worktreePath = isProjectLevel
-    ? ((diffData as typeof projectDiffData)?.projectPath ?? null)
-    : ((diffData as typeof chatDiffData)?.worktreePath ?? null);
-  const sandboxId = isProjectLevel
-    ? undefined
-    : (diffData as typeof chatDiffData)?.sandboxId;
-  const repository = isProjectLevel
-    ? undefined
-    : (diffData as typeof chatDiffData)?.repository;
+  const {
+    diffStats,
+    diffContent,
+    parsedFileDiffs,
+    prefetchedFileContents,
+    isLoading,
+  } = effectiveData;
 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-background">
@@ -164,8 +258,67 @@ export function CenterDiffView() {
           </Tooltip>
 
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">Changes</span>
-            {!diffStats.isLoading && (
+            {/* Mode selector dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-1 text-sm font-medium hover:text-foreground/80 transition-colors">
+                  {viewingMode.type === "commit" && (
+                    <GitCommitHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
+                  )}
+                  {viewingMode.type === "full" && (
+                    <GitBranch className="h-3.5 w-3.5 text-muted-foreground" />
+                  )}
+                  <span>{modeLabel}</span>
+                  <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="start"
+                sideOffset={4}
+                className="w-48"
+              >
+                <DropdownMenuItem
+                  onClick={() => setViewingMode({ type: "uncommitted" })}
+                  className="relative pl-6 gap-1.5"
+                >
+                  {viewingMode.type === "uncommitted" && (
+                    <span className="absolute left-1.5 flex h-3.5 w-3.5 items-center justify-center">
+                      <CheckIcon className="h-3 w-3" />
+                    </span>
+                  )}
+                  <span>Uncommitted</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setViewingMode({ type: "full" })}
+                  className="relative pl-6 gap-1.5"
+                >
+                  {viewingMode.type === "full" && (
+                    <span className="absolute left-1.5 flex h-3.5 w-3.5 items-center justify-center">
+                      <CheckIcon className="h-3 w-3" />
+                    </span>
+                  )}
+                  <GitBranch className="w-3.5 h-3.5" />
+                  <span>All changes</span>
+                </DropdownMenuItem>
+                {viewingMode.type === "commit" && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      disabled
+                      className="relative pl-6 gap-1.5"
+                    >
+                      <span className="absolute left-1.5 flex h-3.5 w-3.5 items-center justify-center">
+                        <CheckIcon className="h-3 w-3" />
+                      </span>
+                      <GitCommitHorizontal className="w-3.5 h-3.5" />
+                      <span className="truncate">{modeLabel}</span>
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {!isLoading && (
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <span className="font-mono">{diffStats.fileCount} files</span>
                 {(diffStats.additions > 0 || diffStats.deletions > 0) && (
@@ -179,6 +332,9 @@ export function CenterDiffView() {
                   </>
                 )}
               </div>
+            )}
+            {isLoading && (
+              <IconSpinner className="w-3.5 h-3.5 text-muted-foreground" />
             )}
           </div>
         </div>
@@ -412,18 +568,24 @@ export function CenterDiffView() {
 
       {/* Diff View */}
       <div className="flex-1 min-h-0 overflow-hidden">
-        <AgentDiffView
-          ref={diffViewRef}
-          chatId={chatId}
-          sandboxId={sandboxId}
-          worktreePath={worktreePath || undefined}
-          repository={repository}
-          initialDiff={diffContent}
-          initialParsedFiles={parsedFileDiffs}
-          prefetchedFileContents={prefetchedFileContents}
-          showFooter={false}
-          onCollapsedStateChange={setDiffCollapseState}
-        />
+        {isLoading ? (
+          <div className="flex-1 flex items-center justify-center h-full">
+            <IconSpinner className="w-5 h-5 text-muted-foreground" />
+          </div>
+        ) : (
+          <AgentDiffView
+            ref={diffViewRef}
+            chatId={chatId}
+            sandboxId={sandboxId}
+            worktreePath={worktreePath || undefined}
+            repository={repository}
+            initialDiff={diffContent}
+            initialParsedFiles={parsedFileDiffs}
+            prefetchedFileContents={prefetchedFileContents || {}}
+            showFooter={false}
+            onCollapsedStateChange={setDiffCollapseState}
+          />
+        )}
       </div>
     </div>
   );

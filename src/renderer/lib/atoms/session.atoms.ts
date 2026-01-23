@@ -15,6 +15,8 @@ type SessionInfo = {
   skills: string[];
   // Track which provider this session info came from
   providerId?: ProviderId;
+  // Track which subchat this session info originated from
+  subChatId?: string;
 };
 
 // Session info from SDK init message

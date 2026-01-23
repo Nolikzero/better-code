@@ -1,12 +1,13 @@
 import type { ProviderId } from "@shared/types";
 import { create } from "zustand";
+import type { AgentMode } from "../atoms";
 
 export interface SubChatMeta {
   id: string;
   name: string | null;
   created_at?: string;
   updated_at?: string;
-  mode?: "plan" | "agent" | string;
+  mode?: AgentMode;
   providerId?: ProviderId;
 }
 
@@ -30,7 +31,7 @@ interface AgentSubChatStore {
   setAllSubChats: (subChats: SubChatMeta[]) => void;
   addToAllSubChats: (subChat: SubChatMeta) => void;
   updateSubChatName: (subChatId: string, name: string) => void;
-  updateSubChatMode: (subChatId: string, mode: "plan" | "agent") => void;
+  updateSubChatMode: (subChatId: string, mode: AgentMode) => void;
   updateSubChatProvider: (subChatId: string, providerId: ProviderId) => void;
   updateSubChatTimestamp: (subChatId: string) => void;
   reset: () => void;

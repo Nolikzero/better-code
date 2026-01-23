@@ -1,5 +1,6 @@
 import type { ChatTransport, UIMessage } from "ai";
 import { toast } from "sonner";
+import { getQueryClient } from "../../../contexts/TRPCProvider";
 import {
   agentsLoginModalOpenAtom,
   chatProviderOverridesAtom,
@@ -29,8 +30,10 @@ import {
   lastSelectedModelIdAtom,
   MODEL_ID_MAP,
   pendingAuthRetryMessageAtom,
+  pendingRalphAutoStartsAtom,
   pendingUserQuestionsAtom,
-  refreshDiffTriggerAtom,
+  ralphInjectedPromptsAtom,
+  ralphPrdStatusesAtom,
 } from "../atoms";
 import { useAgentSubChatStore } from "../stores/sub-chat-store";
 
@@ -218,7 +221,7 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
             prompt,
             cwd: this.config.cwd,
             projectPath: this.config.projectPath, // Original project path for MCP config lookup
-            mode: currentMode as "plan" | "agent",
+            mode: currentMode as "plan" | "agent" | "ralph",
             sessionId,
             providerId: effectiveProvider, // AI provider selection
             ...(maxThinkingTokens && { maxThinkingTokens }),
@@ -234,6 +237,17 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
           },
           {
             onData: (chunk: UIMessageChunk) => {
+              // Defensive isolation: verify chunk belongs to this subchat
+              const chunkSubChatId = (chunk as any)._subChatId;
+              if (chunkSubChatId && chunkSubChatId !== this.config.subChatId) {
+                console.warn(
+                  `[SD] R:MISROUTE sub=${subId} got chunk for ${chunkSubChatId?.slice(-8)} type=${chunk.type}`,
+                );
+                return; // Drop misrouted chunk
+              }
+              // Strip internal routing field before processing
+              delete (chunk as any)._subChatId;
+
               chunkCount++;
               lastChunkType = chunk.type;
 
@@ -299,6 +313,7 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
                   allTools: chunk.tools,
                 });
                 appStore.set(sessionInfoAtom, {
+                  subChatId: this.config.subChatId,
                   tools: chunk.tools,
                   mcpServers: chunk.mcpServers,
                   plugins: chunk.plugins,
@@ -319,11 +334,182 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
                 return;
               }
 
-              // Handle session diff updates from OpenCode - trigger diff refresh
-              if (chunk.type === "session-diff") {
-                const currentTrigger = appStore.get(refreshDiffTriggerAtom);
-                appStore.set(refreshDiffTriggerAtom, currentTrigger + 1);
-                // Don't pass to stream - handled via atom update
+              // === Ralph Prompt Injection ===
+              if (chunk.type === "ralph-prompt-injected") {
+                const currentPrompts = new Map(
+                  appStore.get(ralphInjectedPromptsAtom),
+                );
+                currentPrompts.set(this.config.subChatId, {
+                  subChatId: this.config.subChatId,
+                  text: chunk.text,
+                });
+                appStore.set(ralphInjectedPromptsAtom, currentPrompts);
+                return;
+              }
+
+              // === Ralph Automation Events ===
+              // Helper to invalidate all ralph queries and broadcast state change event
+              const invalidateRalphQueries = (chatId?: string) => {
+                // Broadcast custom event so badge can listen regardless of cache timing
+                window.dispatchEvent(
+                  new CustomEvent("ralph-state-changed", {
+                    detail: { chatId: chatId || this.config.chatId },
+                  }),
+                );
+                console.log(
+                  "[ralph] Dispatched ralph-state-changed event for chatId:",
+                  chatId || this.config.chatId,
+                );
+
+                // Also invalidate query cache for components that are already subscribed
+                const queryClient = getQueryClient();
+                if (queryClient) {
+                  queryClient.invalidateQueries({
+                    predicate: (query) => {
+                      const key = query.queryKey;
+                      return (
+                        Array.isArray(key) &&
+                        Array.isArray(key[0]) &&
+                        key[0][0] === "ralph"
+                      );
+                    },
+                    refetchType: "all",
+                  });
+                }
+              };
+
+              if (chunk.type === "ralph-complete") {
+                toast.success("Ralph: All stories complete!", {
+                  description: "All PRD stories have been implemented.",
+                  duration: 5000,
+                });
+                // Invalidate ralph query cache to update UI immediately
+                invalidateRalphQueries();
+                // Don't pass to stream - handled via toast
+                return;
+              }
+
+              if (chunk.type === "ralph-story-complete") {
+                toast.success(`Story ${chunk.storyId} complete!`, {
+                  description: chunk.autoStartNext
+                    ? "Starting next story..."
+                    : "All stories complete!",
+                  duration: 3000,
+                });
+                console.log(
+                  "[ralph] Story complete:",
+                  chunk.storyId,
+                  "autoStartNext:",
+                  chunk.autoStartNext,
+                );
+
+                // Invalidate ralph query cache to update UI immediately
+                invalidateRalphQueries();
+
+                // If there are more stories, trigger auto-continue
+                console.log(
+                  "[ralph] autoStartNext check:",
+                  chunk.autoStartNext,
+                  "subChatId:",
+                  this.config.subChatId,
+                );
+                if (chunk.autoStartNext) {
+                  console.log(
+                    "[ralph] Setting pendingRalphAutoStart with completedStoryId:",
+                    chunk.storyId,
+                  );
+                  const currentAutoStarts = new Map(
+                    appStore.get(pendingRalphAutoStartsAtom),
+                  );
+                  currentAutoStarts.set(this.config.subChatId, {
+                    subChatId: this.config.subChatId,
+                    completedStoryId: chunk.storyId, // Wait until nextStory !== this
+                  });
+                  appStore.set(pendingRalphAutoStartsAtom, currentAutoStarts);
+                } else {
+                  console.log(
+                    "[ralph] NOT setting pendingRalphAutoStart (autoStartNext is false)",
+                  );
+                }
+
+                // Don't pass to stream - handled via toast
+                return;
+              }
+
+              if (chunk.type === "ralph-progress") {
+                // Progress is saved server-side, just log here
+                console.log("[ralph] Progress saved for story:", chunk.storyId);
+                // Invalidate ralph query cache to update UI immediately
+                invalidateRalphQueries();
+                // Don't pass to stream - handled server-side
+                return;
+              }
+
+              if (chunk.type === "ralph-prd-generating") {
+                toast.info(chunk.message || "Generating PRD...", {
+                  duration: 2000,
+                });
+                console.log(
+                  "[ralph] PRD generation in progress:",
+                  chunk.message,
+                );
+
+                // Update atom for UI rendering (bypasses AI SDK tool mechanism)
+                const generatingStatuses = new Map(
+                  appStore.get(ralphPrdStatusesAtom),
+                );
+                generatingStatuses.set(this.config.subChatId, {
+                  subChatId: this.config.subChatId,
+                  chatId: this.config.chatId,
+                  status: "generating",
+                  message: chunk.message,
+                });
+                appStore.set(ralphPrdStatusesAtom, generatingStatuses);
+                return;
+              }
+
+              if (chunk.type === "ralph-prd-generated") {
+                toast.success("PRD generated!", {
+                  description: chunk.autoStartImplementation
+                    ? "Starting implementation of first story..."
+                    : "Ready to start implementation.",
+                  duration: 3000,
+                });
+                console.log(
+                  "[ralph] PRD generated and stored:",
+                  chunk.prd?.goal,
+                  "autoStart:",
+                  chunk.autoStartImplementation,
+                );
+
+                // Update atom with complete PRD for UI rendering
+                const completeStatuses = new Map(
+                  appStore.get(ralphPrdStatusesAtom),
+                );
+                completeStatuses.set(this.config.subChatId, {
+                  subChatId: this.config.subChatId,
+                  chatId: this.config.chatId,
+                  status: "complete",
+                  prd: chunk.prd,
+                });
+                appStore.set(ralphPrdStatusesAtom, completeStatuses);
+
+                // Invalidate ralph query cache to update UI immediately (show badge)
+                invalidateRalphQueries();
+
+                // If autoStartImplementation is set, trigger auto-send of follow-up message
+                if (chunk.autoStartImplementation) {
+                  // Set pending auto-start flag - will be processed by component after stream finishes
+                  // No completedStoryId since this is the first story
+                  const autoStarts = new Map(
+                    appStore.get(pendingRalphAutoStartsAtom),
+                  );
+                  autoStarts.set(this.config.subChatId, {
+                    subChatId: this.config.subChatId,
+                  });
+                  appStore.set(pendingRalphAutoStartsAtom, autoStarts);
+                }
+
                 return;
               }
 

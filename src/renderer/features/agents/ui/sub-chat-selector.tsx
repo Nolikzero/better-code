@@ -673,27 +673,27 @@ export function SubChatSelector({
 
         {/* Plus button - absolute positioned on right with gradient cover */}
         <div className="absolute right-0 top-0 bottom-0 flex items-center z-20">
-            {/* Gradient to cover content peeking from the left */}
-            <div className="w-6 h-full" />
-            <div className="h-full flex items-center">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={onCreateNew}
-                    className="h-6 w-6 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] rounded-md"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  New chat
-                  <Kbd>{getShortcutKey("newTab")}</Kbd>
-                </TooltipContent>
-              </Tooltip>
-            </div>
+          {/* Gradient to cover content peeking from the left */}
+          <div className="w-6 h-full" />
+          <div className="h-full flex items-center">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onCreateNew}
+                  className="h-6 w-6 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] rounded-md"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                New chat
+                <Kbd>{getShortcutKey("newTab")}</Kbd>
+              </TooltipContent>
+            </Tooltip>
           </div>
+        </div>
       </div>
 
       {/* Action buttons */}
@@ -704,84 +704,84 @@ export function SubChatSelector({
           WebkitAppRegion: "no-drag",
         }}
       >
-          <SearchCombobox
-            isOpen={isHistoryOpen}
-            onOpenChange={setIsHistoryOpen}
-            items={sortedSubChats}
-            onSelect={handleSelectFromHistory}
-            placeholder="Search chats..."
-            emptyMessage="No results"
-            getItemValue={(subChat) =>
-              `${subChat.name || "New Chat"} ${subChat.id}`
-            }
-            renderItem={(subChat) => {
-              const timeAgo = formatTimeAgo(
-                subChat.updated_at || subChat.created_at,
-              );
-              const isLoading = loadingSubChats.has(subChat.id);
-              const hasUnseen = subChatUnseenChanges.has(subChat.id);
-              const mode = subChat.mode || "agent";
-              const hasPendingQuestion =
-                pendingQuestions?.subChatId === subChat.id;
-              const hasPendingPlan = pendingPlanApprovals.has(subChat.id);
+        <SearchCombobox
+          isOpen={isHistoryOpen}
+          onOpenChange={setIsHistoryOpen}
+          items={sortedSubChats}
+          onSelect={handleSelectFromHistory}
+          placeholder="Search chats..."
+          emptyMessage="No results"
+          getItemValue={(subChat) =>
+            `${subChat.name || "New Chat"} ${subChat.id}`
+          }
+          renderItem={(subChat) => {
+            const timeAgo = formatTimeAgo(
+              subChat.updated_at || subChat.created_at,
+            );
+            const isLoading = loadingSubChats.has(subChat.id);
+            const hasUnseen = subChatUnseenChanges.has(subChat.id);
+            const mode = subChat.mode || "agent";
+            const hasPendingQuestion =
+              pendingQuestions?.subChatId === subChat.id;
+            const hasPendingPlan = pendingPlanApprovals.has(subChat.id);
 
-              return (
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  {/* Icon with badge - question icon has priority */}
-                  <div className="shrink-0 w-4 h-4 flex items-center justify-center relative">
-                    {hasPendingQuestion ? (
-                      <QuestionIcon className="w-4 h-4 text-blue-500" />
-                    ) : isLoading ? (
-                      <IconSpinner className="w-4 h-4 text-muted-foreground" />
-                    ) : mode === "plan" ? (
-                      <PlanIcon className="w-4 h-4 text-muted-foreground" />
-                    ) : (
-                      <AgentIcon className="w-4 h-4 text-muted-foreground" />
+            return (
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                {/* Icon with badge - question icon has priority */}
+                <div className="shrink-0 w-4 h-4 flex items-center justify-center relative">
+                  {hasPendingQuestion ? (
+                    <QuestionIcon className="w-4 h-4 text-blue-500" />
+                  ) : isLoading ? (
+                    <IconSpinner className="w-4 h-4 text-muted-foreground" />
+                  ) : mode === "plan" ? (
+                    <PlanIcon className="w-4 h-4 text-muted-foreground" />
+                  ) : (
+                    <AgentIcon className="w-4 h-4 text-muted-foreground" />
+                  )}
+                  {(hasPendingPlan || hasUnseen) &&
+                    !isLoading &&
+                    !hasPendingQuestion && (
+                      <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-popover flex items-center justify-center">
+                        <div
+                          className={cn(
+                            "w-1.5 h-1.5 rounded-full",
+                            hasPendingPlan ? "bg-amber-500" : "bg-[#307BD0]",
+                          )}
+                        />
+                      </div>
                     )}
-                    {(hasPendingPlan || hasUnseen) &&
-                      !isLoading &&
-                      !hasPendingQuestion && (
-                        <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-popover flex items-center justify-center">
-                          <div
-                            className={cn(
-                              "w-1.5 h-1.5 rounded-full",
-                              hasPendingPlan ? "bg-amber-500" : "bg-[#307BD0]",
-                            )}
-                          />
-                        </div>
-                      )}
-                  </div>
-                  <span className="text-sm truncate flex-1">
-                    {subChat.name || "New Chat"}
-                  </span>
-                  <span className="text-sm text-muted-foreground whitespace-nowrap">
-                    {timeAgo}
-                  </span>
                 </div>
-              );
-            }}
-            trigger={
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] shrink-0 rounded-md flex items-center justify-center"
-                      disabled={allSubChats.length === 0}
-                    >
-                      <ClockIcon className="h-4 w-4" />
-                    </Button>
-                  </PopoverTrigger>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  Search chats
-                  <Kbd>/</Kbd>
-                </TooltipContent>
-              </Tooltip>
-            }
-          />
-        </div>
+                <span className="text-sm truncate flex-1">
+                  {subChat.name || "New Chat"}
+                </span>
+                <span className="text-sm text-muted-foreground whitespace-nowrap">
+                  {timeAgo}
+                </span>
+              </div>
+            );
+          }}
+          trigger={
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] shrink-0 rounded-md flex items-center justify-center"
+                    disabled={allSubChats.length === 0}
+                  >
+                    <ClockIcon className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                Search chats
+                <Kbd>/</Kbd>
+              </TooltipContent>
+            </Tooltip>
+          }
+        />
+      </div>
 
       {/* Diff button - always visible on desktop when sandbox exists, disabled if no changes */}
       {!isMobile && canOpenDiff && !isDiffSidebarOpen && (

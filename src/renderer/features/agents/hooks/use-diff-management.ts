@@ -1,28 +1,27 @@
 "use client";
 
 import { useAtomValue } from "jotai";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { CommitInfo } from "../../../../shared/changes-types";
 import {
   type DiffStatsUI,
   type ParsedDiffFile,
   parseUnifiedDiff,
 } from "../../../../shared/utils";
 import { trpcClient } from "../../../lib/trpc";
-import {
-  agentsDiffSidebarWidthAtom,
-  refreshDiffTriggerAtom,
-  subChatFilesAtom,
-} from "../atoms";
+import { agentsDiffSidebarWidthAtom, refreshDiffTriggerAtom } from "../atoms";
 
 // Re-export types for backwards compatibility
 export type DiffStats = DiffStatsUI;
 export type ParsedFileDiff = ParsedDiffFile;
+export type { CommitInfo };
 
 export interface UseDiffManagementOptions {
   chatId: string;
   worktreePath: string | null;
   sandboxId: string | undefined;
   isDiffSidebarOpen: boolean;
+  baseBranch?: string | null; // Base branch for commit comparison
 }
 
 export interface UseDiffManagementReturn {
@@ -31,6 +30,7 @@ export interface UseDiffManagementReturn {
   diffContent: string | null;
   parsedFileDiffs: ParsedFileDiff[] | null;
   prefetchedFileContents: Record<string, string>;
+  commits: CommitInfo[]; // Commit history for the branch vs base
   // Sidebar width tracking
   diffSidebarWidth: number;
   diffSidebarRef: React.RefObject<HTMLDivElement | null>;
@@ -41,13 +41,12 @@ export interface UseDiffManagementReturn {
   fetchDiffStatsRef: React.MutableRefObject<() => void>;
 }
 
-const DIFF_THROTTLE_MS = 2000; // Max 1 fetch per 2 seconds
-
 export function useDiffManagement({
   chatId,
   worktreePath,
   sandboxId,
   isDiffSidebarOpen,
+  baseBranch,
 }: UseDiffManagementOptions): UseDiffManagementReturn {
   // Diff stats state
   const [diffStats, setDiffStats] = useState<DiffStats>({
@@ -57,6 +56,9 @@ export function useDiffManagement({
     isLoading: true,
     hasChanges: false,
   });
+
+  // Commit history state
+  const [commits, setCommits] = useState<CommitInfo[]>([]);
 
   // Raw diff content to pass to AgentDiffView (avoids double fetch)
   const [diffContent, setDiffContent] = useState<string | null>(null);
@@ -80,12 +82,12 @@ export function useDiffManagement({
 
   // Fetch control refs
   const fetchDiffStatsDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const fetchDiffStatsMaxWaitRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const maxWaitStartTimeRef = useRef<number | null>(null);
   const isFetchingDiffRef = useRef(false);
-
-  // Track changed files across all sub-chats for throttled diff refresh
-  const subChatFiles = useAtomValue(subChatFilesAtom);
-  // Initialize to Date.now() to prevent double-fetch on mount
-  const lastDiffFetchTimeRef = useRef<number>(Date.now());
+  const pendingRefetchRef = useRef(false);
 
   // Subscribe to refresh trigger from external components (discard changes, etc.)
   const refreshDiffTrigger = useAtomValue(refreshDiffTriggerAtom);
@@ -145,13 +147,33 @@ export function useDiffManagement({
       return;
     }
 
-    // Prevent duplicate parallel fetches
+    // Queue-last: if already fetching, mark pending and return
     if (isFetchingDiffRef.current) {
+      pendingRefetchRef.current = true;
       return;
     }
     isFetchingDiffRef.current = true;
 
     try {
+      // Fetch commit history FIRST so that the subsequent diff call
+      // sees any commit that already happened (avoids showing committed
+      // changes as uncommitted due to race condition)
+      if (worktreePath) {
+        try {
+          const { commits: fetchedCommits } =
+            await trpcClient.changes.getCommits.query({
+              worktreePath,
+              defaultBranch: baseBranch || "main",
+            });
+          setCommits(fetchedCommits);
+        } catch (err) {
+          console.warn("[useDiffManagement] Failed to fetch commits:", err);
+          setCommits([]);
+        }
+      } else {
+        setCommits([]);
+      }
+
       let rawDiff: string | null = null;
 
       // Desktop: use tRPC to get diff from worktree
@@ -256,17 +278,45 @@ export function useDiffManagement({
       setDiffStats((prev) => ({ ...prev, isLoading: false }));
     } finally {
       isFetchingDiffRef.current = false;
+      // If a refetch was requested while we were fetching, schedule it
+      if (pendingRefetchRef.current) {
+        pendingRefetchRef.current = false;
+        setTimeout(() => fetchDiffStats(), 300);
+      }
     }
-  }, [worktreePath, sandboxId, chatId]);
+  }, [worktreePath, sandboxId, chatId, baseBranch]);
 
-  // Debounced version for calling after stream ends
+  // Debounced version with max-wait guarantee for real-time updates during streaming.
+  // Debounce at 500ms (coalesce rapid bursts) but force execution every 3s.
   const fetchDiffStatsDebounced = useCallback(() => {
     if (fetchDiffStatsDebounceRef.current) {
       clearTimeout(fetchDiffStatsDebounceRef.current);
     }
+
+    // Start max-wait timer on first call in a burst
+    if (maxWaitStartTimeRef.current === null) {
+      maxWaitStartTimeRef.current = Date.now();
+      fetchDiffStatsMaxWaitRef.current = setTimeout(() => {
+        if (fetchDiffStatsDebounceRef.current) {
+          clearTimeout(fetchDiffStatsDebounceRef.current);
+          fetchDiffStatsDebounceRef.current = null;
+        }
+        maxWaitStartTimeRef.current = null;
+        fetchDiffStatsMaxWaitRef.current = null;
+        fetchDiffStats();
+      }, 3000);
+    }
+
+    // Trailing debounce — fires if no new calls arrive within 500ms
     fetchDiffStatsDebounceRef.current = setTimeout(() => {
+      if (fetchDiffStatsMaxWaitRef.current) {
+        clearTimeout(fetchDiffStatsMaxWaitRef.current);
+        fetchDiffStatsMaxWaitRef.current = null;
+      }
+      maxWaitStartTimeRef.current = null;
+      fetchDiffStatsDebounceRef.current = null;
       fetchDiffStats();
-    }, 500); // 500ms debounce to avoid spamming if multiple streams end
+    }, 500);
   }, [fetchDiffStats]);
 
   // Ref to hold the latest fetchDiffStatsDebounced for use in onFinish callbacks
@@ -292,43 +342,12 @@ export function useDiffManagement({
     fetchDiffStats();
   }, [refreshDiffTrigger, fetchDiffStats]);
 
-  // Calculate total file count across all sub-chats for change detection
-  const totalSubChatFileCount = useMemo(() => {
-    let count = 0;
-    subChatFiles.forEach((files) => {
-      count += files.length;
-    });
-    return count;
-  }, [subChatFiles]);
-
-  // Throttled refetch when sub-chat files change (agent edits/writes files)
-  useEffect(() => {
-    // Skip if no files tracked yet (initial state)
-    if (totalSubChatFileCount === 0) return;
-
-    const now = Date.now();
-    const timeSinceLastFetch = now - lastDiffFetchTimeRef.current;
-
-    if (timeSinceLastFetch >= DIFF_THROTTLE_MS) {
-      // Enough time passed, fetch immediately
-      lastDiffFetchTimeRef.current = now;
-      fetchDiffStats();
-    } else {
-      // Schedule fetch for when throttle window ends
-      const delay = DIFF_THROTTLE_MS - timeSinceLastFetch;
-      const timer = setTimeout(() => {
-        lastDiffFetchTimeRef.current = Date.now();
-        fetchDiffStats();
-      }, delay);
-      return () => clearTimeout(timer);
-    }
-  }, [totalSubChatFileCount, fetchDiffStats]);
-
   return {
     diffStats,
     diffContent,
     parsedFileDiffs,
     prefetchedFileContents,
+    commits,
     diffSidebarWidth,
     diffSidebarRef,
     fetchDiffStats,

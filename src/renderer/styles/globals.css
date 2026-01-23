@@ -7,6 +7,10 @@
 
 @layer base {
   :root {
+    /* Font stacks — update here + src/renderer/lib/fonts.ts + Google Fonts link in index.html */
+    --font-sans: "Inter", system-ui, sans-serif;
+    --font-mono: "Source Code Pro", ui-monospace, monospace;
+
     --background: 0 0% 100%;
     --foreground: 0 0% 9%;
     --card: 0 0% 100%;
@@ -338,7 +342,7 @@
 
 /* Terminal link popup */
 .xterm-link-popup {
-  font-family: "Geist Mono", ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
   line-height: 1.4;
   padding: 4px 8px;

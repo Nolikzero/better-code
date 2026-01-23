@@ -1,3 +1,4 @@
+import { memo } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,7 +20,7 @@ interface BranchSwitchDialogProps {
   onCancel: () => void;
 }
 
-export function BranchSwitchDialog({
+export const BranchSwitchDialog = memo(function BranchSwitchDialog({
   open,
   onOpenChange,
   pendingSwitch,
@@ -76,4 +77,4 @@ export function BranchSwitchDialog({
       </AlertDialogContent>
     </AlertDialog>
   );
-}
+});

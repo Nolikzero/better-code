@@ -23,10 +23,12 @@ import {
   type ProviderId,
 } from "../../../lib/atoms";
 import { cn } from "../../../lib/utils";
+import { isDesktopApp } from "../../../lib/utils/platform";
 import {
+  type AgentMode,
+  agentModeAtom,
   agentsDebugModeAtom,
   historyNavAtomFamily,
-  isPlanModeAtom,
   justCreatedIdsAtom,
   lastSelectedBranchesAtom,
   lastSelectedRepoAtom,
@@ -108,6 +110,8 @@ export function NewChatForm({
 }: NewChatFormProps = {}) {
   // UNCONTROLLED: just track if editor has content for send button
   const [hasContent, setHasContent] = useState(false);
+  // Pending directories to add to the chat when it's created
+  const [pendingAddedDirs, setPendingAddedDirs] = useState<string[]>([]);
   const [selectedTeamId] = useAtom(selectedTeamIdAtom);
   const [_selectedChatId, setSelectedChatId] = useAtom(selectedAgentChatIdAtom);
   const [selectedDraftId, setSelectedDraftId] = useAtom(selectedDraftIdAtom);
@@ -160,14 +164,8 @@ export function NewChatForm({
   const _currentModel =
     providerModels.find((m) => m.id === currentModelId) || providerModels[0];
 
-  const [isPlanMode, setIsPlanMode] = useAtom(isPlanModeAtom);
+  const [agentMode, setAgentMode] = useAtom(agentModeAtom);
 
-  // Reset to agent mode when switching to Codex provider (Codex doesn't support plan mode)
-  useEffect(() => {
-    if (defaultProvider === "codex" && isPlanMode) {
-      setIsPlanMode(false);
-    }
-  }, [defaultProvider, isPlanMode, setIsPlanMode]);
   const [workMode, setWorkMode] = useAtom(lastSelectedWorkModeAtom);
   const debugMode = useAtomValue(agentsDebugModeAtom);
   const _setSettingsDialogOpen = useSetAtom(agentsSettingsDialogOpenAtom);
@@ -652,6 +650,7 @@ export function NewChatForm({
       editorRef.current?.clear();
       clearImages();
       clearCurrentDraft();
+      setPendingAddedDirs([]);
 
       const newSubChatId = data.newSubChatId || data.subChats?.[0]?.id;
 
@@ -685,7 +684,7 @@ export function NewChatForm({
             id: sc.id,
             name: sc.name || "New Chat",
             created_at: sc.createdAt?.toISOString() || new Date().toISOString(),
-            mode: (sc.mode as "plan" | "agent") || "agent",
+            mode: (sc.mode as "plan" | "agent" | "ralph") || "agent",
             providerId: sc.providerId as ProviderId | undefined,
           })) || [];
         store.setAllSubChats(subChatMeta);
@@ -816,8 +815,10 @@ export function NewChatForm({
       selectedBranch:
         workMode === "local" ? selectedBranch || undefined : undefined,
       useWorktree: workMode === "worktree",
-      mode: isPlanMode ? "plan" : "agent",
+      mode: agentMode,
       providerId: defaultProvider,
+      initialAddedDirs:
+        pendingAddedDirs.length > 0 ? pendingAddedDirs : undefined,
     });
     // Editor and images are cleared in onSuccess callback
   }, [
@@ -827,11 +828,12 @@ export function NewChatForm({
     selectedBranch,
     workMode,
     images,
-    isPlanMode,
+    agentMode,
     defaultProvider,
     historyKey,
     addToHistory,
     setNavState,
+    pendingAddedDirs,
   ]);
 
   // History navigation handlers
@@ -955,14 +957,40 @@ export function NewChatForm({
             editorRef.current?.clear();
             break;
           case "plan":
-            if (!isPlanMode) {
-              setIsPlanMode(true);
+            if (agentMode !== "plan") {
+              setAgentMode("plan");
             }
             break;
           case "agent":
-            if (isPlanMode) {
-              setIsPlanMode(false);
+            if (agentMode !== "agent") {
+              setAgentMode("agent");
             }
+            break;
+          case "ralph":
+            if (agentMode !== "ralph") {
+              setAgentMode("ralph");
+            }
+            break;
+          case "add-dir":
+            // Open native folder picker to add directories
+            (async () => {
+              if (!isDesktopApp()) {
+                toast.error("Folder picker only available in desktop app");
+                return;
+              }
+              const result = await window.desktopApi.dialog.showOpenDialog({
+                title: "Select Additional Directory",
+                properties: ["openDirectory", "multiSelections"],
+              });
+              if (!result.canceled && result.filePaths.length > 0) {
+                setPendingAddedDirs((prev) => [
+                  ...new Set([...prev, ...result.filePaths]),
+                ]);
+                toast.success(
+                  `Added ${result.filePaths.length} director${result.filePaths.length > 1 ? "ies" : "y"} to context`,
+                );
+              }
+            })();
             break;
           // Prompt-based commands - auto-send to agent
           case "review":
@@ -988,7 +1016,13 @@ export function NewChatForm({
         setTimeout(() => handleSend(), 0);
       }
     },
-    [isPlanMode, setIsPlanMode, handleSend, handleCloseSlashTrigger],
+    [
+      agentMode,
+      setAgentMode,
+      handleSend,
+      handleCloseSlashTrigger,
+      setPendingAddedDirs,
+    ],
   );
 
   // Paste handler for images and plain text
@@ -1040,7 +1074,9 @@ export function NewChatForm({
 
       {isOverlayMode ? (
         /* Render overlay content (CenterDiffView/CenterFileView) when in overlay mode */
-        <div className="flex-1 min-h-0 overflow-hidden">{overlayContent}</div>
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+          {overlayContent}
+        </div>
       ) : (
         <div className="flex flex-1 items-center justify-center overflow-y-auto relative">
           <div className="w-full max-w-2xl space-y-4 md:space-y-6 relative z-10 px-4">
@@ -1105,9 +1141,19 @@ export function NewChatForm({
                     onContentChange={handleContentChange}
                     onSubmit={handleSend}
                     onShiftTab={() => {
-                      if (defaultProvider !== "codex") {
-                        setIsPlanMode((prev) => !prev);
-                      }
+                      const nextMode: AgentMode = (() => {
+                        switch (agentMode) {
+                          case "agent":
+                            return "plan";
+                          case "plan":
+                            return "ralph";
+                          case "ralph":
+                            return "agent";
+                          default:
+                            return "agent";
+                        }
+                      })();
+                      setAgentMode(nextMode);
                     }}
                     onArrowUp={handleArrowUp}
                     onArrowDown={handleArrowDown}
@@ -1117,13 +1163,10 @@ export function NewChatForm({
                   <ChatInputActions
                     leftContent={
                       <>
-                        {/* Mode toggle (Agent/Plan) - hidden for Codex which doesn't support plan mode */}
-                        {defaultProvider !== "codex" && (
-                          <ModeToggleDropdown
-                            isPlanMode={isPlanMode}
-                            onModeChange={setIsPlanMode}
-                          />
-                        )}
+                        <ModeToggleDropdown
+                          mode={agentMode}
+                          onModeChange={setAgentMode}
+                        />
 
                         {/* Provider selector */}
                         <ProviderSelectorDropdown
@@ -1176,7 +1219,7 @@ export function NewChatForm({
                           !hasContent || !selectedProject || isUploading,
                         )}
                         onClick={handleSend}
-                        isPlanMode={isPlanMode}
+                        isPlanMode={agentMode === "plan"}
                       />
                     }
                   />
@@ -1405,8 +1448,8 @@ export function NewChatForm({
                   position={slashPosition}
                   teamId={selectedTeamId || undefined}
                   repository={resolvedRepo?.full_name}
-                  isPlanMode={isPlanMode}
-                  disabledCommands={["clear"]}
+                  isPlanMode={agentMode === "plan"}
+                  disabledCommands={["clear", "compact"]}
                 />
               </>
             )}

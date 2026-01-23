@@ -5,12 +5,11 @@ import { ChevronUp } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { memo, useEffect, useMemo, useState } from "react";
 import { Button } from "../../../components/ui/button";
-import { useFileChangeListener } from "../../../lib/hooks/use-file-change-listener";
-import { trpc } from "../../../lib/trpc";
 import { cn } from "../../../lib/utils";
 import {
   agentsFocusedDiffFileAtom,
   centerDiffSelectedFileAtom,
+  diffViewingModeAtom,
   filteredDiffFilesAtom,
   mainContentActiveTabAtom,
   type SubChatFileChange,
@@ -40,7 +39,7 @@ interface SubChatStatusCardProps {
   isStreaming: boolean;
   isCompacting?: boolean;
   changedFiles: SubChatFileChange[];
-  worktreePath?: string | null; // For git status check to hide committed files
+  worktreePath?: string | null;
   isOverlayMode?: boolean;
   onStop?: () => void;
 }
@@ -50,7 +49,6 @@ export const SubChatStatusCard = memo(function SubChatStatusCard({
   isOverlayMode = false,
   isCompacting,
   changedFiles,
-  worktreePath,
   onStop,
 }: SubChatStatusCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -58,74 +56,31 @@ export const SubChatStatusCard = memo(function SubChatStatusCard({
   const setFilteredDiffFiles = useSetAtom(filteredDiffFilesAtom);
   const setCenterDiffSelectedFile = useSetAtom(centerDiffSelectedFileAtom);
   const setFocusedDiffFile = useSetAtom(agentsFocusedDiffFileAtom);
+  const setViewingMode = useSetAtom(diffViewingModeAtom);
 
-  // Listen for file changes from Claude Write/Edit tools
-  useFileChangeListener(worktreePath);
-
-  // Fetch git status to filter out committed files
-  const { data: gitStatus } = trpc.changes.getStatus.useQuery(
-    { worktreePath: worktreePath || "", defaultBranch: "main" },
-    {
-      enabled: !!worktreePath && changedFiles.length > 0 && !isStreaming,
-      // No polling - updates triggered by file-changed events from Claude tools
-      staleTime: 30000,
-      placeholderData: (prev) => prev,
-    },
-  );
-
-  // Filter changedFiles to only include files that are still uncommitted
-  const uncommittedFiles = useMemo(() => {
-    // If no git status yet, no worktreePath, or still streaming - show all files
-    if (!gitStatus || !worktreePath || isStreaming) {
-      return changedFiles;
-    }
-
-    // Build set of all uncommitted file paths from git status
-    const uncommittedPaths = new Set<string>();
-    // Safely iterate - arrays might be undefined in edge cases
-    if (gitStatus.staged) {
-      for (const file of gitStatus.staged) {
-        uncommittedPaths.add(file.path);
-      }
-    }
-    if (gitStatus.unstaged) {
-      for (const file of gitStatus.unstaged) {
-        uncommittedPaths.add(file.path);
-      }
-    }
-    if (gitStatus.untracked) {
-      for (const file of gitStatus.untracked) {
-        uncommittedPaths.add(file.path);
-      }
-    }
-
-    // Filter changedFiles to only include files that are still uncommitted
-    return changedFiles.filter((file) =>
-      uncommittedPaths.has(file.displayPath),
-    );
-  }, [changedFiles, gitStatus, worktreePath, isStreaming]);
-
-  // Calculate totals from uncommitted files only
+  // Calculate totals from all changed files
   const totals = useMemo(() => {
     let additions = 0;
     let deletions = 0;
-    for (const file of uncommittedFiles) {
+    for (const file of changedFiles) {
       additions += file.additions;
       deletions += file.deletions;
     }
-    return { additions, deletions, fileCount: uncommittedFiles.length };
-  }, [uncommittedFiles]);
+    return { additions, deletions, fileCount: changedFiles.length };
+  }, [changedFiles]);
 
-  // Don't show if no uncommitted files and not streaming
-  if (!isStreaming && uncommittedFiles.length === 0) {
+  // Don't show if no changed files and not streaming
+  if (!isStreaming && changedFiles.length === 0) {
     return null;
   }
 
   const handleReview = () => {
     // Set filter to only show files from this sub-chat
     // Use displayPath (relative path) to match git diff paths
-    const filePaths = uncommittedFiles.map((f) => f.displayPath);
+    const filePaths = changedFiles.map((f) => f.displayPath);
     setFilteredDiffFiles(filePaths.length > 0 ? filePaths : null);
+    // Show all changes (committed + uncommitted) in center diff view
+    setViewingMode({ type: "full" });
     setActiveTab("changes");
   };
 
@@ -138,7 +93,7 @@ export const SubChatStatusCard = memo(function SubChatStatusCard({
     >
       {/* Expanded file list - renders above header, expands upward */}
       <AnimatePresence initial={false}>
-        {isExpanded && uncommittedFiles.length > 0 && (
+        {isExpanded && changedFiles.length > 0 && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
@@ -147,17 +102,19 @@ export const SubChatStatusCard = memo(function SubChatStatusCard({
             className="overflow-hidden"
           >
             <div className="border-b border-border max-h-[200px] overflow-y-auto">
-              {uncommittedFiles.map((file) => {
+              {changedFiles.map((file) => {
                 const FileIcon = getFileIconByExtension(file.displayPath);
 
                 const handleFileClick = () => {
                   // Set filter to only show files from this sub-chat
                   // Use displayPath (relative path) to match git diff paths
-                  const filePaths = uncommittedFiles.map((f) => f.displayPath);
+                  const filePaths = changedFiles.map((f) => f.displayPath);
                   setFilteredDiffFiles(filePaths.length > 0 ? filePaths : null);
                   // Select and scroll to this specific file
                   setCenterDiffSelectedFile(file.displayPath);
                   setFocusedDiffFile(file.displayPath);
+                  // Show all changes (committed + uncommitted) in center diff view
+                  setViewingMode({ type: "full" });
                   // Navigate to changes tab
                   setActiveTab("changes");
                 };
@@ -201,35 +158,30 @@ export const SubChatStatusCard = memo(function SubChatStatusCard({
 
       {/* Header - always at bottom */}
       <div
-        role={uncommittedFiles.length > 0 ? "button" : undefined}
-        tabIndex={uncommittedFiles.length > 0 ? 0 : undefined}
-        onClick={() =>
-          uncommittedFiles.length > 0 && setIsExpanded(!isExpanded)
-        }
+        role={changedFiles.length > 0 ? "button" : undefined}
+        tabIndex={changedFiles.length > 0 ? 0 : undefined}
+        onClick={() => changedFiles.length > 0 && setIsExpanded(!isExpanded)}
         onKeyDown={(e) => {
-          if (
-            uncommittedFiles.length > 0 &&
-            (e.key === "Enter" || e.key === " ")
-          ) {
+          if (changedFiles.length > 0 && (e.key === "Enter" || e.key === " ")) {
             e.preventDefault();
             setIsExpanded(!isExpanded);
           }
         }}
-        aria-expanded={uncommittedFiles.length > 0 ? isExpanded : undefined}
+        aria-expanded={changedFiles.length > 0 ? isExpanded : undefined}
         aria-label={
-          uncommittedFiles.length > 0
+          changedFiles.length > 0
             ? `${isExpanded ? "Collapse" : "Expand"} changed files list`
             : undefined
         }
         className={cn(
           "flex items-center justify-between pr-1 pl-3 h-8",
-          uncommittedFiles.length > 0 &&
+          changedFiles.length > 0 &&
             "cursor-pointer hover:bg-muted/50 transition-colors duration-150 focus:outline-hidden rounded-xs",
         )}
       >
         <div className="flex items-center gap-2 text-xs flex-1 min-w-0">
           {/* Expand/Collapse chevron - points up when collapsed, down when expanded */}
-          {uncommittedFiles.length > 0 && (
+          {changedFiles.length > 0 && (
             <ChevronUp
               className={cn(
                 "w-4 h-4 text-muted-foreground transition-transform duration-200",
@@ -239,7 +191,7 @@ export const SubChatStatusCard = memo(function SubChatStatusCard({
           )}
 
           {/* Streaming indicator */}
-          {isStreaming && uncommittedFiles.length === 0 && (
+          {isStreaming && changedFiles.length === 0 && (
             <span className="text-xs text-muted-foreground">
               {isCompacting ? "Compacting" : "Generating"}
               <AnimatedDots />
@@ -247,7 +199,7 @@ export const SubChatStatusCard = memo(function SubChatStatusCard({
           )}
 
           {/* File count and stats */}
-          {uncommittedFiles.length > 0 && (
+          {changedFiles.length > 0 && (
             <span className="text-xs text-muted-foreground">
               {totals.fileCount} {totals.fileCount === 1 ? "file" : "files"}
               {(totals.additions > 0 || totals.deletions > 0) && (
@@ -281,7 +233,7 @@ export const SubChatStatusCard = memo(function SubChatStatusCard({
               <span className="text-muted-foreground/60 ml-1">⌃C</span>
             </Button>
           )}
-          {uncommittedFiles.length > 0 && (
+          {changedFiles.length > 0 && (
             <Button
               variant="secondary"
               size="sm"

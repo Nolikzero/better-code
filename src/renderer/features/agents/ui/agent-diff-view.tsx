@@ -513,7 +513,16 @@ export const AgentDiffView = forwardRef<AgentDiffViewRef, AgentDiffViewProps>(
     const [diffError, setDiffError] = useState<string | null>(null);
     const [collapsedByFileKey, setCollapsedByFileKey] = useState<
       Record<string, boolean>
-    >({});
+    >(() => {
+      if (initialParsedFiles && initialParsedFiles.length > 10) {
+        const collapsed: Record<string, boolean> = {};
+        for (const file of initialParsedFiles) {
+          collapsed[file.key] = true;
+        }
+        return collapsed;
+      }
+      return {};
+    });
     const [fullExpandedByFileKey, setFullExpandedByFileKey] = useState<
       Record<string, boolean>
     >({});
@@ -961,7 +970,11 @@ export const AgentDiffView = forwardRef<AgentDiffViewRef, AgentDiffViewProps>(
 
     // Auto-collapse all files when there are many files (performance optimization)
     // Track if we've already initialized the collapsed state for this set of files
-    const prevFileKeysRef = useRef<string>("");
+    const prevFileKeysRef = useRef<string>(
+      initialParsedFiles && initialParsedFiles.length > 10
+        ? initialParsedFiles.map((f) => f.key).join(",")
+        : "",
+    );
     useEffect(() => {
       // Generate a unique key for the current file set
       const currentFileKeys = fileDiffs.map((f) => f.key).join(",");
@@ -1378,7 +1391,7 @@ export const AgentDiffView = forwardRef<AgentDiffViewRef, AgentDiffViewProps>(
                       >
                         <div
                           className={cn(
-                            "pb-2 transition-all duration-150",
+                            "pb-2 transition-[box-shadow,border-radius] duration-150",
                             isFileHovered &&
                               "ring-2 ring-primary/50 rounded-lg",
                           )}

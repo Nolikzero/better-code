@@ -253,8 +253,11 @@ export const projectsRouter = router({
         return { diff: null, error: "Project not found" };
       }
 
-      // Use getWorktreeDiff which works for any git directory
-      const result = await getWorktreeDiff(project.path);
+      // Use getWorktreeDiff with uncommittedOnly: true for project-level view
+      // This ensures we only show uncommitted changes, not committed-but-not-pushed changes
+      const result = await getWorktreeDiff(project.path, undefined, {
+        uncommittedOnly: true,
+      });
 
       if (!result.success) {
         return { diff: null, error: result.error };

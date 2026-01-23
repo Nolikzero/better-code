@@ -104,7 +104,6 @@
     "tailwind-merge": "^3.4.0",
     "tailwindcss-animate": "^1.0.7",
     "trpc-electron": "^0.1.2",
-    "unique-names-generator": "^4.7.1",
     "use-stick-to-bottom": "^1.1.1",
     "zod": "^4.3.5",
     "zustand": "^5.0.10"

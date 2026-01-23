@@ -1,3 +1,5 @@
+import type { ProviderSpecificConfig } from "@shared/types";
+import { TRPCError } from "@trpc/server";
 import { execSync } from "child_process";
 import { app } from "electron";
 import * as fs from "fs/promises";
@@ -34,11 +36,16 @@ function getCliOAuthToken(): string | null {
     const accessToken = credentials?.claudeAiOauth?.accessToken;
 
     if (accessToken?.startsWith("sk-ant-oat01-")) {
+      console.log("[claude] Found CLI OAuth token in keychain");
       return accessToken;
     }
 
     return null;
-  } catch {
+  } catch (error) {
+    console.log(
+      "[claude] No CLI credentials found in keychain:",
+      (error as Error).message,
+    );
     return null;
   }
 }
@@ -51,38 +58,6 @@ const getClaudeQuery = async () => {
 
 // Active sessions for cancellation
 const activeSessions = new Map<string, AbortController>();
-
-// Pending tool approvals
-const pendingToolApprovals = new Map<
-  string,
-  {
-    subChatId: string;
-    resolve: (decision: {
-      approved: boolean;
-      message?: string;
-      updatedInput?: unknown;
-    }) => void;
-  }
->();
-
-/**
- * Extended options for Claude provider (includes Claude-specific params)
- */
-export interface ClaudeSessionOptions extends ChatSessionOptions {
-  /** MCP servers config for the project */
-  mcpServers?: Record<string, unknown>;
-  /** Agents to register with SDK */
-  agents?: Record<string, unknown>;
-  /** Callback when tool asks for user input */
-  onAskUserQuestion?: (
-    toolUseId: string,
-    questions: unknown[],
-  ) => Promise<{ approved: boolean; message?: string; updatedInput?: unknown }>;
-  /** Callback to emit stderr from Claude process */
-  onStderr?: (data: string) => void;
-  /** Callback when file is changed (for Edit/Write tools) */
-  onFileChanged?: (filePath: string, toolType: string) => void;
-}
 
 export class ClaudeProvider implements AIProvider {
   readonly id = "claude" as const;
@@ -113,12 +88,10 @@ export class ClaudeProvider implements AIProvider {
   }
 
   async getAuthStatus(): Promise<AuthStatus> {
-    // Check for API key in environment
     if (process.env.ANTHROPIC_API_KEY) {
       return { authenticated: true, method: "api-key" };
     }
 
-    // Check for OAuth token in keychain
     const oauthToken = getCliOAuthToken();
     if (oauthToken) {
       return { authenticated: true, method: "oauth" };
@@ -127,34 +100,96 @@ export class ClaudeProvider implements AIProvider {
     return { authenticated: false };
   }
 
+  async getProviderConfig(
+    projectPath: string,
+  ): Promise<ProviderSpecificConfig | null> {
+    const claudeJsonPath = path.join(os.homedir(), ".claude.json");
+
+    try {
+      const exists = await fs
+        .stat(claudeJsonPath)
+        .then(() => true)
+        .catch(() => false);
+      if (!exists) return null;
+
+      const config = JSON.parse(await fs.readFile(claudeJsonPath, "utf-8"));
+      const projectConfig = config.projects?.[projectPath];
+
+      if (!projectConfig?.mcpServers) {
+        // Log available project paths for debugging
+        const projectPaths = Object.keys(config.projects || {}).filter(
+          (k) => config.projects[k]?.mcpServers,
+        );
+        console.log(
+          `[claude] No MCP servers for ${projectPath}. Config has MCP for: ${projectPaths.join(", ") || "(none)"}`,
+        );
+        return null;
+      }
+
+      console.log(
+        `[claude] MCP servers found for ${projectPath}: ${Object.keys(projectConfig.mcpServers).join(", ")}`,
+      );
+      return { mcpServers: projectConfig.mcpServers };
+    } catch (error) {
+      console.error("[claude] Failed to read MCP config:", error);
+      return null;
+    }
+  }
+
   async *chat(
-    options: ClaudeSessionOptions,
+    options: ChatSessionOptions,
   ): AsyncGenerator<UIMessageChunk, void, unknown> {
     const abortController = options.abortController;
     activeSessions.set(options.subChatId, abortController);
 
+    const subId = options.subChatId.slice(-8);
+    const stderrLines: string[] = [];
+
     try {
-      // Get Claude SDK
-      const claudeQuery = await getClaudeQuery();
+      // 1. Get Claude SDK
+      let claudeQuery;
+      try {
+        claudeQuery = await getClaudeQuery();
+      } catch (sdkError) {
+        const errorMessage =
+          sdkError instanceof Error ? sdkError.message : String(sdkError);
+        console.error("[claude] Failed to load SDK:", errorMessage);
+        yield {
+          type: "error",
+          errorText: `Failed to load Claude SDK: ${errorMessage}`,
+        };
+        yield { type: "finish" };
+        return;
+      }
+
       const transform = createTransformer();
 
-      // Build environment
+      // 2. Build environment
       const claudeEnv = buildClaudeEnv();
 
-      // Create isolated config directory per subChat
+      // 3. Create isolated config directory per subChat
       const isolatedConfigDir = path.join(
         app.getPath("userData"),
         "claude-sessions",
         options.subChatId,
       );
 
-      // Ensure isolated config dir exists and symlink skills/agents
       await this.setupConfigDir(isolatedConfigDir);
 
-      // Get CLI OAuth token
+      // 4. Load MCP servers from config if not already provided
+      let mcpServersForSdk = options.mcpServers;
+      if (!mcpServersForSdk) {
+        const lookupPath = options.projectPath || options.cwd;
+        const providerConfig = await this.getProviderConfig(lookupPath);
+        if (providerConfig?.mcpServers) {
+          mcpServersForSdk = providerConfig.mcpServers;
+        }
+      }
+
+      // 5. Get CLI OAuth token
       const cliOAuthToken = getCliOAuthToken();
 
-      // Build final env
+      // 6. Build final env
       const finalEnv = {
         ...claudeEnv,
         CLAUDE_CONFIG_DIR: isolatedConfigDir,
@@ -163,28 +198,66 @@ export class ClaudeProvider implements AIProvider {
         }),
       };
 
-      // Log in dev mode
       if (process.env.NODE_ENV !== "production") {
         logClaudeEnv(finalEnv, `[${options.subChatId}] `);
       }
 
-      // Get binary path
+      // 7. Get binary path
       const binaryResult = getClaudeBinaryPath();
       if (!binaryResult) {
-        yield {
-          type: "error",
-          errorText:
-            "Claude Code binary not found. Install via https://claude.ai/install.sh",
-        };
-        yield { type: "finish" };
-        return;
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            "Claude Code binary not found. Install via https://claude.ai/install.sh or run 'bun run claude:download'",
+        });
+      }
+      console.log(
+        `[claude] Using ${binaryResult.source} binary: ${binaryResult.path}`,
+      );
+
+      // 8. Build prompt (with image support)
+      let prompt: string | AsyncIterable<any> = options.prompt;
+
+      if (options.images && options.images.length > 0) {
+        const messageContent: any[] = [
+          ...options.images.map((img) => ({
+            type: "image" as const,
+            source: {
+              type: "base64" as const,
+              media_type: img.mediaType,
+              data: img.base64Data,
+            },
+          })),
+        ];
+
+        if (options.prompt.trim()) {
+          messageContent.push({
+            type: "text" as const,
+            text: options.prompt,
+          });
+        }
+
+        async function* createPromptWithImages() {
+          yield {
+            type: "user" as const,
+            message: {
+              role: "user" as const,
+              content: messageContent,
+            },
+            parent_tool_use_id: null,
+          };
+        }
+
+        prompt = createPromptWithImages();
       }
 
-      // Build query options
-      // Using 'as any' for some options to bypass strict SDK typing
-      // since we pass dynamic configs that match the runtime behavior
+      // 9. Build query options
+      console.log(
+        `[SD] Query options - cwd: ${options.cwd}, projectPath: ${options.projectPath || "(not set)"}, mcpServers: ${mcpServersForSdk ? Object.keys(mcpServersForSdk).join(", ") : "(none)"}`,
+      );
+
       const queryOptions = {
-        prompt: options.prompt,
+        prompt,
         options: {
           abortController,
           cwd: options.cwd,
@@ -196,8 +269,7 @@ export class ClaudeProvider implements AIProvider {
             Object.keys(options.agents).length > 0 && {
               agents: options.agents as any,
             }),
-          ...(options.mcpServers && { mcpServers: options.mcpServers }),
-          // Additional working directories (from /add-dir command)
+          ...(mcpServersForSdk && { mcpServers: mcpServersForSdk }),
           ...(options.addDirs &&
             options.addDirs.length > 0 && { addDirs: options.addDirs }),
           env: finalEnv,
@@ -228,12 +300,18 @@ export class ClaudeProvider implements AIProvider {
               }
               return {
                 behavior: "allow" as const,
-                updatedInput: response.updatedInput,
+                updatedInput: response.updatedInput as
+                  | Record<string, unknown>
+                  | undefined,
               };
             }
-            return { behavior: "allow" as const, updatedInput: toolInput };
+            return {
+              behavior: "allow" as const,
+              updatedInput: toolInput as Record<string, unknown>,
+            };
           },
           stderr: (data: string) => {
+            stderrLines.push(data);
             options.onStderr?.(data);
           },
           pathToClaudeCodeExecutable: binaryResult.path,
@@ -248,23 +326,46 @@ export class ClaudeProvider implements AIProvider {
         },
       };
 
-      // Run SDK query
-      // Cast to any to bypass strict SDK typing - the options are correct at runtime
-      const stream = claudeQuery(queryOptions as any);
+      // 10. Run SDK query
+      let stream;
+      try {
+        stream = claudeQuery(queryOptions as any);
+      } catch (queryError) {
+        const errorMessage =
+          queryError instanceof Error ? queryError.message : String(queryError);
+        console.error("[claude] Failed to create SDK query:", errorMessage);
+        yield {
+          type: "error",
+          errorText: `Failed to start Claude query: ${errorMessage}`,
+        };
+        yield { type: "finish" };
+        return;
+      }
 
-      // Stream and transform
+      // 11. Stream and transform
+      let messageCount = 0;
+      // Track tool inputs for file-changed notifications
+      const toolInputs = new Map<string, { toolName: string; input: any }>();
+
       for await (const msg of stream) {
         if (abortController.signal.aborted) break;
+        messageCount++;
 
         // Log raw message
         logRawClaudeMessage(options.chatId, msg);
 
-        // Check for error messages
+        // Check for error messages from SDK
         const msgAny = msg as any;
         if (msgAny.type === "error" || msgAny.error) {
+          console.log(
+            `[SD] M:ERROR_MSG sub=${subId}`,
+            JSON.stringify(msgAny, null, 2),
+          );
+
           const sdkError =
             msgAny.error || msgAny.message || "Unknown SDK error";
 
+          // Categorize SDK errors
           if (
             sdkError === "authentication_failed" ||
             sdkError.includes("authentication")
@@ -273,38 +374,172 @@ export class ClaudeProvider implements AIProvider {
               type: "auth-error",
               errorText:
                 "Authentication failed - not logged into Claude Code CLI",
-            };
+            } as UIMessageChunk;
+          } else if (
+            sdkError === "rate_limit_exceeded" ||
+            sdkError.includes("rate")
+          ) {
+            yield {
+              type: "error",
+              errorText: "Rate limit exceeded",
+              debugInfo: {
+                category: "RATE_LIMIT_SDK",
+                sdkError,
+                sessionId: msgAny.session_id,
+              },
+            } as UIMessageChunk;
+          } else if (
+            sdkError === "overloaded" ||
+            sdkError.includes("overload")
+          ) {
+            yield {
+              type: "error",
+              errorText: "Claude is overloaded, try again later",
+              debugInfo: { category: "OVERLOADED_SDK", sdkError },
+            } as UIMessageChunk;
           } else {
             yield {
               type: "error",
-              errorText: sdkError,
-            };
+              errorText: `Claude SDK error: ${sdkError}`,
+              debugInfo: {
+                category: "SDK_ERROR",
+                sdkError,
+                sessionId: msgAny.session_id,
+              },
+            } as UIMessageChunk;
           }
-          yield { type: "finish" };
+
+          yield { type: "finish" } as UIMessageChunk;
           return;
+        }
+
+        // Track sessionId
+        if (msgAny.session_id) {
+          yield {
+            type: "message-metadata",
+            messageMetadata: { sessionId: msgAny.session_id },
+          } as UIMessageChunk;
+        }
+
+        // Log system messages
+        if (msgAny.type === "system") {
+          console.log(
+            `[SD] SYSTEM message: subtype=${msgAny.subtype}`,
+            JSON.stringify(
+              {
+                cwd: msgAny.cwd,
+                mcp_servers: msgAny.mcp_servers,
+                tools: msgAny.tools,
+                plugins: msgAny.plugins,
+                permissionMode: msgAny.permissionMode,
+              },
+              null,
+              2,
+            ),
+          );
         }
 
         // Transform and yield chunks
         for (const chunk of transform(msg)) {
-          yield chunk;
-
-          // Notify about file changes
-          if (chunk.type === "tool-output-available" && options.onFileChanged) {
-            // Check if this was a file operation
-            // The tool name is not in output chunk, we'd need to track it
+          // Track tool inputs for file-changed notifications
+          if (chunk.type === "tool-input-available") {
+            toolInputs.set(chunk.toolCallId, {
+              toolName: chunk.toolName,
+              input: chunk.input,
+            });
           }
+
+          // Notify about file changes for Write/Edit tools
+          if (chunk.type === "tool-output-available" && options.onFileChanged) {
+            const toolInfo = toolInputs.get(chunk.toolCallId);
+            if (
+              toolInfo &&
+              (toolInfo.toolName === "Write" || toolInfo.toolName === "Edit")
+            ) {
+              const filePath = toolInfo.input?.file_path;
+              if (filePath) {
+                options.onFileChanged(
+                  filePath,
+                  `tool-${toolInfo.toolName}`,
+                  options.subChatId,
+                );
+              }
+            }
+          }
+
+          yield chunk;
         }
       }
+
+      // 12. Check for empty response
+      if (messageCount === 0 && !abortController.signal.aborted) {
+        yield {
+          type: "error",
+          errorText: "No response received from Claude",
+        } as UIMessageChunk;
+      }
     } catch (error) {
+      // Categorize streaming errors
       const err = error as Error;
-      yield {
-        type: "error",
-        errorText: `Claude error: ${err.message}`,
-      };
-      yield { type: "finish" };
+      const stderrOutput = stderrLines.join("\n");
+
+      let errorContext = "Claude streaming error";
+      if (err.message?.includes("exited with code")) {
+        errorContext = "Claude Code process crashed";
+      } else if (err.message?.includes("ENOENT")) {
+        errorContext = "Required executable not found in PATH";
+      } else if (
+        err.message?.includes("authentication") ||
+        err.message?.includes("401")
+      ) {
+        yield {
+          type: "auth-error",
+          errorText: "Authentication failed - check your API key",
+        } as UIMessageChunk;
+        yield { type: "finish" } as UIMessageChunk;
+        return;
+      } else if (
+        err.message?.includes("invalid_api_key") ||
+        stderrOutput?.includes("invalid_api_key")
+      ) {
+        yield {
+          type: "auth-error",
+          errorText: "Invalid API key",
+        } as UIMessageChunk;
+        yield { type: "finish" } as UIMessageChunk;
+        return;
+      } else if (
+        err.message?.includes("rate_limit") ||
+        err.message?.includes("429")
+      ) {
+        errorContext = "Rate limit exceeded";
+      } else if (
+        err.message?.includes("network") ||
+        err.message?.includes("ECONNREFUSED") ||
+        err.message?.includes("fetch failed")
+      ) {
+        errorContext = "Network error - check your connection";
+      }
+
+      if (!abortController.signal.aborted) {
+        yield {
+          type: "error",
+          errorText: stderrOutput
+            ? `${errorContext}: ${err.message}\n\nProcess output:\n${stderrOutput}`
+            : `${errorContext}: ${err.message}`,
+          debugInfo: {
+            context: errorContext,
+            cwd: options.cwd,
+            mode: options.mode,
+            stderr: stderrOutput || "(no stderr captured)",
+          },
+        } as UIMessageChunk;
+      }
     } finally {
       activeSessions.delete(options.subChatId);
     }
+
+    yield { type: "finish" } as UIMessageChunk;
   }
 
   cancel(subChatId: string): void {
@@ -317,17 +552,6 @@ export class ClaudeProvider implements AIProvider {
 
   isActive(subChatId: string): boolean {
     return activeSessions.has(subChatId);
-  }
-
-  respondToolApproval(
-    toolUseId: string,
-    decision: { approved: boolean; message?: string; updatedInput?: unknown },
-  ): void {
-    const pending = pendingToolApprovals.get(toolUseId);
-    if (pending) {
-      pending.resolve(decision);
-      pendingToolApprovals.delete(toolUseId);
-    }
   }
 
   /**
@@ -355,6 +579,9 @@ export class ClaudeProvider implements AIProvider {
           .catch(() => false);
         if (skillsSourceExists && !skillsTargetExists) {
           await fs.symlink(skillsSource, skillsTarget, "dir");
+          console.log(
+            `[claude] Symlinked skills: ${skillsTarget} -> ${skillsSource}`,
+          );
         }
       } catch {
         // Ignore symlink errors
@@ -372,12 +599,15 @@ export class ClaudeProvider implements AIProvider {
           .catch(() => false);
         if (agentsSourceExists && !agentsTargetExists) {
           await fs.symlink(agentsSource, agentsTarget, "dir");
+          console.log(
+            `[claude] Symlinked agents: ${agentsTarget} -> ${agentsSource}`,
+          );
         }
       } catch {
         // Ignore symlink errors
       }
-    } catch {
-      // Ignore setup errors
+    } catch (mkdirErr) {
+      console.error("[claude] Failed to setup isolated config dir:", mkdirErr);
     }
   }
 }

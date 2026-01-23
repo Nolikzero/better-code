@@ -11,6 +11,7 @@ export type {
 
 // Import types needed for local interfaces
 import type {
+  AgentMode,
   ApprovalPolicy,
   AuthStatus,
   ImageAttachment,
@@ -30,7 +31,7 @@ export interface ChatSessionOptions {
   prompt: string;
   cwd: string;
   projectPath?: string;
-  mode: "plan" | "agent";
+  mode: AgentMode;
   sessionId?: string;
   model?: string;
   maxThinkingTokens?: number;
@@ -38,6 +39,24 @@ export interface ChatSessionOptions {
   abortController: AbortController;
   // Additional working directories (for /add-dir command)
   addDirs?: string[];
+  // Callbacks (router → provider communication)
+  onAskUserQuestion?: (
+    toolUseId: string,
+    questions: unknown[],
+  ) => Promise<{
+    approved: boolean;
+    message?: string;
+    updatedInput?: unknown;
+  }>;
+  onFileChanged?: (
+    filePath: string,
+    toolType: string,
+    subChatId: string,
+  ) => void;
+  onStderr?: (data: string) => void;
+  // Claude-specific options (ignored by other providers)
+  mcpServers?: Record<string, unknown>;
+  agents?: Record<string, unknown>;
   // Codex-specific options
   sandboxMode?: SandboxMode;
   approvalPolicy?: ApprovalPolicy;

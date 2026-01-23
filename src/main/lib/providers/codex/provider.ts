@@ -10,6 +10,9 @@ import {
   type TurnOptions,
 } from "@openai/codex-sdk";
 import type { ImageAttachment } from "@shared/types";
+import { execSync } from "child_process";
+import { structuredPatch } from "diff";
+import { readFileSync } from "fs";
 import * as fs from "fs/promises";
 import os from "os";
 import path from "path";
@@ -75,6 +78,63 @@ async function prepareImages(
 export interface CodexSessionOptions extends ChatSessionOptions {
   /** Callback to emit stderr from Codex process */
   onStderr?: (data: string) => void;
+}
+
+/**
+ * Generate structuredPatch for a file change by reading content from the worktree.
+ * Returns format expected by AgentEditTool: Array<{ lines: string[] }>
+ */
+function generateFileChangePatch(
+  cwd: string,
+  filePath: string,
+  kind: string,
+): Array<{ lines: string[] }> {
+  try {
+    // filePath from Codex SDK may be absolute or relative to cwd
+    const fullPath = path.isAbsolute(filePath)
+      ? filePath
+      : path.join(cwd, filePath);
+    // For git commands, use path relative to cwd
+    const relativePath = path.isAbsolute(filePath)
+      ? path.relative(cwd, filePath)
+      : filePath;
+    let before = "";
+    let after = "";
+
+    if (kind === "add") {
+      after = readFileSync(fullPath, "utf-8");
+    } else if (kind === "delete") {
+      before = execSync(`git show HEAD:${relativePath}`, {
+        cwd,
+        encoding: "utf-8",
+      });
+    } else {
+      // "update" - get both versions
+      try {
+        before = execSync(`git show HEAD:${relativePath}`, {
+          cwd,
+          encoding: "utf-8",
+        });
+      } catch {
+        /* file might be new/untracked */
+      }
+      after = readFileSync(fullPath, "utf-8");
+    }
+
+    const patch = structuredPatch(
+      relativePath,
+      relativePath,
+      before,
+      after,
+      "",
+      "",
+      { context: 3 },
+    );
+    return patch.hunks.map((hunk) => ({ lines: hunk.lines }));
+  } catch (error) {
+    console.error(`[codex] Failed to generate patch for ${filePath}:`, error);
+    return [];
+  }
 }
 
 export class CodexProvider implements AIProvider {
@@ -360,6 +420,12 @@ export class CodexProvider implements AIProvider {
       // Create transformer
       const transform = createCodexTransformer();
 
+      // Track file change tool calls for structuredPatch generation
+      const fileChangeTools = new Map<
+        string,
+        { filePath: string; kind: string }
+      >();
+
       // Process events and transform to UIMessageChunk
       try {
         for await (const event of events) {
@@ -373,9 +439,40 @@ export class CodexProvider implements AIProvider {
             JSON.stringify(event).slice(0, 200),
           );
 
-          // Transform and yield chunks
+          // Transform and yield chunks, enriching file changes with diff data
           for (const chunk of transform(event)) {
-            yield chunk;
+            if (
+              chunk.type === "tool-input-available" &&
+              (chunk as any).input?.kind
+            ) {
+              // Track file change tool calls
+              fileChangeTools.set(chunk.toolCallId, {
+                filePath: (chunk as any).input.file_path,
+                kind: (chunk as any).input.kind,
+              });
+              yield chunk;
+            } else if (
+              chunk.type === "tool-output-available" &&
+              fileChangeTools.has(chunk.toolCallId)
+            ) {
+              // Enrich file change output with structuredPatch
+              const { filePath, kind } = fileChangeTools.get(chunk.toolCallId)!;
+              const patches = generateFileChangePatch(
+                options.cwd,
+                filePath,
+                kind,
+              );
+              yield {
+                ...chunk,
+                output:
+                  patches.length > 0
+                    ? { ...(chunk.output as any), structuredPatch: patches }
+                    : chunk.output,
+              };
+              fileChangeTools.delete(chunk.toolCallId);
+            } else {
+              yield chunk;
+            }
           }
         }
       } catch (error) {

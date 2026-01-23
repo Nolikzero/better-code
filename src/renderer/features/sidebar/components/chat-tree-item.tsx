@@ -7,6 +7,7 @@ import {
 import { ArchiveIcon } from "../../../components/ui/icons";
 import { TypewriterText } from "../../../components/ui/typewriter-text";
 import { cn } from "../../../lib/utils";
+import type { AgentMode } from "../../agents/atoms";
 import { SubChatContextMenu } from "../../agents/ui/sub-chat-context-menu";
 import { ChatIcon } from "./chat-icon";
 import { SubchatInlineItem } from "./subchat-inline-item";
@@ -15,7 +16,7 @@ export interface SubChatMeta {
   id: string;
   chatId: string;
   name: string | null;
-  mode: string;
+  mode: AgentMode;
   createdAt: Date | null;
   updatedAt: Date | null;
   hasPendingPlanApproval: boolean | null;

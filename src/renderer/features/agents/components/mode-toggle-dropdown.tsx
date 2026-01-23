@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { memo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   DropdownMenu,
@@ -11,20 +11,22 @@ import {
   CheckIcon,
   IconChevronDown,
   PlanIcon,
+  RalphIcon,
 } from "../../../components/ui/icons";
+import type { AgentMode } from "../atoms";
 
 interface ModeToggleDropdownProps {
-  isPlanMode: boolean;
-  onModeChange: (isPlanMode: boolean) => void;
+  mode: AgentMode;
+  onModeChange: (mode: AgentMode) => void;
   disabled?: boolean;
 }
 
 /**
- * Dropdown component for toggling between Agent and Plan modes.
+ * Dropdown component for toggling between Agent, Plan, and Ralph modes.
  * Includes delayed tooltip on hover to explain each mode.
  */
-export function ModeToggleDropdown({
-  isPlanMode,
+export const ModeToggleDropdown = memo(function ModeToggleDropdown({
+  mode,
   onModeChange,
   disabled = false,
 }: ModeToggleDropdownProps) {
@@ -35,7 +37,7 @@ export function ModeToggleDropdown({
   const [modeTooltip, setModeTooltip] = useState<{
     visible: boolean;
     position: { top: number; left: number };
-    mode: "agent" | "plan";
+    mode: AgentMode;
   } | null>(null);
   const tooltipTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasShownTooltipRef = useRef(false);
@@ -53,20 +55,20 @@ export function ModeToggleDropdown({
     }
   };
 
-  const handleSelectMode = (planMode: boolean) => {
+  const handleSelectMode = (newMode: AgentMode) => {
     // Clear tooltip before closing dropdown (onMouseLeave won't fire)
     if (tooltipTimeoutRef.current) {
       clearTimeout(tooltipTimeoutRef.current);
       tooltipTimeoutRef.current = null;
     }
     setModeTooltip(null);
-    onModeChange(planMode);
+    onModeChange(newMode);
     setIsOpen(false);
   };
 
   const handleMouseEnter = (
     e: React.MouseEvent<HTMLDivElement>,
-    mode: "agent" | "plan",
+    tooltipMode: AgentMode,
   ) => {
     if (tooltipTimeoutRef.current) {
       clearTimeout(tooltipTimeoutRef.current);
@@ -80,7 +82,7 @@ export function ModeToggleDropdown({
           top: rect.top,
           left: rect.right + 8,
         },
-        mode,
+        mode: tooltipMode,
       });
       hasShownTooltipRef.current = true;
       tooltipTimeoutRef.current = null;
@@ -101,18 +103,47 @@ export function ModeToggleDropdown({
     setModeTooltip(null);
   };
 
+  const getModeIcon = () => {
+    switch (mode) {
+      case "plan":
+        return <PlanIcon className="h-3.5 w-3.5" />;
+      case "ralph":
+        return <RalphIcon className="h-3.5 w-3.5" />;
+      default:
+        return <AgentIcon className="h-3.5 w-3.5" />;
+    }
+  };
+
+  const getModeLabel = () => {
+    switch (mode) {
+      case "plan":
+        return "Plan";
+      case "ralph":
+        return "Ralph";
+      default:
+        return "Agent";
+    }
+  };
+
+  const getTooltipText = (tooltipMode: AgentMode) => {
+    switch (tooltipMode) {
+      case "plan":
+        return "Create a plan before making changes";
+      case "ralph":
+        return "Autonomous PRD-driven development";
+      default:
+        return "Apply changes directly without a plan";
+    }
+  };
+
   return (
     <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
       <DropdownMenuTrigger
         disabled={disabled}
         className="flex items-center gap-1.5 px-2 py-1 text-sm text-muted-foreground hover:text-foreground transition-[background-color,color] duration-150 ease-out rounded-md hover:bg-muted/50 outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {isPlanMode ? (
-          <PlanIcon className="h-3.5 w-3.5" />
-        ) : (
-          <AgentIcon className="h-3.5 w-3.5" />
-        )}
-        <span>{isPlanMode ? "Plan" : "Agent"}</span>
+        {getModeIcon()}
+        <span>{getModeLabel()}</span>
         <IconChevronDown className="h-3 w-3 shrink-0 opacity-50" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -123,7 +154,7 @@ export function ModeToggleDropdown({
       >
         {/* Agent mode option */}
         <DropdownMenuItem
-          onClick={() => handleSelectMode(false)}
+          onClick={() => handleSelectMode("agent")}
           className="justify-between gap-2"
           onMouseEnter={(e) => handleMouseEnter(e, "agent")}
           onMouseLeave={handleMouseLeave}
@@ -132,14 +163,14 @@ export function ModeToggleDropdown({
             <AgentIcon className="w-4 h-4 text-muted-foreground" />
             <span>Agent</span>
           </div>
-          {!isPlanMode && (
+          {mode === "agent" && (
             <CheckIcon className="h-3.5 w-3.5 ml-auto shrink-0" />
           )}
         </DropdownMenuItem>
 
         {/* Plan mode option */}
         <DropdownMenuItem
-          onClick={() => handleSelectMode(true)}
+          onClick={() => handleSelectMode("plan")}
           className="justify-between gap-2"
           onMouseEnter={(e) => handleMouseEnter(e, "plan")}
           onMouseLeave={handleMouseLeave}
@@ -148,7 +179,25 @@ export function ModeToggleDropdown({
             <PlanIcon className="w-4 h-4 text-muted-foreground" />
             <span>Plan</span>
           </div>
-          {isPlanMode && <CheckIcon className="h-3.5 w-3.5 ml-auto shrink-0" />}
+          {mode === "plan" && (
+            <CheckIcon className="h-3.5 w-3.5 ml-auto shrink-0" />
+          )}
+        </DropdownMenuItem>
+
+        {/* Ralph mode option */}
+        <DropdownMenuItem
+          onClick={() => handleSelectMode("ralph")}
+          className="justify-between gap-2"
+          onMouseEnter={(e) => handleMouseEnter(e, "ralph")}
+          onMouseLeave={handleMouseLeave}
+        >
+          <div className="flex items-center gap-2">
+            <RalphIcon className="w-4 h-4 text-muted-foreground" />
+            <span>Ralph</span>
+          </div>
+          {mode === "ralph" && (
+            <CheckIcon className="h-3.5 w-3.5 ml-auto shrink-0" />
+          )}
         </DropdownMenuItem>
       </DropdownMenuContent>
 
@@ -165,17 +214,13 @@ export function ModeToggleDropdown({
           >
             <div
               data-tooltip="true"
-              className="relative rounded-xs bg-popover px-2.5 py-1.5 text-xs text-popover-foreground dark max-w-[150px]"
+              className="relative rounded-xs bg-popover px-2.5 py-1.5 text-xs text-popover-foreground dark max-w-[180px]"
             >
-              <span>
-                {modeTooltip.mode === "agent"
-                  ? "Apply changes directly without a plan"
-                  : "Create a plan before making changes"}
-              </span>
+              <span>{getTooltipText(modeTooltip.mode)}</span>
             </div>
           </div>,
           document.body,
         )}
     </DropdownMenu>
   );
-}
+});

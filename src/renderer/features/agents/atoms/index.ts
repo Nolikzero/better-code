@@ -180,11 +180,19 @@ export const lastSelectedModelIdAtom = atomWithStorage<string>(
   { getOnInit: true },
 );
 
-export const isPlanModeAtom = atomWithStorage<boolean>(
-  "agents:isPlanMode",
-  false,
+// Agent mode - "plan", "agent", or "ralph"
+export type AgentMode = "plan" | "agent" | "ralph";
+export const agentModeAtom = atomWithStorage<AgentMode>(
+  "agents:agentMode",
+  "agent",
   undefined,
   { getOnInit: true },
+);
+
+// Backward compatibility - derived atom that maps to/from agentModeAtom
+export const isPlanModeAtom = atom(
+  (get) => get(agentModeAtom) === "plan",
+  (_get, set, isPlan: boolean) => set(agentModeAtom, isPlan ? "plan" : "agent"),
 );
 
 // Model ID to full Claude model string mapping
@@ -409,8 +417,8 @@ const _archiveRepositoryFilterAtom = atom<string | null>(null);
 
 // Track last used mode (plan/agent) per chat
 // Map<chatId, "plan" | "agent">
-export const lastChatModesAtom = atom<Map<string, "plan" | "agent">>(
-  new Map<string, "plan" | "agent">(),
+export const lastChatModesAtom = atom<Map<string, "plan" | "agent" | "ralph">>(
+  new Map<string, "plan" | "agent" | "ralph">(),
 );
 
 // Mobile view mode - chat (default, shows NewChatForm), chats list, preview, diff, or terminal
@@ -528,6 +536,43 @@ type PendingAuthRetryMessage = {
 export const pendingAuthRetryMessageAtom = atom<PendingAuthRetryMessage | null>(
   null,
 );
+
+// Pending Ralph auto-start implementation - when PRD is generated or story completes, this triggers auto-send
+// Contains subChatId and optionally the just-completed story ID to wait for correct nextStory
+export interface PendingRalphAutoStart {
+  subChatId: string;
+  completedStoryId?: string; // If set, wait until nextStory.id !== completedStoryId
+}
+export const pendingRalphAutoStartsAtom = atom<
+  Map<string, PendingRalphAutoStart>
+>(new Map());
+
+// Ralph PRD generation status - used to show PRD status card in chat UI
+// Bypasses AI SDK tool mechanism for more reliable rendering
+export interface RalphPrdStatus {
+  subChatId: string;
+  chatId: string;
+  status: "generating" | "complete";
+  message?: string;
+  prd?: {
+    goal: string;
+    branchName: string;
+    stories: Array<{
+      id: string;
+      title: string;
+      priority: number;
+      type?: string;
+    }>;
+  };
+}
+export const ralphPrdStatusesAtom = atom<Map<string, RalphPrdStatus>>(
+  new Map(),
+);
+
+// Ralph injected prompt - used to update in-memory Chat messages with the enhanced prompt
+export const ralphInjectedPromptsAtom = atom<
+  Map<string, { subChatId: string; text: string }>
+>(new Map());
 
 // Provider that triggered auth error - used by login modal to show provider-specific instructions
 export const authErrorProviderAtom = atom<ProviderId | null>(null);
@@ -666,11 +711,14 @@ export const addedDirectoriesAtomFamily = atomFamily((subChatId: string) =>
 // Left Sidebar Changes View State
 // ============================================================================
 
+// Import types for commit history
+import type { ChangedFile, CommitInfo } from "../../../../shared/changes-types";
 // Import types from use-diff-management hook
 import type { DiffStats, ParsedFileDiff } from "../hooks/use-diff-management";
 
 // Re-export for convenience
 export type { DiffStats, ParsedFileDiff };
+export type { ChangedFile, CommitInfo };
 
 // Shared diff data from active chat (set by active-chat.tsx, read by left sidebar)
 export interface ActiveChatDiffData {
@@ -682,6 +730,7 @@ export interface ActiveChatDiffData {
   diffContent: string | null;
   parsedFileDiffs: ParsedFileDiff[] | null;
   prefetchedFileContents: Record<string, string>;
+  commits?: CommitInfo[]; // Commit history for the branch vs base
 }
 
 export const activeChatDiffDataAtom = atom<ActiveChatDiffData | null>(null);
@@ -694,6 +743,7 @@ export interface ProjectDiffData {
   diffContent: string | null;
   parsedFileDiffs: ParsedFileDiff[] | null;
   prefetchedFileContents: Record<string, string>;
+  commits?: CommitInfo[]; // Commit history for current branch vs default
 }
 
 export const projectDiffDataAtom = atom<ProjectDiffData | null>(null);
@@ -738,6 +788,105 @@ export const changesSectionCollapsedAtom = atomWithStorage<boolean>(
   undefined,
   { getOnInit: true },
 );
+
+// ============================================================================
+// Commit History State
+// ============================================================================
+
+// Expanded commit hashes in the changes view - which commits are currently expanded
+// Uses string[] instead of Set for JSON serialization with atomWithStorage
+export const expandedCommitHashesAtom = atomWithStorage<string[]>(
+  "agents:expandedCommitHashes",
+  [],
+  undefined,
+  { getOnInit: true },
+);
+
+// Helper atoms for toggling commit expansion
+export const toggleCommitExpandedAtom = atom(
+  null,
+  (get, set, commitHash: string) => {
+    const current = get(expandedCommitHashesAtom);
+    if (current.includes(commitHash)) {
+      set(
+        expandedCommitHashesAtom,
+        current.filter((h) => h !== commitHash),
+      );
+    } else {
+      set(expandedCommitHashesAtom, [...current, commitHash]);
+    }
+  },
+);
+
+// Cache for lazy-loaded commit files
+export interface CommitFilesState {
+  files: ChangedFile[];
+  isLoading: boolean;
+  hasFetched: boolean;
+  error?: string;
+}
+
+// Internal storage atom for commit files cache
+const commitFilesCacheStorageAtom = atom<Record<string, CommitFilesState>>({});
+
+// atomFamily to get/set commit files per commit hash
+export const commitFilesAtomFamily = atomFamily((commitHash: string) =>
+  atom(
+    (get) =>
+      get(commitFilesCacheStorageAtom)[commitHash] ?? {
+        files: [],
+        isLoading: false,
+        hasFetched: false,
+      },
+    (get, set, newState: CommitFilesState) => {
+      const current = get(commitFilesCacheStorageAtom);
+      set(commitFilesCacheStorageAtom, { ...current, [commitHash]: newState });
+    },
+  ),
+);
+
+// Clear commit files cache (used when switching chats)
+export const clearCommitFilesCacheAtom = atom(null, (_get, set) => {
+  set(commitFilesCacheStorageAtom, {});
+});
+
+// ============================================================================
+// Diff Viewing Mode (Center Diff View)
+// ============================================================================
+
+// The three diff viewing modes for the center diff view
+export type DiffViewingMode =
+  | { type: "uncommitted" }
+  | { type: "commit"; commitHash: string; message: string }
+  | { type: "full" };
+
+// Current diff viewing mode
+export const diffViewingModeAtom = atom<DiffViewingMode>({
+  type: "uncommitted",
+});
+
+// Commit diff data - separate from activeChatDiffDataAtom to avoid corrupting sidebar state
+export interface CommitDiffData {
+  commitHash: string;
+  diffContent: string | null;
+  parsedFileDiffs: ParsedFileDiff[] | null;
+  diffStats: DiffStats;
+  prefetchedFileContents: Record<string, string>;
+  isLoading: boolean;
+}
+
+export const commitDiffDataAtom = atom<CommitDiffData | null>(null);
+
+// Full diff data - all changes (committed + uncommitted) vs base branch
+export interface FullDiffData {
+  diffContent: string | null;
+  parsedFileDiffs: ParsedFileDiff[] | null;
+  diffStats: DiffStats;
+  prefetchedFileContents: Record<string, string>;
+  isLoading: boolean;
+}
+
+export const fullDiffDataAtom = atom<FullDiffData | null>(null);
 
 // ============================================================================
 // Left Sidebar Project Tree State

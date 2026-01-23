@@ -51,6 +51,13 @@ const BUILTIN_SLASH_COMMANDS: SlashCommandOption[] = [
     category: "builtin",
   },
   {
+    id: "builtin:ralph",
+    name: "ralph",
+    command: "/ralph",
+    description: "Switch to Ralph mode (autonomous PRD-driven development)",
+    category: "builtin",
+  },
+  {
     id: "builtin:compact",
     name: "compact",
     command: "/compact",

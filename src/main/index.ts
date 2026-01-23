@@ -18,6 +18,7 @@ import {
 } from "./lib/auto-updater";
 import { closeDatabase, initDatabase } from "./lib/db";
 import { initDockMenu } from "./lib/dock-menu";
+import { branchWatcher } from "./lib/git/branch-watcher";
 import { initializeProviders, shutdownProviders } from "./lib/providers/init";
 import { initTray, updateTrayStatus } from "./lib/tray-menu";
 import { createMainWindow, getWindow } from "./windows/main";
@@ -344,6 +345,7 @@ if (gotTheLock) {
     if ((global as any).__cleanupTray) {
       (global as any).__cleanupTray();
     }
+    await branchWatcher.cleanup();
     await shutdownProviders();
     await closeDatabase();
   });

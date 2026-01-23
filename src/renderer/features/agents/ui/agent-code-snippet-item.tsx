@@ -7,6 +7,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "../../../components/ui/popover";
+import { FONT_MONO } from "../../../lib/fonts";
 import { useCodeTheme } from "../../../lib/hooks/use-code-theme";
 import { highlightCodeWithLineNumbers } from "../../../lib/themes/shiki-theme-loader";
 import { cn } from "../../../lib/utils";
@@ -162,7 +163,7 @@ export function AgentCodeSnippetItem({
                 "[&_.line]:before:border-r [&_.line]:before:border-border/30 [&_.line]:before:pr-4",
               )}
               style={{
-                fontFamily: '"Geist Mono", ui-monospace, monospace',
+                fontFamily: FONT_MONO,
                 fontSize: "11px",
                 lineHeight: "1px",
                 padding: "8px 0",
@@ -180,7 +181,7 @@ export function AgentCodeSnippetItem({
             <pre
               className="m-0 bg-transparent whitespace-pre p-2"
               style={{
-                fontFamily: '"Geist Mono", ui-monospace, monospace',
+                fontFamily: FONT_MONO,
                 fontSize: "11px",
                 lineHeight: "18px",
                 tabSize: 2,

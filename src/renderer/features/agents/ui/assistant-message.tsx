@@ -176,16 +176,16 @@ export const AssistantMessage = memo(function AssistantMessage({
       : "";
   const hasPlan = !!planText;
 
-  // If has plan, treat everything before plan as steps to collapse
   const stepParts = hasFinalText
     ? (assistantMsg.parts || []).slice(0, finalTextIndex)
     : hasPlan
-      ? allParts.filter((p: any) => p.type !== "tool-ExitPlanMode") // All parts except plan are steps
+      ? allParts.filter((p: any) => p.type !== "tool-ExitPlanMode")
       : [];
+
   const finalParts = hasFinalText
     ? (assistantMsg.parts || []).slice(finalTextIndex)
     : hasPlan
-      ? [] // Plan is rendered separately, no final parts
+      ? []
       : assistantMsg.parts || [];
 
   // Count visible step items (for the toggle label)
@@ -412,7 +412,7 @@ export const AssistantMessage = memo(function AssistantMessage({
       transition={{ duration: 0.1, ease: "easeOut" }}
     >
       <div className="flex flex-col gap-1.5">
-        {/* Collapsible steps section - show when we have final text OR a plan */}
+        {/* Collapsible steps section */}
         {(hasFinalText || hasPlan) && visibleStepsCount > 0 && (
           <CollapsibleSteps stepsCount={visibleStepsCount}>
             {(() => {

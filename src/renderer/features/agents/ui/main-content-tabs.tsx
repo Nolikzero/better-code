@@ -12,6 +12,7 @@ import { cn } from "../../../lib/utils";
 import {
   activeChatDiffDataAtom,
   centerFilePathAtom,
+  diffViewingModeAtom,
   type MainContentTab,
   mainContentActiveTabAtom,
   projectDiffDataAtom,
@@ -60,6 +61,9 @@ export function MainContentTabs() {
   const hasChanges = diffData?.diffStats?.hasChanges ?? false;
   const changesCount = diffData?.diffStats?.fileCount ?? 0;
 
+  // Track viewing mode to avoid resetting tab when viewing commit/full diffs
+  const viewingMode = useAtomValue(diffViewingModeAtom);
+
   const hasFile = !!filePath;
   const fileName = getFileName(filePath);
 
@@ -72,12 +76,16 @@ export function MainContentTabs() {
     if (activeTab === "file" && !hasFile) {
       setActiveTab("chat");
     }
-    if (activeTab === "changes" && !hasChanges) {
+    if (
+      activeTab === "changes" &&
+      !hasChanges &&
+      viewingMode.type === "uncommitted"
+    ) {
       setActiveTab("chat");
     }
     prevHasFileRef.current = hasFile;
     prevHasChangesRef.current = hasChanges;
-  }, [activeTab, hasFile, hasChanges, setActiveTab]);
+  }, [activeTab, hasFile, hasChanges, viewingMode.type, setActiveTab]);
 
   const tabs: TabConfig[] = useMemo(
     () => [
@@ -106,7 +114,7 @@ export function MainContentTabs() {
         label: "Changes",
         icon: <GitBranch className="h-3.5 w-3.5" />,
         badge: changesCount,
-        visible: hasChanges,
+        visible: hasChanges || viewingMode.type !== "uncommitted",
       },
     ],
     [
@@ -118,6 +126,7 @@ export function MainContentTabs() {
       activeTab,
       setFilePath,
       setActiveTab,
+      viewingMode.type,
     ],
   );
 

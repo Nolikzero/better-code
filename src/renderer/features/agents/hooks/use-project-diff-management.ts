@@ -1,18 +1,20 @@
 "use client";
 
-import { useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { CommitInfo } from "../../../../shared/changes-types";
 import {
   type DiffStatsUI,
   type ParsedDiffFile,
   parseUnifiedDiff,
 } from "../../../../shared/utils";
 import { trpcClient } from "../../../lib/trpc";
-import { projectDiffDataAtom } from "../atoms";
+import { projectDiffDataAtom, refreshDiffTriggerAtom } from "../atoms";
 
 // Re-export types for convenience
 export type ProjectDiffStats = DiffStatsUI;
 export type ProjectParsedFileDiff = ParsedDiffFile;
+export type { CommitInfo };
 
 export interface UseProjectDiffManagementOptions {
   projectId: string | null;
@@ -26,6 +28,7 @@ export interface UseProjectDiffManagementReturn {
   diffContent: string | null;
   parsedFileDiffs: ProjectParsedFileDiff[] | null;
   prefetchedFileContents: Record<string, string>;
+  commits: CommitInfo[]; // Commit history for current branch vs default
   // Actions
   fetchDiffStats: () => Promise<void>;
 }
@@ -39,6 +42,10 @@ export function useProjectDiffManagement({
 }: UseProjectDiffManagementOptions): UseProjectDiffManagementReturn {
   const setProjectDiffData = useSetAtom(projectDiffDataAtom);
 
+  // Subscribe to refresh trigger from external components (commit, discard changes, etc.)
+  const refreshDiffTrigger = useAtomValue(refreshDiffTriggerAtom);
+  const isInitialMountRef = useRef(true);
+
   // Diff stats state
   const [diffStats, setDiffStats] = useState<ProjectDiffStats>({
     fileCount: 0,
@@ -47,6 +54,9 @@ export function useProjectDiffManagement({
     isLoading: true,
     hasChanges: false,
   });
+
+  // Commit history state
+  const [commits, setCommits] = useState<CommitInfo[]>([]);
 
   // Raw diff content
   const [diffContent, setDiffContent] = useState<string | null>(null);
@@ -95,6 +105,21 @@ export function useProjectDiffManagement({
     lastFetchTimeRef.current = now;
 
     try {
+      // Fetch commit history FIRST so that the subsequent diff call
+      // sees any commit that already happened (avoids showing committed
+      // changes as uncommitted due to race condition)
+      let fetchedCommits: CommitInfo[] = [];
+      try {
+        const { commits } = await trpcClient.changes.getCommits.query({
+          worktreePath: projectPath,
+        });
+        fetchedCommits = commits;
+        setCommits(fetchedCommits);
+      } catch (err) {
+        console.warn("[project-diff] Failed to fetch commits:", err);
+        setCommits([]);
+      }
+
       const result = await trpcClient.projects.getDiff.query({ projectId });
       const rawDiff = result.diff;
 
@@ -173,6 +198,7 @@ export function useProjectDiffManagement({
                   diffContent: rawDiff,
                   parsedFileDiffs: parsedFiles,
                   prefetchedFileContents: contents,
+                  commits: fetchedCommits,
                 });
               })
               .catch((err) => {
@@ -188,6 +214,7 @@ export function useProjectDiffManagement({
                   diffContent: rawDiff,
                   parsedFileDiffs: parsedFiles,
                   prefetchedFileContents: {},
+                  commits: fetchedCommits,
                 });
               });
           } else {
@@ -199,6 +226,7 @@ export function useProjectDiffManagement({
               diffContent: rawDiff,
               parsedFileDiffs: parsedFiles,
               prefetchedFileContents: {},
+              commits: fetchedCommits,
             });
           }
         } else {
@@ -210,6 +238,7 @@ export function useProjectDiffManagement({
             diffContent: rawDiff,
             parsedFileDiffs: parsedFiles,
             prefetchedFileContents: {},
+            commits: fetchedCommits,
           });
         }
       } else {
@@ -230,6 +259,7 @@ export function useProjectDiffManagement({
           diffContent: null,
           parsedFileDiffs: null,
           prefetchedFileContents: {},
+          commits: fetchedCommits,
         });
       }
     } catch (error) {
@@ -262,6 +292,21 @@ export function useProjectDiffManagement({
     }
   }, [projectId, projectPath, enabled, fetchDiffStats, setProjectDiffData]);
 
+  // Refetch when refresh trigger is incremented (e.g., after commit)
+  useEffect(() => {
+    // Skip the initial mount to avoid double-fetch
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false;
+      return;
+    }
+
+    if (enabled && projectId && projectPath) {
+      // Reset throttle and refetch
+      lastFetchTimeRef.current = 0;
+      fetchDiffStats();
+    }
+  }, [refreshDiffTrigger, enabled, projectId, projectPath, fetchDiffStats]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -274,6 +319,7 @@ export function useProjectDiffManagement({
     diffContent,
     parsedFileDiffs,
     prefetchedFileContents,
+    commits,
     fetchDiffStats,
   };
 }

@@ -3,6 +3,7 @@ import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
+import { FONT_MONO } from "../lib/fonts";
 import { useCodeTheme } from "../lib/hooks/use-code-theme";
 import { highlightCode } from "../lib/themes/shiki-theme-loader";
 import { cn } from "../lib/utils";
@@ -146,8 +147,8 @@ function CodeBlock({
           "[&_pre]:p-0 [&_code]:p-0",
         )}
         style={{
-          fontFamily: '"Geist Mono", ui-monospace, monospace',
-          lineHeight: "1px",
+          fontFamily: FONT_MONO,
+          lineHeight: shouldHighlight ? "1px" : "13px",
           tabSize: 2,
         }}
       >

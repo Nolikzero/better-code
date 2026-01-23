@@ -22,8 +22,8 @@
   /* Agents positioning */
   position: relative;
 
-  /* Use Inter font */
-  font-family: "Inter", system-ui, sans-serif;
+  /* Use sans font — see globals.css :root for font stack */
+  font-family: var(--font-sans);
   font-weight: 400;
 }
 
@@ -33,7 +33,7 @@ body:has([data-agents-page]) [data-radix-popper-content-wrapper],
 body:has([data-agents-page]) [role="dialog"],
 body:has([data-agents-page]) [data-sonner-toaster],
 body:has([data-agents-page]) [data-sonner-toast] {
-  font-family: "Inter", system-ui, sans-serif;
+  font-family: var(--font-sans);
   font-weight: 400;
 
   /* Custom text selection colors - uses theme's editor.selectionBackground */
@@ -251,7 +251,7 @@ body:has([data-agents-page]) .canvas-dialog,
   /* Set CSS variables that @pierre/diffs uses */
   --diffs-font-size: 12px;
   --diffs-line-height: 1.5;
-  --diffs-font-family: "Geist Mono", ui-monospace, monospace;
+  --diffs-font-family: var(--font-mono);
   font-size: 12px;
   line-height: 1.5;
   width: 100%;
@@ -264,5 +264,5 @@ body:has([data-agents-page]) .canvas-dialog,
 .agent-diff-wrapper pre,
 .agent-diff-wrapper code {
   font-size: 12px;
-  font-family: "Geist Mono", ui-monospace, monospace;
+  font-family: var(--font-mono);
 }

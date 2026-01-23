@@ -29,188 +29,224 @@ function formatElapsedTime(ms: number): string {
   return `${minutes}m ${remainingSeconds}s`;
 }
 
-export const AgentTaskTool = memo(function AgentTaskTool({
-  part,
-  nestedTools,
-  chatStatus,
-}: AgentTaskToolProps) {
-  const { isPending, isInterrupted } = getToolStatus(part, chatStatus);
+export const AgentTaskTool = memo(
+  function AgentTaskTool({
+    part,
+    nestedTools,
+    chatStatus,
+  }: AgentTaskToolProps) {
+    const { isPending, isInterrupted } = getToolStatus(part, chatStatus);
 
-  // Default: expanded while streaming, collapsed when done
-  const [isExpanded, setIsExpanded] = useState(isPending);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const wasStreamingRef = useRef(isPending);
+    // Default: expanded while streaming, collapsed when done
+    const [isExpanded, setIsExpanded] = useState(isPending);
+    const scrollRef = useRef<HTMLDivElement>(null);
+    const wasStreamingRef = useRef(isPending);
 
-  // Track elapsed time for running tasks
-  const [elapsedMs, setElapsedMs] = useState(0);
-  const startTimeRef = useRef<number | null>(null);
+    // Track elapsed time for running tasks
+    const [elapsedMs, setElapsedMs] = useState(0);
+    const startTimeRef = useRef<number | null>(null);
 
-  const description = part.input?.description || "";
+    const description = part.input?.description || "";
 
-  // Auto-collapse when streaming ends (transition from true -> false)
-  useEffect(() => {
-    if (wasStreamingRef.current && !isPending) {
-      setIsExpanded(false);
-    }
-    wasStreamingRef.current = isPending;
-  }, [isPending]);
-
-  // Track elapsed time while task is running
-  useEffect(() => {
-    if (isPending) {
-      // Start tracking time
-      if (startTimeRef.current === null) {
-        startTimeRef.current = Date.now();
+    // Auto-collapse when streaming ends (transition from true -> false)
+    useEffect(() => {
+      if (wasStreamingRef.current && !isPending) {
+        setIsExpanded(false);
       }
-      const interval = setInterval(() => {
-        if (startTimeRef.current !== null) {
-          setElapsedMs(Date.now() - startTimeRef.current);
+      wasStreamingRef.current = isPending;
+    }, [isPending]);
+
+    // Track elapsed time while task is running
+    useEffect(() => {
+      if (isPending) {
+        // Start tracking time
+        if (startTimeRef.current === null) {
+          startTimeRef.current = Date.now();
         }
-      }, 1000);
-      return () => clearInterval(interval);
+        const interval = setInterval(() => {
+          if (startTimeRef.current !== null) {
+            setElapsedMs(Date.now() - startTimeRef.current);
+          }
+        }, 1000);
+        return () => clearInterval(interval);
+      }
+    }, [isPending]);
+
+    // Use output duration from Claude Code if available, otherwise use our tracked time
+    const outputDuration = part.output?.duration || part.output?.duration_ms;
+    const displayMs = !isPending && outputDuration ? outputDuration : elapsedMs;
+    const elapsedTimeDisplay = formatElapsedTime(displayMs);
+
+    // Auto-scroll to bottom when streaming and new nested tools added
+    useEffect(() => {
+      if (isPending && isExpanded && scrollRef.current) {
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      }
+    }, [nestedTools.length, isPending, isExpanded]);
+
+    const hasNestedTools = nestedTools.length > 0;
+
+    // Build subtitle - always show description
+    const getSubtitle = () => {
+      if (description) {
+        const truncated =
+          description.length > 60
+            ? `${description.slice(0, 57)}...`
+            : description;
+        return truncated;
+      }
+      return "";
+    };
+
+    const subtitle = getSubtitle();
+
+    // Get title text - always use "Task"
+    const getTitle = () => {
+      return isPending ? "Running Task" : "Task";
+    };
+
+    // Show interrupted state if task was interrupted without completing
+    if (isInterrupted && !part.output) {
+      return <AgentToolInterrupted toolName="Task" subtitle={subtitle} />;
     }
-  }, [isPending]);
 
-  // Use output duration from Claude Code if available, otherwise use our tracked time
-  const outputDuration = part.output?.duration || part.output?.duration_ms;
-  const displayMs = !isPending && outputDuration ? outputDuration : elapsedMs;
-  const elapsedTimeDisplay = formatElapsedTime(displayMs);
+    return (
+      <div>
+        {/* Header - clickable to toggle, same style as AgentExploringGroup */}
+        <div
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="group flex items-start gap-1.5 py-0.5 px-2 cursor-pointer"
+        >
+          <div className="flex-1 min-w-0 flex items-center gap-1">
+            <div className="text-xs flex items-center gap-1.5 min-w-0">
+              {/* Title with shimmer effect when running */}
+              {isPending ? (
+                <TextShimmer
+                  as="span"
+                  duration={1.2}
+                  className="font-medium whitespace-nowrap shrink-0"
+                >
+                  {getTitle()}
+                </TextShimmer>
+              ) : (
+                <span className="font-medium whitespace-nowrap shrink-0 text-muted-foreground">
+                  {getTitle()}
+                </span>
+              )}
+              {subtitle && (
+                <span className="text-muted-foreground/60 truncate">
+                  {subtitle}
+                </span>
+              )}
+              {/* Show elapsed time while running or final time when done */}
+              {elapsedTimeDisplay && (
+                <span className="text-muted-foreground/50 tabular-nums shrink-0">
+                  {elapsedTimeDisplay}
+                </span>
+              )}
+              {/* Chevron right after text - rotates when expanded */}
+              <ChevronRight
+                className={cn(
+                  "w-3.5 h-3.5 text-muted-foreground/60 transition-transform duration-200 ease-out shrink-0",
+                  isExpanded && "rotate-90",
+                  !isExpanded && "opacity-0 group-hover:opacity-100",
+                )}
+              />
+            </div>
+          </div>
+        </div>
 
-  // Auto-scroll to bottom when streaming and new nested tools added
-  useEffect(() => {
-    if (isPending && isExpanded && scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [nestedTools.length, isPending, isExpanded]);
-
-  const hasNestedTools = nestedTools.length > 0;
-
-  // Build subtitle - always show description
-  const getSubtitle = () => {
-    if (description) {
-      const truncated =
-        description.length > 60
-          ? `${description.slice(0, 57)}...`
-          : description;
-      return truncated;
-    }
-    return "";
-  };
-
-  const subtitle = getSubtitle();
-
-  // Get title text - always use "Task"
-  const getTitle = () => {
-    return isPending ? "Running Task" : "Task";
-  };
-
-  // Show interrupted state if task was interrupted without completing
-  if (isInterrupted && !part.output) {
-    return <AgentToolInterrupted toolName="Task" subtitle={subtitle} />;
-  }
-
-  return (
-    <div>
-      {/* Header - clickable to toggle, same style as AgentExploringGroup */}
-      <div
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="group flex items-start gap-1.5 py-0.5 px-2 cursor-pointer"
-      >
-        <div className="flex-1 min-w-0 flex items-center gap-1">
-          <div className="text-xs flex items-center gap-1.5 min-w-0">
-            {/* Title with shimmer effect when running */}
-            {isPending ? (
-              <TextShimmer
-                as="span"
-                duration={1.2}
-                className="font-medium whitespace-nowrap shrink-0"
-              >
-                {getTitle()}
-              </TextShimmer>
-            ) : (
-              <span className="font-medium whitespace-nowrap shrink-0 text-muted-foreground">
-                {getTitle()}
-              </span>
-            )}
-            {subtitle && (
-              <span className="text-muted-foreground/60 truncate">
-                {subtitle}
-              </span>
-            )}
-            {/* Show elapsed time while running or final time when done */}
-            {elapsedTimeDisplay && (
-              <span className="text-muted-foreground/50 tabular-nums shrink-0">
-                {elapsedTimeDisplay}
-              </span>
-            )}
-            {/* Chevron right after text - rotates when expanded */}
-            <ChevronRight
+        {/* Nested tools - only show when expanded */}
+        {hasNestedTools && isExpanded && (
+          <div className="relative mt-1">
+            {/* Top gradient fade when streaming and has many items */}
+            <div
               className={cn(
-                "w-3.5 h-3.5 text-muted-foreground/60 transition-transform duration-200 ease-out shrink-0",
-                isExpanded && "rotate-90",
-                !isExpanded && "opacity-0 group-hover:opacity-100",
+                "absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-background/50 to-transparent z-10 pointer-events-none transition-opacity duration-200",
+                isPending && nestedTools.length > MAX_VISIBLE_TOOLS
+                  ? "opacity-100"
+                  : "opacity-0",
               )}
             />
-          </div>
-        </div>
-      </div>
 
-      {/* Nested tools - only show when expanded */}
-      {hasNestedTools && isExpanded && (
-        <div className="relative mt-1">
-          {/* Top gradient fade when streaming and has many items */}
-          <div
-            className={cn(
-              "absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-background to-transparent z-10 pointer-events-none transition-opacity duration-200",
-              isPending && nestedTools.length > MAX_VISIBLE_TOOLS
-                ? "opacity-100"
-                : "opacity-0",
-            )}
-          />
-
-          {/* Scrollable container - auto-scrolls to bottom when streaming */}
-          <div
-            ref={scrollRef}
-            className={cn(
-              "space-y-1.5",
-              isPending &&
-                nestedTools.length > MAX_VISIBLE_TOOLS &&
-                "overflow-y-auto scrollbar-hide",
-            )}
-            style={
-              isPending && nestedTools.length > MAX_VISIBLE_TOOLS
-                ? { maxHeight: `${MAX_VISIBLE_TOOLS * TOOL_HEIGHT_PX}px` }
-                : undefined
-            }
-          >
-            {nestedTools.map((nestedPart, idx) => {
-              const nestedMeta = AgentToolRegistry[nestedPart.type];
-              if (!nestedMeta) {
-                return (
-                  <div
-                    key={idx}
-                    className="text-xs text-muted-foreground py-0.5 px-2"
-                  >
-                    {nestedPart.type?.replace("tool-", "")}
-                  </div>
-                );
+            {/* Scrollable container - auto-scrolls to bottom when streaming */}
+            <div
+              ref={scrollRef}
+              className={cn(
+                "space-y-1.5",
+                isPending &&
+                  nestedTools.length > MAX_VISIBLE_TOOLS &&
+                  "overflow-y-auto scrollbar-hide",
+              )}
+              style={
+                isPending && nestedTools.length > MAX_VISIBLE_TOOLS
+                  ? { maxHeight: `${MAX_VISIBLE_TOOLS * TOOL_HEIGHT_PX}px` }
+                  : undefined
               }
-              const { isPending: nestedIsPending, isError: nestedIsError } =
-                getToolStatus(nestedPart, chatStatus);
-              return (
-                <AgentToolCall
-                  key={idx}
-                  icon={nestedMeta.icon}
-                  title={nestedMeta.title(nestedPart)}
-                  subtitle={nestedMeta.subtitle?.(nestedPart)}
-                  isPending={nestedIsPending}
-                  isError={nestedIsError}
-                />
-              );
-            })}
+            >
+              {nestedTools.map((nestedPart, idx) => {
+                const nestedMeta = AgentToolRegistry[nestedPart.type];
+                if (!nestedMeta) {
+                  return (
+                    <div
+                      key={idx}
+                      className="text-xs text-muted-foreground py-0.5 px-2"
+                    >
+                      {nestedPart.type?.replace("tool-", "")}
+                    </div>
+                  );
+                }
+                const { isPending: nestedIsPending, isError: nestedIsError } =
+                  getToolStatus(nestedPart, chatStatus);
+                return (
+                  <AgentToolCall
+                    key={idx}
+                    icon={nestedMeta.icon}
+                    title={nestedMeta.title(nestedPart)}
+                    subtitle={nestedMeta.subtitle?.(nestedPart)}
+                    isPending={nestedIsPending}
+                    isError={nestedIsError}
+                  />
+                );
+              })}
+            </div>
           </div>
-        </div>
-      )}
-    </div>
-  );
-});
+        )}
+      </div>
+    );
+  },
+  (prevProps, nextProps) => {
+    const prevPart = prevProps.part;
+    const nextPart = nextProps.part;
+
+    if (prevPart.state !== nextPart.state) return false;
+
+    // Completed tools never need re-render from chatStatus changes
+    const isComplete =
+      nextPart.state === "output-available" ||
+      nextPart.state === "output-error";
+    if (!isComplete && prevProps.chatStatus !== nextProps.chatStatus)
+      return false;
+
+    if (prevPart.input?.description !== nextPart.input?.description)
+      return false;
+    if (prevPart.input?.subagent_type !== nextPart.input?.subagent_type)
+      return false;
+    if (prevPart.output?.duration !== nextPart.output?.duration) return false;
+    if (prevPart.output?.duration_ms !== nextPart.output?.duration_ms)
+      return false;
+
+    // Compare nestedTools by length and last item state
+    const prevTools = prevProps.nestedTools;
+    const nextTools = nextProps.nestedTools;
+    if (prevTools.length !== nextTools.length) return false;
+    if (nextTools.length > 0) {
+      const prevLast = prevTools[prevTools.length - 1];
+      const nextLast = nextTools[nextTools.length - 1];
+      if (prevLast?.state !== nextLast?.state) return false;
+      if (prevLast?.toolCallId !== nextLast?.toolCallId) return false;
+    }
+
+    return true;
+  },
+);

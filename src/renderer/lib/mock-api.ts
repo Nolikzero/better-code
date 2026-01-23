@@ -93,7 +93,7 @@ export const api = {
                 created_at: sc.createdAt,
                 updated_at: sc.updatedAt,
                 messages: parsedMessages,
-                stream_id: null,
+                stream_id: sc.streamId || null,
               };
             }),
           };
@@ -242,7 +242,10 @@ export const api = {
           onError: (err) => opts?.onError?.(err),
         });
         return {
-          mutate: (args?: { subChatId: string; mode: "plan" | "agent" }) => {
+          mutate: (args?: {
+            subChatId: string;
+            mode: "plan" | "agent" | "ralph";
+          }) => {
             if (args?.subChatId && args?.mode) {
               mutation.mutate({ id: args.subChatId, mode: args.mode });
             }

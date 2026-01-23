@@ -1,16 +1,6 @@
 import type { ITerminalOptions, ITheme } from "@xterm/xterm";
+import { FONT_TERMINAL } from "@/lib/fonts";
 import { extractTerminalTheme } from "@/lib/themes/terminal-theme-mapper";
-
-// Geist Mono as primary font, with Nerd Fonts fallback for powerline symbols
-const TERMINAL_FONT_FAMILY = [
-  '"Geist Mono"',
-  "MesloLGM Nerd Font",
-  "MesloLGM NF",
-  "MesloLGS NF",
-  "MesloLGS Nerd Font",
-  "ui-monospace",
-  "monospace",
-].join(", ");
 
 /**
  * Dark terminal theme synchronized with the app's design system.
@@ -130,7 +120,7 @@ export const TERMINAL_OPTIONS: ITerminalOptions = {
   // Font size matches app's compact UI (text-xs = 12px, text-sm = 14px)
   fontSize: 13,
   lineHeight: 1.4,
-  fontFamily: TERMINAL_FONT_FAMILY,
+  fontFamily: FONT_TERMINAL,
   theme: TERMINAL_THEME_DARK, // Default, will be overridden dynamically
   allowProposedApi: true,
   scrollback: 10000,

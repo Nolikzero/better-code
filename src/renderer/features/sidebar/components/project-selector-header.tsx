@@ -1,6 +1,14 @@
 import { useAtom, useAtomValue } from "jotai";
-import { ChevronDown, Folder, FolderGit2, GitBranch, Plus } from "lucide-react";
+import {
+  ChevronDown,
+  Folder,
+  FolderGit2,
+  GitBranch,
+  Plus,
+  Settings,
+} from "lucide-react";
 import { useMemo, useState } from "react";
+import { ProjectSettingsDialog } from "../../../components/dialogs/project-settings-dialog";
 import {
   Command,
   CommandEmpty,
@@ -64,6 +72,7 @@ export function ProjectSelectorHeader({
   const [selectedProject, setSelectedProject] = useAtom(selectedProjectAtom);
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showProjectSettings, setShowProjectSettings] = useState(false);
 
   const { data: projects, isLoading: isLoadingProjects } =
     trpc.projects.list.useQuery();
@@ -390,6 +399,17 @@ export function ProjectSelectorHeader({
         </PopoverContent>
       </Popover>
 
+      {/* Settings button */}
+      {validSelection && (
+        <button
+          onClick={() => setShowProjectSettings(true)}
+          className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+          title="Project settings"
+        >
+          <Settings className="h-4 w-4" />
+        </button>
+      )}
+
       {/* New workspace button */}
       {onNewWorkspace && validSelection && (
         <button
@@ -399,6 +419,15 @@ export function ProjectSelectorHeader({
         >
           <Plus className="h-4 w-4" />
         </button>
+      )}
+
+      {/* Project Settings Dialog */}
+      {validSelection && (
+        <ProjectSettingsDialog
+          open={showProjectSettings}
+          onOpenChange={setShowProjectSettings}
+          projectId={validSelection.id}
+        />
       )}
     </div>
   );

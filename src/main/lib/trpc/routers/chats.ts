@@ -24,6 +24,7 @@ import { gitQueue } from "../../git/git-queue";
 import { execWithShellEnv } from "../../git/shell-env";
 import { getClaudeBinaryPath } from "../../providers/claude";
 import { providerRegistry } from "../../providers/registry";
+import { getRalphService } from "../../ralph";
 import { worktreeInitRunner } from "../../worktree/init-runner";
 import { publicProcedure, router } from "../index";
 
@@ -278,11 +279,30 @@ export const chatsRouter = router({
         useWorktree: z.boolean().default(true), // If false, work directly in project dir
         selectedBranch: z.string().optional(), // Branch to switch to in local mode
         createNewBranch: z.boolean().optional(), // Create selectedBranch as new branch from current
-        mode: z.enum(["plan", "agent"]).default("agent"),
+        mode: z.enum(["plan", "agent", "ralph"]).default("agent"),
         providerId: z
           .enum(["claude", "codex", "opencode"])
           .optional()
           .default("claude"),
+        initialAddedDirs: z.array(z.string()).optional(),
+        // Ralph PRD data (for ralph mode - allows setting up PRD before chat creation)
+        ralphPrd: z
+          .object({
+            goal: z.string(),
+            branchName: z.string(),
+            stories: z.array(
+              z.object({
+                id: z.string(),
+                title: z.string(),
+                description: z.string(),
+                priority: z.number(),
+                acceptanceCriteria: z.array(z.string()),
+                passes: z.boolean(),
+                notes: z.string().optional(),
+              }),
+            ),
+          })
+          .optional(),
       }),
     )
     .mutation(async ({ input }) => {
@@ -416,6 +436,7 @@ export const chatsRouter = router({
               mode: input.mode,
               messages: initialMessages,
               providerId: input.providerId,
+              addedDirs: JSON.stringify(input.initialAddedDirs ?? []),
             })
             .returning()
             .get();
@@ -466,6 +487,7 @@ export const chatsRouter = router({
           mode: input.mode,
           messages: initialMessages,
           providerId: input.providerId,
+          addedDirs: JSON.stringify(input.initialAddedDirs ?? []),
         })
         .returning()
         .get();
@@ -484,11 +506,22 @@ export const chatsRouter = router({
           "[chats.create] creating worktree with baseBranch:",
           input.baseBranch,
         );
+
+        // Query existing branches for this project to avoid name collisions
+        const existingBranches = db
+          .select({ branch: chats.branch })
+          .from(chats)
+          .where(eq(chats.projectId, input.projectId))
+          .all()
+          .map((row) => row.branch)
+          .filter((b): b is string => b !== null);
+
         const result = await createWorktreeForChat(
           project.path,
           project.id,
           chat.id,
           input.baseBranch,
+          existingBranches,
         );
         console.log("[chats.create] worktree result:", result);
 
@@ -660,6 +693,7 @@ export const chatsRouter = router({
                 mode: input.mode,
                 messages: initialMessages,
                 providerId: input.providerId,
+                addedDirs: JSON.stringify(input.initialAddedDirs ?? []),
               })
               .returning()
               .get();
@@ -699,6 +733,16 @@ export const chatsRouter = router({
             .run();
           worktreeResult = { worktreePath: project.path };
         }
+      }
+
+      // Save Ralph PRD if provided (for ralph mode)
+      if (input.ralphPrd && input.mode === "ralph") {
+        console.log("[chats.create] saving Ralph PRD for chat:", chat.id);
+        getRalphService().savePrd(chat.id, {
+          goal: input.ralphPrd.goal,
+          branchName: input.ralphPrd.branchName,
+          stories: input.ralphPrd.stories,
+        });
       }
 
       const response = {
@@ -880,7 +924,7 @@ export const chatsRouter = router({
       z.object({
         chatId: z.string(),
         name: z.string().optional(),
-        mode: z.enum(["plan", "agent"]).default("agent"),
+        mode: z.enum(["plan", "agent", "ralph"]).default("agent"),
         providerId: z.enum(["claude", "codex", "opencode"]).optional(),
       }),
     )
@@ -933,7 +977,9 @@ export const chatsRouter = router({
    * Update sub-chat mode
    */
   updateSubChatMode: publicProcedure
-    .input(z.object({ id: z.string(), mode: z.enum(["plan", "agent"]) }))
+    .input(
+      z.object({ id: z.string(), mode: z.enum(["plan", "agent", "ralph"]) }),
+    )
     .mutation(({ input }) => {
       const db = getDatabase();
       return db
@@ -1033,9 +1079,100 @@ export const chatsRouter = router({
         return { diff: null, error: "No worktree path" };
       }
 
+      // Pass uncommittedOnly: true to only show uncommitted changes
+      // After commit, changes tab should be empty (same as project-level behavior)
       const result = await getWorktreeDiff(
         chat.worktreePath,
         chat.baseBranch ?? undefined,
+        { uncommittedOnly: true },
+      );
+
+      if (!result.success) {
+        return { diff: null, error: result.error };
+      }
+
+      return { diff: result.diff || "" };
+    }),
+
+  /**
+   * Get unified diff for a single commit in a chat's worktree
+   */
+  getCommitDiff: publicProcedure
+    .input(z.object({ chatId: z.string(), commitHash: z.string() }))
+    .query(async ({ input }) => {
+      const db = getDatabase();
+      const chat = db
+        .select()
+        .from(chats)
+        .where(eq(chats.id, input.chatId))
+        .get();
+
+      if (!chat?.worktreePath) {
+        return { diff: null, error: "No worktree path" };
+      }
+
+      const git = simpleGit(chat.worktreePath);
+      const lockFileExcludes = [
+        ":!*.lock",
+        ":!*-lock.*",
+        ":!package-lock.json",
+        ":!pnpm-lock.yaml",
+        ":!yarn.lock",
+      ];
+
+      try {
+        const diff = await git.diff([
+          `${input.commitHash}~1`,
+          input.commitHash,
+          "--no-color",
+          "--",
+          ...lockFileExcludes,
+        ]);
+        return { diff: diff || "" };
+      } catch {
+        // Handle initial commit (no parent) by diffing against empty tree
+        try {
+          const diff = await git.diff([
+            "4b825dc642cb6eb9a060e54bf899d69f82559ef1",
+            input.commitHash,
+            "--no-color",
+            "--",
+            ...lockFileExcludes,
+          ]);
+          return { diff: diff || "" };
+        } catch (fallbackError) {
+          return {
+            diff: null,
+            error:
+              fallbackError instanceof Error
+                ? fallbackError.message
+                : "Unknown error",
+          };
+        }
+      }
+    }),
+
+  /**
+   * Get full diff (committed + uncommitted) against base branch for a chat's worktree
+   */
+  getFullDiff: publicProcedure
+    .input(z.object({ chatId: z.string() }))
+    .query(async ({ input }) => {
+      const db = getDatabase();
+      const chat = db
+        .select()
+        .from(chats)
+        .where(eq(chats.id, input.chatId))
+        .get();
+
+      if (!chat?.worktreePath) {
+        return { diff: null, error: "No worktree path" };
+      }
+
+      const result = await getWorktreeDiff(
+        chat.worktreePath,
+        chat.baseBranch ?? undefined,
+        { fullDiff: true },
       );
 
       if (!result.success) {

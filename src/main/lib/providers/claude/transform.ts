@@ -69,11 +69,24 @@ export function createTransformer() {
       emittedToolIds.add(currentToolCallId);
 
       // Emit complete tool call with accumulated input
+      let jsonParsed: any = {};
+
+      try {
+        jsonParsed = accumulatedToolInput
+          ? JSON.parse(accumulatedToolInput)
+          : {};
+      } catch (e) {
+        // Failed to parse - emit empty object
+        console.warn(
+          `[transform] Failed to parse tool input JSON for toolCallId=${currentToolCallId}:`,
+          e,
+        );
+      }
       yield {
         type: "tool-input-available",
         toolCallId: currentToolCallId,
         toolName: currentToolName || "unknown",
-        input: accumulatedToolInput ? JSON.parse(accumulatedToolInput) : {},
+        input: jsonParsed,
       };
       currentToolCallId = null;
       currentToolName = null;
@@ -82,11 +95,6 @@ export function createTransformer() {
   }
 
   return function* transform(msg: any): Generator<UIMessageChunk> {
-    // Debug: log all message types to understand what SDK sends
-    if (msg.type === "system") {
-      console.log("[transform] SYSTEM message:", msg.subtype, msg);
-    }
-
     // Track parent_tool_use_id for nested tools
     // Only update when explicitly present (don't reset on messages without it)
     if (msg.parent_tool_use_id !== undefined) {
@@ -111,12 +119,6 @@ export function createTransformer() {
     // ===== STREAMING EVENTS (token-by-token) =====
     if (msg.type === "stream_event") {
       const event = msg.event;
-      console.log(
-        "[transform] stream_event:",
-        event?.type,
-        "delta:",
-        event?.delta?.type,
-      );
       if (!event) return;
 
       // Text block start
@@ -124,13 +126,11 @@ export function createTransformer() {
         event.type === "content_block_start" &&
         event.content_block?.type === "text"
       ) {
-        console.log("[transform] TEXT BLOCK START");
         yield* endTextBlock();
         yield* endToolInput();
         textId = genId();
         yield { type: "text-start", id: textId };
         textStarted = true;
-        console.log("[transform] textStarted set to TRUE, textId:", textId);
       }
 
       // Text delta
@@ -138,12 +138,6 @@ export function createTransformer() {
         event.type === "content_block_delta" &&
         event.delta?.type === "text_delta"
       ) {
-        console.log(
-          "[transform] TEXT DELTA, textStarted:",
-          textStarted,
-          "delta:",
-          event.delta.text?.slice(0, 20),
-        );
         if (!textStarted) {
           yield* endToolInput();
           textId = genId();
@@ -159,16 +153,8 @@ export function createTransformer() {
 
       // Content block stop
       if (event.type === "content_block_stop") {
-        console.log(
-          "[transform] CONTENT BLOCK STOP, textStarted:",
-          textStarted,
-        );
         if (textStarted) {
           yield* endTextBlock();
-          console.log(
-            "[transform] after endTextBlock, textStarted:",
-            textStarted,
-          );
         }
         if (currentToolCallId) {
           yield* endToolInput();
@@ -304,20 +290,11 @@ export function createTransformer() {
         }
 
         if (block.type === "text") {
-          console.log(
-            "[transform] ASSISTANT TEXT block, textStarted:",
-            textStarted,
-            "text length:",
-            block.text?.length,
-          );
           yield* endToolInput();
 
           // Only emit text if we're NOT already streaming (textStarted = false)
           // When includePartialMessages is true, text comes via stream_event
           if (!textStarted) {
-            console.log(
-              "[transform] EMITTING assistant text (textStarted was false)",
-            );
             textId = genId();
             yield { type: "text-start", id: textId };
             yield { type: "text-delta", id: textId, delta: block.text };
@@ -325,10 +302,6 @@ export function createTransformer() {
             // Track the last text ID for final response marking
             lastTextId = textId;
             textId = null;
-          } else {
-            console.log(
-              "[transform] SKIPPING assistant text (textStarted is true)",
-            );
           }
           // If textStarted is true, we're mid-stream - skip this duplicate
         }
@@ -339,10 +312,6 @@ export function createTransformer() {
 
           // Skip if already emitted via streaming
           if (emittedToolIds.has(block.id)) {
-            console.log(
-              "[transform] SKIPPING duplicate tool_use (already emitted via streaming):",
-              block.id,
-            );
             continue;
           }
 
@@ -449,12 +418,6 @@ export function createTransformer() {
 
     // ===== RESULT (final) =====
     if (msg.type === "result") {
-      console.log(
-        "[transform] RESULT message, textStarted:",
-        textStarted,
-        "lastTextId:",
-        lastTextId,
-      );
       yield* endTextBlock();
       yield* endToolInput();
 

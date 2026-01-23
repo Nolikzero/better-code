@@ -5,7 +5,6 @@
 import { Chat, useChat } from "@ai-sdk/react";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { ChevronDown, ChevronUp, MessageSquare } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
 import {
   useCallback,
   useEffect,
@@ -42,14 +41,17 @@ import { api } from "../../../lib/mock-api";
 import { trpc, trpcClient } from "../../../lib/trpc";
 import { cn } from "../../../lib/utils";
 import { isDesktopApp } from "../../../lib/utils/platform";
+import { RalphProgressBadge, RalphSetupDialog } from "../../ralph";
 // Sub-chats sidebar removed - sub-chats now shown inline in main sidebar tree view
 // import { AgentsSubChatsSidebar } from "../../sidebar/agents-subchats-sidebar";
 import { useDesktopNotifications } from "../../sidebar/hooks/use-desktop-notifications";
 import { terminalSidebarOpenAtom } from "../../terminal/atoms";
 import { TerminalSidebar } from "../../terminal/terminal-sidebar";
 import {
+  type AgentMode,
   activeChatDiffDataAtom,
   addedDirectoriesAtomFamily,
+  agentModeAtom,
   agentsPreviewSidebarOpenAtom,
   agentsPreviewSidebarWidthAtom,
   agentsSubChatUnseenChangesAtom,
@@ -62,7 +64,6 @@ import {
   codeSnippetsAtomFamily,
   compactingSubChatsAtom,
   historyNavAtomFamily,
-  isPlanModeAtom,
   justCreatedIdsAtom,
   loadingSubChatsAtom,
   mainContentActiveTabAtom,
@@ -70,11 +71,13 @@ import {
   pendingFileMentionsAtom,
   pendingPlanApprovalsAtom,
   pendingPrMessageAtom,
+  pendingRalphAutoStartsAtom,
   pendingReviewMessageAtom,
   pendingUserQuestionsAtom,
   prActionsAtom,
   promptHistoryAtomFamily,
   QUESTIONS_SKIPPED_MESSAGE,
+  ralphInjectedPromptsAtom,
   selectedAgentChatIdAtom,
   setLoading,
   undoStackAtom,
@@ -164,7 +167,7 @@ type ChatListItem = {
 type SubChatItem = {
   id: string;
   name?: string | null;
-  mode?: "plan" | "agent" | null;
+  mode?: "plan" | "agent" | "ralph" | null;
   createdAt?: Date | string | null;
   updatedAt?: Date | string | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -389,8 +392,10 @@ function ChatViewInner({
     [subChatId, subChatName, renameSubChatMutation],
   );
 
-  // Plan mode state (read from global atom)
-  const [isPlanMode, setIsPlanMode] = useAtom(isPlanModeAtom);
+  // Agent mode state (read from global atom)
+  const [agentMode, setAgentMode] = useAtom(agentModeAtom);
+  // Backward compatibility helper
+  const isPlanMode = agentMode === "plan";
 
   // Prompt history - scoped to chat (workspace)
   const historyKey = `chat:${parentChatId}`;
@@ -400,6 +405,12 @@ function ChatViewInner({
   // Added directories for /add-dir command (per sub-chat)
   const [addedDirs, setAddedDirs] = useAtom(
     addedDirectoriesAtomFamily(subChatId),
+  );
+
+  // Ralph state query - to check if PRD exists for showing setup dialog
+  const { data: ralphState } = trpc.ralph.getState.useQuery(
+    { chatId: parentChatId },
+    { enabled: !!parentChatId && agentMode === "ralph" },
   );
 
   // Reset navigation when switching sub-chats
@@ -427,13 +438,18 @@ function ChatViewInner({
         .allSubChats.find((sc) => sc.id === variables.subChatId);
       if (subChat) {
         // Revert to previous mode
-        const revertedMode = variables.mode === "plan" ? "agent" : "plan";
+        const revertedMode: AgentMode =
+          variables.mode === "plan"
+            ? "agent"
+            : variables.mode === "agent"
+              ? "plan"
+              : "agent";
         useAgentSubChatStore
           .getState()
           .updateSubChatMode(variables.subChatId, revertedMode);
-        // Update ref BEFORE setIsPlanMode to prevent useEffect from triggering
-        lastIsPlanModeRef.current = revertedMode === "plan";
-        setIsPlanMode(revertedMode === "plan");
+        // Update ref BEFORE setAgentMode to prevent useEffect from triggering
+        lastAgentModeRef.current = revertedMode;
+        setAgentMode(revertedMode);
       }
       console.error("Failed to update sub-chat mode:", error.message);
     },
@@ -450,7 +466,7 @@ function ChatViewInner({
         .allSubChats.find((sc) => sc.id === subChatId);
 
       if (subChat?.mode) {
-        setIsPlanMode(subChat.mode === "plan");
+        setAgentMode(subChat.mode as AgentMode);
       }
 
       // Initialize addedDirs from database (stored as JSON string)
@@ -469,34 +485,56 @@ function ChatViewInner({
 
       lastInitializedRef.current = subChatId;
     }
-    // Dependencies: Only subChatId - setIsPlanMode and setAddedDirs are stable, useAgentSubChatStore is external
-  }, [subChatId, setIsPlanMode, setAddedDirs]);
+    // Dependencies: Only subChatId - setAgentMode and setAddedDirs are stable, useAgentSubChatStore is external
+  }, [subChatId, setAgentMode, setAddedDirs]);
 
   // Track last mode to detect actual user changes (not store updates)
-  const lastIsPlanModeRef = useRef<boolean>(isPlanMode);
+  const lastAgentModeRef = useRef<AgentMode>(agentMode);
 
-  // Update mode for current sub-chat when USER changes isPlanMode
+  // Update mode for current sub-chat when USER changes agentMode
   useEffect(() => {
-    // Skip if isPlanMode didn't actually change
-    if (lastIsPlanModeRef.current === isPlanMode) {
+    // Skip if agentMode didn't actually change
+    if (lastAgentModeRef.current === agentMode) {
       return;
     }
 
-    const newMode = isPlanMode ? "plan" : "agent";
-
-    lastIsPlanModeRef.current = isPlanMode;
+    lastAgentModeRef.current = agentMode;
 
     if (subChatId) {
       // Update local store immediately (optimistic update)
-      useAgentSubChatStore.getState().updateSubChatMode(subChatId, newMode);
+      useAgentSubChatStore.getState().updateSubChatMode(subChatId, agentMode);
 
       // Save to database with error handling to maintain consistency
       if (!subChatId.startsWith("temp-")) {
-        updateSubChatModeMutation.mutate({ subChatId, mode: newMode });
+        updateSubChatModeMutation.mutate({ subChatId, mode: agentMode });
       }
     }
     // Dependencies: updateSubChatModeMutation.mutate is stable, useAgentSubChatStore is external
-  }, [isPlanMode, subChatId, updateSubChatModeMutation.mutate]);
+  }, [agentMode, subChatId, updateSubChatModeMutation.mutate]);
+
+  // Handler for mode changes
+  const handleAgentModeChange = useCallback(
+    (newMode: AgentMode) => {
+      setAgentMode(newMode);
+    },
+    [setAgentMode],
+  );
+
+  // Open Ralph setup dialog when switching to Ralph mode if no PRD exists
+  const prevAgentModeRef = useRef(agentMode);
+  useEffect(() => {
+    const wasNotRalph = prevAgentModeRef.current !== "ralph";
+    const isNowRalph = agentMode === "ralph";
+    prevAgentModeRef.current = agentMode;
+
+    // Only trigger when switching TO ralph mode
+    if (wasNotRalph && isNowRalph && ralphState !== undefined) {
+      // PRD doesn't exist - open setup dialog
+      if (!ralphState?.hasPrd) {
+        setRalphSetupOpen(true);
+      }
+    }
+  }, [agentMode, ralphState]);
 
   // Provider & model selection state
   // Per-subchat override takes priority, then per-chat override, then falls back to global default
@@ -578,13 +616,6 @@ function ChatViewInner({
     [setModelByProvider, effectiveProvider],
   );
 
-  // Reset to agent mode when switching to Codex provider (Codex doesn't support plan mode)
-  useEffect(() => {
-    if (effectiveProvider === "codex" && isPlanMode) {
-      setIsPlanMode(false);
-    }
-  }, [effectiveProvider, isPlanMode, setIsPlanMode]);
-
   // Initialize provider from sub-chat metadata when switching sub-chats
   // This must be after setSubChatProviderOverrides is declared
   const lastInitializedProviderRef = useRef<string | null>(null);
@@ -614,6 +645,9 @@ function ChatViewInner({
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
   const [_shouldOpenClaudeSubmenu, setShouldOpenClaudeSubmenu] =
     useState(false);
+
+  // Ralph setup dialog state
+  const [ralphSetupOpen, setRalphSetupOpen] = useState(false);
 
   // File/image upload hook
   const {
@@ -784,12 +818,13 @@ function ChatViewInner({
 
   // Use subChatId as stable key to prevent HMR-induced duplicate resume requests
   // resume: !!streamId to reconnect to active streams (background streaming support)
-  const { messages, sendMessage, status, stop, regenerate } = useChat({
-    id: subChatId,
-    chat,
-    resume: !!streamId,
-    // experimental_throttle: 200,
-  });
+  const { messages, sendMessage, setMessages, status, stop, regenerate } =
+    useChat({
+      id: subChatId,
+      chat,
+      resume: !!streamId,
+      experimental_throttle: 100,
+    });
 
   // Scroll management via use-stick-to-bottom for smooth auto-scrolling
   const { scrollRef, contentRef, scrollToBottom } = useStickToBottom({
@@ -830,6 +865,16 @@ function ChatViewInner({
   }, [status, subChatId, messages.length]);
 
   const isStreaming = status === "streaming" || status === "submitted";
+
+  // Stable stop handler - shared by SubChatStatusCard and AgentSendButton
+  const handleStop = useCallback(async () => {
+    agentChatStore.setManuallyAborted(subChatId, true);
+    await stop();
+    await fetch(`/api/agents/chat?id=${encodeURIComponent(subChatId)}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+  }, [subChatId, stop]);
 
   // Track compacting status from SDK
   const compactingSubChats = useAtomValue(compactingSubChatsAtom);
@@ -1126,6 +1171,137 @@ function ChatViewInner({
     subChatId,
   ]);
 
+  // Update in-memory Chat messages when Ralph injects modified prompt
+  const ralphInjectedPrompts = useAtomValue(ralphInjectedPromptsAtom);
+  const myInjectedPrompt = ralphInjectedPrompts.get(subChatId) ?? null;
+
+  useEffect(() => {
+    if (myInjectedPrompt && messages.length > 0) {
+      const lastUserMsgIdx = messages.findLastIndex((m) => m.role === "user");
+      if (lastUserMsgIdx >= 0) {
+        setMessages((prev) =>
+          prev.map((m, i) =>
+            i === lastUserMsgIdx
+              ? {
+                  ...m,
+                  parts: [{ type: "text", text: myInjectedPrompt.text }],
+                }
+              : m,
+          ),
+        );
+        // Clear only this sub-chat's entry
+        const updated = new Map(appStore.get(ralphInjectedPromptsAtom));
+        updated.delete(subChatId);
+        appStore.set(ralphInjectedPromptsAtom, updated);
+      }
+    }
+  }, [myInjectedPrompt, subChatId, messages.length, setMessages]);
+
+  // Watch for pending Ralph auto-start (after PRD generation)
+  const pendingRalphAutoStarts = useAtomValue(pendingRalphAutoStartsAtom);
+  const myPendingAutoStart = pendingRalphAutoStarts.get(subChatId) ?? null;
+
+  useEffect(() => {
+    // Debug logging
+    console.log(
+      "[ralph] useEffect check - myPendingAutoStart:",
+      myPendingAutoStart,
+      "subChatId:",
+      subChatId,
+      "isStreaming:",
+      isStreaming,
+      "nextStory:",
+      ralphState?.nextStory?.id,
+    );
+
+    // Only auto-start when:
+    // 1. There's a pending auto-start for this sub-chat
+    // 2. Not currently streaming
+    // 3. Ralph state has loaded with correct story data
+    if (myPendingAutoStart && !isStreaming) {
+      const nextStory = ralphState?.nextStory;
+      const completedStoryId = myPendingAutoStart.completedStoryId;
+
+      // Wait for ralphState to load
+      if (!ralphState?.hasPrd) {
+        console.log("[ralph] Waiting for ralphState to load...");
+        return;
+      }
+
+      // If we just completed a story, wait until nextStory is different
+      // This ensures the query has refetched with updated data
+      if (completedStoryId && nextStory?.id === completedStoryId) {
+        console.log(
+          "[ralph] Waiting for nextStory to update (still showing completed story:",
+          completedStoryId,
+          ")",
+        );
+        return;
+      }
+
+      // Clear only this sub-chat's pending flag
+      const updated = new Map(appStore.get(pendingRalphAutoStartsAtom));
+      updated.delete(subChatId);
+      appStore.set(pendingRalphAutoStartsAtom, updated);
+
+      // Build message with actual story details
+      if (!nextStory) {
+        // All stories complete - no need to continue
+        console.log("[ralph] No next story available - all stories complete");
+        return;
+      }
+
+      const acceptanceCriteria =
+        nextStory.acceptanceCriteria?.join("\n  - ") || "";
+
+      // Use explicit type from PRD (AI sets this when generating stories)
+      // Default to "implementation" for backwards compatibility with older PRDs
+      const storyType = nextStory.type || "implementation";
+
+      // Build instructions based on story type
+      let instructions: string;
+      if (storyType === "research") {
+        instructions = `This is a **RESEARCH** story. Analyze the codebase and output your findings as markdown directly in this chat. Do NOT create code files to store research - just output text findings. Mark complete when done.`;
+      } else {
+        instructions = `Create the branch if needed, implement the changes, run quality checks, and commit when done.`;
+      }
+
+      const messageText = `Continue with story **${nextStory.id}: ${nextStory.title}**
+
+**Type:** ${storyType.toUpperCase()}
+
+**Description:** ${nextStory.description}
+
+**Acceptance Criteria:**
+  - ${acceptanceCriteria}
+
+${instructions} Remember to output \`<story-complete>${nextStory.id}</story-complete>\` when finished.`;
+
+      console.log(
+        "[ralph] Auto-starting - sending continue message for story:",
+        nextStory.id,
+      );
+
+      // Send a message to start implementing the next story
+      sendMessage({
+        role: "user",
+        parts: [
+          {
+            type: "text",
+            text: messageText,
+          },
+        ],
+      });
+    }
+  }, [
+    myPendingAutoStart,
+    isStreaming,
+    sendMessage,
+    subChatId,
+    ralphState?.nextStory,
+    ralphState?.hasPrd,
+  ]);
+
   const _handlePlanApproval = useCallback(
     async (toolUseId: string, approved: boolean) => {
       if (!toolUseId) return;
@@ -1155,14 +1331,14 @@ function ChatViewInner({
     useAgentSubChatStore.getState().updateSubChatMode(subChatId, "agent");
 
     // Update React state (for UI)
-    setIsPlanMode(false);
+    setAgentMode("agent");
 
     // Send "Implement plan" message (now in agent mode)
     sendMessage({
       role: "user",
       parts: [{ type: "text", text: "Implement plan" }],
     });
-  }, [subChatId, setIsPlanMode, sendMessage]);
+  }, [subChatId, setAgentMode, sendMessage]);
 
   // Detect PR URLs in assistant messages and store them
   const detectedPrUrlRef = useRef<string | null>(null);
@@ -1493,6 +1669,17 @@ function ChatViewInner({
     await sendMessage({ role: "user", parts });
   };
 
+  // Stable ref for handleSend - allows passing a stable callback to child components
+  const handleSendRef = useRef(handleSend);
+  handleSendRef.current = handleSend;
+  const stableHandleSend = useCallback(async () => {
+    await handleSendRef.current();
+  }, []);
+
+  // Ref for messages.length - used in callbacks to avoid dependency on streaming updates
+  const messagesLengthRef = useRef(messages.length);
+  messagesLengthRef.current = messages.length;
+
   // Handler for confirming branch switch and then sending the pending message
   const handleConfirmBranchSwitchForMessage = useCallback(async () => {
     const result = await branchSwitchForMessage.confirmSwitch();
@@ -1521,7 +1708,7 @@ function ChatViewInner({
     }
 
     // Trigger auto-rename on first message in a new sub-chat
-    if (messages.length === 0 && !hasTriggeredRenameRef.current) {
+    if (messagesLengthRef.current === 0 && !hasTriggeredRenameRef.current) {
       hasTriggeredRenameRef.current = true;
       onAutoRename(text || "Image message", subChatId);
     }
@@ -1591,7 +1778,6 @@ function ChatViewInner({
     setNavState,
     parentChatId,
     subChatId,
-    messages.length,
     onAutoRename,
     clearAll,
     teamId,
@@ -1662,13 +1848,18 @@ function ChatViewInner({
             }
             break;
           case "plan":
-            if (!isPlanMode) {
-              setIsPlanMode(true);
+            if (agentMode !== "plan") {
+              setAgentMode("plan");
             }
             break;
           case "agent":
-            if (isPlanMode) {
-              setIsPlanMode(false);
+            if (agentMode !== "agent") {
+              setAgentMode("agent");
+            }
+            break;
+          case "ralph":
+            if (agentMode !== "ralph") {
+              handleAgentModeChange("ralph");
             }
             break;
           case "compact":
@@ -1730,8 +1921,8 @@ function ChatViewInner({
       }
     },
     [
-      isPlanMode,
-      setIsPlanMode,
+      agentMode,
+      setAgentMode,
       handleSend,
       onCreateNewSubChat,
       handleCompact,
@@ -1752,25 +1943,36 @@ function ChatViewInner({
   // Check if there's an unapproved plan (ExitPlanMode without subsequent "Implement plan")
   const hasUnapprovedPlan = useMemo(() => {
     // Traverse messages from end to find unapproved ExitPlanMode
-    for (let i = messages.length - 1; i >= 0; i--) {
-      const msg = messages[i];
+    // for (let i = messages.length - 1; i >= 0; i--) {
+    //   const msg = messages[i];
 
-      // If user message says "Implement plan", plan is already approved
-      if (msg.role === "user") {
-        const text = msg.parts?.find((p: any) => p.type === "text")?.text || "";
-        if (text.trim().toLowerCase() === "implement plan") {
-          return false;
-        }
-      }
+    //   // If user message says "Implement plan", plan is already approved
+    //   if (msg.role === "user") {
+    //     const text = msg.parts?.find((p: any) => p.type === "text")?.text || "";
+    //     if (text.trim().toLowerCase() === "implement plan") {
+    //       return false;
+    //     }
+    //   }
 
-      // If assistant message with ExitPlanMode, we found an unapproved plan
-      if (msg.role === "assistant") {
-        const exitPlanPart = msg.parts?.find(
-          (p: any) => p.type === "tool-ExitPlanMode",
-        );
-        if (exitPlanPart?.output?.plan) {
-          return true;
-        }
+    //   // If assistant message with ExitPlanMode, we found an unapproved plan
+    //   if (msg.role === "assistant") {
+    //     const exitPlanPart = msg.parts?.find(
+    //       (p: any) => p.type === "tool-ExitPlanMode",
+    //     );
+    //     if (exitPlanPart?.output?.plan) {
+    //       return true;
+    //     }
+    //   }
+    // }
+
+    // If the latest assistant message is an ExitPlanMode with a plan, it's unapproved
+    const lastMsg = messages.length > 0 ? messages[messages.length - 1] : null;
+    if (lastMsg && lastMsg.role === "assistant") {
+      const exitPlanPart = lastMsg.parts?.find(
+        (p: any) => p.type === "tool-ExitPlanMode",
+      );
+      if (exitPlanPart?.output?.plan) {
+        return true;
       }
     }
     return false;
@@ -1830,6 +2032,106 @@ function ChatViewInner({
     };
   }, [subChatId, setPendingPlanApprovals]);
 
+  // Memoized JSX for ChatInputActions props to avoid recreating on every streaming update
+  const hasNoMessages = messages.length === 0;
+  const inputLeftContent = useMemo(
+    () => (
+      <>
+        {hasNoMessages && (
+          <ProviderSelectorDropdown
+            providerId={effectiveProvider}
+            onProviderChange={handleProviderChange}
+          />
+        )}
+        <ModeToggleDropdown
+          mode={agentMode}
+          onModeChange={handleAgentModeChange}
+        />
+        {agentMode === "ralph" && parentChatId && (
+          <RalphProgressBadge chatId={parentChatId} className="ml-1" />
+        )}
+        {effectiveProvider === "opencode" ? (
+          <OpenCodeModelSelector
+            currentModelId={currentModelId}
+            onModelChange={handleOpenCodeModelChange}
+          />
+        ) : (
+          <ModelSelectorDropdown
+            providerId={effectiveProvider}
+            models={providerModels}
+            currentModelId={currentModelId}
+            onModelChange={handleModelChange}
+            open={isModelDropdownOpen}
+            onOpenChange={setIsModelDropdownOpen}
+          />
+        )}
+        {effectiveProvider === "codex" && <WebSearchModeSelector />}
+        <AddedDirectoriesBadge subChatId={subChatId} />
+      </>
+    ),
+    [
+      hasNoMessages,
+      effectiveProvider,
+      handleProviderChange,
+      agentMode,
+      handleAgentModeChange,
+      parentChatId,
+      currentModelId,
+      handleOpenCodeModelChange,
+      providerModels,
+      handleModelChange,
+      isModelDropdownOpen,
+      setIsModelDropdownOpen,
+      subChatId,
+    ],
+  );
+
+  const inputActionButton = useMemo(() => {
+    if (
+      hasUnapprovedPlan &&
+      !hasContent &&
+      images.length === 0 &&
+      files.length === 0 &&
+      !isStreaming
+    ) {
+      return (
+        <Button
+          onClick={handleApprovePlan}
+          size="sm"
+          className="h-7 gap-1.5 rounded-lg"
+        >
+          Implement plan
+          <Kbd>⌘↵</Kbd>
+        </Button>
+      );
+    }
+    return (
+      <AgentSendButton
+        isStreaming={isStreaming}
+        isSubmitting={false}
+        disabled={
+          (!hasContent && images.length === 0 && files.length === 0) ||
+          isUploading ||
+          isStreaming
+        }
+        onClick={stableHandleSend}
+        onStop={handleStop}
+        isPlanMode={isPlanMode}
+      />
+    );
+  }, [
+    hasUnapprovedPlan,
+    hasContent,
+    images.length,
+    files.length,
+    isStreaming,
+    handleApprovePlan,
+    isUploading,
+    stableHandleSend,
+    handleStop,
+    isPlanMode,
+  ]);
+
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
       {/* Chat title - flex above scroll area (desktop only) */}
@@ -1851,7 +2153,9 @@ function ChatViewInner({
       {/* Hidden in overlay mode (File/Changes tabs overlay this area) */}
       {isOverlayMode ? (
         /* Render overlay content (CenterDiffView/CenterFileView) when in overlay mode */
-        <div className="flex-1 min-h-0 overflow-hidden">{overlayContent}</div>
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+          {overlayContent}
+        </div>
       ) : (
         <div
           ref={scrollRef}
@@ -1862,7 +2166,7 @@ function ChatViewInner({
           <div ref={contentRef}>
             {/* Worktree init progress - shows when init command is running */}
             <div className="px-4 pt-4">
-              <div className="w-full max-w-2xl xl:max-w-4xl mx-auto">
+              <div className="w-full max-w-2xl 2xl:max-w-4xl mx-auto">
                 <WorktreeInitProgress chatId={parentChatId} />
               </div>
             </div>
@@ -1894,7 +2198,7 @@ function ChatViewInner({
               : "bottom-26",
           )}
         >
-          <div className="w-full px-2 max-w-2xl xl:max-w-4xl mx-auto">
+          <div className="w-full px-2 max-w-2xl mx-auto">
             <AgentUserQuestion
               pendingQuestions={pendingQuestions}
               onAnswer={handleQuestionsAnswer}
@@ -1924,218 +2228,129 @@ function ChatViewInner({
         )}
 
         {/* Expanded content - SubChatStatusCard + Input */}
-        <AnimatePresence initial={false}>
-          {((isOverlayMode && isInputExpanded) ||
-            (!isOverlayMode && (isAtBottom || isInputExpanded))) && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
-              className="overflow-hidden"
-            >
-              {/* Sub-chat status card - pinned above input */}
-              {(isStreaming || changedFilesForSubChat.length > 0) &&
-                !(pendingQuestions?.subChatId === subChatId) && (
-                  <div className="px-2 -mb-6 relative z-0">
-                    <div className="w-full max-w-2xl mx-auto px-2">
-                      <SubChatStatusCard
-                        chatId={parentChatId}
-                        isStreaming={isStreaming}
-                        isCompacting={isCompacting}
-                        changedFiles={changedFilesForSubChat}
-                        worktreePath={projectPath}
-                        isOverlayMode={messages?.length !== 0}
-                        onStop={async () => {
-                          // Mark as manually aborted to prevent completion sound
-                          agentChatStore.setManuallyAborted(subChatId, true);
-                          await stop();
-                          // Call DELETE endpoint to cancel server-side stream
-                          await fetch(
-                            `/api/agents/chat?id=${encodeURIComponent(subChatId)}`,
-                            {
-                              method: "DELETE",
-                              credentials: "include",
-                            },
-                          );
-                        }}
-                      />
-                    </div>
-                  </div>
-                )}
-
-              {/* Input */}
-              <div
-                ref={inputContainerRef}
-                className={cn(
-                  "px-2 pb-2 shadow-xs shadow-background relative z-20",
-                  (isStreaming || changedFilesForSubChat.length > 0) &&
-                    !(pendingQuestions?.subChatId === subChatId) &&
-                    "-mt-3 pt-3",
-                  // In overlay mode, add top border for visual separation
-                  isOverlayMode && "border-border/50 pt-2",
-                )}
-              >
-                <div className="w-full max-w-2xl mx-auto">
-                  <ChatInputRoot
-                    maxHeight={200}
-                    onSubmit={handleSend}
-                    contextItems={
-                      images.length > 0 ||
-                      files.length > 0 ||
-                      codeSnippets.length > 0 ? (
-                        <ChatInputAttachments
-                          images={images}
-                          files={files}
-                          codeSnippets={codeSnippets}
-                          onRemoveImage={removeImage}
-                          onRemoveFile={removeFile}
-                          onRemoveCodeSnippet={removeCodeSnippet}
-                        />
-                      ) : undefined
-                    }
-                    onAddAttachments={handleAddAttachments}
-                    editorRef={editorRef}
-                    fileInputRef={fileInputRef}
-                    hasContent={hasContent}
+        {/* Always render to preserve input state, use CSS to hide */}
+        <div
+          className={cn(
+            "transition-all duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]",
+            (isOverlayMode && isInputExpanded) ||
+              (!isOverlayMode && (isAtBottom || isInputExpanded))
+              ? "opacity-100 visible max-h-[500px]"
+              : "opacity-0 invisible max-h-0 overflow-hidden pointer-events-none",
+          )}
+        >
+          {/* Sub-chat status card - pinned above input */}
+          {(isStreaming || changedFilesForSubChat.length > 0) &&
+            !(pendingQuestions?.subChatId === subChatId) && (
+              <div className="px-2 -mb-6 relative z-0">
+                <div className="w-full max-w-2xl mx-auto px-2">
+                  <SubChatStatusCard
+                    chatId={parentChatId}
                     isStreaming={isStreaming}
-                    isUploading={isUploading}
+                    isCompacting={isCompacting}
+                    changedFiles={changedFilesForSubChat}
+                    worktreePath={projectPath}
                     isOverlayMode={messages?.length !== 0}
-                  >
-                    <ChatInputEditor
-                      onTrigger={({ searchText, rect }) => {
-                        // Desktop: use projectPath for local file search
-                        if (projectPath || repository) {
-                          openMention(searchText, rect);
-                        }
-                      }}
-                      onCloseTrigger={closeMention}
-                      onSlashTrigger={({ searchText, rect }) =>
-                        handleSlashTrigger(searchText, rect)
-                      }
-                      onCloseSlashTrigger={handleCloseSlashTrigger}
-                      onContentChange={handleContentChange}
-                      onSubmit={handleSend}
-                      onShiftTab={() => {
-                        if (effectiveProvider !== "codex") {
-                          setIsPlanMode((prev) => !prev);
-                        }
-                      }}
-                      onArrowUp={handleArrowUp}
-                      onArrowDown={handleArrowDown}
-                      onPaste={handlePaste}
-                      onBlur={handleEditorBlur}
-                      isMobile={isMobile}
-                    />
-                    <ChatInputActions
-                      leftContent={
-                        <>
-                          {/* Provider selector - only show for new chats (no messages yet) */}
-                          {messages.length === 0 && (
-                            <ProviderSelectorDropdown
-                              providerId={effectiveProvider}
-                              onProviderChange={handleProviderChange}
-                            />
-                          )}
-
-                          {/* Mode toggle (Agent/Plan) - hidden for Codex which doesn't support plan mode */}
-                          {effectiveProvider !== "codex" && (
-                            <ModeToggleDropdown
-                              isPlanMode={isPlanMode}
-                              onModeChange={setIsPlanMode}
-                            />
-                          )}
-
-                          {/* Model selector */}
-                          {effectiveProvider === "opencode" ? (
-                            <OpenCodeModelSelector
-                              currentModelId={currentModelId}
-                              onModelChange={handleOpenCodeModelChange}
-                            />
-                          ) : (
-                            <ModelSelectorDropdown
-                              providerId={effectiveProvider}
-                              models={providerModels}
-                              currentModelId={currentModelId}
-                              onModelChange={handleModelChange}
-                              open={isModelDropdownOpen}
-                              onOpenChange={setIsModelDropdownOpen}
-                            />
-                          )}
-
-                          {/* Web search mode selector (Codex only) */}
-                          {effectiveProvider === "codex" && (
-                            <WebSearchModeSelector />
-                          )}
-
-                          {/* Added directories badge (for /add-dir command) */}
-                          <AddedDirectoriesBadge subChatId={subChatId} />
-                        </>
-                      }
-                      rightContent={
-                        <AgentContextIndicator
-                          messages={messages}
-                          onCompact={handleCompact}
-                          isCompacting={isCompacting}
-                          disabled={isStreaming}
-                        />
-                      }
-                      acceptedFileTypes="image/jpeg,image/png,.txt,.md,.markdown,.json,.yaml,.yml,.xml,.csv,.tsv,.log,.ini,.cfg,.conf,.js,.ts,.jsx,.tsx,.py,.rb,.go,.rs,.java,.kt,.swift,.c,.cpp,.h,.hpp,.cs,.php,.html,.css,.scss,.sass,.less,.sql,.sh,.bash,.zsh,.ps1,.bat,.env,.gitignore,.dockerignore,.editorconfig,.prettierrc,.eslintrc,.babelrc,.nvmrc,.pdf"
-                      onAddAttachments={handleAddAttachments}
-                      maxImages={5}
-                      maxFiles={10}
-                      imageCount={images.length}
-                      fileCount={files.length}
-                      actionButton={
-                        hasUnapprovedPlan &&
-                        !hasContent &&
-                        images.length === 0 &&
-                        files.length === 0 &&
-                        !isStreaming ? (
-                          <Button
-                            onClick={handleApprovePlan}
-                            size="sm"
-                            className="h-7 gap-1.5 rounded-lg"
-                          >
-                            Implement plan
-                            <Kbd>⌘↵</Kbd>
-                          </Button>
-                        ) : (
-                          <AgentSendButton
-                            isStreaming={isStreaming}
-                            isSubmitting={false}
-                            disabled={
-                              (!hasContent &&
-                                images.length === 0 &&
-                                files.length === 0) ||
-                              isUploading ||
-                              isStreaming
-                            }
-                            onClick={handleSend}
-                            onStop={async () => {
-                              // Mark as manually aborted to prevent completion sound
-                              agentChatStore.setManuallyAborted(
-                                subChatId,
-                                true,
-                              );
-                              await stop();
-                              // Call DELETE endpoint to cancel server-side stream
-                              await fetch(
-                                `/api/agents/chat?id=${encodeURIComponent(subChatId)}`,
-                                { method: "DELETE", credentials: "include" },
-                              );
-                            }}
-                            isPlanMode={isPlanMode}
-                          />
-                        )
-                      }
-                    />
-                  </ChatInputRoot>
+                    onStop={handleStop}
+                  />
                 </div>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            )}
+
+          {/* Input */}
+          <div
+            ref={inputContainerRef}
+            className={cn(
+              "px-2 pb-2 shadow-xs shadow-background relative z-20",
+              (isStreaming || changedFilesForSubChat.length > 0) &&
+                !(pendingQuestions?.subChatId === subChatId) &&
+                "-mt-3 pt-3",
+              // In overlay mode, add top border for visual separation
+              isOverlayMode && "border-border/50 pt-2",
+            )}
+          >
+            <div className="w-full max-w-2xl mx-auto">
+              <ChatInputRoot
+                maxHeight={200}
+                onSubmit={stableHandleSend}
+                contextItems={
+                  images.length > 0 ||
+                  files.length > 0 ||
+                  codeSnippets.length > 0 ? (
+                    <ChatInputAttachments
+                      images={images}
+                      files={files}
+                      codeSnippets={codeSnippets}
+                      onRemoveImage={removeImage}
+                      onRemoveFile={removeFile}
+                      onRemoveCodeSnippet={removeCodeSnippet}
+                    />
+                  ) : undefined
+                }
+                onAddAttachments={handleAddAttachments}
+                editorRef={editorRef}
+                fileInputRef={fileInputRef}
+                hasContent={hasContent}
+                isStreaming={isStreaming}
+                isUploading={isUploading}
+                isOverlayMode={messages?.length !== 0}
+              >
+                <ChatInputEditor
+                  onTrigger={({ searchText, rect }) => {
+                    // Desktop: use projectPath for local file search
+                    if (projectPath || repository) {
+                      openMention(searchText, rect);
+                    }
+                  }}
+                  onCloseTrigger={closeMention}
+                  onSlashTrigger={({ searchText, rect }) =>
+                    handleSlashTrigger(searchText, rect)
+                  }
+                  onCloseSlashTrigger={handleCloseSlashTrigger}
+                  onContentChange={handleContentChange}
+                  onSubmit={stableHandleSend}
+                  onShiftTab={() => {
+                    const nextMode: AgentMode = (() => {
+                      switch (agentMode) {
+                        case "agent":
+                          return "plan";
+                        case "plan":
+                          return "ralph";
+                        case "ralph":
+                          return "agent";
+                        default:
+                          return "agent";
+                      }
+                    })();
+                    handleAgentModeChange(nextMode);
+                  }}
+                  onArrowUp={handleArrowUp}
+                  onArrowDown={handleArrowDown}
+                  onPaste={handlePaste}
+                  onBlur={handleEditorBlur}
+                  isMobile={isMobile}
+                />
+                <ChatInputActions
+                  leftContent={inputLeftContent}
+                  rightContent={
+                    <AgentContextIndicator
+                      messages={messages}
+                      onCompact={handleCompact}
+                      isCompacting={isCompacting}
+                      disabled={isStreaming}
+                    />
+                  }
+                  acceptedFileTypes="image/jpeg,image/png,.txt,.md,.markdown,.json,.yaml,.yml,.xml,.csv,.tsv,.log,.ini,.cfg,.conf,.js,.ts,.jsx,.tsx,.py,.rb,.go,.rs,.java,.kt,.swift,.c,.cpp,.h,.hpp,.cs,.php,.html,.css,.scss,.sass,.less,.sql,.sh,.bash,.zsh,.ps1,.bat,.env,.gitignore,.dockerignore,.editorconfig,.prettierrc,.eslintrc,.babelrc,.nvmrc,.pdf"
+                  onAddAttachments={handleAddAttachments}
+                  maxImages={5}
+                  maxFiles={10}
+                  imageCount={images.length}
+                  fileCount={files.length}
+                  actionButton={inputActionButton}
+                />
+              </ChatInputRoot>
+            </div>
+          </div>
+        </div>
 
         {/* File mention dropdown */}
         {/* Desktop: use projectPath for local file search */}
@@ -2182,6 +2397,13 @@ function ChatViewInner({
         onConfirm={handleConfirmBranchSwitchForMessage}
         onCancel={branchSwitchForMessage.cancelSwitch}
       />
+
+      {/* Ralph Setup Dialog for creating/editing PRD */}
+      <RalphSetupDialog
+        chatId={parentChatId}
+        open={ralphSetupOpen}
+        onOpenChange={setRalphSetupOpen}
+      />
     </div>
   );
 }
@@ -2215,7 +2437,8 @@ export function ChatView({
   overlayContent?: React.ReactNode;
 }) {
   const [selectedTeamId] = useAtom(selectedTeamIdAtom);
-  const [isPlanMode] = useAtom(isPlanModeAtom);
+  const [agentMode] = useAtom(agentModeAtom);
+  const isPlanMode = agentMode === "plan";
   const setLoadingSubChats = useSetAtom(loadingSubChatsAtom);
   const unseenChanges = useAtomValue(agentsUnseenChangesAtom);
   const setUnseenChanges = useSetAtom(agentsUnseenChangesAtom);
@@ -2244,9 +2467,8 @@ export function ChatView({
   const [isTerminalSidebarOpen, setIsTerminalSidebarOpen] = useAtom(
     terminalSidebarOpenAtom,
   );
-  const [isChatsSidebarOpen, setIsChatsSidebarOpen] = useAtom(
-    chatsSidebarOpenAtom,
-  );
+  const [isChatsSidebarOpen, setIsChatsSidebarOpen] =
+    useAtom(chatsSidebarOpenAtom);
   // Clear "unseen changes" when chat is opened
   useEffect(() => {
     setUnseenChanges((prev: Set<string>) => {
@@ -2300,7 +2522,7 @@ export function ChatView({
   const agentSubChats = (agentChat?.subChats ?? []) as Array<{
     id: string;
     name?: string | null;
-    mode?: "plan" | "agent" | null;
+    mode?: "plan" | "agent" | "ralph" | null;
     created_at?: Date | string | null;
     updated_at?: Date | string | null;
     messages?: any;
@@ -2503,12 +2725,14 @@ export function ChatView({
     diffContent,
     parsedFileDiffs,
     prefetchedFileContents,
+    commits,
     fetchDiffStatsRef,
   } = useDiffManagement({
     chatId,
     worktreePath,
     sandboxId,
     isDiffSidebarOpen,
+    baseBranch,
   });
 
   // Subscribe to git status changes for real-time diff updates
@@ -2526,6 +2750,30 @@ export function ChatView({
       },
       onError: (error) => {
         console.error("[ActiveChat] Git watch error:", error);
+      },
+    },
+  );
+
+  // Subscribe to branch changes for real-time detection
+  const branchWatcherSubscriberId = useId();
+  trpc.changes.watchBranchChange.useSubscription(
+    {
+      chatId,
+      worktreePath: worktreePath ?? "",
+      subscriberId: branchWatcherSubscriberId,
+    },
+    {
+      enabled: !!worktreePath,
+      onData: () => {
+        // Refetch diff data when branch changes
+        fetchDiffStatsRef.current?.();
+        // Invalidate chat query to get updated branch from DB
+        trpcUtils.chats.get.invalidate({ id: chatId });
+        // Also invalidate sidebar chat list (shows branch badges)
+        trpcUtils.chats.listWithSubChats.invalidate();
+      },
+      onError: (error) => {
+        console.error("[ActiveChat] Branch watch error:", error);
       },
     },
   );
@@ -2553,6 +2801,7 @@ export function ChatView({
         diffContent,
         parsedFileDiffs,
         prefetchedFileContents,
+        commits,
       });
     } else {
       setActiveChatDiffData(null);
@@ -2580,6 +2829,7 @@ export function ChatView({
     diffContent,
     parsedFileDiffs,
     prefetchedFileContents,
+    commits,
     canOpenDiff,
     setActiveChatDiffData,
   ]);
@@ -2691,7 +2941,7 @@ export function ChatView({
           createdAt ?? existingLocal?.created_at ?? new Date().toISOString(),
         updated_at: updatedAt ?? existingLocal?.updated_at,
         mode:
-          (sc.mode as "plan" | "agent" | undefined) ||
+          (sc.mode as "plan" | "agent" | "ralph" | undefined) ||
           existingLocal?.mode ||
           "agent",
         providerId:
@@ -2753,11 +3003,11 @@ export function ChatView({
       const subChat = agentSubChats.find((sc) => sc.id === subChatId);
       const messages = (subChat?.messages as any[]) || [];
 
-      // Get mode from store metadata (falls back to current isPlanMode)
+      // Get mode from store metadata (falls back to current agentMode)
       const subChatMeta = useAgentSubChatStore
         .getState()
         .allSubChats.find((sc) => sc.id === subChatId);
-      const subChatMode = subChatMeta?.mode || (isPlanMode ? "plan" : "agent");
+      const subChatMode = subChatMeta?.mode || agentMode;
 
       // Desktop: use IPCChatTransport for local Claude Code execution
       // Note: Extended thinking setting is read dynamically inside the transport
@@ -2896,7 +3146,7 @@ export function ChatView({
 
     // Proceed with sub-chat creation
     const store = useAgentSubChatStore.getState();
-    const subChatMode = isPlanMode ? "plan" : "agent";
+    const subChatMode = agentMode;
 
     // Create sub-chat in DB first to get the real ID
     const newSubChat = await trpcClient.chats.createSubChat.mutate({
@@ -3076,7 +3326,7 @@ export function ChatView({
 
     // Create sub-chat after successful branch switch
     const store = useAgentSubChatStore.getState();
-    const subChatMode = appStore.get(isPlanModeAtom) ? "plan" : "agent";
+    const subChatMode = appStore.get(agentModeAtom);
 
     // Get provider from current effective provider state
     const currentProvider = effectiveProvider;
@@ -3446,7 +3696,9 @@ export function ChatView({
                 branch={branch}
                 baseBranch={baseBranch}
                 isChatsSidebarOpen={isChatsSidebarOpen}
-                onToggleChatsSidebar={() => setIsChatsSidebarOpen(!isChatsSidebarOpen)}
+                onToggleChatsSidebar={() =>
+                  setIsChatsSidebarOpen(!isChatsSidebarOpen)
+                }
                 isArchived={isArchived}
                 onRestoreWorkspace={handleRestoreWorkspace}
                 isRestoring={restoreWorkspaceMutation.isPending}
@@ -3485,7 +3737,7 @@ export function ChatView({
 
                 {/* Disabled input while loading */}
                 <div className="px-2 pb-2">
-                  <div className="w-full max-w-2xl xl:max-w-4xl mx-auto">
+                  <div className="w-full max-w-2xl 2xl:max-w-4xl mx-auto">
                     <div className="relative w-full">
                       <PromptInput
                         className="border bg-input-background relative z-10 p-2 rounded-xs opacity-50 pointer-events-none"

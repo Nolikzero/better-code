@@ -2,6 +2,7 @@
 
 import type { ProviderId } from "@shared/types";
 import { TerminalSquare } from "lucide-react";
+import { OpenInDropdown } from "../../../components/open-in-dropdown";
 import { Button } from "../../../components/ui/button";
 import {
   IconCloseSidebarRight,
@@ -196,6 +197,10 @@ export function ChatHeader({
               <Kbd>⌘J</Kbd>
             </TooltipContent>
           </Tooltip>
+        )}
+        {/* Open In Dropdown - shows when project path is available (desktop only) */}
+        {!isMobileFullscreen && (worktreePath || originalProjectPath) && (
+          <OpenInDropdown path={worktreePath || originalProjectPath || ""} />
         )}
         {/* Chats Sidebar Toggle Button - shows on desktop only */}
         {!isMobileFullscreen && (

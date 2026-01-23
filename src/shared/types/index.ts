@@ -8,6 +8,8 @@ export type {
   FileStats,
   ParsedDiffFile,
 } from "./diff-stats.types";
+// External app types
+export type { ExternalApp } from "./external-app.types";
 // Message types
 export type {
   MCPServer,

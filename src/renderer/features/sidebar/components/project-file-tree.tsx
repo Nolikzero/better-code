@@ -12,10 +12,12 @@ import {
   useRef,
   useState,
 } from "react";
+import { OpenInContextMenu } from "../../../components/open-in-context-menu";
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuSeparator,
   ContextMenuTrigger,
 } from "../../../components/ui/context-menu";
 import { FilesIcon } from "../../../components/ui/icons";
@@ -687,6 +689,14 @@ export function ProjectFileTree() {
           <MessageSquarePlus className="mr-2 h-4 w-4" />
           Add to Chat
         </ContextMenuItem>
+        {browsePath && contextMenuEntry && (
+          <>
+            <ContextMenuSeparator />
+            <OpenInContextMenu
+              path={`${browsePath.replace(/\/+$/, "")}/${contextMenuEntry.path.replace(/^\/+/, "")}`}
+            />
+          </>
+        )}
       </ContextMenuContent>
     </ContextMenu>
   );

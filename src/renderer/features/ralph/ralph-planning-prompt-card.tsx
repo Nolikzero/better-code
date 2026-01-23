@@ -44,7 +44,7 @@ export const RalphPlanningPromptCard = memo(function RalphPlanningPromptCard({
         ref={contentRef}
         onClick={() => showGradient && setIsExpanded(true)}
         className={cn(
-          "relative max-h-[60px] overflow-hidden bg-input-background border px-3 py-2 rounded-xs font-mono text-xs whitespace-pre-wrap transition-[filter]",
+          "relative max-h-[40px] overflow-hidden bg-input-background border px-3 py-2 rounded-xs font-mono text-xs whitespace-pre-wrap transition-[filter]",
           showGradient && "cursor-pointer hover:brightness-110",
         )}
       >

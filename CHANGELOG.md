@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.0.5]
+
+### Added
+
+- Windows and Linux platform compatibility for shell and terminal handling
+
+### Fixed
+
+- Unix shell command arguments updated for interactive login environment
+
+### Changed
+
+- Streamlined platform checks and improved shell command handling
+- Liquid Glass theme updated to use dark variant with improved color definitions
+- Reduced maximum height of message bubbles for better UI consistency
+
 ## [0.0.4]
 
 ### Changed

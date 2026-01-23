@@ -3,7 +3,13 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { CmdIcon } from "../../icons";
-import { ctrlTabTargetAtom } from "../../lib/atoms";
+import {
+  type KeybindingCategory,
+  type ResolvedKeybinding,
+  resolvedKeybindingsAtom,
+} from "../../lib/keybindings";
+import { keyComboToDisplayKeys } from "../../lib/keybindings/display";
+import { getActiveCombo } from "../../lib/keybindings/matcher";
 
 interface AgentsShortcutsDialogProps {
   isOpen: boolean;
@@ -11,12 +17,6 @@ interface AgentsShortcutsDialogProps {
 }
 
 const EASING_CURVE = [0.55, 0.055, 0.675, 0.19] as const;
-
-interface Shortcut {
-  label: string;
-  keys: Array<string>;
-  altKeys?: Array<string>;
-}
 
 function ShortcutKey({ keyName }: { keyName: string }) {
   if (keyName === "cmd") {
@@ -30,28 +30,32 @@ function ShortcutKey({ keyName }: { keyName: string }) {
   return (
     <kbd className="inline-flex h-5 min-w-5 min-h-5 max-h-full items-center justify-center rounded border border-muted bg-secondary px-1 font-[inherit] text-[11px] font-normal text-secondary-foreground">
       {keyName === "opt"
-        ? "⌥"
+        ? "\u2325"
         : keyName === "shift"
-          ? "⇧"
+          ? "\u21E7"
           : keyName === "ctrl"
-            ? "⌃"
+            ? "\u2303"
             : keyName}
     </kbd>
   );
 }
 
-function ShortcutRow({ shortcut }: { shortcut: Shortcut }) {
+function ShortcutRow({ binding }: { binding: ResolvedKeybinding }) {
+  const combos = getActiveCombo(binding.binding);
+  const primaryKeys = combos[0] ? keyComboToDisplayKeys(combos[0]) : [];
+  const altKeys = combos[1] ? keyComboToDisplayKeys(combos[1]) : undefined;
+
   return (
     <div className="flex items-center justify-between py-1">
-      <span className="text-sm text-foreground">{shortcut.label}</span>
+      <span className="text-sm text-foreground">{binding.label}</span>
       <div className="flex items-center gap-1">
-        {shortcut.keys.map((key, index) => (
+        {primaryKeys.map((key, index) => (
           <ShortcutKey key={index} keyName={key} />
         ))}
-        {shortcut.altKeys && (
+        {altKeys && (
           <>
             <span className="text-xs text-muted-foreground mx-0.5">or</span>
-            {shortcut.altKeys.map((key, index) => (
+            {altKeys.map((key, index) => (
               <ShortcutKey key={`alt-${index}`} keyName={key} />
             ))}
           </>
@@ -61,79 +65,38 @@ function ShortcutRow({ shortcut }: { shortcut: Shortcut }) {
   );
 }
 
-// Desktop app shortcuts (simplified)
-const GENERAL_SHORTCUTS: Shortcut[] = [
-  { label: "Show shortcuts", keys: ["?"] },
-  { label: "Settings", keys: ["cmd", ","] },
-  { label: "Toggle sidebar", keys: ["cmd", "\\"] },
-  { label: "Undo archive", keys: ["cmd", "Z"] },
-];
-
-// Dynamic shortcuts based on ctrlTabTarget preference
-function getWorkspaceShortcuts(
-  ctrlTabTarget: "workspaces" | "agents",
-): Shortcut[] {
-  return [
-    { label: "New workspace", keys: ["cmd", "N"] },
-    { label: "Search workspaces", keys: ["cmd", "F"] },
-    { label: "Archive current workspace", keys: ["cmd", "E"] },
-    {
-      label: "Quick switch workspaces",
-      keys:
-        ctrlTabTarget === "workspaces"
-          ? ["ctrl", "Tab"]
-          : ["opt", "ctrl", "Tab"],
-    },
-  ];
-}
-
-function getAgentShortcuts(ctrlTabTarget: "workspaces" | "agents"): Shortcut[] {
-  return [
-    // Creation & Management (mirrors Workspaces order)
-    { label: "Create new agent", keys: ["cmd", "T"] },
-    { label: "Search chats", keys: ["/"] },
-    { label: "Archive current agent", keys: ["cmd", "W"] },
-    // Navigation
-    {
-      label: "Quick switch agents",
-      keys:
-        ctrlTabTarget === "workspaces"
-          ? ["opt", "ctrl", "Tab"]
-          : ["ctrl", "Tab"],
-    },
-    {
-      label: "Previous / Next agent",
-      keys: ["cmd", "["],
-      altKeys: ["cmd", "]"],
-    },
-    // Interaction
-    { label: "Focus input", keys: ["Enter"] },
-    { label: "Toggle focus", keys: ["cmd", "Esc"] },
-    { label: "Stop generation", keys: ["Esc"], altKeys: ["ctrl", "C"] },
-    { label: "Switch model", keys: ["cmd", "/"] },
-    // Tools
-    { label: "Toggle terminal", keys: ["cmd", "J"] },
-    { label: "Open diff", keys: ["cmd", "D"] },
-    { label: "Go to file", keys: ["cmd", "P"] },
-    { label: "Create PR", keys: ["cmd", "shift", "P"] },
-  ];
-}
+const CATEGORY_LABELS: Record<KeybindingCategory, string> = {
+  general: "General",
+  workspaces: "Workspaces",
+  agents: "Agents",
+};
 
 export function AgentsShortcutsDialog({
   isOpen,
   onClose,
 }: AgentsShortcutsDialogProps) {
-  const ctrlTabTarget = useAtomValue(ctrlTabTargetAtom);
+  const resolved = useAtomValue(resolvedKeybindingsAtom);
 
-  // Memoize shortcuts based on preference
-  const workspaceShortcuts = useMemo(
-    () => getWorkspaceShortcuts(ctrlTabTarget),
-    [ctrlTabTarget],
-  );
-  const agentShortcuts = useMemo(
-    () => getAgentShortcuts(ctrlTabTarget),
-    [ctrlTabTarget],
-  );
+  const grouped = useMemo(() => {
+    const categories: KeybindingCategory[] = [
+      "general",
+      "workspaces",
+      "agents",
+    ];
+    const groups: Record<KeybindingCategory, ResolvedKeybinding[]> = {
+      general: [],
+      workspaces: [],
+      agents: [],
+    };
+
+    for (const binding of resolved) {
+      groups[binding.category].push(binding);
+    }
+
+    return categories
+      .filter((cat) => groups[cat].length > 0)
+      .map((cat) => ({ category: cat, bindings: groups[cat] }));
+  }, [resolved]);
 
   // Handle ESC key to close dialog
   useEffect(() => {
@@ -194,45 +157,48 @@ export function AgentsShortcutsDialog({
                     Keyboard Shortcuts
                   </h2>
 
-                  {/* Two-column layout: General+Workspaces | Agents */}
+                  {/* Two-column layout */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
                     {/* Left column: General + Workspaces */}
                     <div className="space-y-6">
-                      {/* General Section */}
-                      <div>
-                        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                          General
-                        </h3>
-                        <div className="space-y-1.5">
-                          {GENERAL_SHORTCUTS.map((shortcut, index) => (
-                            <ShortcutRow key={index} shortcut={shortcut} />
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Workspaces Section */}
-                      <div>
-                        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                          Workspaces
-                        </h3>
-                        <div className="space-y-1.5">
-                          {workspaceShortcuts.map((shortcut, index) => (
-                            <ShortcutRow key={index} shortcut={shortcut} />
-                          ))}
-                        </div>
-                      </div>
+                      {grouped
+                        .filter((g) => g.category !== "agents")
+                        .map(({ category, bindings }) => (
+                          <div key={category}>
+                            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                              {CATEGORY_LABELS[category]}
+                            </h3>
+                            <div className="space-y-1.5">
+                              {bindings.map((binding) => (
+                                <ShortcutRow
+                                  key={binding.id}
+                                  binding={binding}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        ))}
                     </div>
 
                     {/* Right column: Agents */}
                     <div>
-                      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                        Agents
-                      </h3>
-                      <div className="space-y-1.5">
-                        {agentShortcuts.map((shortcut, index) => (
-                          <ShortcutRow key={index} shortcut={shortcut} />
+                      {grouped
+                        .filter((g) => g.category === "agents")
+                        .map(({ category, bindings }) => (
+                          <div key={category}>
+                            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                              {CATEGORY_LABELS[category]}
+                            </h3>
+                            <div className="space-y-1.5">
+                              {bindings.map((binding) => (
+                                <ShortcutRow
+                                  key={binding.id}
+                                  binding={binding}
+                                />
+                              ))}
+                            </div>
+                          </div>
                         ))}
-                      </div>
                     </div>
                   </div>
                 </div>

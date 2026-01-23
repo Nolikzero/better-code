@@ -43,7 +43,6 @@ export interface AgentActionDefinition {
   label: string;
   description?: string;
   category: AgentActionCategory;
-  hotkey?: string | string[];
   handler: AgentActionHandler;
   isAvailable?: (context: AgentActionContext) => boolean;
 }
@@ -57,7 +56,6 @@ const openShortcutsAction: AgentActionDefinition = {
   label: "Keyboard shortcuts",
   description: "Show all keyboard shortcuts",
   category: "general",
-  hotkey: "?",
   handler: async (context) => {
     context.setShortcutsDialogOpen?.(true);
     return { success: true };
@@ -69,15 +67,8 @@ const createNewAgentAction: AgentActionDefinition = {
   label: "New workspace",
   description: "Create a new workspace",
   category: "general",
-  hotkey: ["cmd+n", "ctrl+n"],
   handler: async (context) => {
-    console.log("[Action] create-new-agent handler called");
-    console.log(
-      "[Action] setSelectedChatId exists:",
-      !!context.setSelectedChatId,
-    );
     if (context.setSelectedChatId) {
-      console.log("[Action] Calling setSelectedChatId(null)");
       context.setSelectedChatId(null);
     }
     return { success: true };
@@ -89,7 +80,6 @@ const openSettingsAction: AgentActionDefinition = {
   label: "Settings",
   description: "Open settings dialog",
   category: "general",
-  hotkey: ["cmd+,", "ctrl+,"],
   handler: async (context) => {
     context.setSettingsActiveTab?.("profile");
     context.setSettingsDialogOpen?.(true);
@@ -102,7 +92,6 @@ const toggleSidebarAction: AgentActionDefinition = {
   label: "Toggle sidebar",
   description: "Show/hide left sidebar",
   category: "view",
-  hotkey: ["cmd+\\", "ctrl+\\"],
   handler: async (context) => {
     context.setSidebarOpen?.((prev) => !prev);
     return { success: true };
@@ -114,7 +103,6 @@ const toggleChatsSidebarAction: AgentActionDefinition = {
   label: "Toggle chats sidebar",
   description: "Show/hide right chats sidebar",
   category: "view",
-  hotkey: ["cmd+shift+\\", "ctrl+shift+\\"],
   handler: async (context) => {
     context.setChatsSidebarOpen?.((prev) => !prev);
     return { success: true };
@@ -132,21 +120,6 @@ export const AGENT_ACTIONS: Record<string, AgentActionDefinition> = {
   "toggle-sidebar": toggleSidebarAction,
   "toggle-chats-sidebar": toggleChatsSidebarAction,
 };
-
-function _getAgentAction(id: string): AgentActionDefinition | undefined {
-  return AGENT_ACTIONS[id];
-}
-
-export function getAvailableAgentActions(
-  context: AgentActionContext,
-): AgentActionDefinition[] {
-  return Object.values(AGENT_ACTIONS).filter((action) => {
-    if (action.isAvailable) {
-      return action.isAvailable(context);
-    }
-    return true;
-  });
-}
 
 export async function executeAgentAction(
   actionId: string,

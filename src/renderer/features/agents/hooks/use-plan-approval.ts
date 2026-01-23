@@ -1,8 +1,10 @@
 "use client";
 
 import type { Chat } from "@ai-sdk/react";
-import { useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo } from "react";
+import { resolvedKeybindingsAtom } from "../../../lib/keybindings";
+import { matchesBinding } from "../../../lib/keybindings/matcher";
 import { pendingPlanApprovalsAtom } from "../atoms";
 import { useAgentSubChatStore } from "../stores/sub-chat-store";
 
@@ -83,15 +85,21 @@ export function usePlanApproval(
     });
   }, [subChatId, setAgentMode, sendMessage]);
 
-  // Keyboard shortcut: Cmd+Enter to approve plan
+  // Keyboard shortcut: Approve plan (reads from keybindings registry)
+  const resolved = useAtomValue(resolvedKeybindingsAtom);
+  const approvePlanBinding = useMemo(
+    () => resolved.find((b) => b.id === "agents.approve-plan"),
+    [resolved],
+  );
+
   useEffect(() => {
+    if (!approvePlanBinding) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (
-        e.key === "Enter" &&
-        e.metaKey &&
-        !e.shiftKey &&
         hasUnapprovedPlan &&
-        !isStreaming
+        !isStreaming &&
+        matchesBinding(e, approvePlanBinding.binding)
       ) {
         e.preventDefault();
         handleApprovePlan();
@@ -100,7 +108,7 @@ export function usePlanApproval(
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [hasUnapprovedPlan, isStreaming, handleApprovePlan]);
+  }, [hasUnapprovedPlan, isStreaming, handleApprovePlan, approvePlanBinding]);
 
   // Clean up pending plan approval when unmounting
   useEffect(() => {

@@ -1,27 +1,29 @@
-import { type RefObject, useEffect } from "react";
+import { useAtomValue } from "jotai";
+import { type RefObject, useEffect, useMemo } from "react";
+import { resolvedKeybindingsAtom } from "../../../lib/keybindings";
+import { matchesBinding } from "../../../lib/keybindings/matcher";
 
 /**
- * Hook to toggle focus when Cmd+Esc (or Ctrl+Esc) is pressed.
+ * Hook to toggle focus when the toggle-focus keybinding is pressed.
  * - If focused → blur
  * - If not focused → focus
- * Does not interfere with stop generation (Esc without modifiers).
  *
- * @param editorRef - Ref to the editor/input element
+ * Reads key combo from the centralized keybindings registry.
  */
 export function useToggleFocusOnCmdEsc(
   editorRef: RefObject<{ focus: () => void; blur: () => void } | null>,
 ) {
+  const resolved = useAtomValue(resolvedKeybindingsAtom);
+  const binding = useMemo(
+    () => resolved.find((b) => b.id === "agents.toggle-focus"),
+    [resolved],
+  );
+
   useEffect(() => {
+    if (!binding) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Only handle Cmd+Esc (or Ctrl+Esc on Windows/Linux)
-      if (
-        e.key !== "Escape" ||
-        !(e.metaKey || e.ctrlKey) ||
-        e.shiftKey ||
-        e.altKey
-      ) {
-        return;
-      }
+      if (!matchesBinding(e, binding.binding)) return;
 
       e.preventDefault();
       e.stopPropagation();
@@ -29,7 +31,6 @@ export function useToggleFocusOnCmdEsc(
       const editor = editorRef.current;
       if (!editor) return;
 
-      // Check if any input/contenteditable is currently focused
       const activeElement = document.activeElement;
       const isInputFocused =
         activeElement instanceof HTMLInputElement ||
@@ -39,10 +40,8 @@ export function useToggleFocusOnCmdEsc(
           activeElement.getAttribute("contenteditable") !== "false");
 
       if (isInputFocused) {
-        // Blur if any input is focused
         editor.blur();
       } else {
-        // Focus if no input is focused
         editor.focus();
       }
     };
@@ -50,5 +49,5 @@ export function useToggleFocusOnCmdEsc(
     window.addEventListener("keydown", handleKeyDown, { capture: true });
     return () =>
       window.removeEventListener("keydown", handleKeyDown, { capture: true });
-  }, [editorRef]);
+  }, [editorRef, binding]);
 }

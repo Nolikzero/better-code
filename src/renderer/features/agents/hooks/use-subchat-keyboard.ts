@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
-import { isDesktopApp } from "../../../lib/utils/platform";
+import { useAtomValue } from "jotai";
+import { useEffect, useMemo } from "react";
+import { resolvedKeybindingsAtom } from "../../../lib/keybindings";
+import { matchesBinding } from "../../../lib/keybindings/matcher";
 import { useAgentSubChatStore } from "../stores/sub-chat-store";
 
 export interface UseSubChatKeyboardOptions {
@@ -14,9 +16,11 @@ export interface UseSubChatKeyboardOptions {
 
 /**
  * Hook to handle sub-chat keyboard shortcuts:
- * - Cmd+T / Opt+Cmd+T - New sub-chat
- * - Cmd+W / Opt+Cmd+W - Close sub-chat (single or bulk)
- * - Cmd+[ / Cmd+] - Navigate between sub-chats
+ * - New sub-chat
+ * - Close sub-chat (single or bulk)
+ * - Navigate between sub-chats
+ *
+ * Reads key combos from the centralized keybindings registry.
  */
 export function useSubChatKeyboard({
   onCreateNew,
@@ -25,22 +29,25 @@ export function useSubChatKeyboard({
   selectedIds,
   clearSelection,
 }: UseSubChatKeyboardOptions): void {
-  // Keyboard shortcut: New sub-chat
-  // Web: Opt+Cmd+T (browser uses Cmd+T for new tab)
-  // Desktop: Cmd+T
+  const resolved = useAtomValue(resolvedKeybindingsAtom);
+
+  const bindings = useMemo(() => {
+    const map = new Map(resolved.map((b) => [b.id, b]));
+    return {
+      newTab: map.get("agents.new-tab"),
+      closeTab: map.get("agents.close-tab"),
+      prevTab: map.get("agents.prev-tab"),
+      nextTab: map.get("agents.next-tab"),
+    };
+  }, [resolved]);
+
+  // New sub-chat
   useEffect(() => {
+    if (!bindings.newTab) return;
+    const binding = bindings.newTab;
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      const isDesktop = isDesktopApp();
-
-      // Desktop: Cmd+T (without Alt)
-      if (isDesktop && e.metaKey && e.code === "KeyT" && !e.altKey) {
-        e.preventDefault();
-        onCreateNew();
-        return;
-      }
-
-      // Web: Opt+Cmd+T (with Alt)
-      if (e.altKey && e.metaKey && e.code === "KeyT") {
+      if (matchesBinding(e, binding.binding)) {
         e.preventDefault();
         onCreateNew();
       }
@@ -48,27 +55,15 @@ export function useSubChatKeyboard({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onCreateNew]);
+  }, [onCreateNew, bindings.newTab]);
 
-  // Keyboard shortcut: Close active sub-chat (or bulk close if multi-select mode)
-  // Web: Opt+Cmd+W (browser uses Cmd+W to close tab)
-  // Desktop: Cmd+W
+  // Close active sub-chat (or bulk close if multi-select mode)
   useEffect(() => {
+    if (!bindings.closeTab) return;
+    const binding = bindings.closeTab;
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      const isDesktop = isDesktopApp();
-
-      // Desktop: Cmd+W (without Alt)
-      const isDesktopShortcut =
-        isDesktop &&
-        e.metaKey &&
-        e.code === "KeyW" &&
-        !e.altKey &&
-        !e.shiftKey &&
-        !e.ctrlKey;
-      // Web: Opt+Cmd+W (with Alt)
-      const isWebShortcut = e.altKey && e.metaKey && e.code === "KeyW";
-
-      if (isDesktopShortcut || isWebShortcut) {
+      if (matchesBinding(e, binding.binding)) {
         e.preventDefault();
 
         const store = useAgentSubChatStore.getState();
@@ -80,7 +75,6 @@ export function useSubChatKeyboard({
             (id) => !idsToClose.includes(id),
           );
 
-          // Don't close all tabs via hotkey - user should use sidebar dialog for last tab
           if (remainingOpenIds.length > 0) {
             idsToClose.forEach((id) => {
               store.removeFromOpenSubChats(id);
@@ -95,8 +89,6 @@ export function useSubChatKeyboard({
         const activeId = store.activeSubChatId;
         const openIds = store.openSubChatIds;
 
-        // Only close if we have more than one tab open and there's an active tab
-        // removeFromOpenSubChats automatically switches to the last remaining tab
         if (activeId && openIds.length > 1) {
           store.removeFromOpenSubChats(activeId);
           addToUndoStack(activeId);
@@ -106,106 +98,59 @@ export function useSubChatKeyboard({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isMultiSelectMode, selectedIds, clearSelection, addToUndoStack]);
+  }, [
+    isMultiSelectMode,
+    selectedIds,
+    clearSelection,
+    addToUndoStack,
+    bindings.closeTab,
+  ]);
 
-  // Keyboard shortcut: Navigate between sub-chats
-  // Web: Opt+Cmd+[ and Opt+Cmd+] (browser uses Cmd+[ for back)
-  // Desktop: Cmd+[ and Cmd+]
+  // Navigate between sub-chats (prev/next)
   useEffect(() => {
+    if (!bindings.prevTab && !bindings.nextTab) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      const isDesktop = isDesktopApp();
+      const isPrev =
+        bindings.prevTab && matchesBinding(e, bindings.prevTab.binding);
+      const isNext =
+        bindings.nextTab && matchesBinding(e, bindings.nextTab.binding);
 
-      // Check for previous sub-chat shortcut ([ key)
-      const isPrevDesktop =
-        isDesktop &&
-        e.metaKey &&
-        e.code === "BracketLeft" &&
-        !e.altKey &&
-        !e.shiftKey &&
-        !e.ctrlKey;
-      const isPrevWeb = e.altKey && e.metaKey && e.code === "BracketLeft";
+      if (!isPrev && !isNext) return;
+      e.preventDefault();
 
-      if (isPrevDesktop || isPrevWeb) {
-        e.preventDefault();
+      const store = useAgentSubChatStore.getState();
+      const activeId = store.activeSubChatId;
+      const openIds = store.openSubChatIds;
 
-        const store = useAgentSubChatStore.getState();
-        const activeId = store.activeSubChatId;
-        const openIds = store.openSubChatIds;
+      if (openIds.length <= 1) return;
 
-        // Only navigate if we have multiple tabs
-        if (openIds.length <= 1) return;
-
-        // If no active tab, select first one
-        if (!activeId) {
-          store.setActiveSubChat(openIds[0]);
-          return;
-        }
-
-        // Find current index
-        const currentIndex = openIds.indexOf(activeId);
-
-        if (currentIndex === -1) {
-          // Current tab not found, select first
-          store.setActiveSubChat(openIds[0]);
-          return;
-        }
-
-        // Navigate to previous tab (cycle to end if at start)
-        const nextIndex =
-          currentIndex - 1 < 0 ? openIds.length - 1 : currentIndex - 1;
-        const nextId = openIds[nextIndex];
-
-        if (nextId) {
-          store.setActiveSubChat(nextId);
-        }
+      if (!activeId) {
+        store.setActiveSubChat(openIds[0]);
+        return;
       }
 
-      // Check for next sub-chat shortcut (] key)
-      const isNextDesktop =
-        isDesktop &&
-        e.metaKey &&
-        e.code === "BracketRight" &&
-        !e.altKey &&
-        !e.shiftKey &&
-        !e.ctrlKey;
-      const isNextWeb = e.altKey && e.metaKey && e.code === "BracketRight";
+      const currentIndex = openIds.indexOf(activeId);
+      if (currentIndex === -1) {
+        store.setActiveSubChat(openIds[0]);
+        return;
+      }
 
-      if (isNextDesktop || isNextWeb) {
-        e.preventDefault();
+      let nextIndex: number;
+      if (isPrev) {
+        nextIndex =
+          currentIndex - 1 < 0 ? openIds.length - 1 : currentIndex - 1;
+      } else {
+        nextIndex = (currentIndex + 1) % openIds.length;
+      }
 
-        const store = useAgentSubChatStore.getState();
-        const activeId = store.activeSubChatId;
-        const openIds = store.openSubChatIds;
-
-        // Only navigate if we have multiple tabs
-        if (openIds.length <= 1) return;
-
-        // If no active tab, select first one
-        if (!activeId) {
-          store.setActiveSubChat(openIds[0]);
-          return;
-        }
-
-        // Find current index
-        const currentIndex = openIds.indexOf(activeId);
-
-        if (currentIndex === -1) {
-          // Current tab not found, select first
-          store.setActiveSubChat(openIds[0]);
-          return;
-        }
-
-        // Navigate to next tab (cycle to start if at end)
-        const nextIndex = (currentIndex + 1) % openIds.length;
-        const nextId = openIds[nextIndex];
-
-        if (nextId) {
-          store.setActiveSubChat(nextId);
-        }
+      const nextId = openIds[nextIndex];
+      if (nextId) {
+        store.setActiveSubChat(nextId);
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [bindings.prevTab, bindings.nextTab]);
 }

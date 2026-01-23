@@ -1,5 +1,5 @@
 import { useAtom } from "jotai";
-import { Bug, ChevronLeft, ChevronRight, Cpu, X } from "lucide-react";
+import { Bug, ChevronLeft, ChevronRight, Cpu, Keyboard, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -21,6 +21,7 @@ import {
 import { AgentsAppearanceTab } from "./settings-tabs/agents-appearance-tab";
 import { AgentsCustomAgentsTab } from "./settings-tabs/agents-custom-agents-tab";
 import { AgentsDebugTab } from "./settings-tabs/agents-debug-tab";
+import { AgentsKeybindingsTab } from "./settings-tabs/agents-keybindings-tab";
 import { AgentsMcpTab } from "./settings-tabs/agents-mcp-tab";
 import { AgentsPreferencesTab } from "./settings-tabs/agents-preferences-tab";
 import { AgentsProfileTab } from "./settings-tabs/agents-profile-tab";
@@ -70,6 +71,12 @@ const ALL_TABS = [
     label: "Preferences",
     icon: SlidersFilledIcon,
     description: "Claude behavior settings",
+  },
+  {
+    id: "keybindings" as SettingsTab,
+    label: "Keybindings",
+    icon: Keyboard,
+    description: "Customize keyboard shortcuts",
   },
   {
     id: "provider" as SettingsTab,
@@ -218,6 +225,8 @@ export function AgentsSettingsDialog({
         return <AgentsAppearanceTab />;
       case "preferences":
         return <AgentsPreferencesTab />;
+      case "keybindings":
+        return <AgentsKeybindingsTab />;
       case "provider":
         return <AgentsProviderTab />;
       case "skills":

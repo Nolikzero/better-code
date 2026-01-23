@@ -1,59 +1,15 @@
 /**
  * Hotkeys manager for Agents
- * Centralized keyboard shortcut handling
+ * Centralized keyboard shortcut handling using the keybindings registry
  */
 
+import { useAtomValue } from "jotai";
 import * as React from "react";
 import { useCallback, useMemo } from "react";
 import type { SettingsTab } from "../../../lib/atoms";
-import {
-  AGENT_ACTIONS,
-  type AgentActionContext,
-  executeAgentAction,
-  getAvailableAgentActions,
-} from "./agents-actions";
-
-// ============================================================================
-// HOTKEY MATCHING
-// ============================================================================
-
-/**
- * Parse a hotkey string and match against a keyboard event
- * Supports: "?", "shift+?", "cmd+k", "cmd+shift+i"
- */
-function matchesHotkey(e: KeyboardEvent, hotkey: string): boolean {
-  const parts = hotkey.toLowerCase().split("+");
-  const key = parts[parts.length - 1];
-  const modifiers = parts.slice(0, -1);
-
-  const needsMeta = modifiers.includes("cmd") || modifiers.includes("meta");
-  const needsAlt = modifiers.includes("opt") || modifiers.includes("alt");
-  const needsCtrl = modifiers.includes("ctrl");
-  let needsShift = modifiers.includes("shift");
-
-  // "?" requires shift implicitly
-  if (key === "?" && !modifiers.includes("shift")) {
-    needsShift = true;
-  }
-
-  if (needsMeta !== e.metaKey) return false;
-  if (needsAlt !== e.altKey) return false;
-  if (needsCtrl !== e.ctrlKey) return false;
-  if (needsShift !== e.shiftKey) return false;
-
-  const eventKey = e.key.toLowerCase();
-  const eventCode = e.code.toLowerCase();
-
-  if (eventKey === key) return true;
-  if (key === "?" && eventKey === "?") return true;
-  if (key === "/" && (eventKey === "/" || eventCode === "slash")) return true;
-  if (key === "\\" && (eventKey === "\\" || eventCode === "backslash"))
-    return true;
-  if (key === "," && (eventKey === "," || eventCode === "comma")) return true;
-  if (key.length === 1 && eventCode === `key${key}`) return true;
-
-  return false;
-}
+import { resolvedKeybindingsAtom } from "../../../lib/keybindings";
+import { matchesBinding } from "../../../lib/keybindings/matcher";
+import { type AgentActionContext, executeAgentAction } from "./agents-actions";
 
 // ============================================================================
 // TYPES
@@ -75,8 +31,14 @@ export interface UseAgentsHotkeysOptions {
   preventDefault?: boolean;
 }
 
-// Hotkeys that work even in inputs
-const GLOBAL_HOTKEYS = new Set(["open-shortcuts"]);
+// Mapping from keybinding ID to action ID
+const BINDING_TO_ACTION: Record<string, string> = {
+  "general.show-shortcuts": "open-shortcuts",
+  "general.settings": "open-settings",
+  "general.toggle-sidebar": "toggle-sidebar",
+  "general.toggle-chats-sidebar": "toggle-chats-sidebar",
+  "workspaces.new": "create-new-agent",
+};
 
 // ============================================================================
 // HOTKEYS MANAGER HOOK
@@ -86,7 +48,8 @@ export function useAgentsHotkeys(
   config: AgentsHotkeysManagerConfig,
   options: UseAgentsHotkeysOptions = {},
 ) {
-  const { enabled = true, preventDefault = true } = options;
+  const { enabled = true } = options;
+  const resolvedKeybindings = useAtomValue(resolvedKeybindingsAtom);
 
   const createActionContext = useCallback(
     (): AgentActionContext => ({
@@ -112,11 +75,6 @@ export function useAgentsHotkeys(
   const handleHotkeyAction = useCallback(
     async (actionId: string) => {
       const context = createActionContext();
-      const availableActions = getAvailableAgentActions(context);
-      const action = availableActions.find((a) => a.id === actionId);
-
-      if (!action) return;
-
       await executeAgentAction(actionId, context, "hotkey");
     },
     [createActionContext],
@@ -128,177 +86,32 @@ export function useAgentsHotkeys(
     if (!window.desktopApi?.onShortcutNewAgent) return;
 
     const cleanup = window.desktopApi.onShortcutNewAgent(() => {
-      console.log(
-        "[Hotkey] Cmd+N received via IPC, executing create-new-agent",
-      );
       handleHotkeyAction("create-new-agent");
     });
 
     return cleanup;
   }, [enabled, handleHotkeyAction]);
 
-  // Direct listener for Cmd+\ - toggle left sidebar
-  React.useEffect(() => {
-    if (!enabled) return;
+  // Bindings that map to actions
+  const actionBindings = useMemo(() => {
+    return Object.entries(BINDING_TO_ACTION)
+      .map(([bindingId, actionId]) => {
+        const binding = resolvedKeybindings.find((b) => b.id === bindingId);
+        return binding ? { binding, actionId } : null;
+      })
+      .filter(Boolean) as Array<{
+      binding: (typeof resolvedKeybindings)[number];
+      actionId: string;
+    }>;
+  }, [resolvedKeybindings]);
 
-    const handleToggleSidebar = (e: KeyboardEvent) => {
-      if (
-        (e.metaKey || e.ctrlKey) &&
-        (e.key === "\\" || e.code === "Backslash") &&
-        !e.shiftKey &&
-        !e.altKey
-      ) {
-        e.preventDefault();
-        e.stopPropagation();
-        handleHotkeyAction("toggle-sidebar");
-      }
-    };
-
-    window.addEventListener("keydown", handleToggleSidebar, true);
-    return () =>
-      window.removeEventListener("keydown", handleToggleSidebar, true);
-  }, [enabled, handleHotkeyAction]);
-
-  // Direct listener for Cmd+Shift+\ - toggle right chats sidebar
-  React.useEffect(() => {
-    if (!enabled) return;
-
-    const handleToggleChatsSidebar = (e: KeyboardEvent) => {
-      if (
-        (e.metaKey || e.ctrlKey) &&
-        (e.key === "\\" || e.code === "Backslash") &&
-        e.shiftKey &&
-        !e.altKey
-      ) {
-        e.preventDefault();
-        e.stopPropagation();
-        handleHotkeyAction("toggle-chats-sidebar");
-      }
-    };
-
-    window.addEventListener("keydown", handleToggleChatsSidebar, true);
-    return () =>
-      window.removeEventListener("keydown", handleToggleChatsSidebar, true);
-  }, [enabled, handleHotkeyAction]);
-
-  // Direct listener for ? - open shortcuts
-  React.useEffect(() => {
-    if (!enabled) return;
-
-    const handleShortcuts = (e: KeyboardEvent) => {
-      const activeElement = document.activeElement;
-      const isInputFocused =
-        activeElement instanceof HTMLInputElement ||
-        activeElement instanceof HTMLTextAreaElement ||
-        activeElement?.getAttribute("contenteditable") === "true" ||
-        activeElement?.closest('[contenteditable="true"]');
-
-      if (
-        !isInputFocused &&
-        e.key === "?" &&
-        !e.metaKey &&
-        !e.ctrlKey &&
-        !e.altKey
-      ) {
-        e.preventDefault();
-        e.stopPropagation();
-        handleHotkeyAction("open-shortcuts");
-      }
-    };
-
-    window.addEventListener("keydown", handleShortcuts, true);
-    return () => window.removeEventListener("keydown", handleShortcuts, true);
-  }, [enabled, handleHotkeyAction]);
-
-  // Direct listener for Cmd+, - open settings
-  React.useEffect(() => {
-    if (!enabled) return;
-
-    const handleSettings = (e: KeyboardEvent) => {
-      if (
-        (e.metaKey || e.ctrlKey) &&
-        e.code === "Comma" &&
-        !e.shiftKey &&
-        !e.altKey
-      ) {
-        e.preventDefault();
-        e.stopPropagation();
-        handleHotkeyAction("open-settings");
-      }
-    };
-
-    window.addEventListener("keydown", handleSettings, true);
-    return () => window.removeEventListener("keydown", handleSettings, true);
-  }, [enabled, handleHotkeyAction]);
-
-  // Direct listener for Cmd+P - quick open (file search)
-  React.useEffect(() => {
-    if (!enabled || !config.setQuickOpenDialogOpen) return;
-
-    const handleQuickOpen = (e: KeyboardEvent) => {
-      // Desktop: Cmd+P (without Alt, without Shift)
-      // Web: Opt+Cmd+P (with Alt, without Shift)
-      const isDesktop = typeof window !== "undefined" && !!window.desktopApi;
-
-      const isDesktopShortcut =
-        isDesktop &&
-        (e.metaKey || e.ctrlKey) &&
-        e.code === "KeyP" &&
-        !e.shiftKey &&
-        !e.altKey;
-
-      const isWebShortcut =
-        !isDesktop && e.altKey && e.metaKey && e.code === "KeyP" && !e.shiftKey;
-
-      if (isDesktopShortcut || isWebShortcut) {
-        e.preventDefault();
-        e.stopPropagation();
-        config.setQuickOpenDialogOpen?.(true);
-      }
-    };
-
-    window.addEventListener("keydown", handleQuickOpen, true);
-    return () => window.removeEventListener("keydown", handleQuickOpen, true);
-  }, [enabled, config.setQuickOpenDialogOpen]);
-
-  // General hotkey handler for remaining actions
-  const actionsWithHotkeys = useMemo(
-    () =>
-      Object.values(AGENT_ACTIONS).filter(
-        (action) =>
-          action.hotkey !== undefined &&
-          action.id !== "create-new-agent" &&
-          action.id !== "toggle-sidebar" &&
-          action.id !== "toggle-chats-sidebar" &&
-          action.id !== "open-shortcuts" &&
-          action.id !== "open-settings",
-      ),
-    [],
+  // Quick open binding
+  const quickOpenBinding = useMemo(
+    () => resolvedKeybindings.find((b) => b.id === "workspaces.quick-open"),
+    [resolvedKeybindings],
   );
 
-  const hotkeyMappings = useMemo(() => {
-    const mappings: Array<{
-      actionId: string;
-      hotkeys: string[];
-      isGlobal: boolean;
-    }> = [];
-
-    for (const action of actionsWithHotkeys) {
-      if (!action.hotkey) continue;
-      const hotkeys = Array.isArray(action.hotkey)
-        ? action.hotkey
-        : [action.hotkey];
-      const isGlobal = GLOBAL_HOTKEYS.has(action.id);
-      mappings.push({
-        actionId: action.id,
-        hotkeys: hotkeys.filter(Boolean) as string[],
-        isGlobal,
-      });
-    }
-
-    return mappings;
-  }, [actionsWithHotkeys]);
-
+  // Unified keydown handler for all action-based hotkeys
   React.useEffect(() => {
     if (!enabled) return;
 
@@ -307,31 +120,45 @@ export function useAgentsHotkeys(
       const isInInput =
         target.tagName === "INPUT" ||
         target.tagName === "TEXTAREA" ||
-        target.isContentEditable;
+        target.isContentEditable ||
+        !!target.closest('[contenteditable="true"]');
 
-      for (const mapping of hotkeyMappings) {
-        if (isInInput && !mapping.isGlobal) continue;
+      // Quick open (Cmd+P)
+      if (quickOpenBinding && config.setQuickOpenDialogOpen) {
+        if (matchesBinding(e, quickOpenBinding.binding)) {
+          e.preventDefault();
+          e.stopPropagation();
+          config.setQuickOpenDialogOpen(true);
+          return;
+        }
+      }
 
-        for (const hotkey of mapping.hotkeys) {
-          if (matchesHotkey(e, hotkey)) {
-            if (preventDefault) {
-              e.preventDefault();
-              e.stopPropagation();
-            }
-            handleHotkeyAction(mapping.actionId);
-            return;
-          }
+      // Action-based hotkeys
+      for (const { binding, actionId } of actionBindings) {
+        // Only "open-shortcuts" works in inputs
+        if (isInInput && binding.id !== "general.show-shortcuts") continue;
+
+        if (matchesBinding(e, binding.binding)) {
+          e.preventDefault();
+          e.stopPropagation();
+          handleHotkeyAction(actionId);
+          return;
         }
       }
     };
 
     window.addEventListener("keydown", handleKeyDown, true);
     return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [enabled, preventDefault, hotkeyMappings, handleHotkeyAction]);
+  }, [
+    enabled,
+    actionBindings,
+    quickOpenBinding,
+    handleHotkeyAction,
+    config.setQuickOpenDialogOpen,
+  ]);
 
   return {
     executeAction: handleHotkeyAction,
-    getAvailableActions: () => getAvailableAgentActions(createActionContext()),
     createActionContext,
   };
 }

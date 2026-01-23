@@ -8,6 +8,7 @@ export type SettingsTab =
   | "profile"
   | "appearance"
   | "preferences"
+  | "keybindings"
   | "provider"
   | "skills"
   | "agents"

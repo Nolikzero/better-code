@@ -410,7 +410,7 @@ html.vibrancy-active [data-radix-popper-content-wrapper] > * {
 /* Dark theme dialogs */
 html.vibrancy-active.dark [data-radix-portal] [role="dialog"],
 html.vibrancy-active.dark [data-canvas-dialog] {
-  background-color: hsl(0 0% 10% / 0.92) !important;
+  background-color: hsl(0 0% 10% / 0.9) !important;
 }
 
 /* Light theme dialogs (Liquid Glass Light) */

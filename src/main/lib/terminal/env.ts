@@ -1,13 +1,12 @@
 import { execSync } from "node:child_process";
 import os from "node:os";
+import { isMac, isWindows } from "../platform";
 
-export const FALLBACK_SHELL = os.platform() === "win32" ? "cmd.exe" : "/bin/sh";
+export const FALLBACK_SHELL = isWindows ? "cmd.exe" : "/bin/sh";
 export const SHELL_CRASH_THRESHOLD_MS = 1000;
 
 export function getDefaultShell(): string {
-  const platform = os.platform();
-
-  if (platform === "win32") {
+  if (isWindows) {
     return process.env.COMSPEC || "powershell.exe";
   }
 
@@ -39,7 +38,7 @@ export function getDefaultShell(): string {
     // Ignore
   }
 
-  return os.platform() === "darwin" ? "/bin/zsh" : "/bin/sh";
+  return isMac ? "/bin/zsh" : "/bin/sh";
 }
 
 function getLocale(baseEnv: Record<string, string>): string {
@@ -52,7 +51,7 @@ function getLocale(baseEnv: Record<string, string>): string {
   }
 
   // locale command is Unix-only
-  if (os.platform() !== "win32") {
+  if (!isWindows) {
     try {
       const result = execSync("locale 2>/dev/null | grep LANG= | cut -d= -f2", {
         encoding: "utf-8",

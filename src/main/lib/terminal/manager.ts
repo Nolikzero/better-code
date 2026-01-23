@@ -1,4 +1,5 @@
 import { EventEmitter } from "node:events";
+import { isWindows } from "../platform";
 import { FALLBACK_SHELL, SHELL_CRASH_THRESHOLD_MS } from "./env";
 import { portManager } from "./port-manager";
 import { createSession, setupInitialCommands } from "./session";
@@ -180,7 +181,7 @@ class TerminalManager extends EventEmitter {
       return;
     }
 
-    if (process.platform === "win32") {
+    if (isWindows) {
       // Windows: node-pty uses taskkill internally
       session.pty.kill();
     } else {

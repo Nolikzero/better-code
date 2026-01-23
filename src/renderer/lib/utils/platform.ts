@@ -162,7 +162,8 @@ function convertDisplayForPlatform(macDisplay: string): string {
     .replace("⌘", "Ctrl+")
     .replace("⌥", "Alt+")
     .replace("⇧", "Shift+")
-    .replace("⌃", "Ctrl+");
+    .replace("⌃", "Ctrl+")
+    .replace(/\+$/, "");
 }
 
 /**

@@ -2,7 +2,7 @@ import { EventEmitter } from "node:events";
 import os from "node:os";
 import * as pty from "node-pty";
 import { getShellEnvironment } from "../git/shell-env";
-import { getShellCommandArgs } from "../platform";
+import { getShellCommandArgs, isWindows } from "../platform";
 import { getDefaultShell } from "../terminal/env";
 
 export interface WorktreeInitEvent {
@@ -73,7 +73,7 @@ class WorktreeInitRunner extends EventEmitter {
       BRANCH_NAME: branchName,
       HOME: os.homedir(),
       SHELL: shell,
-      ...(os.platform() !== "win32" ? { TERM: "xterm-256color" } : {}),
+      ...(!isWindows ? { TERM: "xterm-256color" } : {}),
     };
 
     return new Promise((resolve) => {
@@ -81,12 +81,12 @@ class WorktreeInitRunner extends EventEmitter {
 
       try {
         ptyProcess = pty.spawn(shell, getShellCommandArgs(shell, command), {
-          name: os.platform() === "win32" ? "" : "xterm-256color",
+          name: isWindows ? "" : "xterm-256color",
           cols: 120,
           rows: 30,
           cwd: worktreePath,
           env,
-          ...(os.platform() === "win32" ? { useConpty: true } : {}),
+          ...(isWindows ? { useConpty: true } : {}),
         });
       } catch (err) {
         const errorMessage =

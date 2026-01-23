@@ -1,30 +1,16 @@
 import * as React from "react";
 import { cn } from "../../lib/utils";
+import { isMacOS } from "../../lib/utils/platform";
 import { CmdIcon, EnterIcon, OptionIcon, ShiftIcon } from "./icons";
 
 interface KbdProps extends React.HTMLAttributes<HTMLElement> {}
-
-function isMacPlatform(): boolean {
-  if (
-    typeof window !== "undefined" &&
-    (window as { desktopApi?: { platform?: string } }).desktopApi?.platform
-  ) {
-    return (
-      (window as { desktopApi?: { platform?: string } }).desktopApi
-        ?.platform === "darwin"
-    );
-  }
-  return typeof navigator !== "undefined"
-    ? /Mac/.test(navigator.platform)
-    : false;
-}
 
 /** Parse shortcut string and replace modifier symbols with icons/text */
 function renderShortcut(children: React.ReactNode): React.ReactNode {
   if (typeof children !== "string") return children;
 
   const parts: React.ReactNode[] = [];
-  const isMac = isMacPlatform();
+  const isMac = isMacOS();
 
   if (isMac) {
     // macOS: Use icons for modifier symbols
@@ -61,10 +47,11 @@ function renderShortcut(children: React.ReactNode): React.ReactNode {
 
     tokens.forEach((token, index) => {
       if (textMap[token]) {
+        const nextToken = tokens[index + 1];
+        const needsSeparator = nextToken && !textMap[nextToken];
         parts.push(
           <span key={index}>
-            {textMap[token]}
-            {/* Add separator if next token is not empty */}
+            {textMap[token]}{needsSeparator ? "+" : ""}
           </span>,
         );
       } else if (token) {

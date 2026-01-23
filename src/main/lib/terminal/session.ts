@@ -1,5 +1,6 @@
 import os from "node:os";
 import * as pty from "node-pty";
+import { isWindows } from "../platform";
 import { buildTerminalEnv, FALLBACK_SHELL, getDefaultShell } from "./env";
 import type { InternalCreateSessionParams, TerminalSession } from "./types";
 
@@ -34,12 +35,12 @@ function spawnPty(params: {
   const shellArgs = getShellArgs(shell);
 
   return pty.spawn(shell, shellArgs, {
-    name: os.platform() === "win32" ? "" : "xterm-256color",
+    name: isWindows ? "" : "xterm-256color",
     cols,
     rows,
     cwd,
     env,
-    ...(os.platform() === "win32" ? { useConpty: true } : {}),
+    ...(isWindows ? { useConpty: true } : {}),
   });
 }
 

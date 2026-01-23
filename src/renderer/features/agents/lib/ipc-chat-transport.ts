@@ -30,7 +30,6 @@ import {
   lastSelectedModelIdAtom,
   MODEL_ID_MAP,
   pendingAuthRetryMessageAtom,
-  pendingRalphAutoStartsAtom,
   pendingUserQuestionsAtom,
   ralphInjectedPromptsAtom,
   ralphPrdStatusesAtom,
@@ -396,43 +395,18 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
                     : "All stories complete!",
                   duration: 3000,
                 });
-                console.log(
-                  "[ralph] Story complete:",
-                  chunk.storyId,
-                  "autoStartNext:",
-                  chunk.autoStartNext,
-                );
-
                 // Invalidate ralph query cache to update UI immediately
                 invalidateRalphQueries();
-
-                // If there are more stories, trigger auto-continue
-                console.log(
-                  "[ralph] autoStartNext check:",
-                  chunk.autoStartNext,
-                  "subChatId:",
-                  this.config.subChatId,
-                );
-                if (chunk.autoStartNext) {
-                  console.log(
-                    "[ralph] Setting pendingRalphAutoStart with completedStoryId:",
-                    chunk.storyId,
-                  );
-                  const currentAutoStarts = new Map(
-                    appStore.get(pendingRalphAutoStartsAtom),
-                  );
-                  currentAutoStarts.set(this.config.subChatId, {
-                    subChatId: this.config.subChatId,
-                    completedStoryId: chunk.storyId, // Wait until nextStory !== this
-                  });
-                  appStore.set(pendingRalphAutoStartsAtom, currentAutoStarts);
-                } else {
-                  console.log(
-                    "[ralph] NOT setting pendingRalphAutoStart (autoStartNext is false)",
-                  );
-                }
-
                 // Don't pass to stream - handled via toast
+                return;
+              }
+
+              if (chunk.type === "ralph-story-transition") {
+                toast.info(`Starting story: ${chunk.nextStoryTitle}`, {
+                  description: `${chunk.storiesCompleted}/${chunk.storiesTotal} stories complete`,
+                  duration: 3000,
+                });
+                invalidateRalphQueries();
                 return;
               }
 
@@ -474,12 +448,6 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
                     : "Ready to start implementation.",
                   duration: 3000,
                 });
-                console.log(
-                  "[ralph] PRD generated and stored:",
-                  chunk.prd?.goal,
-                  "autoStart:",
-                  chunk.autoStartImplementation,
-                );
 
                 // Update atom with complete PRD for UI rendering
                 const completeStatuses = new Map(
@@ -494,20 +462,6 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
 
                 // Invalidate ralph query cache to update UI immediately (show badge)
                 invalidateRalphQueries();
-
-                // If autoStartImplementation is set, trigger auto-send of follow-up message
-                if (chunk.autoStartImplementation) {
-                  // Set pending auto-start flag - will be processed by component after stream finishes
-                  // No completedStoryId since this is the first story
-                  const autoStarts = new Map(
-                    appStore.get(pendingRalphAutoStartsAtom),
-                  );
-                  autoStarts.set(this.config.subChatId, {
-                    subChatId: this.config.subChatId,
-                  });
-                  appStore.set(pendingRalphAutoStartsAtom, autoStarts);
-                }
-
                 return;
               }
 

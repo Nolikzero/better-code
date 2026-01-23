@@ -537,16 +537,6 @@ export const pendingAuthRetryMessageAtom = atom<PendingAuthRetryMessage | null>(
   null,
 );
 
-// Pending Ralph auto-start implementation - when PRD is generated or story completes, this triggers auto-send
-// Contains subChatId and optionally the just-completed story ID to wait for correct nextStory
-export interface PendingRalphAutoStart {
-  subChatId: string;
-  completedStoryId?: string; // If set, wait until nextStory.id !== completedStoryId
-}
-export const pendingRalphAutoStartsAtom = atom<
-  Map<string, PendingRalphAutoStart>
->(new Map());
-
 // Ralph PRD generation status - used to show PRD status card in chat UI
 // Bypasses AI SDK tool mechanism for more reliable rendering
 export interface RalphPrdStatus {

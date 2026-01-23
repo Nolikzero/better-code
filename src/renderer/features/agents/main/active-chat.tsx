@@ -555,11 +555,8 @@ function ChatViewInner({
     ralphState: _ralphState,
   } = useRalphAutoStart({
     subChatId,
-    parentChatId,
     agentMode,
-    isStreaming: status === "streaming" || status === "submitted",
     messages,
-    sendMessage,
     setMessages,
   });
 

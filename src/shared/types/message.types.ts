@@ -111,6 +111,14 @@ export type UIMessageChunk =
   | { type: "ralph-complete" }
   | { type: "ralph-story-complete"; storyId: string; autoStartNext?: boolean }
   | {
+      type: "ralph-story-transition";
+      completedStoryId: string;
+      nextStoryId: string;
+      nextStoryTitle: string;
+      storiesCompleted: number;
+      storiesTotal: number;
+    }
+  | {
       type: "ralph-progress";
       storyId: string | null;
       summary: string;

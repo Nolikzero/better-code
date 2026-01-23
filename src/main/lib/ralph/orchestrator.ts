@@ -8,7 +8,7 @@
 
 import type { UIMessageChunk } from "@shared/types";
 import type { ProviderId } from "../providers/types";
-import { getRalphService } from "./index";
+import { getRalphService, type UserStory } from "./index";
 import {
   isGitCommitOutput,
   parseCommitOutput,
@@ -40,6 +40,8 @@ export class RalphOrchestrator {
   private capturedPlanText: string | null = null;
   private exitPlanModeCallId: string | null = null;
   private planCompleted = false;
+  private autoContinueNextStory: UserStory | null = null;
+  private lastCompletedStoryId: string | null = null;
 
   private config: RalphOrchestratorConfig;
   private emit: (chunk: UIMessageChunk) => void;
@@ -167,6 +169,75 @@ export class RalphOrchestrator {
     }
   }
 
+  /**
+   * Whether the orchestrator wants to auto-continue with the next story.
+   */
+  shouldAutoContinue(): boolean {
+    return this.autoContinueNextStory !== null;
+  }
+
+  /**
+   * Get the next story to auto-continue with.
+   */
+  getNextContinuationStory(): UserStory | null {
+    return this.autoContinueNextStory;
+  }
+
+  /**
+   * Get the last completed story ID (for transition events).
+   */
+  getLastCompletedStoryId(): string | null {
+    return this.lastCompletedStoryId;
+  }
+
+  /**
+   * Reset internal state for the next continuation iteration.
+   */
+  resetForContinuation(): void {
+    this.capturedPlanText = null;
+    this.exitPlanModeCallId = null;
+    this.planCompleted = false;
+    this.autoContinueNextStory = null;
+    this.lastCompletedStoryId = null;
+  }
+
+  /**
+   * Update config for continuation iteration with new prompt and messages.
+   */
+  updateForContinuation(prompt: string, messages: any[]): void {
+    this.config.originalPrompt = prompt;
+    this.config.existingMessages = messages;
+  }
+
+  /**
+   * Build the continuation message for a story (used by the backend loop).
+   */
+  buildContinuationMessage(nextStory: UserStory): string {
+    const acceptanceCriteria =
+      nextStory.acceptanceCriteria?.join("\n  - ") || "";
+    const storyType = nextStory.type || "implementation";
+
+    let instructions: string;
+    if (storyType === "research") {
+      instructions =
+        "This is a **RESEARCH** story. Analyze the codebase and output your findings as markdown directly in this chat. Do NOT create code files to store research - just output text findings. Mark complete when done.";
+    } else {
+      instructions =
+        "Create the branch if needed, implement the changes, run quality checks, and commit when done.";
+    }
+
+    return `Continue with story **${nextStory.id}: ${nextStory.title}**
+
+**Type:** ${storyType.toUpperCase()}
+
+**Description:** ${nextStory.description}
+
+**Acceptance Criteria:**
+  - ${acceptanceCriteria}
+
+${instructions} Remember to output \`<story-complete>${nextStory.id}</story-complete>\` when finished.`;
+  }
+
   // ─── Private ────────────────────────────────────────────────────────
 
   private async finalizePlanning(
@@ -221,10 +292,16 @@ export class RalphOrchestrator {
         prd.stories.length,
       );
 
+      // Set auto-continue to first story
+      const nextStory = ralphService.getNextStory(prd);
+      if (nextStory) {
+        this.autoContinueNextStory = nextStory;
+      }
+
       this.emit({
         type: "ralph-prd-generated",
         prd,
-        autoStartImplementation: true,
+        autoStartImplementation: !!nextStory,
       } as UIMessageChunk);
     } catch (e) {
       console.error("[ralph] Failed to generate PRD:", e);
@@ -270,6 +347,7 @@ export class RalphOrchestrator {
 
     if (storyCompleteMatch) {
       const completedStoryId = storyCompleteMatch[1].trim();
+      this.lastCompletedStoryId = completedStoryId;
       console.log("[ralph] Detected <story-complete>:", completedStoryId);
 
       // Check if already handled by git commit detection
@@ -292,17 +370,29 @@ export class RalphOrchestrator {
           if (progress && progress.storyId === completedStoryId) {
             ralphService.appendProgress(this.config.subChatId, {
               storyId: completedStoryId,
-              iteration: ralphService.getCurrentIteration(this.config.subChatId),
+              iteration: ralphService.getCurrentIteration(
+                this.config.subChatId,
+              ),
               summary: progress.summary,
               learnings: progress.learnings,
             });
           } else {
             ralphService.appendProgress(this.config.subChatId, {
               storyId: completedStoryId,
-              iteration: ralphService.getCurrentIteration(this.config.subChatId),
+              iteration: ralphService.getCurrentIteration(
+                this.config.subChatId,
+              ),
               summary: `Completed: ${completedStory.title}`,
               learnings: [],
             });
+          }
+        }
+
+        // Set auto-continue if more stories remain
+        if (hasMoreStories) {
+          const nextStory = ralphService.getNextStory(prd!);
+          if (nextStory) {
+            this.autoContinueNextStory = nextStory;
           }
         }
 
@@ -354,6 +444,7 @@ export class RalphOrchestrator {
     if (!commitInfo?.storyId) return;
 
     console.log(`[ralph] Detected git commit for story: ${commitInfo.storyId}`);
+    this.lastCompletedStoryId = commitInfo.storyId;
     const ralphService = getRalphService();
     const success = ralphService.markStoryComplete(
       this.config.subChatId,
@@ -376,6 +467,14 @@ export class RalphOrchestrator {
         summary: `Completed: ${completedStory.title}`,
         learnings: [],
       });
+    }
+
+    // Set auto-continue if more stories remain
+    if (hasMoreStories) {
+      const nextStory = ralphService.getNextStory(prd!);
+      if (nextStory) {
+        this.autoContinueNextStory = nextStory;
+      }
     }
 
     this.emit({

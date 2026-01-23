@@ -5393,5 +5393,5 @@ export function SkillIconFilled(props: IconProps) {
 
 // Ralph icon - Ralph Wiggum image
 export function RalphIcon({ className }: { className?: string }) {
-  return <img src="/ralph.png" alt="Ralph" className={className} />;
+  return <img src="./ralph.png" alt="Ralph" className={className} />;
 }

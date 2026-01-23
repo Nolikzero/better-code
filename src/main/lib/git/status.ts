@@ -15,7 +15,7 @@ import {
   parseGitStatus,
   parseNameStatus,
 } from "./utils/parse-status";
-import { getDefaultBranch } from "./worktree";
+import { getDefaultBranch, getWorktreeDiff } from "./worktree";
 
 // TTL cache for getStatus results to prevent redundant git subprocess calls
 const statusCache = new Map<
@@ -116,6 +116,85 @@ export const createStatusRouter = () => {
         ]);
 
         return files;
+      }),
+
+    /**
+     * Get unified diff for a single commit by worktree path.
+     * Works for both chat worktrees and project paths.
+     */
+    getCommitDiff: publicProcedure
+      .input(
+        z.object({
+          worktreePath: z.string(),
+          commitHash: z.string(),
+        }),
+      )
+      .query(async ({ input }) => {
+        assertRegisteredWorktree(input.worktreePath);
+
+        const git = simpleGit(input.worktreePath);
+        const lockFileExcludes = [
+          ":!*.lock",
+          ":!*-lock.*",
+          ":!package-lock.json",
+          ":!pnpm-lock.yaml",
+          ":!yarn.lock",
+        ];
+
+        try {
+          const diff = await git.diff([
+            `${input.commitHash}~1`,
+            input.commitHash,
+            "--no-color",
+            "--",
+            ...lockFileExcludes,
+          ]);
+          return { diff: diff || "" };
+        } catch {
+          // Handle initial commit (no parent) by diffing against empty tree
+          try {
+            const diff = await git.diff([
+              "4b825dc642cb6eb9a060e54bf899d69f82559ef1",
+              input.commitHash,
+              "--no-color",
+              "--",
+              ...lockFileExcludes,
+            ]);
+            return { diff: diff || "" };
+          } catch (e) {
+            return {
+              diff: null,
+              error: e instanceof Error ? e.message : "Unknown error",
+            };
+          }
+        }
+      }),
+
+    /**
+     * Get the full diff (committed + uncommitted) against the base/default branch.
+     * Works for both chat worktrees and project paths.
+     */
+    getFullDiff: publicProcedure
+      .input(
+        z.object({
+          worktreePath: z.string(),
+          baseBranch: z.string().optional(),
+        }),
+      )
+      .query(async ({ input }) => {
+        assertRegisteredWorktree(input.worktreePath);
+
+        const result = await getWorktreeDiff(
+          input.worktreePath,
+          input.baseBranch,
+          { fullDiff: true },
+        );
+
+        if (!result.success) {
+          return { diff: null, error: result.error };
+        }
+
+        return { diff: result.diff || "" };
       }),
 
     /**

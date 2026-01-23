@@ -7,7 +7,6 @@ import { trpcClient } from "../../../lib/trpc";
 import { commitDiffDataAtom } from "../atoms";
 
 interface UseCommitDiffOptions {
-  chatId: string;
   worktreePath: string | null;
   commitHash: string | null;
   enabled: boolean;
@@ -18,7 +17,6 @@ interface UseCommitDiffOptions {
  * Only activates when enabled=true and commitHash is provided.
  */
 export function useCommitDiff({
-  chatId,
   worktreePath,
   commitHash,
   enabled,
@@ -27,7 +25,7 @@ export function useCommitDiff({
   const abortRef = useRef(false);
 
   const fetchCommitDiff = useCallback(async () => {
-    if (!commitHash || !chatId) return;
+    if (!commitHash || !worktreePath) return;
 
     abortRef.current = false;
 
@@ -47,8 +45,8 @@ export function useCommitDiff({
     });
 
     try {
-      const result = await trpcClient.chats.getCommitDiff.query({
-        chatId,
+      const result = await trpcClient.changes.getCommitDiff.query({
+        worktreePath,
         commitHash,
       });
 
@@ -150,7 +148,7 @@ export function useCommitDiff({
         isLoading: false,
       });
     }
-  }, [chatId, commitHash, worktreePath, setCommitDiffData]);
+  }, [commitHash, worktreePath, setCommitDiffData]);
 
   useEffect(() => {
     if (enabled && commitHash) {

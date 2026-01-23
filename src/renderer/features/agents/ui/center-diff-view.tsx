@@ -107,14 +107,12 @@ export function CenterDiffView() {
 
   // Invoke diff hooks based on viewing mode
   useCommitDiff({
-    chatId,
     worktreePath,
     commitHash: viewingMode.type === "commit" ? viewingMode.commitHash : null,
     enabled: viewingMode.type === "commit",
   });
 
   useFullDiff({
-    chatId,
     worktreePath,
     enabled: viewingMode.type === "full",
   });

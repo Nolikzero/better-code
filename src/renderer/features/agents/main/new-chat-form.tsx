@@ -410,29 +410,33 @@ export function NewChatForm({
     >();
 
     // Add remote branches first
-    for (const name of remote) {
-      branchMap.set(name, {
-        name,
-        protected: false,
-        isDefault: name === defaultBranch,
-        isCurrent: name === currentBranch,
-        committedAt: null,
-        authorName: null,
-      });
+    if (Array.isArray(remote)) {
+      for (const name of remote) {
+        branchMap.set(name, {
+          name,
+          protected: false,
+          isDefault: name === defaultBranch,
+          isCurrent: name === currentBranch,
+          committedAt: null,
+          authorName: null,
+        });
+      }
     }
 
     // Override with local branches (they have commit dates)
-    for (const { branch, lastCommitDate } of local) {
-      branchMap.set(branch, {
-        name: branch,
-        protected: false,
-        isDefault: branch === defaultBranch,
-        isCurrent: branch === currentBranch,
-        committedAt: lastCommitDate
-          ? new Date(lastCommitDate).toISOString()
-          : null,
-        authorName: null,
-      });
+    if (Array.isArray(local)) {
+      for (const { branch, lastCommitDate } of local) {
+        branchMap.set(branch, {
+          name: branch,
+          protected: false,
+          isDefault: branch === defaultBranch,
+          isCurrent: branch === currentBranch,
+          committedAt: lastCommitDate
+            ? new Date(lastCommitDate).toISOString()
+            : null,
+          authorName: null,
+        });
+      }
     }
 
     // Sort: default first, then by commit date

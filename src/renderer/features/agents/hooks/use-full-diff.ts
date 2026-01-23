@@ -7,7 +7,6 @@ import { trpcClient } from "../../../lib/trpc";
 import { fullDiffDataAtom } from "../atoms";
 
 interface UseFullDiffOptions {
-  chatId: string;
   worktreePath: string | null;
   enabled: boolean;
 }
@@ -16,16 +15,12 @@ interface UseFullDiffOptions {
  * Hook to fetch and parse the full diff (committed + uncommitted) against base branch.
  * Only activates when enabled=true.
  */
-export function useFullDiff({
-  chatId,
-  worktreePath,
-  enabled,
-}: UseFullDiffOptions) {
+export function useFullDiff({ worktreePath, enabled }: UseFullDiffOptions) {
   const setFullDiffData = useSetAtom(fullDiffDataAtom);
   const abortRef = useRef(false);
 
   const fetchFullDiff = useCallback(async () => {
-    if (!chatId) return;
+    if (!worktreePath) return;
 
     abortRef.current = false;
 
@@ -44,7 +39,9 @@ export function useFullDiff({
     });
 
     try {
-      const result = await trpcClient.chats.getFullDiff.query({ chatId });
+      const result = await trpcClient.changes.getFullDiff.query({
+        worktreePath,
+      });
 
       if (abortRef.current) return;
 
@@ -139,7 +136,7 @@ export function useFullDiff({
         isLoading: false,
       });
     }
-  }, [chatId, worktreePath, setFullDiffData]);
+  }, [worktreePath, setFullDiffData]);
 
   useEffect(() => {
     if (enabled) {

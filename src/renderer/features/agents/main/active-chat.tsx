@@ -68,15 +68,12 @@ import {
   mainContentActiveTabAtom,
   pendingAuthRetryMessageAtom,
   pendingFileMentionsAtom,
-  pendingPlanApprovalsAtom,
   pendingPrMessageAtom,
-  pendingRalphAutoStartsAtom,
   pendingReviewMessageAtom,
   pendingUserQuestionsAtom,
   prActionsAtom,
   promptHistoryAtomFamily,
   QUESTIONS_SKIPPED_MESSAGE,
-  ralphInjectedPromptsAtom,
   selectedAgentChatIdAtom,
   setLoading,
   undoStackAtom,
@@ -105,8 +102,10 @@ import { useDiffManagement } from "../hooks/use-diff-management";
 import { useFocusInputOnEnter } from "../hooks/use-focus-input-on-enter";
 import { useMentionDropdown } from "../hooks/use-mention-dropdown";
 import { useMessageHandling } from "../hooks/use-message-handling";
+import { usePlanApproval } from "../hooks/use-plan-approval";
 import { usePrActions } from "../hooks/use-pr-actions";
 import { useProviders } from "../hooks/use-providers";
+import { useRalphAutoStart } from "../hooks/use-ralph-auto-start";
 import { useSlashCommandDropdown } from "../hooks/use-slash-command-dropdown";
 import { useSubChatKeyboard } from "../hooks/use-subchat-keyboard";
 import { useToggleFocusOnCmdEsc } from "../hooks/use-toggle-focus-on-cmd-esc";
@@ -407,12 +406,6 @@ function ChatViewInner({
     addedDirectoriesAtomFamily(subChatId),
   );
 
-  // Ralph state query - to check if PRD exists for showing setup dialog
-  const { data: ralphState } = trpc.ralph.getState.useQuery(
-    { chatId: parentChatId },
-    { enabled: !!parentChatId && agentMode === "ralph" },
-  );
-
   // Reset navigation when switching sub-chats
   useEffect(() => {
     setNavState({ index: -1, savedInput: "" });
@@ -519,22 +512,6 @@ function ChatViewInner({
     },
     [setAgentMode],
   );
-
-  // Open Ralph setup dialog when switching to Ralph mode if no PRD exists
-  const prevAgentModeRef = useRef(agentMode);
-  useEffect(() => {
-    const wasNotRalph = prevAgentModeRef.current !== "ralph";
-    const isNowRalph = agentMode === "ralph";
-    prevAgentModeRef.current = agentMode;
-
-    // Only trigger when switching TO ralph mode
-    if (wasNotRalph && isNowRalph && ralphState !== undefined) {
-      // PRD doesn't exist - open setup dialog
-      if (!ralphState?.hasPrd) {
-        setRalphSetupOpen(true);
-      }
-    }
-  }, [agentMode, ralphState]);
 
   // Provider & model selection state
   // Per-subchat override takes priority, then per-chat override, then falls back to global default
@@ -646,9 +623,6 @@ function ChatViewInner({
   const [_shouldOpenClaudeSubmenu, setShouldOpenClaudeSubmenu] =
     useState(false);
 
-  // Ralph setup dialog state
-  const [ralphSetupOpen, setRalphSetupOpen] = useState(false);
-
   // File/image upload hook
   const {
     images,
@@ -713,10 +687,6 @@ function ChatViewInner({
     window.addEventListener("keydown", handleKeyDown, true);
     return () => window.removeEventListener("keydown", handleKeyDown, true);
   }, []);
-
-  const [_planApprovalPending, setPlanApprovalPending] = useState<
-    Record<string, boolean>
-  >({});
 
   // Track chat changes for rename trigger reset
   const chatRef = useRef<Chat<any> | null>(null);
@@ -861,6 +831,26 @@ function ChatViewInner({
     onRestoreWorkspace,
     isOverlayMode,
     utils,
+  });
+
+  // Plan approval hook - handles plan detection, keyboard shortcuts, and approval flow
+  const { hasUnapprovedPlan, handleApprovePlan } = usePlanApproval({
+    subChatId,
+    messages,
+    sendMessage,
+    isStreaming: status === "streaming" || status === "submitted",
+    setAgentMode,
+  });
+
+  // Ralph auto-start hook - handles PRD state, setup dialog, and story auto-start
+  const { ralphSetupOpen, setRalphSetupOpen, ralphState: _ralphState } = useRalphAutoStart({
+    subChatId,
+    parentChatId,
+    agentMode,
+    isStreaming: status === "streaming" || status === "submitted",
+    messages,
+    sendMessage,
+    setMessages,
   });
 
   // Track scroll position to auto-expand input when at bottom (non-overlay mode only)
@@ -1185,175 +1175,6 @@ function ChatViewInner({
     subChatId,
   ]);
 
-  // Update in-memory Chat messages when Ralph injects modified prompt
-  const ralphInjectedPrompts = useAtomValue(ralphInjectedPromptsAtom);
-  const myInjectedPrompt = ralphInjectedPrompts.get(subChatId) ?? null;
-
-  useEffect(() => {
-    if (myInjectedPrompt && messages.length > 0) {
-      const lastUserMsgIdx = messages.findLastIndex((m) => m.role === "user");
-      if (lastUserMsgIdx >= 0) {
-        setMessages((prev) =>
-          prev.map((m, i) =>
-            i === lastUserMsgIdx
-              ? {
-                  ...m,
-                  parts: [{ type: "text", text: myInjectedPrompt.text }],
-                }
-              : m,
-          ),
-        );
-        // Clear only this sub-chat's entry
-        const updated = new Map(appStore.get(ralphInjectedPromptsAtom));
-        updated.delete(subChatId);
-        appStore.set(ralphInjectedPromptsAtom, updated);
-      }
-    }
-  }, [myInjectedPrompt, subChatId, messages.length, setMessages]);
-
-  // Watch for pending Ralph auto-start (after PRD generation)
-  const pendingRalphAutoStarts = useAtomValue(pendingRalphAutoStartsAtom);
-  const myPendingAutoStart = pendingRalphAutoStarts.get(subChatId) ?? null;
-
-  useEffect(() => {
-    // Debug logging
-    console.log(
-      "[ralph] useEffect check - myPendingAutoStart:",
-      myPendingAutoStart,
-      "subChatId:",
-      subChatId,
-      "isStreaming:",
-      isStreaming,
-      "nextStory:",
-      ralphState?.nextStory?.id,
-    );
-
-    // Only auto-start when:
-    // 1. There's a pending auto-start for this sub-chat
-    // 2. Not currently streaming
-    // 3. Ralph state has loaded with correct story data
-    if (myPendingAutoStart && !isStreaming) {
-      const nextStory = ralphState?.nextStory;
-      const completedStoryId = myPendingAutoStart.completedStoryId;
-
-      // Wait for ralphState to load
-      if (!ralphState?.hasPrd) {
-        console.log("[ralph] Waiting for ralphState to load...");
-        return;
-      }
-
-      // If we just completed a story, wait until nextStory is different
-      // This ensures the query has refetched with updated data
-      if (completedStoryId && nextStory?.id === completedStoryId) {
-        console.log(
-          "[ralph] Waiting for nextStory to update (still showing completed story:",
-          completedStoryId,
-          ")",
-        );
-        return;
-      }
-
-      // Clear only this sub-chat's pending flag
-      const updated = new Map(appStore.get(pendingRalphAutoStartsAtom));
-      updated.delete(subChatId);
-      appStore.set(pendingRalphAutoStartsAtom, updated);
-
-      // Build message with actual story details
-      if (!nextStory) {
-        // All stories complete - no need to continue
-        console.log("[ralph] No next story available - all stories complete");
-        return;
-      }
-
-      const acceptanceCriteria =
-        nextStory.acceptanceCriteria?.join("\n  - ") || "";
-
-      // Use explicit type from PRD (AI sets this when generating stories)
-      // Default to "implementation" for backwards compatibility with older PRDs
-      const storyType = nextStory.type || "implementation";
-
-      // Build instructions based on story type
-      let instructions: string;
-      if (storyType === "research") {
-        instructions = `This is a **RESEARCH** story. Analyze the codebase and output your findings as markdown directly in this chat. Do NOT create code files to store research - just output text findings. Mark complete when done.`;
-      } else {
-        instructions = `Create the branch if needed, implement the changes, run quality checks, and commit when done.`;
-      }
-
-      const messageText = `Continue with story **${nextStory.id}: ${nextStory.title}**
-
-**Type:** ${storyType.toUpperCase()}
-
-**Description:** ${nextStory.description}
-
-**Acceptance Criteria:**
-  - ${acceptanceCriteria}
-
-${instructions} Remember to output \`<story-complete>${nextStory.id}</story-complete>\` when finished.`;
-
-      console.log(
-        "[ralph] Auto-starting - sending continue message for story:",
-        nextStory.id,
-      );
-
-      // Send a message to start implementing the next story
-      sendMessage({
-        role: "user",
-        parts: [
-          {
-            type: "text",
-            text: messageText,
-          },
-        ],
-      });
-    }
-  }, [
-    myPendingAutoStart,
-    isStreaming,
-    sendMessage,
-    subChatId,
-    ralphState?.nextStory,
-    ralphState?.hasPrd,
-  ]);
-
-  const _handlePlanApproval = useCallback(
-    async (toolUseId: string, approved: boolean) => {
-      if (!toolUseId) return;
-      setPlanApprovalPending((prev) => ({ ...prev, [toolUseId]: true }));
-      try {
-        await trpcClient.chat.respondToolApproval.mutate({
-          toolUseId,
-          approved,
-        });
-      } catch (error) {
-        console.error("[plan-approval] Failed to respond:", error);
-        toast.error("Failed to send plan approval. Please try again.");
-      } finally {
-        setPlanApprovalPending((prev) => {
-          const next = { ...prev };
-          delete next[toolUseId];
-          return next;
-        });
-      }
-    },
-    [],
-  );
-
-  // Handle plan approval - sends "Implement plan" message and switches to agent mode
-  const handleApprovePlan = useCallback(() => {
-    // Update store mode synchronously BEFORE sending (transport reads from store)
-    useAgentSubChatStore.getState().updateSubChatMode(subChatId, "agent");
-
-    // Update React state (for UI)
-    setAgentMode("agent");
-
-    // Send "Implement plan" message (now in agent mode)
-    sendMessage({
-      role: "user",
-      parts: [{ type: "text", text: "Implement plan" }],
-    });
-  }, [subChatId, setAgentMode, sendMessage]);
-
   // Detect PR URLs in assistant messages and store them
   const detectedPrUrlRef = useRef<string | null>(null);
 
@@ -1677,98 +1498,6 @@ ${instructions} Remember to output \`<story-complete>${nextStory.id}</story-comp
     (e: React.ClipboardEvent) => handlePasteEvent(e, handleAddAttachments),
     [handleAddAttachments],
   );
-
-  // Check if there's an unapproved plan (ExitPlanMode without subsequent "Implement plan")
-  const hasUnapprovedPlan = useMemo(() => {
-    // Traverse messages from end to find unapproved ExitPlanMode
-    // for (let i = messages.length - 1; i >= 0; i--) {
-    //   const msg = messages[i];
-
-    //   // If user message says "Implement plan", plan is already approved
-    //   if (msg.role === "user") {
-    //     const text = msg.parts?.find((p: any) => p.type === "text")?.text || "";
-    //     if (text.trim().toLowerCase() === "implement plan") {
-    //       return false;
-    //     }
-    //   }
-
-    //   // If assistant message with ExitPlanMode, we found an unapproved plan
-    //   if (msg.role === "assistant") {
-    //     const exitPlanPart = msg.parts?.find(
-    //       (p: any) => p.type === "tool-ExitPlanMode",
-    //     );
-    //     if (exitPlanPart?.output?.plan) {
-    //       return true;
-    //     }
-    //   }
-    // }
-
-    // If the latest assistant message is an ExitPlanMode with a plan, it's unapproved
-    const lastMsg = messages.length > 0 ? messages[messages.length - 1] : null;
-    if (lastMsg && lastMsg.role === "assistant") {
-      const exitPlanPart = lastMsg.parts?.find(
-        (p: any) => p.type === "tool-ExitPlanMode",
-      );
-      if (exitPlanPart?.output?.plan) {
-        return true;
-      }
-    }
-    return false;
-  }, [messages]);
-
-  // Update pending plan approvals atom for sidebar indicators
-  const setPendingPlanApprovals = useSetAtom(pendingPlanApprovalsAtom);
-  useEffect(() => {
-    setPendingPlanApprovals((prev: Set<string>) => {
-      const newSet = new Set(prev);
-      if (hasUnapprovedPlan) {
-        newSet.add(subChatId);
-      } else {
-        newSet.delete(subChatId);
-      }
-      // Only return new set if it changed
-      if (
-        newSet.size !== prev.size ||
-        ![...newSet].every((id) => prev.has(id))
-      ) {
-        return newSet;
-      }
-      return prev;
-    });
-  }, [hasUnapprovedPlan, subChatId, setPendingPlanApprovals]);
-
-  // Keyboard shortcut: Cmd+Enter to approve plan
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (
-        e.key === "Enter" &&
-        e.metaKey &&
-        !e.shiftKey &&
-        hasUnapprovedPlan &&
-        !isStreaming
-      ) {
-        e.preventDefault();
-        handleApprovePlan();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [hasUnapprovedPlan, isStreaming, handleApprovePlan]);
-
-  // Clean up pending plan approval when unmounting
-  useEffect(() => {
-    return () => {
-      setPendingPlanApprovals((prev: Set<string>) => {
-        if (prev.has(subChatId)) {
-          const newSet = new Set(prev);
-          newSet.delete(subChatId);
-          return newSet;
-        }
-        return prev;
-      });
-    };
-  }, [subChatId, setPendingPlanApprovals]);
 
   // Memoized JSX for ChatInputActions props to avoid recreating on every streaming update
   const hasNoMessages = messages.length === 0;

@@ -28,4 +28,4 @@ jobs:
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
         run: |
           bun run build
-          electron-builder --mac --publish always
+          bunx electron-builder --mac --publish always

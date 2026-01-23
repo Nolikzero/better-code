@@ -3,7 +3,6 @@
 import { MessageSquarePlus } from "lucide-react";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { isMacOS } from "../../../lib/utils/platform";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -11,6 +10,7 @@ import {
   ContextMenuShortcut,
   ContextMenuTrigger,
 } from "../../../components/ui/context-menu";
+import { isMacOS } from "../../../lib/utils/platform";
 import type { CodeSnippet } from "../atoms";
 import {
   generateSnippetId,

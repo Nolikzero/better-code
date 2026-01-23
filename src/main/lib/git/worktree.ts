@@ -900,11 +900,7 @@ export async function createWorktreeForChat(
     const allUsed = new Set([...(usedBranches ?? []), ...localBranches.all]);
 
     const branch = generateBranchName(allUsed);
-    const worktreesDir = join(
-      os.homedir(),
-      ".bettercode",
-      "worktrees",
-    );
+    const worktreesDir = join(os.homedir(), ".bettercode", "worktrees");
     const worktreePath = join(worktreesDir, projectId, chatId);
 
     await createWorktree(

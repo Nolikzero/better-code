@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.0.6]
+
+### Added
+
+- Centralized keybindings system with customizable overrides
+- Session compaction functionality and /compact command
+- Per-subchat model overrides (model_id on sub_chats)
+- Ralph auto-continue functionality and streamlined PRD workflows
+- Windows and Linux build jobs to release CI workflow
+
+### Changed
+
+- Refactored active-chat into extracted hooks (message handling, plan approval, Ralph auto-start, provider/model selection, scroll tracking, state subscriptions)
+- Refactored Ralph service to support sub-chat functionality
+
 ## [0.0.5]
 
 ### Added

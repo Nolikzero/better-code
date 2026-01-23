@@ -551,7 +551,6 @@ export const pendingRalphAutoStartsAtom = atom<
 // Bypasses AI SDK tool mechanism for more reliable rendering
 export interface RalphPrdStatus {
   subChatId: string;
-  chatId: string;
   status: "generating" | "complete";
   message?: string;
   prd?: {

@@ -349,16 +349,16 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
 
               // === Ralph Automation Events ===
               // Helper to invalidate all ralph queries and broadcast state change event
-              const invalidateRalphQueries = (chatId?: string) => {
+              const invalidateRalphQueries = (subChatId?: string) => {
                 // Broadcast custom event so badge can listen regardless of cache timing
                 window.dispatchEvent(
                   new CustomEvent("ralph-state-changed", {
-                    detail: { chatId: chatId || this.config.chatId },
+                    detail: { subChatId: subChatId || this.config.subChatId },
                   }),
                 );
                 console.log(
-                  "[ralph] Dispatched ralph-state-changed event for chatId:",
-                  chatId || this.config.chatId,
+                  "[ralph] Dispatched ralph-state-changed event for subChatId:",
+                  subChatId || this.config.subChatId,
                 );
 
                 // Also invalidate query cache for components that are already subscribed
@@ -460,7 +460,6 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
                 );
                 generatingStatuses.set(this.config.subChatId, {
                   subChatId: this.config.subChatId,
-                  chatId: this.config.chatId,
                   status: "generating",
                   message: chunk.message,
                 });
@@ -488,7 +487,6 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
                 );
                 completeStatuses.set(this.config.subChatId, {
                   subChatId: this.config.subChatId,
-                  chatId: this.config.chatId,
                   status: "complete",
                   prd: chunk.prd,
                 });

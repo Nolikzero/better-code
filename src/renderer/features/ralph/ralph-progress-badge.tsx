@@ -12,7 +12,7 @@ import { cn } from "../../lib/utils";
 import { ralphPrdStatusesAtom } from "../agents/atoms";
 
 interface RalphProgressBadgeProps {
-  chatId: string;
+  subChatId: string;
   className?: string;
 }
 
@@ -27,27 +27,26 @@ interface UserStory {
 }
 
 export function RalphProgressBadge({
-  chatId,
+  subChatId,
   className,
 }: RalphProgressBadgeProps) {
   const [isOpen, setIsOpen] = useState(false);
   const utils = trpc.useUtils();
 
   const { data: ralphState, refetch } = trpc.ralph.getState.useQuery(
-    { chatId },
+    { subChatId },
     {
-      enabled: !!chatId,
+      enabled: !!subChatId,
     },
   );
 
   // Listen for ralph-state-changed events to refetch data
   useEffect(() => {
-    const handler = (event: CustomEvent<{ chatId: string }>) => {
-      // Refetch if event is for this chatId or if chatId matches
-      if (event.detail?.chatId === chatId) {
+    const handler = (event: CustomEvent<{ subChatId: string }>) => {
+      if (event.detail?.subChatId === subChatId) {
         console.log(
-          "[ralph-badge] Received ralph-state-changed, refetching for chatId:",
-          chatId,
+          "[ralph-badge] Received ralph-state-changed, refetching for subChatId:",
+          subChatId,
         );
         refetch();
       }
@@ -59,42 +58,63 @@ export function RalphProgressBadge({
         "ralph-state-changed",
         handler as EventListener,
       );
-  }, [chatId, refetch]);
+  }, [subChatId, refetch]);
 
   // Mutation to mark story complete
   const markCompleteMutation = trpc.ralph.markStoryComplete.useMutation({
     onSuccess: () => {
-      utils.ralph.getState.invalidate({ chatId });
+      utils.ralph.getState.invalidate({ subChatId });
     },
   });
 
   // Mutation to mark story incomplete
   const markIncompleteMutation = trpc.ralph.markStoryIncomplete.useMutation({
     onSuccess: () => {
-      utils.ralph.getState.invalidate({ chatId });
+      utils.ralph.getState.invalidate({ subChatId });
     },
   });
 
   // Toggle story completion status
   const handleToggleStory = (storyId: string, currentPasses: boolean) => {
     if (currentPasses) {
-      markIncompleteMutation.mutate({ chatId, storyId });
+      markIncompleteMutation.mutate({ subChatId, storyId });
     } else {
-      markCompleteMutation.mutate({ chatId, storyId });
+      markCompleteMutation.mutate({ subChatId, storyId });
     }
   };
 
   const prdStatuses = useAtomValue(ralphPrdStatusesAtom);
   const prdStatus = useMemo(() => {
-    for (const [, status] of prdStatuses) {
-      if (status.chatId === chatId) return status;
-    }
-    return null;
-  }, [prdStatuses, chatId]);
+    return prdStatuses.get(subChatId) || null;
+  }, [prdStatuses, subChatId]);
   const isGenerating = prdStatus?.status === "generating";
   // Bridge: keep loader visible until query refetches after generation completes
   const isPrdPendingRefetch =
     prdStatus?.status === "complete" && !ralphState?.hasPrd;
+
+  // Track if we saw the "generating" animation during this mount cycle
+  const [hasShownGenerating, setHasShownGenerating] = useState(false);
+  const [showGeneratedFlash, setShowGeneratedFlash] = useState(false);
+
+  useEffect(() => {
+    if (isGenerating) {
+      setHasShownGenerating(true);
+    }
+  }, [isGenerating]);
+
+  // If we mount directly into "complete + hasPrd" without having seen "generating",
+  // show a brief flash to indicate PRD was generated while viewing another chat
+  useEffect(() => {
+    if (
+      prdStatus?.status === "complete" &&
+      !hasShownGenerating &&
+      ralphState?.hasPrd
+    ) {
+      setShowGeneratedFlash(true);
+      const timer = setTimeout(() => setShowGeneratedFlash(false), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [prdStatus?.status, hasShownGenerating, ralphState?.hasPrd]);
 
   // Show loader during PRD generation (and briefly after, until query catches up)
   if (isGenerating || isPrdPendingRefetch) {
@@ -107,6 +127,21 @@ export function RalphProgressBadge({
       >
         <Loader2 className="h-3 w-3 animate-spin" />
         <span>Generating...</span>
+      </div>
+    );
+  }
+
+  // Brief flash when PRD was generated while component was unmounted
+  if (showGeneratedFlash) {
+    return (
+      <div
+        className={cn(
+          "flex items-center gap-1.5 px-2 py-0.5 text-xs rounded-md bg-green-500/10 text-green-600 dark:text-green-400",
+          className,
+        )}
+      >
+        <CheckIcon className="h-3 w-3" />
+        <span>PRD Generated!</span>
       </div>
     );
   }

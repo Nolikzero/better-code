@@ -35,13 +35,13 @@ export class RalphService {
   private db = getDatabase();
 
   /**
-   * Get PRD for a chat
+   * Get PRD for a sub-chat
    */
-  getPrd(chatId: string): RalphPrdData | null {
+  getPrd(subChatId: string): RalphPrdData | null {
     const prd = this.db
       .select()
       .from(ralphPrds)
-      .where(eq(ralphPrds.chatId, chatId))
+      .where(eq(ralphPrds.subChatId, subChatId))
       .get();
 
     if (!prd) return null;
@@ -54,21 +54,21 @@ export class RalphService {
   }
 
   /**
-   * Get PRD database record by chat ID
+   * Get PRD database record by sub-chat ID
    */
-  getPrdRecord(chatId: string) {
+  getPrdRecord(subChatId: string) {
     return this.db
       .select()
       .from(ralphPrds)
-      .where(eq(ralphPrds.chatId, chatId))
+      .where(eq(ralphPrds.subChatId, subChatId))
       .get();
   }
 
   /**
-   * Save or update PRD for a chat
+   * Save or update PRD for a sub-chat
    */
-  savePrd(chatId: string, prd: RalphPrdData): void {
-    const existing = this.getPrdRecord(chatId);
+  savePrd(subChatId: string, prd: RalphPrdData): void {
+    const existing = this.getPrdRecord(subChatId);
 
     if (existing) {
       this.db
@@ -85,7 +85,7 @@ export class RalphService {
       this.db
         .insert(ralphPrds)
         .values({
-          chatId,
+          subChatId,
           branchName: prd.branchName,
           goal: prd.goal,
           stories: JSON.stringify(prd.stories),
@@ -98,12 +98,12 @@ export class RalphService {
    * Mark a story as complete
    * @returns true if story was marked complete, false if failed
    */
-  markStoryComplete(chatId: string, storyId: string): boolean {
-    const prd = this.getPrd(chatId);
+  markStoryComplete(subChatId: string, storyId: string): boolean {
+    const prd = this.getPrd(subChatId);
     if (!prd) {
       console.error(
-        "[ralph] markStoryComplete: No PRD found for chatId:",
-        chatId,
+        "[ralph] markStoryComplete: No PRD found for subChatId:",
+        subChatId,
       );
       return false;
     }
@@ -113,8 +113,8 @@ export class RalphService {
       console.error(
         "[ralph] markStoryComplete: Story not found:",
         storyId,
-        "in PRD for chatId:",
-        chatId,
+        "in PRD for subChatId:",
+        subChatId,
       );
       return false;
     }
@@ -123,7 +123,7 @@ export class RalphService {
       story.id === storyId ? { ...story, passes: true } : story,
     );
 
-    this.savePrd(chatId, { ...prd, stories: updatedStories });
+    this.savePrd(subChatId, { ...prd, stories: updatedStories });
     console.log("[ralph] markStoryComplete: Success for story:", storyId);
     return true;
   }
@@ -132,12 +132,12 @@ export class RalphService {
    * Mark a story as incomplete
    * @returns true if story was marked incomplete, false if failed
    */
-  markStoryIncomplete(chatId: string, storyId: string): boolean {
-    const prd = this.getPrd(chatId);
+  markStoryIncomplete(subChatId: string, storyId: string): boolean {
+    const prd = this.getPrd(subChatId);
     if (!prd) {
       console.error(
-        "[ralph] markStoryIncomplete: No PRD found for chatId:",
-        chatId,
+        "[ralph] markStoryIncomplete: No PRD found for subChatId:",
+        subChatId,
       );
       return false;
     }
@@ -147,8 +147,8 @@ export class RalphService {
       console.error(
         "[ralph] markStoryIncomplete: Story not found:",
         storyId,
-        "in PRD for chatId:",
-        chatId,
+        "in PRD for subChatId:",
+        subChatId,
       );
       return false;
     }
@@ -157,7 +157,7 @@ export class RalphService {
       story.id === storyId ? { ...story, passes: false } : story,
     );
 
-    this.savePrd(chatId, { ...prd, stories: updatedStories });
+    this.savePrd(subChatId, { ...prd, stories: updatedStories });
     console.log("[ralph] markStoryIncomplete: Success for story:", storyId);
     return true;
   }
@@ -192,12 +192,12 @@ export class RalphService {
    * Append a progress entry
    * @returns true if progress was saved, false if failed
    */
-  appendProgress(chatId: string, entry: ProgressEntry): boolean {
-    const prdRecord = this.getPrdRecord(chatId);
+  appendProgress(subChatId: string, entry: ProgressEntry): boolean {
+    const prdRecord = this.getPrdRecord(subChatId);
     if (!prdRecord) {
       console.error(
-        "[ralph] appendProgress failed: No PRD record found for chatId:",
-        chatId,
+        "[ralph] appendProgress failed: No PRD record found for subChatId:",
+        subChatId,
       );
       return false;
     }
@@ -230,10 +230,10 @@ export class RalphService {
   }
 
   /**
-   * Get all progress entries for a chat
+   * Get all progress entries for a sub-chat
    */
-  getProgress(chatId: string): ProgressEntry[] {
-    const prdRecord = this.getPrdRecord(chatId);
+  getProgress(subChatId: string): ProgressEntry[] {
+    const prdRecord = this.getPrdRecord(subChatId);
     if (!prdRecord) return [];
 
     const entries = this.db
@@ -254,8 +254,8 @@ export class RalphService {
   /**
    * Get progress as text (for injecting into prompts)
    */
-  getProgressText(chatId: string): string {
-    const entries = this.getProgress(chatId);
+  getProgressText(subChatId: string): string {
+    const entries = this.getProgress(subChatId);
     if (entries.length === 0) return "";
 
     // Build consolidated learnings section
@@ -295,8 +295,8 @@ export class RalphService {
   /**
    * Get current iteration number
    */
-  getCurrentIteration(chatId: string): number {
-    const entries = this.getProgress(chatId);
+  getCurrentIteration(subChatId: string): number {
+    const entries = this.getProgress(subChatId);
     if (entries.length === 0) return 1;
     return Math.max(...entries.map((e) => e.iteration)) + 1;
   }

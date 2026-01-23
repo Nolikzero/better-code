@@ -37,12 +37,12 @@ export const ralphRouter = router({
    * Get Ralph state (PRD + progress) for a chat
    */
   getState: publicProcedure
-    .input(z.object({ chatId: z.string() }))
+    .input(z.object({ subChatId: z.string() }))
     .query(({ input }) => {
       const service = getRalphService();
-      const prd = service.getPrd(input.chatId);
-      const progress = service.getProgress(input.chatId);
-      const currentIteration = service.getCurrentIteration(input.chatId);
+      const prd = service.getPrd(input.subChatId);
+      const progress = service.getProgress(input.subChatId);
+      const currentIteration = service.getCurrentIteration(input.subChatId);
 
       if (!prd) {
         return {
@@ -73,13 +73,13 @@ export const ralphRouter = router({
   savePrd: publicProcedure
     .input(
       z.object({
-        chatId: z.string(),
+        subChatId: z.string(),
         prd: prdSchema,
       }),
     )
     .mutation(({ input }) => {
       const service = getRalphService();
-      service.savePrd(input.chatId, input.prd as RalphPrdData);
+      service.savePrd(input.subChatId, input.prd as RalphPrdData);
       return { success: true };
     }),
 
@@ -89,13 +89,13 @@ export const ralphRouter = router({
   markStoryComplete: publicProcedure
     .input(
       z.object({
-        chatId: z.string(),
+        subChatId: z.string(),
         storyId: z.string(),
       }),
     )
     .mutation(({ input }) => {
       const service = getRalphService();
-      service.markStoryComplete(input.chatId, input.storyId);
+      service.markStoryComplete(input.subChatId, input.storyId);
       return { success: true };
     }),
 
@@ -105,13 +105,13 @@ export const ralphRouter = router({
   markStoryIncomplete: publicProcedure
     .input(
       z.object({
-        chatId: z.string(),
+        subChatId: z.string(),
         storyId: z.string(),
       }),
     )
     .mutation(({ input }) => {
       const service = getRalphService();
-      service.markStoryIncomplete(input.chatId, input.storyId);
+      service.markStoryIncomplete(input.subChatId, input.storyId);
       return { success: true };
     }),
 
@@ -121,22 +121,22 @@ export const ralphRouter = router({
   updateStory: publicProcedure
     .input(
       z.object({
-        chatId: z.string(),
+        subChatId: z.string(),
         story: userStorySchema,
       }),
     )
     .mutation(({ input }) => {
       const service = getRalphService();
-      const prd = service.getPrd(input.chatId);
+      const prd = service.getPrd(input.subChatId);
       if (!prd) {
-        throw new Error("No PRD found for this chat");
+        throw new Error("No PRD found for this sub-chat");
       }
 
       const updatedStories = prd.stories.map((story) =>
         story.id === input.story.id ? (input.story as UserStory) : story,
       );
 
-      service.savePrd(input.chatId, { ...prd, stories: updatedStories });
+      service.savePrd(input.subChatId, { ...prd, stories: updatedStories });
       return { success: true };
     }),
 
@@ -146,19 +146,19 @@ export const ralphRouter = router({
   addStory: publicProcedure
     .input(
       z.object({
-        chatId: z.string(),
+        subChatId: z.string(),
         story: userStorySchema,
       }),
     )
     .mutation(({ input }) => {
       const service = getRalphService();
-      const prd = service.getPrd(input.chatId);
+      const prd = service.getPrd(input.subChatId);
       if (!prd) {
-        throw new Error("No PRD found for this chat");
+        throw new Error("No PRD found for this sub-chat");
       }
 
       const updatedStories = [...prd.stories, input.story as UserStory];
-      service.savePrd(input.chatId, { ...prd, stories: updatedStories });
+      service.savePrd(input.subChatId, { ...prd, stories: updatedStories });
       return { success: true };
     }),
 
@@ -168,21 +168,21 @@ export const ralphRouter = router({
   removeStory: publicProcedure
     .input(
       z.object({
-        chatId: z.string(),
+        subChatId: z.string(),
         storyId: z.string(),
       }),
     )
     .mutation(({ input }) => {
       const service = getRalphService();
-      const prd = service.getPrd(input.chatId);
+      const prd = service.getPrd(input.subChatId);
       if (!prd) {
-        throw new Error("No PRD found for this chat");
+        throw new Error("No PRD found for this sub-chat");
       }
 
       const updatedStories = prd.stories.filter(
         (story) => story.id !== input.storyId,
       );
-      service.savePrd(input.chatId, { ...prd, stories: updatedStories });
+      service.savePrd(input.subChatId, { ...prd, stories: updatedStories });
       return { success: true };
     }),
 
@@ -192,13 +192,13 @@ export const ralphRouter = router({
   appendProgress: publicProcedure
     .input(
       z.object({
-        chatId: z.string(),
+        subChatId: z.string(),
         entry: progressEntrySchema,
       }),
     )
     .mutation(({ input }) => {
       const service = getRalphService();
-      service.appendProgress(input.chatId, input.entry as ProgressEntry);
+      service.appendProgress(input.subChatId, input.entry as ProgressEntry);
       return { success: true };
     }),
 
@@ -206,9 +206,9 @@ export const ralphRouter = router({
    * Get progress text (for display or injection)
    */
   getProgressText: publicProcedure
-    .input(z.object({ chatId: z.string() }))
+    .input(z.object({ subChatId: z.string() }))
     .query(({ input }) => {
       const service = getRalphService();
-      return service.getProgressText(input.chatId);
+      return service.getProgressText(input.subChatId);
     }),
 });

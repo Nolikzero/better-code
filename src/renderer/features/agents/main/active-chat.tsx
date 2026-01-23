@@ -409,8 +409,8 @@ function ChatViewInner({
 
   // Ralph state query - to check if PRD exists for showing setup dialog
   const { data: ralphState } = trpc.ralph.getState.useQuery(
-    { chatId: parentChatId },
-    { enabled: !!parentChatId && agentMode === "ralph" },
+    { subChatId },
+    { enabled: !!subChatId && agentMode === "ralph" },
   );
 
   // Reset navigation when switching sub-chats
@@ -2049,8 +2049,8 @@ ${instructions} Remember to output \`<story-complete>${nextStory.id}</story-comp
           mode={agentMode}
           onModeChange={handleAgentModeChange}
         />
-        {agentMode === "ralph" && parentChatId && (
-          <RalphProgressBadge chatId={parentChatId} className="ml-1" />
+        {agentMode === "ralph" && subChatId && (
+          <RalphProgressBadge subChatId={subChatId} className="ml-1" />
         )}
         {effectiveProvider === "opencode" ? (
           <OpenCodeModelSelector
@@ -2404,7 +2404,7 @@ ${instructions} Remember to output \`<story-complete>${nextStory.id}</story-comp
 
       {/* Ralph Setup Dialog for creating/editing PRD */}
       <RalphSetupDialog
-        chatId={parentChatId}
+        subChatId={subChatId}
         open={ralphSetupOpen}
         onOpenChange={setRalphSetupOpen}
       />
@@ -3042,6 +3042,10 @@ export function ChatView({
         onFinish: () => {
           console.log(`[SD] C:FINISH sub=${subChatId.slice(-8)}`);
           clearLoading(setLoadingSubChats, subChatId);
+
+          // Clear streamId so remount won't attempt resume (prevents stale resume=true
+          // which blocks the auto-start effect for Ralph PRD follow-up messages)
+          agentChatStore.setStreamId(subChatId, null);
 
           // Check if this was a manual abort (ESC/Ctrl+C) - skip sound if so
           const wasManuallyAborted =

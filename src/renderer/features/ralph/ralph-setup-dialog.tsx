@@ -27,7 +27,7 @@ interface UserStory {
 }
 
 interface RalphSetupDialogProps {
-  chatId: string;
+  subChatId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -50,7 +50,7 @@ function createEmptyStory(priority: number): UserStory {
 }
 
 export const RalphSetupDialog = memo(function RalphSetupDialog({
-  chatId,
+  subChatId,
   open,
   onOpenChange,
 }: RalphSetupDialogProps) {
@@ -66,9 +66,9 @@ export const RalphSetupDialog = memo(function RalphSetupDialog({
 
   // Load existing PRD
   const { data: ralphState } = trpc.ralph.getState.useQuery(
-    { chatId },
+    { subChatId },
     {
-      enabled: open && !!chatId,
+      enabled: open && !!subChatId,
     },
   );
 
@@ -88,7 +88,7 @@ export const RalphSetupDialog = memo(function RalphSetupDialog({
   // Save PRD mutation
   const savePrdMutation = trpc.ralph.savePrd.useMutation({
     onSuccess: () => {
-      utils.ralph.getState.invalidate({ chatId });
+      utils.ralph.getState.invalidate({ subChatId });
       onOpenChange(false);
     },
   });
@@ -104,14 +104,14 @@ export const RalphSetupDialog = memo(function RalphSetupDialog({
     }
 
     savePrdMutation.mutate({
-      chatId,
+      subChatId,
       prd: {
         goal,
         branchName,
         stories: validStories,
       },
     });
-  }, [chatId, goal, branchName, stories, savePrdMutation]);
+  }, [subChatId, goal, branchName, stories, savePrdMutation]);
 
   const handleAddStory = useCallback(() => {
     const newPriority = stories.length + 1;

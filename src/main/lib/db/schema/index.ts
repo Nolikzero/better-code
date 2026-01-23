@@ -135,9 +135,9 @@ export const ralphPrds = sqliteTable(
     id: text("id")
       .primaryKey()
       .$defaultFn(() => createId()),
-    chatId: text("chat_id")
+    subChatId: text("sub_chat_id")
       .notNull()
-      .references(() => chats.id, { onDelete: "cascade" }),
+      .references(() => subChats.id, { onDelete: "cascade" }),
     branchName: text("branch_name"),
     goal: text("goal"),
     stories: text("stories").notNull().default("[]"), // JSON: UserStory[]
@@ -149,14 +149,14 @@ export const ralphPrds = sqliteTable(
     ),
   },
   (table) => ({
-    chatIdIdx: index("ralph_prds_chat_id_idx").on(table.chatId),
+    subChatIdIdx: index("ralph_prds_sub_chat_id_idx").on(table.subChatId),
   }),
 );
 
 export const ralphPrdsRelations = relations(ralphPrds, ({ one, many }) => ({
-  chat: one(chats, {
-    fields: [ralphPrds.chatId],
-    references: [chats.id],
+  subChat: one(subChats, {
+    fields: [ralphPrds.subChatId],
+    references: [subChats.id],
   }),
   progress: many(ralphProgress),
 }));

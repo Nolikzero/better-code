@@ -58,7 +58,7 @@ export class RalphOrchestrator {
    */
   prepareStream(): RalphStreamDecision {
     const ralphService = getRalphService();
-    const prd = ralphService.getPrd(this.config.chatId);
+    const prd = ralphService.getPrd(this.config.subChatId);
 
     if (!prd) {
       // No PRD → planning phase
@@ -87,9 +87,9 @@ export class RalphOrchestrator {
 
     // PRD exists → executing phase
     this.phase = "executing";
-    const progressText = ralphService.getProgressText(this.config.chatId);
+    const progressText = ralphService.getProgressText(this.config.subChatId);
     const currentIteration = ralphService.getCurrentIteration(
-      this.config.chatId,
+      this.config.subChatId,
     );
     const ralphPrompt = buildRalphSystemPrompt(
       prd,
@@ -212,7 +212,7 @@ export class RalphOrchestrator {
       );
 
       const ralphService = getRalphService();
-      ralphService.savePrd(this.config.chatId, prd);
+      ralphService.savePrd(this.config.subChatId, prd);
 
       console.log(
         "[ralph] PRD generated:",
@@ -244,11 +244,11 @@ export class RalphOrchestrator {
     // 1. Check for full completion signal
     if (checkForCompletion(fullText)) {
       console.log("[ralph] Detected <promise>COMPLETE</promise> signal");
-      const prd = ralphService.getPrd(this.config.chatId);
+      const prd = ralphService.getPrd(this.config.subChatId);
       if (prd) {
         for (const story of prd.stories) {
           if (!story.passes) {
-            ralphService.markStoryComplete(this.config.chatId, story.id);
+            ralphService.markStoryComplete(this.config.subChatId, story.id);
           }
         }
       }
@@ -273,14 +273,14 @@ export class RalphOrchestrator {
       console.log("[ralph] Detected <story-complete>:", completedStoryId);
 
       // Check if already handled by git commit detection
-      const prdBefore = ralphService.getPrd(this.config.chatId);
+      const prdBefore = ralphService.getPrd(this.config.subChatId);
       const alreadyComplete =
         prdBefore?.stories.find((s) => s.id === completedStoryId)?.passes ??
         false;
 
-      ralphService.markStoryComplete(this.config.chatId, completedStoryId);
+      ralphService.markStoryComplete(this.config.subChatId, completedStoryId);
 
-      const prd = ralphService.getPrd(this.config.chatId);
+      const prd = ralphService.getPrd(this.config.subChatId);
       const hasMoreStories = prd?.stories.some((s) => !s.passes) ?? false;
 
       if (!alreadyComplete) {
@@ -290,16 +290,16 @@ export class RalphOrchestrator {
         );
         if (completedStory) {
           if (progress && progress.storyId === completedStoryId) {
-            ralphService.appendProgress(this.config.chatId, {
+            ralphService.appendProgress(this.config.subChatId, {
               storyId: completedStoryId,
-              iteration: ralphService.getCurrentIteration(this.config.chatId),
+              iteration: ralphService.getCurrentIteration(this.config.subChatId),
               summary: progress.summary,
               learnings: progress.learnings,
             });
           } else {
-            ralphService.appendProgress(this.config.chatId, {
+            ralphService.appendProgress(this.config.subChatId, {
               storyId: completedStoryId,
-              iteration: ralphService.getCurrentIteration(this.config.chatId),
+              iteration: ralphService.getCurrentIteration(this.config.subChatId),
               summary: `Completed: ${completedStory.title}`,
               learnings: [],
             });
@@ -321,9 +321,9 @@ export class RalphOrchestrator {
     } else if (progress) {
       // Standalone progress block (no story-complete tag)
       console.log("[ralph] Standalone progress for story:", progress.storyId);
-      ralphService.appendProgress(this.config.chatId, {
+      ralphService.appendProgress(this.config.subChatId, {
         storyId: progress.storyId,
-        iteration: ralphService.getCurrentIteration(this.config.chatId),
+        iteration: ralphService.getCurrentIteration(this.config.subChatId),
         summary: progress.summary,
         learnings: progress.learnings,
       });
@@ -356,13 +356,13 @@ export class RalphOrchestrator {
     console.log(`[ralph] Detected git commit for story: ${commitInfo.storyId}`);
     const ralphService = getRalphService();
     const success = ralphService.markStoryComplete(
-      this.config.chatId,
+      this.config.subChatId,
       commitInfo.storyId,
     );
 
     if (!success) return;
 
-    const prd = ralphService.getPrd(this.config.chatId);
+    const prd = ralphService.getPrd(this.config.subChatId);
     const hasMoreStories = prd?.stories.some((s) => !s.passes) ?? false;
 
     // Auto-generate progress entry
@@ -370,9 +370,9 @@ export class RalphOrchestrator {
       (s) => s.id === commitInfo.storyId,
     );
     if (completedStory) {
-      ralphService.appendProgress(this.config.chatId, {
+      ralphService.appendProgress(this.config.subChatId, {
         storyId: commitInfo.storyId,
-        iteration: ralphService.getCurrentIteration(this.config.chatId),
+        iteration: ralphService.getCurrentIteration(this.config.subChatId),
         summary: `Completed: ${completedStory.title}`,
         learnings: [],
       });

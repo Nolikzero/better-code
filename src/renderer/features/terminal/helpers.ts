@@ -279,9 +279,12 @@ export function setupKeyboardHandler(
       return false; // Prevent xterm from processing
     }
 
-    // Cmd+K - clear terminal (macOS)
+    // Cmd+K / Ctrl+K - clear terminal
     const isClearShortcut =
-      event.key === "k" && event.metaKey && !event.shiftKey && !event.altKey;
+      event.key === "k" &&
+      (event.metaKey || event.ctrlKey) &&
+      !event.shiftKey &&
+      !event.altKey;
 
     if (isClearShortcut) {
       if (event.type === "keydown" && options.onClear) {

@@ -4,6 +4,12 @@ import os from "node:os";
 import path from "node:path";
 import { stripVTControlCharacters } from "node:util";
 import { app } from "electron";
+import {
+  getDefaultFallbackPath,
+  getDefaultShell,
+  getProcessEnvAsRecord,
+  isWindows,
+} from "../../platform";
 
 // Cache the shell environment
 let cachedShellEnv: Record<string, string> | null = null;
@@ -160,7 +166,7 @@ function findInPath(): string | null {
       }
     } else {
       // Run which inside interactive login shell to get full PATH
-      const shell = process.env.SHELL || "/bin/zsh";
+      const shell = getDefaultShell();
       const result = execSync(`${shell} -ilc 'which ${binaryName}'`, {
         encoding: "utf8",
         timeout: 5000,
@@ -265,7 +271,23 @@ function getClaudeShellEnvironment(): Record<string, string> {
     return { ...cachedShellEnv };
   }
 
-  const shell = process.env.SHELL || "/bin/zsh";
+  // On Windows, GUI apps inherit the full environment - no login shell needed
+  if (isWindows) {
+    const env = getProcessEnvAsRecord();
+    for (const key of STRIPPED_ENV_KEYS) {
+      if (key in env) {
+        console.log(`[claude-env] Stripped ${key} from environment`);
+        delete env[key];
+      }
+    }
+    console.log(
+      `[claude-env] Loaded ${Object.keys(env).length} environment variables (Windows)`,
+    );
+    cachedShellEnv = env;
+    return { ...env };
+  }
+
+  const shell = getDefaultShell();
   const command = `echo -n "${DELIMITER}"; env; echo -n "${DELIMITER}"; exit`;
 
   try {
@@ -302,21 +324,11 @@ function getClaudeShellEnvironment(): Record<string, string> {
 
     // Fallback: return minimal required env
     const home = os.homedir();
-    const fallbackPath = [
-      `${home}/.local/bin`,
-      "/opt/homebrew/bin",
-      "/usr/local/bin",
-      "/usr/bin",
-      "/bin",
-      "/usr/sbin",
-      "/sbin",
-    ].join(":");
-
     const fallback: Record<string, string> = {
       HOME: home,
       USER: os.userInfo().username,
-      PATH: fallbackPath,
-      SHELL: process.env.SHELL || "/bin/zsh",
+      PATH: getDefaultFallbackPath(),
+      SHELL: getDefaultShell(),
       TERM: "xterm-256color",
     };
 
@@ -359,7 +371,7 @@ export function buildClaudeEnv(options?: {
   // 3. Ensure critical vars are present
   if (!env.HOME) env.HOME = os.homedir();
   if (!env.USER) env.USER = os.userInfo().username;
-  if (!env.SHELL) env.SHELL = "/bin/zsh";
+  if (!env.SHELL) env.SHELL = getDefaultShell();
   if (!env.TERM) env.TERM = "xterm-256color";
 
   // 4. Add custom overrides

@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import { mkdir, readFile, stat } from "node:fs/promises";
+import os from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import simpleGit from "simple-git";
@@ -900,7 +901,7 @@ export async function createWorktreeForChat(
 
     const branch = generateBranchName(allUsed);
     const worktreesDir = join(
-      process.env.HOME || "",
+      os.homedir(),
       ".bettercode",
       "worktrees",
     );

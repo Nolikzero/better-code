@@ -7,11 +7,18 @@ const DEFAULT_COLS = 80;
 const DEFAULT_ROWS = 24;
 
 function getShellArgs(shell: string): string[] {
+  const shellLower = shell.toLowerCase();
+  if (shellLower.includes("powershell") || shellLower.includes("pwsh")) {
+    return ["-NoLogo"];
+  }
+  if (shellLower.includes("cmd")) {
+    return [];
+  }
   if (shell.includes("zsh")) {
     return ["-l"];
   }
   if (shell.includes("bash")) {
-    return [];
+    return ["-l"];
   }
   return [];
 }
@@ -27,11 +34,12 @@ function spawnPty(params: {
   const shellArgs = getShellArgs(shell);
 
   return pty.spawn(shell, shellArgs, {
-    name: "xterm-256color",
+    name: os.platform() === "win32" ? "" : "xterm-256color",
     cols,
     rows,
     cwd,
     env,
+    ...(os.platform() === "win32" ? { useConpty: true } : {}),
   });
 }
 

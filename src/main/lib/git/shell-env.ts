@@ -4,6 +4,7 @@ import {
 } from "node:child_process";
 import os from "node:os";
 import { promisify } from "node:util";
+import { getDefaultShell, getProcessEnvAsRecord, isWindows } from "../platform";
 
 const execFileAsync = promisify(execFile);
 
@@ -36,9 +37,16 @@ export async function getShellEnvironment(): Promise<Record<string, string>> {
     return { ...cachedEnv };
   }
 
-  const shell =
-    process.env.SHELL ||
-    (process.platform === "darwin" ? "/bin/zsh" : "/bin/bash");
+  // On Windows, GUI apps inherit the full environment - no login shell needed
+  if (isWindows) {
+    const env = getProcessEnvAsRecord();
+    cachedEnv = env;
+    cacheTime = now;
+    isFallbackCache = false;
+    return { ...env };
+  }
+
+  const shell = getDefaultShell();
 
   try {
     // Use -lc flags (not -ilc):

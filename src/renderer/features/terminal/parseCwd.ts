@@ -30,5 +30,10 @@ export function parseCwd(data: string): string | null {
     }
   }
 
+  // Windows: strip leading slash from /C:/path format
+  if (lastCwd && /^\/[A-Za-z]:/.test(lastCwd)) {
+    lastCwd = lastCwd.substring(1);
+  }
+
   return lastCwd;
 }

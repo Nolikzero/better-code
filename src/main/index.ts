@@ -38,6 +38,9 @@ if (IS_DEV && app) {
 // Clean up stale lock files from crashed instances
 // Returns true if locks were cleaned, false otherwise
 function cleanupStaleLocks(): boolean {
+  // Windows uses named mutex for single instance, not symlink locks
+  if (process.platform === "win32") return false;
+
   const userDataPath = app.getPath("userData");
   const lockPath = join(userDataPath, "SingletonLock");
 
@@ -153,8 +156,11 @@ if (gotTheLock) {
 
     // Function to build and set application menu
     const buildMenu = () => {
-      const template: Electron.MenuItemConstructorOptions[] = [
-        {
+      const template: Electron.MenuItemConstructorOptions[] = [];
+
+      // App menu (macOS only)
+      if (process.platform === "darwin") {
+        template.push({
           label: app.name,
           submenu: [
             { role: "about", label: "About BetterCode" },
@@ -163,12 +169,10 @@ if (gotTheLock) {
                 ? `Update to v${availableVersion}...`
                 : "Check for Updates...",
               click: () => {
-                // Send event to renderer to clear dismiss state
                 const win = getWindow();
                 if (win) {
                   win.webContents.send("update:manual-check");
                 }
-                // If update is already available, start downloading immediately
                 if (updateAvailable) {
                   downloadUpdate();
                 } else {
@@ -185,74 +189,111 @@ if (gotTheLock) {
             { type: "separator" },
             { role: "quit" },
           ],
-        },
+        });
+      }
+
+      // File menu (all platforms)
+      const fileSubmenu: Electron.MenuItemConstructorOptions[] = [
         {
-          label: "File",
-          submenu: [
-            {
-              label: "New Chat",
-              accelerator: "CmdOrCtrl+N",
-              click: () => {
-                console.log("[Menu] New Chat clicked (Cmd+N)");
-                const win = getWindow();
-                if (win) {
-                  console.log("[Menu] Sending shortcut:new-agent to renderer");
-                  win.webContents.send("shortcut:new-agent");
-                } else {
-                  console.log("[Menu] No window found!");
-                }
-              },
-            },
-          ],
-        },
-        {
-          label: "Edit",
-          submenu: [
-            { role: "undo" },
-            { role: "redo" },
-            { type: "separator" },
-            { role: "cut" },
-            { role: "copy" },
-            { role: "paste" },
-            { role: "selectAll" },
-          ],
-        },
-        {
-          label: "View",
-          submenu: [
-            { role: "reload" },
-            { role: "forceReload" },
-            { role: "toggleDevTools" },
-            { type: "separator" },
-            { role: "resetZoom" },
-            { role: "zoomIn" },
-            { role: "zoomOut" },
-            { type: "separator" },
-            { role: "togglefullscreen" },
-          ],
-        },
-        {
-          label: "Window",
-          submenu: [
-            { role: "minimize" },
-            { role: "zoom" },
-            { type: "separator" },
-            { role: "front" },
-          ],
-        },
-        {
-          role: "help",
-          submenu: [
-            {
-              label: "GitHub",
-              click: async () => {
-                const { shell } = await import("electron");
-                await shell.openExternal("https://github.com");
-              },
-            },
-          ],
+          label: "New Chat",
+          accelerator: "CmdOrCtrl+N",
+          click: () => {
+            const win = getWindow();
+            if (win) {
+              win.webContents.send("shortcut:new-agent");
+            }
+          },
         },
       ];
+      // On Windows/Linux, add quit to File menu
+      if (process.platform !== "darwin") {
+        fileSubmenu.push(
+          { type: "separator" },
+          { role: "quit" },
+        );
+      }
+      template.push({ label: "File", submenu: fileSubmenu });
+
+      // Edit menu (all platforms)
+      template.push({
+        label: "Edit",
+        submenu: [
+          { role: "undo" },
+          { role: "redo" },
+          { type: "separator" },
+          { role: "cut" },
+          { role: "copy" },
+          { role: "paste" },
+          { role: "selectAll" },
+        ],
+      });
+
+      // View menu (all platforms)
+      template.push({
+        label: "View",
+        submenu: [
+          { role: "reload" },
+          { role: "forceReload" },
+          { role: "toggleDevTools" },
+          { type: "separator" },
+          { role: "resetZoom" },
+          { role: "zoomIn" },
+          { role: "zoomOut" },
+          { type: "separator" },
+          { role: "togglefullscreen" },
+        ],
+      });
+
+      // Window menu (platform-aware)
+      template.push({
+        label: "Window",
+        submenu: [
+          { role: "minimize" },
+          ...(process.platform === "darwin"
+            ? [
+                { role: "zoom" } as Electron.MenuItemConstructorOptions,
+                { type: "separator" } as Electron.MenuItemConstructorOptions,
+                { role: "front" } as Electron.MenuItemConstructorOptions,
+              ]
+            : [{ role: "close" } as Electron.MenuItemConstructorOptions]),
+        ],
+      });
+
+      // Help menu (all platforms)
+      const helpSubmenu: Electron.MenuItemConstructorOptions[] = [
+        {
+          label: "GitHub",
+          click: async () => {
+            const { shell } = await import("electron");
+            await shell.openExternal("https://github.com");
+          },
+        },
+      ];
+      // On Windows/Linux, add update check and about to Help menu
+      if (process.platform !== "darwin") {
+        helpSubmenu.push(
+          { type: "separator" },
+          {
+            label: updateAvailable
+              ? `Update to v${availableVersion}...`
+              : "Check for Updates...",
+            click: () => {
+              const win = getWindow();
+              if (win) {
+                win.webContents.send("update:manual-check");
+              }
+              if (updateAvailable) {
+                downloadUpdate();
+              } else {
+                checkForUpdates(true);
+              }
+            },
+          },
+          { role: "about", label: "About BetterCode" },
+        );
+      }
+      template.push({ role: "help", submenu: helpSubmenu });
+
       Menu.setApplicationMenu(Menu.buildFromTemplate(template));
     };
 

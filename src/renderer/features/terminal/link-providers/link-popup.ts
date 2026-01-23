@@ -3,6 +3,8 @@
  * Shows a tooltip with the URL and instructions when hovering over links.
  */
 
+import { isMacOS } from "../../../lib/utils/platform";
+
 let _linkPopup: HTMLDivElement | undefined;
 let _isMouseOverPopup = false;
 let _removeTimeout: ReturnType<typeof setTimeout> | undefined;
@@ -14,26 +16,17 @@ let _currentUrl: string | undefined;
 const SHOW_DELAY = 400;
 
 /**
- * Check if the current platform is macOS.
- */
-function isMac(): boolean {
-  return typeof navigator !== "undefined"
-    ? /Mac/.test(navigator.platform)
-    : false;
-}
-
-/**
  * Get the modifier key name based on platform.
  */
 function getModifierKeyName(): string {
-  return isMac() ? "Cmd" : "Ctrl";
+  return isMacOS() ? "Cmd" : "Ctrl";
 }
 
 /**
  * Check if the correct modifier key is pressed for link activation.
  */
 export function isModifierPressed(event: MouseEvent): boolean {
-  return isMac() ? event.metaKey : event.ctrlKey;
+  return isMacOS() ? event.metaKey : event.ctrlKey;
 }
 
 /**

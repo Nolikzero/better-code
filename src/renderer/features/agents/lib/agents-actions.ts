@@ -69,7 +69,7 @@ const createNewAgentAction: AgentActionDefinition = {
   label: "New workspace",
   description: "Create a new workspace",
   category: "general",
-  hotkey: "cmd+n",
+  hotkey: ["cmd+n", "ctrl+n"],
   handler: async (context) => {
     console.log("[Action] create-new-agent handler called");
     console.log(

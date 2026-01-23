@@ -33,14 +33,14 @@ export function isMacOS(): boolean {
 /**
  * Check if running on Windows
  */
-function _isWindows(): boolean {
+export function isWindows(): boolean {
   return getPlatform() === "win32";
 }
 
 /**
  * Check if running on Linux
  */
-function _isLinux(): boolean {
+export function isLinux(): boolean {
   return getPlatform() === "linux";
 }
 
@@ -154,10 +154,22 @@ function getShortcut(key: ShortcutKey): {
 }
 
 /**
+ * Convert macOS symbol display to Windows/Linux text display
+ */
+function convertDisplayForPlatform(macDisplay: string): string {
+  if (isMacOS()) return macDisplay;
+  return macDisplay
+    .replace("⌘", "Ctrl+")
+    .replace("⌥", "Alt+")
+    .replace("⇧", "Shift+")
+    .replace("⌃", "Ctrl+");
+}
+
+/**
  * Get shortcut display string for the current platform
  */
 export function getShortcutKey(key: ShortcutKey): string {
-  return getShortcut(key).display;
+  return convertDisplayForPlatform(getShortcut(key).display);
 }
 
 /**

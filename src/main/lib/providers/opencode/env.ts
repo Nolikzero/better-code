@@ -4,6 +4,12 @@ import os from "node:os";
 import path from "node:path";
 import { stripVTControlCharacters } from "node:util";
 import { app } from "electron";
+import {
+  getDefaultFallbackPath,
+  getDefaultShell,
+  getProcessEnvAsRecord,
+  isWindows,
+} from "../../platform";
 import type { OpenCodeBinaryResult } from "./types";
 
 // Cache for resolved binary path
@@ -59,7 +65,17 @@ export function getOpenCodeShellEnvironment(): Record<string, string> {
     return { ...cachedShellEnv };
   }
 
-  const shell = process.env.SHELL || "/bin/zsh";
+  // On Windows, GUI apps inherit the full environment - no login shell needed
+  if (isWindows) {
+    const env = getProcessEnvAsRecord();
+    console.log(
+      `[opencode-env] Loaded ${Object.keys(env).length} environment variables (Windows)`,
+    );
+    cachedShellEnv = env;
+    return { ...env };
+  }
+
+  const shell = getDefaultShell();
   const command = `echo -n "${DELIMITER}"; env; echo -n "${DELIMITER}"; exit`;
 
   try {
@@ -85,33 +101,25 @@ export function getOpenCodeShellEnvironment(): Record<string, string> {
   } catch (error) {
     console.error("[opencode-env] Failed to load shell environment:", error);
 
-    // Fallback: return minimal required env
     const home = os.homedir();
 
-    // Build fallback PATH including common bin paths
-    const fallbackPaths = [
-      `${home}/.local/bin`,
-      "/opt/homebrew/bin",
-      "/usr/local/bin",
-      "/usr/bin",
-      "/bin",
-      "/usr/sbin",
-      "/sbin",
-    ];
+    // Build fallback PATH
+    let fallbackPath = getDefaultFallbackPath();
 
     // Add node manager bin paths to fallback
     const nodeManagerPaths = getNodeManagerPaths("").map((p) =>
       path.dirname(p),
     );
-    fallbackPaths.unshift(...nodeManagerPaths);
-
-    const fallbackPath = fallbackPaths.join(":");
+    if (nodeManagerPaths.length > 0) {
+      const sep = isWindows ? ";" : ":";
+      fallbackPath = nodeManagerPaths.join(sep) + sep + fallbackPath;
+    }
 
     const fallback: Record<string, string> = {
       HOME: home,
       USER: os.userInfo().username,
       PATH: fallbackPath,
-      SHELL: process.env.SHELL || "/bin/zsh",
+      SHELL: getDefaultShell(),
       TERM: "xterm-256color",
     };
 
@@ -260,12 +268,21 @@ function findInNpmGlobal(): string | null {
   const binaryName = platform === "win32" ? "opencode.cmd" : "opencode";
 
   try {
-    // Run npm prefix -g inside interactive shell to get nvm-managed npm
-    const shell = process.env.SHELL || "/bin/zsh";
-    const npmPrefix = execSync(`${shell} -ilc 'npm prefix -g'`, {
-      encoding: "utf8",
-      timeout: 5000,
-    }).trim();
+    let npmPrefix: string;
+    if (isWindows) {
+      npmPrefix = execSync("npm prefix -g", {
+        encoding: "utf8",
+        timeout: 5000,
+        windowsHide: true,
+      }).trim();
+    } else {
+      // Run npm prefix -g inside interactive shell to get nvm-managed npm
+      const shell = getDefaultShell();
+      npmPrefix = execSync(`${shell} -ilc 'npm prefix -g'`, {
+        encoding: "utf8",
+        timeout: 5000,
+      }).trim();
+    }
 
     // Check bin directory
     const binPath =
@@ -305,7 +322,7 @@ function findInPath(): string | null {
       }
     } else {
       // Run which inside interactive login shell to get full PATH
-      const shell = process.env.SHELL || "/bin/zsh";
+      const shell = getDefaultShell();
       const result = execSync(`${shell} -ilc 'which ${binaryName}'`, {
         encoding: "utf8",
         timeout: 5000,
@@ -421,7 +438,7 @@ export function buildOpenCodeEnv(options?: {
   // Ensure critical vars
   if (!env.HOME) env.HOME = os.homedir();
   if (!env.USER) env.USER = os.userInfo().username;
-  if (!env.SHELL) env.SHELL = "/bin/zsh";
+  if (!env.SHELL) env.SHELL = getDefaultShell();
   if (!env.TERM) env.TERM = "xterm-256color";
 
   // Set server password if provided (for HTTP basic auth)

@@ -578,7 +578,7 @@ export class ClaudeProvider implements AIProvider {
           .then(() => true)
           .catch(() => false);
         if (skillsSourceExists && !skillsTargetExists) {
-          await fs.symlink(skillsSource, skillsTarget, "dir");
+          await fs.symlink(skillsSource, skillsTarget, process.platform === "win32" ? "junction" : "dir");
           console.log(
             `[claude] Symlinked skills: ${skillsTarget} -> ${skillsSource}`,
           );
@@ -598,7 +598,7 @@ export class ClaudeProvider implements AIProvider {
           .then(() => true)
           .catch(() => false);
         if (agentsSourceExists && !agentsTargetExists) {
-          await fs.symlink(agentsSource, agentsTarget, "dir");
+          await fs.symlink(agentsSource, agentsTarget, process.platform === "win32" ? "junction" : "dir");
           console.log(
             `[claude] Symlinked agents: ${agentsTarget} -> ${agentsSource}`,
           );

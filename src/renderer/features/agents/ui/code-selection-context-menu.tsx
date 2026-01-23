@@ -3,6 +3,7 @@
 import { MessageSquarePlus } from "lucide-react";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { isMacOS } from "../../../lib/utils/platform";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -137,7 +138,7 @@ export function CodeSelectionContextMenu({
           <MessageSquarePlus className="size-4" />
           <span>Add to Chat</span>
           <ContextMenuShortcut>
-            {navigator.platform.includes("Mac") ? "Cmd" : "Ctrl"}+Shift+A
+            {isMacOS() ? "Cmd" : "Ctrl"}+Shift+A
           </ContextMenuShortcut>
         </ContextMenuItem>
       </ContextMenuContent>

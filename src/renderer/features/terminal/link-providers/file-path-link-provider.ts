@@ -24,13 +24,18 @@ import {
  * - ../parent/path/file.ts:10
  */
 
-// Pattern for file paths with optional line:column
+// Pattern for Unix file paths with optional line:column
 // Matches:
 // - Absolute paths starting with /
 // - Relative paths starting with ./ or ../
 // - Optionally followed by :line or :line:column
 const FILE_PATH_PATTERN =
   /(?:^|[\s'"({[])((?:\.\.?\/|\/)[^\s:'")\]}>]+?)(?::(\d+))?(?::(\d+))?(?=[\s'")\]}>]|$)/g;
+
+// Pattern for Windows file paths (drive letter + backslash)
+// Matches: C:\Users\file.ts, D:\project\src\index.ts:10:5
+const WIN_FILE_PATH_PATTERN =
+  /(?:^|[\s'"({[])([A-Za-z]:\\[^\s:'")\]}>]+?)(?::(\d+))?(?::(\d+))?(?=[\s'")\]}>]|$)/g;
 
 /**
  * Get the text content of a buffer line.
@@ -47,7 +52,7 @@ function getLineText(line: IBufferLine): string {
  * Check if a path looks like a file (has an extension or is a dotfile).
  */
 function looksLikeFile(path: string): boolean {
-  const basename = path.split("/").pop() || "";
+  const basename = path.split(/[/\\]/).pop() || "";
 
   // Has an extension
   if (/\.[a-zA-Z0-9]+$/.test(basename)) {
@@ -107,61 +112,67 @@ export class FilePathLinkProvider implements ILinkProvider {
     const links: ILink[] = [];
 
     let match: RegExpExecArray | null;
-    FILE_PATH_PATTERN.lastIndex = 0;
 
-    while ((match = FILE_PATH_PATTERN.exec(lineText)) !== null) {
-      const fullMatch = match[0];
-      const path = match[1];
-      const lineNum = match[2] ? Number.parseInt(match[2], 10) : undefined;
-      const colNum = match[3] ? Number.parseInt(match[3], 10) : undefined;
+    // Match both Unix and Windows file path patterns
+    const patterns = [FILE_PATH_PATTERN, WIN_FILE_PATH_PATTERN];
 
-      // Skip if it doesn't look like a file
-      if (!looksLikeFile(path)) {
-        continue;
-      }
+    for (const pattern of patterns) {
+      pattern.lastIndex = 0;
 
-      // Calculate the actual start position (accounting for leading whitespace/quote)
-      const leadingChars =
-        fullMatch.length -
-        path.length -
-        (match[2] ? match[2].length + 1 : 0) -
-        (match[3] ? match[3].length + 1 : 0);
-      const startX = match.index + leadingChars;
+      while ((match = pattern.exec(lineText)) !== null) {
+        const fullMatch = match[0];
+        const path = match[1];
+        const lineNum = match[2] ? Number.parseInt(match[2], 10) : undefined;
+        const colNum = match[3] ? Number.parseInt(match[3], 10) : undefined;
 
-      // Build the link text (path with optional :line:col)
-      let linkText = path;
-      if (lineNum !== undefined) {
-        linkText += `:${lineNum}`;
-        if (colNum !== undefined) {
-          linkText += `:${colNum}`;
+        // Skip if it doesn't look like a file
+        if (!looksLikeFile(path)) {
+          continue;
         }
-      }
 
-      const endX = startX + linkText.length;
+        // Calculate the actual start position (accounting for leading whitespace/quote)
+        const leadingChars =
+          fullMatch.length -
+          path.length -
+          (match[2] ? match[2].length + 1 : 0) -
+          (match[3] ? match[3].length + 1 : 0);
+        const startX = match.index + leadingChars;
 
-      links.push({
-        range: {
-          start: { x: startX + 1, y: bufferLineNumber + 1 },
-          end: { x: endX + 1, y: bufferLineNumber + 1 },
-        },
-        text: linkText,
-        decorations: {
-          pointerCursor: true,
-          underline: true,
-        },
-        activate: (event: MouseEvent) => {
-          // Require Cmd+Click (Mac) or Ctrl+Click (Windows/Linux)
-          if (isModifierPressed(event)) {
-            this.onClick(event, path, lineNum, colNum);
+        // Build the link text (path with optional :line:col)
+        let linkText = path;
+        if (lineNum !== undefined) {
+          linkText += `:${lineNum}`;
+          if (colNum !== undefined) {
+            linkText += `:${colNum}`;
           }
-        },
-        hover: (event: MouseEvent, text: string) => {
-          showLinkPopup(event, text);
-        },
-        leave: () => {
-          removeLinkPopup();
-        },
-      });
+        }
+
+        const endX = startX + linkText.length;
+
+        links.push({
+          range: {
+            start: { x: startX + 1, y: bufferLineNumber + 1 },
+            end: { x: endX + 1, y: bufferLineNumber + 1 },
+          },
+          text: linkText,
+          decorations: {
+            pointerCursor: true,
+            underline: true,
+          },
+          activate: (event: MouseEvent) => {
+            // Require Cmd+Click (Mac) or Ctrl+Click (Windows/Linux)
+            if (isModifierPressed(event)) {
+              this.onClick(event, path, lineNum, colNum);
+            }
+          },
+          hover: (event: MouseEvent, text: string) => {
+            showLinkPopup(event, text);
+          },
+          leave: () => {
+            removeLinkPopup();
+          },
+        });
+      }
     }
 
     callback(links.length > 0 ? links : undefined);

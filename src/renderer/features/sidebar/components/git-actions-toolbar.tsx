@@ -4,6 +4,7 @@ import { useAtomValue } from "jotai";
 import { Archive, ArrowUp, GitCommitHorizontal, Package } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { Button } from "../../../components/ui/button";
+import { isMacOS } from "../../../lib/utils/platform";
 import { IconSpinner } from "../../../components/ui/icons";
 import {
   Tooltip,
@@ -104,7 +105,7 @@ export function GitActionsToolbar({
         {isFocused && commitMessage.trim() && (
           <div className="absolute right-2 bottom-1.5 text-[10px] text-muted-foreground">
             <kbd className="px-1 py-0.5 rounded text-[9px]">
-              {navigator.platform.includes("Mac") ? "⌘" : "Ctrl"}+Enter
+              {isMacOS() ? "⌘" : "Ctrl"}+Enter
             </kbd>
           </div>
         )}

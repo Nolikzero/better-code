@@ -170,7 +170,7 @@ class TerminalManager extends EventEmitter {
   }
 
   signal(params: { paneId: string; signal?: string }): void {
-    const { paneId, signal = "SIGTERM" } = params;
+    const { paneId, signal: sig = "SIGTERM" } = params;
     const session = this.sessions.get(paneId);
 
     if (!session || !session.isAlive) {
@@ -180,7 +180,12 @@ class TerminalManager extends EventEmitter {
       return;
     }
 
-    session.pty.kill(signal);
+    if (process.platform === "win32") {
+      // Windows: node-pty uses taskkill internally
+      session.pty.kill();
+    } else {
+      session.pty.kill(sig);
+    }
     session.lastActive = Date.now();
   }
 

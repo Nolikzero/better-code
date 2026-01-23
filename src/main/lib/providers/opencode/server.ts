@@ -229,7 +229,11 @@ export class OpenCodeServer extends EventEmitter {
 
     // Kill the process if it's still running
     if (this.process) {
-      this.process.kill("SIGTERM");
+      if (process.platform === "win32") {
+        this.process.kill();
+      } else {
+        this.process.kill("SIGTERM");
+      }
     }
 
     throw error;
@@ -258,14 +262,22 @@ export class OpenCodeServer extends EventEmitter {
     this.state = { ...this.state, status: "stopping" };
     this.emit("stopping");
 
-    // Send SIGTERM for graceful shutdown
-    this.process.kill("SIGTERM");
+    // Send termination signal for graceful shutdown
+    if (process.platform === "win32") {
+      this.process.kill();
+    } else {
+      this.process.kill("SIGTERM");
+    }
 
     // Wait for process to exit
     const exitPromise = new Promise<void>((resolve) => {
       const timeout = setTimeout(() => {
-        console.log("[opencode-server] Shutdown timeout, sending SIGKILL...");
-        this.process?.kill("SIGKILL");
+        console.log("[opencode-server] Shutdown timeout, force killing...");
+        if (process.platform === "win32") {
+          this.process?.kill();
+        } else {
+          this.process?.kill("SIGKILL");
+        }
         resolve();
       }, SHUTDOWN_TIMEOUT);
 

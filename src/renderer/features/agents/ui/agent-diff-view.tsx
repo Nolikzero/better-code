@@ -69,6 +69,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "../../../components/ui/tooltip";
+import { isMacOS } from "../../../lib/utils/platform";
 import { getFileIconByExtension } from "../mentions";
 
 // e2b API routes are used instead of useSandboxManager for agents
@@ -1449,11 +1450,7 @@ export const AgentDiffView = forwardRef<AgentDiffViewRef, AgentDiffViewProps>(
               <MessageSquarePlus className="size-4" />
               <span>Add to Chat</span>
               <ContextMenuShortcut>
-                {typeof navigator !== "undefined" &&
-                navigator.platform.includes("Mac")
-                  ? "Cmd"
-                  : "Ctrl"}
-                +Shift+A
+                {isMacOS() ? "Cmd" : "Ctrl"}+Shift+A
               </ContextMenuShortcut>
             </ContextMenuItem>
           </ContextMenuContent>

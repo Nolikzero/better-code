@@ -39,7 +39,7 @@ export function getDefaultShell(): string {
     // Ignore
   }
 
-  return "/bin/zsh";
+  return os.platform() === "darwin" ? "/bin/zsh" : "/bin/sh";
 }
 
 function getLocale(baseEnv: Record<string, string>): string {
@@ -51,16 +51,19 @@ function getLocale(baseEnv: Record<string, string>): string {
     return baseEnv.LC_ALL;
   }
 
-  try {
-    const result = execSync("locale 2>/dev/null | grep LANG= | cut -d= -f2", {
-      encoding: "utf-8",
-      timeout: 1000,
-    }).trim();
-    if (result?.includes("UTF-8")) {
-      return result;
+  // locale command is Unix-only
+  if (os.platform() !== "win32") {
+    try {
+      const result = execSync("locale 2>/dev/null | grep LANG= | cut -d= -f2", {
+        encoding: "utf-8",
+        timeout: 1000,
+      }).trim();
+      if (result?.includes("UTF-8")) {
+        return result;
+      }
+    } catch {
+      // Ignore - will use fallback
     }
-  } catch {
-    // Ignore - will use fallback
   }
 
   return "en_US.UTF-8";

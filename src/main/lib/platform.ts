@@ -24,7 +24,7 @@ export function getDefaultShell(): string {
  * Returns shell arguments to execute a command string.
  * Windows cmd.exe: ["/c", command]
  * Windows PowerShell: ["-NoProfile", "-Command", command]
- * Unix: ["-lc", command]
+ * Unix: ["-ilc", command] (interactive login to load full env like nvm/rbenv)
  */
 export function getShellCommandArgs(shell: string, command: string): string[] {
   if (isWindows) {
@@ -34,7 +34,7 @@ export function getShellCommandArgs(shell: string, command: string): string[] {
     }
     return ["/c", command];
   }
-  return ["-lc", command];
+  return ["-ilc", command];
 }
 
 /**

@@ -1211,7 +1211,7 @@ export const chatsRouter = router({
           throw new TRPCError({
             code: "PRECONDITION_FAILED",
             message:
-              "Claude Code binary not found. Install via https://claude.ai/install.sh or run 'bun run claude:download'",
+              "Claude Code binary not found. Install via https://claude.ai/install.sh",
           });
         }
         const claudeBinaryPath = binaryResult.path;

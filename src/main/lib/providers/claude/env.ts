@@ -67,9 +67,6 @@ function getBundledClaudeBinaryPath(): string {
     console.log("[claude-binary] isExecutable:", isExecutable);
   } else {
     console.error("[claude-binary] WARNING: Binary not found at path!");
-    console.error(
-      "[claude-binary] Run 'bun run claude:download' to download it",
-    );
   }
 
   console.log("[claude-binary] ===========================================");
@@ -226,9 +223,6 @@ export function getClaudeBinaryPath(): ClaudeBinaryResult | null {
   }
 
   console.error("[claude-binary] Claude Code binary not found anywhere!");
-  console.error(
-    "[claude-binary] Install via https://claude.ai/install.sh or run 'bun run claude:download'",
-  );
   cachedBinaryResult = null;
   return null;
 }

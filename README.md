@@ -58,12 +58,9 @@ Download the latest release for your platform from the [Releases](https://github
 git clone https://github.com/21st-dev/1code.git
 cd 1code
 bun install
-bun run claude:download  # Download Claude CLI binary (required)
 bun run build
 bun run package:mac      # or package:win, package:linux
 ```
-
-> **Important:** The `claude:download` step downloads the Claude CLI binary required for agent functionality. Without it, the app will build but agent mode won't work.
 
 ### Option 3: Development Setup
 
@@ -71,7 +68,6 @@ bun run package:mac      # or package:win, package:linux
 git clone https://github.com/21st-dev/1code.git
 cd 1code
 bun install
-bun run claude:download  # First time only
 bun run dev              # Start with hot reload
 ```
 

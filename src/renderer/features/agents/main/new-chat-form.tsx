@@ -1041,7 +1041,7 @@ export function NewChatForm({
   return (
     <div className="flex h-full flex-col">
       {/* Header - Simple burger on mobile, AgentsHeaderControls on desktop */}
-      {!isOverlayMode && (
+      {(!isOverlayMode || !overlayContent) && (
         <div
           className="shrink-0 flex items-center justify-between"
           style={{
@@ -1072,7 +1072,7 @@ export function NewChatForm({
         </div>
       )}
 
-      {isOverlayMode ? (
+      {isOverlayMode && overlayContent ? (
         /* Render overlay content (CenterDiffView/CenterFileView) when in overlay mode */
         <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
           {overlayContent}

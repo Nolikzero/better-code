@@ -690,6 +690,7 @@ export function NewChatForm({
             created_at: sc.createdAt?.toISOString() || new Date().toISOString(),
             mode: (sc.mode as "plan" | "agent" | "ralph") || "agent",
             providerId: sc.providerId as ProviderId | undefined,
+            modelId: sc.modelId || undefined,
           })) || [];
         store.setAllSubChats(subChatMeta);
         store.addToOpenSubChats(newSubChatId);
@@ -821,6 +822,7 @@ export function NewChatForm({
       useWorktree: workMode === "worktree",
       mode: agentMode,
       providerId: defaultProvider,
+      modelId: currentModelId || undefined,
       initialAddedDirs:
         pendingAddedDirs.length > 0 ? pendingAddedDirs : undefined,
     });
@@ -834,6 +836,7 @@ export function NewChatForm({
     images,
     agentMode,
     defaultProvider,
+    currentModelId,
     historyKey,
     addToHistory,
     setNavState,

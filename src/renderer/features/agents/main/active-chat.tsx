@@ -30,6 +30,7 @@ import { ResizableSidebar } from "../../../components/ui/resizable-sidebar";
 import {
   chatProviderOverridesAtom,
   defaultProviderIdAtom,
+  lastSelectedModelByProviderAtom,
   type ProviderId,
   soundNotificationsEnabledAtom,
   subChatProviderOverridesAtom,
@@ -1664,6 +1665,7 @@ export function ChatView({
     messages?: any;
     stream_id?: string | null;
     providerId?: string | null;
+    modelId?: string | null;
   }>;
 
   // Get PR status when PR exists (for checking if it's open/merged/closed)
@@ -2090,6 +2092,7 @@ export function ChatView({
         providerId:
           (sc.providerId as ProviderId | undefined) ||
           existingLocal?.providerId,
+        modelId: sc.modelId || existingLocal?.modelId,
       };
     });
     const dbSubChatIds = new Set(dbSubChats.map((sc) => sc.id));
@@ -2295,12 +2298,17 @@ export function ChatView({
     const store = useAgentSubChatStore.getState();
     const subChatMode = agentMode;
 
+    // Get the current model for this provider
+    const modelsByProvider = appStore.get(lastSelectedModelByProviderAtom);
+    const modelId = modelsByProvider[effectiveProvider] || undefined;
+
     // Create sub-chat in DB first to get the real ID
     const newSubChat = await trpcClient.chats.createSubChat.mutate({
       chatId,
       name: "New Chat",
       mode: subChatMode,
       providerId: effectiveProvider,
+      modelId,
     });
     const newId = newSubChat.id;
 
@@ -2314,6 +2322,7 @@ export function ChatView({
       created_at: new Date().toISOString(),
       mode: subChatMode,
       providerId: effectiveProvider,
+      modelId,
     });
 
     // Also add to listWithSubChats query cache for sidebar
@@ -2478,11 +2487,16 @@ export function ChatView({
     // Get provider from current effective provider state
     const currentProvider = effectiveProvider;
 
+    // Get the current model for this provider
+    const modelsByProvider = appStore.get(lastSelectedModelByProviderAtom);
+    const modelId = modelsByProvider[currentProvider] || undefined;
+
     const newSubChat = await trpcClient.chats.createSubChat.mutate({
       chatId,
       name: "New Chat",
       mode: subChatMode,
       providerId: currentProvider,
+      modelId,
     });
     const newId = newSubChat.id;
 
@@ -2494,6 +2508,7 @@ export function ChatView({
       created_at: new Date().toISOString(),
       mode: subChatMode,
       providerId: currentProvider,
+      modelId,
     });
 
     store.addToOpenSubChats(newId);

@@ -7,6 +7,7 @@ import {
   defaultProviderIdAtom,
   lastSelectedModelByProviderAtom,
   type ProviderId,
+  subChatModelOverridesAtom,
   subChatProviderOverridesAtom,
 } from "../../../lib/atoms";
 import { trpc } from "../../../lib/trpc";
@@ -49,6 +50,9 @@ export function useProviderModelSelection(
   const [subChatProviderOverrides, setSubChatProviderOverrides] = useAtom(
     subChatProviderOverridesAtom,
   );
+  const [subChatModelOverrides, setSubChatModelOverrides] = useAtom(
+    subChatModelOverridesAtom,
+  );
   const [globalDefaultProvider] = useAtom(defaultProviderIdAtom);
   const [modelByProvider, setModelByProvider] = useAtom(
     lastSelectedModelByProviderAtom,
@@ -70,9 +74,11 @@ export function useProviderModelSelection(
     ],
   );
 
-  // Mutation to persist provider change to database
+  // Mutations to persist provider/model changes to database
   const updateSubChatProviderMutation =
     trpc.chats.updateSubChatProvider.useMutation();
+  const updateSubChatModelMutation =
+    trpc.chats.updateSubChatModel.useMutation();
 
   // Handler for provider change
   const handleProviderChange = useCallback(
@@ -82,6 +88,13 @@ export function useProviderModelSelection(
         ...prev,
         [subChatId]: newProvider,
       }));
+
+      // Clear per-subchat model override since provider changed
+      // The new provider's default model will be used via fallback
+      setSubChatModelOverrides((prev) => {
+        const { [subChatId]: _, ...rest } = prev;
+        return rest;
+      });
 
       // Update store
       useAgentSubChatStore
@@ -96,35 +109,85 @@ export function useProviderModelSelection(
         });
       }
     },
-    [subChatId, setSubChatProviderOverrides, updateSubChatProviderMutation],
+    [
+      subChatId,
+      setSubChatProviderOverrides,
+      setSubChatModelOverrides,
+      updateSubChatProviderMutation,
+    ],
   );
 
   // Memoized handler for OpenCode model changes (prevents re-render cascade)
   const handleOpenCodeModelChange = useCallback(
     (modelId: string) => {
+      setSubChatModelOverrides((prev) => ({
+        ...prev,
+        [subChatId]: modelId,
+      }));
+
       setModelByProvider((prev) => ({
         ...prev,
         opencode: modelId,
       }));
+
+      // Update store
+      useAgentSubChatStore.getState().updateSubChatModel(subChatId, modelId);
+
+      // Persist to database (skip for temp subchats)
+      if (!subChatId.startsWith("temp-")) {
+        updateSubChatModelMutation.mutate({
+          id: subChatId,
+          modelId,
+        });
+      }
     },
-    [setModelByProvider],
+    [
+      subChatId,
+      setSubChatModelOverrides,
+      setModelByProvider,
+      updateSubChatModelMutation,
+    ],
   );
 
   // Memoized handler for regular model selector changes
   const handleModelChange = useCallback(
     (modelId: string) => {
+      // Update per-subchat model override (optimistic)
+      setSubChatModelOverrides((prev) => ({
+        ...prev,
+        [subChatId]: modelId,
+      }));
+
+      // Also update global "last selected" for this provider (for new sub-chat defaults)
       setModelByProvider((prev) => ({
         ...prev,
         [effectiveProvider]: modelId,
       }));
+
+      // Update store
+      useAgentSubChatStore.getState().updateSubChatModel(subChatId, modelId);
+
+      // Persist to database (skip for temp subchats)
+      if (!subChatId.startsWith("temp-")) {
+        updateSubChatModelMutation.mutate({
+          id: subChatId,
+          modelId,
+        });
+      }
     },
-    [setModelByProvider, effectiveProvider],
+    [
+      subChatId,
+      setSubChatModelOverrides,
+      setModelByProvider,
+      effectiveProvider,
+      updateSubChatModelMutation,
+    ],
   );
 
-  // Initialize provider from sub-chat metadata when switching sub-chats
-  const lastInitializedProviderRef = useRef<string | null>(null);
+  // Initialize provider and model from sub-chat metadata when switching sub-chats
+  const lastInitializedRef = useRef<string | null>(null);
   useEffect(() => {
-    if (subChatId && subChatId !== lastInitializedProviderRef.current) {
+    if (subChatId && subChatId !== lastInitializedRef.current) {
       const subChat = useAgentSubChatStore
         .getState()
         .allSubChats.find((sc) => sc.id === subChatId);
@@ -137,14 +200,26 @@ export function useProviderModelSelection(
         }));
       }
 
-      lastInitializedProviderRef.current = subChatId;
+      // Initialize model from sub-chat metadata (restored from database)
+      if (subChat?.modelId) {
+        setSubChatModelOverrides((prev) => ({
+          ...prev,
+          [subChatId]: subChat.modelId!,
+        }));
+      }
+
+      lastInitializedRef.current = subChatId;
     }
-  }, [subChatId, setSubChatProviderOverrides]);
+  }, [subChatId, setSubChatProviderOverrides, setSubChatModelOverrides]);
 
   // Derive current provider models and model from effective provider
   const providerModels = getModels(effectiveProvider);
+  // Priority: subchat model override -> global lastSelectedModelByProvider -> first model
   const currentModelId =
-    modelByProvider[effectiveProvider] || providerModels[0]?.id || "";
+    subChatModelOverrides[subChatId] ||
+    modelByProvider[effectiveProvider] ||
+    providerModels[0]?.id ||
+    "";
 
   return {
     effectiveProvider,

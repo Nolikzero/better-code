@@ -115,6 +115,7 @@ export const chatsRouter = router({
             fileCount: subChats.fileCount,
             addedDirs: subChats.addedDirs,
             providerId: subChats.providerId,
+            modelId: subChats.modelId,
           },
         })
         .from(chats)
@@ -143,6 +144,7 @@ export const chatsRouter = router({
             fileCount: number | null;
             addedDirs: string | null;
             providerId: string | null;
+            modelId: string | null;
           }>;
         }
       >();
@@ -285,6 +287,7 @@ export const chatsRouter = router({
           .optional()
           .default("claude"),
         initialAddedDirs: z.array(z.string()).optional(),
+        modelId: z.string().optional(),
         // Ralph PRD data (for ralph mode - allows setting up PRD before chat creation)
         ralphPrd: z
           .object({
@@ -436,6 +439,7 @@ export const chatsRouter = router({
               mode: input.mode,
               messages: initialMessages,
               providerId: input.providerId,
+              ...(input.modelId && { modelId: input.modelId }),
               addedDirs: JSON.stringify(input.initialAddedDirs ?? []),
             })
             .returning()
@@ -487,6 +491,7 @@ export const chatsRouter = router({
           mode: input.mode,
           messages: initialMessages,
           providerId: input.providerId,
+          ...(input.modelId && { modelId: input.modelId }),
           addedDirs: JSON.stringify(input.initialAddedDirs ?? []),
         })
         .returning()
@@ -693,6 +698,7 @@ export const chatsRouter = router({
                 mode: input.mode,
                 messages: initialMessages,
                 providerId: input.providerId,
+                ...(input.modelId && { modelId: input.modelId }),
                 addedDirs: JSON.stringify(input.initialAddedDirs ?? []),
               })
               .returning()
@@ -926,6 +932,7 @@ export const chatsRouter = router({
         name: z.string().optional(),
         mode: z.enum(["plan", "agent", "ralph"]).default("agent"),
         providerId: z.enum(["claude", "codex", "opencode"]).optional(),
+        modelId: z.string().optional(),
       }),
     )
     .mutation(({ input }) => {
@@ -938,6 +945,7 @@ export const chatsRouter = router({
           mode: input.mode,
           messages: "[]",
           ...(input.providerId && { providerId: input.providerId }),
+          ...(input.modelId && { modelId: input.modelId }),
         })
         .returning()
         .get();
@@ -1005,6 +1013,26 @@ export const chatsRouter = router({
       return db
         .update(subChats)
         .set({ providerId: input.providerId })
+        .where(eq(subChats.id, input.id))
+        .returning()
+        .get();
+    }),
+
+  /**
+   * Update sub-chat model
+   */
+  updateSubChatModel: publicProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        modelId: z.string(),
+      }),
+    )
+    .mutation(({ input }) => {
+      const db = getDatabase();
+      return db
+        .update(subChats)
+        .set({ modelId: input.modelId })
         .where(eq(subChats.id, input.id))
         .returning()
         .get();

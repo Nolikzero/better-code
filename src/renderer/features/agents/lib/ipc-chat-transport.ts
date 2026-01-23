@@ -13,6 +13,7 @@ import {
   lastSelectedModelByProviderAtom,
   type ProviderId,
   sessionInfoAtom,
+  subChatModelOverridesAtom,
   subChatProviderOverridesAtom,
 } from "../../../lib/atoms";
 import { appStore } from "../../../lib/jotai-store";
@@ -157,7 +158,11 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
       chatOverrides[this.config.chatId] ||
       defaultProvider;
 
-    // Read model selection for the effective provider
+    // Read per-subchat model override first
+    const subChatModelOverrides = appStore.get(subChatModelOverridesAtom);
+    const subChatModel = subChatModelOverrides[this.config.subChatId];
+
+    // Read model selection for the effective provider (fallback)
     const modelsByProvider = appStore.get(lastSelectedModelByProviderAtom);
     const modelString =
       modelsByProvider[effectiveProvider] ||
@@ -166,8 +171,11 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
     // Legacy: still read from lastSelectedModelIdAtom for backwards compatibility with Claude
     const selectedModelId = appStore.get(lastSelectedModelIdAtom);
     const legacyModelString = MODEL_ID_MAP[selectedModelId];
-    const finalModelString =
-      effectiveProvider === "claude"
+
+    // Priority: per-subchat override -> legacy/global model
+    const finalModelString = subChatModel
+      ? subChatModel
+      : effectiveProvider === "claude"
         ? legacyModelString || modelString
         : modelString;
 

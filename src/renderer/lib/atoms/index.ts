@@ -76,6 +76,7 @@ export {
   type ReasoningEffort,
   SANDBOX_MODES,
   type SandboxMode,
+  subChatModelOverridesAtom,
   subChatProviderOverridesAtom,
   type WebSearchMode,
 } from "./providers.atoms";

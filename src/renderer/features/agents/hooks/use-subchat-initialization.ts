@@ -95,6 +95,7 @@ export function useSubChatInitialization(
         providerId:
           (sc.providerId as ProviderId | undefined) ||
           existingLocal?.providerId,
+        modelId: sc.modelId || existingLocal?.modelId,
       };
     });
     const dbSubChatIds = new Set(dbSubChats.map((sc) => sc.id));

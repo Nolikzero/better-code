@@ -1,0 +1,1 @@
+ALTER TABLE `sub_chats` ADD `model_id` text;

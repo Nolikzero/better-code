@@ -104,6 +104,8 @@ export const subChats = sqliteTable(
     ),
     // AI provider (claude | codex)
     providerId: text("provider_id").default("claude"),
+    // AI model (sonnet | opus | haiku | gpt-5.2-codex | etc.)
+    modelId: text("model_id"),
     // Computed columns for performance (avoid parsing messages JSON on every query)
     hasPendingPlanApproval: integer("has_pending_plan_approval", {
       mode: "boolean",

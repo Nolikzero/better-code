@@ -10,14 +10,7 @@ permissions:
 
 jobs:
   build-mac:
-    strategy:
-      matrix:
-        include:
-          - runner: macos-latest
-            arch: arm64
-          - runner: macos-13
-            arch: x64
-    runs-on: ${{ matrix.runner }}
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -38,4 +31,4 @@ jobs:
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
         run: |
           bun run build
-          bunx electron-builder --mac --${{ matrix.arch }} --publish always
+          bunx electron-builder --mac --arm64 --publish always

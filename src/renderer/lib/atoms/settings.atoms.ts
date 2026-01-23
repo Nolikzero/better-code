@@ -118,7 +118,7 @@ export const selectedFullThemeIdAtom = atomWithStorage<string | null>(
  */
 export const systemLightThemeIdAtom = atomWithStorage<string>(
   "preferences:system-light-theme-id",
-  "liquid-glass-light", // Default to Liquid Glass Light
+  "liquid-glass-dark", // Default to Liquid Glass (dark) for both modes
   undefined,
   { getOnInit: true },
 );

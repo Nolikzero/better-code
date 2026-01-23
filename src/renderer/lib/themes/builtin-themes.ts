@@ -592,7 +592,7 @@ const CLAUDE_DARK: VSCodeFullTheme = {
  */
 const LIQUID_GLASS_DARK: VSCodeFullTheme = {
   id: "liquid-glass-dark",
-  name: "Liquid Glass Dark",
+  name: "Liquid Glass",
   type: "dark",
   source: "builtin",
   vibrancy: {
@@ -602,13 +602,13 @@ const LIQUID_GLASS_DARK: VSCodeFullTheme = {
     forceAppearance: "dark", // Always use dark appearance regardless of system theme
     liquidGlass: {
       cornerRadius: 12,
-      tintColor: "#00000001", // subtle dark tint
+      tintColor: "#18181880", // 50% tint
     },
   },
   colors: {
     // Semi-transparent backgrounds - slightly more opaque for better layering
-    "editor.background": "#181818DB", // ~86% opacity (was #12121280)
-    "editorPane.background": "#18181890",
+    "editor.background": "#181818", // ~92% opacity
+    "editorPane.background": "#181818B0", // ~69% opacity
     "sideBar.background": "#12121270", // ~44% opacity (was #0d0d0d60)
     "sideBar.foreground": "#ededed",
     "sideBar.border": "#ffffff20", // more visible (was #ffffff15)
@@ -664,84 +664,6 @@ const LIQUID_GLASS_DARK: VSCodeFullTheme = {
 };
 
 /**
- * Liquid Glass Light - Transparent light theme with macOS vibrancy
- * Uses semi-transparent white backgrounds for native blur effect
- * White text for a frosted glass appearance
- */
-const LIQUID_GLASS_LIGHT: VSCodeFullTheme = {
-  id: "liquid-glass-light",
-  name: "Liquid Glass Light",
-  type: "light",
-  source: "builtin",
-  vibrancy: {
-    enabled: true,
-    type: "under-window",
-    visualEffectState: "followWindow",
-    forceAppearance: "light",
-    liquidGlass: {
-      cornerRadius: 12,
-      tintColor: "#FFFFFF20",
-    },
-  },
-  colors: {
-    // Semi-transparent white/light backgrounds
-    "editor.background": "#FFFFFFD8",
-    "editorPane.background": "#FFFFFF90",
-    "sideBar.background": "#FFFFFF70",
-    "sideBar.foreground": "#7B8794",
-    "sideBar.border": "#00000010",
-    "activityBar.background": "#FFFFFF70",
-    "activityBar.foreground": "#7B8794",
-    "panel.background": "#FFFFFF70",
-    "panel.border": "#00000010",
-    "tab.activeBackground": "#FFFFFF90",
-    "tab.inactiveBackground": "#FFFFFF50",
-    "tab.inactiveForeground": "#9CA3AF",
-    "editorGroupHeader.tabsBackground": "#FFFFFF70",
-    "dropdown.background": "#FFFFFFA0",
-    "dropdown.foreground": "#7B8794",
-    "input.background": "#FFFFFF90",
-    "input.border": "#00000015",
-    "input.foreground": "#7B8794",
-    // Medium gray foreground colors
-    "editor.foreground": "#7B8794",
-    foreground: "#7B8794",
-    focusBorder: "#9CA3AF80",
-    "textLink.foreground": "#8B95A1",
-    "textLink.activeForeground": "#9CA3AF",
-    "list.activeSelectionBackground": "#00000012",
-    "list.hoverBackground": "#00000008",
-    "editor.selectionBackground": "#00000012",
-    "editorLineNumber.foreground": "#9CA3AF",
-    descriptionForeground: "#9CA3AF",
-    errorForeground: "#EF4444",
-    "button.background": "#00000015",
-    "button.foreground": "#7B8794",
-    "button.secondaryBackground": "#00000010",
-    "button.secondaryForeground": "#8B95A1",
-    // Terminal colors (medium gray text theme)
-    "terminal.background": "#FFFFFF70",
-    "terminal.foreground": "#7B8794",
-    "terminal.ansiBlack": "#4B5563",
-    "terminal.ansiRed": "#EF4444",
-    "terminal.ansiGreen": "#22C55E",
-    "terminal.ansiYellow": "#F59E0B",
-    "terminal.ansiBlue": "#3B82F6",
-    "terminal.ansiMagenta": "#A855F7",
-    "terminal.ansiCyan": "#06B6D4",
-    "terminal.ansiWhite": "#D1D5DB",
-    "terminal.ansiBrightBlack": "#6B7280",
-    "terminal.ansiBrightRed": "#F87171",
-    "terminal.ansiBrightGreen": "#4ADE80",
-    "terminal.ansiBrightYellow": "#FBBF24",
-    "terminal.ansiBrightBlue": "#60A5FA",
-    "terminal.ansiBrightMagenta": "#C084FC",
-    "terminal.ansiBrightCyan": "#22D3EE",
-    "terminal.ansiBrightWhite": "#E5E7EB",
-  },
-};
-
-/**
  * All built-in themes
  */
 export const BUILTIN_THEMES: VSCodeFullTheme[] = [
@@ -752,9 +674,8 @@ export const BUILTIN_THEMES: VSCodeFullTheme[] = [
   CURSOR_DARK,
   CURSOR_LIGHT,
   CURSOR_MIDNIGHT,
-  // Liquid Glass themes (transparent with vibrancy)
+  // Liquid Glass theme (transparent with vibrancy)
   LIQUID_GLASS_DARK,
-  LIQUID_GLASS_LIGHT,
   // Dark themes
   CLAUDE_DARK,
   VESPER_DARK,
@@ -784,5 +705,5 @@ function _getBuiltinThemesByType(type: "light" | "dark"): VSCodeFullTheme[] {
  * Default theme IDs for light/dark modes
  * Uses Liquid Glass themes by default for glassmorphism effect
  */
-const _DEFAULT_LIGHT_THEME_ID = "liquid-glass-light";
+const _DEFAULT_LIGHT_THEME_ID = "liquid-glass-dark";
 const _DEFAULT_DARK_THEME_ID = "liquid-glass-dark";

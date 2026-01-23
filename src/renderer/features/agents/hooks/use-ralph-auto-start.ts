@@ -85,7 +85,9 @@ export function useRalphAutoStart(
 
   useEffect(() => {
     if (myInjectedPrompt && messages.length > 0) {
-      const lastUserMsgIdx = messages.findLastIndex((m: any) => m.role === "user");
+      const lastUserMsgIdx = messages.findLastIndex(
+        (m: any) => m.role === "user",
+      );
       if (lastUserMsgIdx >= 0) {
         setMessages((prev: any[]) =>
           prev.map((m: any, i: number) =>

@@ -30,7 +30,6 @@ import { ResizableSidebar } from "../../../components/ui/resizable-sidebar";
 import {
   chatProviderOverridesAtom,
   defaultProviderIdAtom,
-  lastSelectedModelByProviderAtom,
   type ProviderId,
   soundNotificationsEnabledAtom,
   subChatProviderOverridesAtom,
@@ -104,8 +103,9 @@ import { useMentionDropdown } from "../hooks/use-mention-dropdown";
 import { useMessageHandling } from "../hooks/use-message-handling";
 import { usePlanApproval } from "../hooks/use-plan-approval";
 import { usePrActions } from "../hooks/use-pr-actions";
-import { useProviders } from "../hooks/use-providers";
+import { useProviderModelSelection } from "../hooks/use-provider-model-selection";
 import { useRalphAutoStart } from "../hooks/use-ralph-auto-start";
+import { useScrollTracking } from "../hooks/use-scroll-tracking";
 import { useSlashCommandDropdown } from "../hooks/use-slash-command-dropdown";
 import { useSubChatKeyboard } from "../hooks/use-subchat-keyboard";
 import { useToggleFocusOnCmdEsc } from "../hooks/use-toggle-focus-on-cmd-esc";
@@ -271,8 +271,6 @@ function ChatViewInner({
   // Input expansion state for overlay mode (compact bar that expands on hover)
   const [isInputExpanded, setIsInputExpanded] = useState(false);
   const collapseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  // Track if scrolled to bottom for auto-expand in overlay mode
-  const [isAtBottom, setIsAtBottom] = useState(true);
 
   // Handlers for stable hover behavior with delayed collapse
   const handleInputAreaMouseEnter = useCallback(() => {
@@ -513,111 +511,18 @@ function ChatViewInner({
     [setAgentMode],
   );
 
-  // Provider & model selection state
-  // Per-subchat override takes priority, then per-chat override, then falls back to global default
-  const chatProviderOverrides = useAtomValue(chatProviderOverridesAtom);
-  const [subChatProviderOverrides, setSubChatProviderOverrides] = useAtom(
-    subChatProviderOverridesAtom,
-  );
-  const [globalDefaultProvider, _setGlobalDefaultProvider] = useAtom(
-    defaultProviderIdAtom,
-  );
-  const [modelByProvider, setModelByProvider] = useAtom(
-    lastSelectedModelByProviderAtom,
-  );
-  const { getModels } = useProviders();
-
-  // Use per-subchat override first, then per-chat override, otherwise global default
-  const effectiveProvider = useMemo(
-    () =>
-      subChatProviderOverrides[subChatId] ||
-      chatProviderOverrides[parentChatId] ||
-      globalDefaultProvider,
-    [
-      subChatProviderOverrides,
-      subChatId,
-      chatProviderOverrides,
-      parentChatId,
-      globalDefaultProvider,
-    ],
-  );
-
-  // Mutation to persist provider change to database
-  const updateSubChatProviderMutation =
-    trpc.chats.updateSubChatProvider.useMutation();
-
-  // Handler for provider change
-  const handleProviderChange = useCallback(
-    (newProvider: ProviderId) => {
-      // Update local state immediately (optimistic update)
-      setSubChatProviderOverrides((prev) => ({
-        ...prev,
-        [subChatId]: newProvider,
-      }));
-
-      // Update store
-      useAgentSubChatStore
-        .getState()
-        .updateSubChatProvider(subChatId, newProvider);
-
-      // Persist to database (skip for temp subchats)
-      if (!subChatId.startsWith("temp-")) {
-        updateSubChatProviderMutation.mutate({
-          id: subChatId,
-          providerId: newProvider,
-        });
-      }
-    },
-    [subChatId, setSubChatProviderOverrides, updateSubChatProviderMutation],
-  );
-
-  // Memoized handler for OpenCode model changes (prevents re-render cascade)
-  const handleOpenCodeModelChange = useCallback(
-    (modelId: string) => {
-      setModelByProvider((prev) => ({
-        ...prev,
-        opencode: modelId,
-      }));
-    },
-    [setModelByProvider],
-  );
-
-  // Memoized handler for regular model selector changes
-  const handleModelChange = useCallback(
-    (modelId: string) => {
-      setModelByProvider((prev) => ({
-        ...prev,
-        [effectiveProvider]: modelId,
-      }));
-    },
-    [setModelByProvider, effectiveProvider],
-  );
-
-  // Initialize provider from sub-chat metadata when switching sub-chats
-  // This must be after setSubChatProviderOverrides is declared
-  const lastInitializedProviderRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (subChatId && subChatId !== lastInitializedProviderRef.current) {
-      const subChat = useAgentSubChatStore
-        .getState()
-        .allSubChats.find((sc) => sc.id === subChatId);
-
-      // Initialize provider from sub-chat metadata (restored from database)
-      if (subChat?.providerId) {
-        setSubChatProviderOverrides((prev) => ({
-          ...prev,
-          [subChatId]: subChat.providerId as ProviderId,
-        }));
-      }
-
-      lastInitializedProviderRef.current = subChatId;
-    }
-  }, [subChatId, setSubChatProviderOverrides]);
-
-  // Derive current provider models and model from effective provider (via tRPC)
-  const providerModels = getModels(effectiveProvider);
-  const currentModelId =
-    modelByProvider[effectiveProvider] || providerModels[0]?.id;
+  // Provider & model selection hook - manages provider/model state, fetching, and persistence
+  const {
+    effectiveProvider,
+    providerModels,
+    currentModelId,
+    handleProviderChange,
+    handleModelChange,
+    handleOpenCodeModelChange,
+  } = useProviderModelSelection({
+    subChatId,
+    parentChatId,
+  });
 
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
   const [_shouldOpenClaudeSubmenu, setShouldOpenClaudeSubmenu] =
@@ -843,7 +748,11 @@ function ChatViewInner({
   });
 
   // Ralph auto-start hook - handles PRD state, setup dialog, and story auto-start
-  const { ralphSetupOpen, setRalphSetupOpen, ralphState: _ralphState } = useRalphAutoStart({
+  const {
+    ralphSetupOpen,
+    setRalphSetupOpen,
+    ralphState: _ralphState,
+  } = useRalphAutoStart({
     subChatId,
     parentChatId,
     agentMode,
@@ -853,25 +762,11 @@ function ChatViewInner({
     setMessages,
   });
 
-  // Track scroll position to auto-expand input when at bottom (non-overlay mode only)
-  useEffect(() => {
-    if (isOverlayMode) return; // Only for non-overlay mode
-    const scrollEl = scrollRef.current;
-    if (!scrollEl) return;
-
-    const handleScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = scrollEl;
-      // Consider "at bottom" if within 100px of the bottom
-      const nearBottom = scrollHeight - scrollTop - clientHeight < 100;
-      setIsAtBottom(nearBottom);
-    };
-
-    // Check initial position
-    handleScroll();
-
-    scrollEl.addEventListener("scroll", handleScroll, { passive: true });
-    return () => scrollEl.removeEventListener("scroll", handleScroll);
-  }, [isOverlayMode, scrollRef]);
+  // Scroll tracking hook - tracks scroll position to auto-expand input when at bottom
+  const { isAtBottom } = useScrollTracking({
+    scrollRef,
+    isOverlayMode,
+  });
 
   // Stream debug: log status changes
   const prevStatusRef = useRef(status);

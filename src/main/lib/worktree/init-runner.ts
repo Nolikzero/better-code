@@ -79,7 +79,7 @@ class WorktreeInitRunner extends EventEmitter {
       let ptyProcess: pty.IPty;
 
       try {
-        ptyProcess = pty.spawn(shell, ["-c", command], {
+        ptyProcess = pty.spawn(shell, ["-lc", command], {
           name: "xterm-256color",
           cols: 120,
           rows: 30,

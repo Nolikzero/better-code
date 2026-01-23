@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.4]
+
+### Changed
+
+- Removed unnecessary background styles from UI components for cleaner visuals
+- Improved focus handling in chat input and agent content areas
+- Refined diff sidebar and file view styling consistency
+
 ## [0.0.3]
 
 ### Added

@@ -1,4 +1,4 @@
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AgentsSettingsDialog } from "../../components/dialogs/agents-settings-dialog";
 import { AgentsShortcutsDialog } from "../../components/dialogs/agents-shortcuts-dialog";
@@ -26,10 +26,12 @@ import { trpc } from "../../lib/trpc";
 import { isDesktopApp } from "../../lib/utils/platform";
 import {
   activeChatDiffDataAtom,
+  chatViewModeAtomFamily,
   leftSidebarExpandedWidthAtom,
   selectedAgentChatIdAtom,
   selectedProjectAtom,
 } from "../agents/atoms";
+import type { ChatViewMode } from "../agents/atoms";
 import { useAgentsHotkeys } from "../agents/lib/agents-hotkeys-manager";
 import { useAgentSubChatStore } from "../agents/stores/sub-chat-store";
 import { AgentsContent } from "../agents/ui/agents-content";
@@ -52,6 +54,8 @@ const RIGHT_SIDEBAR_MAX_WIDTH = 320;
 const RIGHT_SIDEBAR_CLOSE_HOTKEY = "⌘⇧\\";
 
 const SIDEBAR_ANIMATION_DURATION = 0;
+
+const fallbackChatViewModeAtom = atom<ChatViewMode>("chat");
 
 // ============================================================================
 // Component
@@ -131,6 +135,11 @@ export function AgentsLayout() {
   const [selectedChatId, setSelectedChatId] = useAtom(selectedAgentChatIdAtom);
   const [selectedProject, setSelectedProject] = useAtom(selectedProjectAtom);
   const setOnboardingCompleted = useSetAtom(onboardingCompletedAtom);
+  const selectedChatViewMode = useAtomValue(
+    selectedChatId
+      ? chatViewModeAtomFamily(selectedChatId)
+      : fallbackChatViewModeAtom,
+  );
 
   // Fetch projects to validate selectedProject exists
   const { data: projects, isLoading: isLoadingProjects } =
@@ -310,8 +319,16 @@ export function AgentsLayout() {
   }, [setSidebarOpen]);
 
   useEffect(() => {
-    setSidebarOpen(!!selectedChatId);
-  }, [selectedChatId, setChatsSidebarOpen]);
+    if (!selectedChatId) {
+      setSidebarOpen(false);
+      return;
+    }
+    if (selectedChatViewMode === "split" || selectedChatViewMode === "preview") {
+      setSidebarOpen(false);
+      return;
+    }
+    setSidebarOpen(true);
+  }, [selectedChatId, selectedChatViewMode, setSidebarOpen]);
 
   const handleCloseChatsSidebar = useCallback(() => {
     setChatsSidebarOpen(false);

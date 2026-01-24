@@ -31,11 +31,13 @@ export function ProjectSettingsDialog({
 
   const [name, setName] = useState("");
   const [initCommand, setInitCommand] = useState("");
+  const [runCommand, setRunCommand] = useState("");
 
   useEffect(() => {
     if (project) {
       setName(project.name);
       setInitCommand(project.worktreeInitCommand || "");
+      setRunCommand(project.runCommand || "");
     }
   }, [project]);
 
@@ -56,6 +58,7 @@ export function ProjectSettingsDialog({
       id: projectId,
       name: name.trim() || undefined,
       worktreeInitCommand: initCommand.trim() || null,
+      runCommand: runCommand.trim() || null,
     });
   };
 
@@ -108,6 +111,21 @@ export function ProjectSettingsDialog({
               <code className="text-xs bg-muted px-1 rounded">
                 $BRANCH_NAME
               </code>
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="run-command">Dev Server Command</Label>
+            <Input
+              id="run-command"
+              placeholder="e.g., bun dev, npm run dev"
+              value={runCommand}
+              onChange={(e) => setRunCommand(e.target.value)}
+              className="font-mono text-sm"
+            />
+            <p className="text-xs text-muted-foreground">
+              Command to start the dev server. The preview will auto-open when a
+              port is detected.
             </p>
           </div>
         </div>

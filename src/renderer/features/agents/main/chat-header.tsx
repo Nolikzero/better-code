@@ -1,7 +1,7 @@
 "use client";
 
 import type { ProviderId } from "@shared/types";
-import { TerminalSquare } from "lucide-react";
+import { Square as SquareIcon, TerminalSquare } from "lucide-react";
 import { OpenInDropdown } from "../../../components/open-in-dropdown";
 import { Button } from "../../../components/ui/button";
 import {
@@ -16,6 +16,7 @@ import {
   TooltipTrigger,
 } from "../../../components/ui/tooltip";
 import { cn } from "../../../lib/utils";
+import type { ChatViewMode } from "../atoms";
 import { PreviewSetupHoverCard } from "../components/preview-setup-hover-card";
 import type { DiffStats } from "../hooks/use-diff-management";
 import { AgentsHeaderControls } from "../ui/agents-header-controls";
@@ -61,6 +62,14 @@ export interface ChatHeaderProps {
   // MCP & Provider
   originalProjectPath?: string;
   effectiveProvider?: ProviderId;
+  // Dev server view mode controls
+  runCommand?: string | null;
+  viewMode?: ChatViewMode;
+  onSetViewMode?: (mode: ChatViewMode) => void;
+  isDevServerRunning?: boolean;
+  isDevServerStarting?: boolean;
+  onStartDevServer?: () => void;
+  onStopDevServer?: () => void;
 }
 
 export function ChatHeader({
@@ -92,6 +101,13 @@ export function ChatHeader({
   isRestoring,
   originalProjectPath,
   effectiveProvider,
+  runCommand,
+  viewMode,
+  onSetViewMode,
+  isDevServerRunning,
+  isDevServerStarting,
+  onStartDevServer,
+  onStopDevServer,
 }: ChatHeaderProps) {
   return (
     <div
@@ -103,49 +119,55 @@ export function ChatHeader({
       {/* Gradient background */}
       <div className="absolute inset-0" />
       <div className="pointer-events-auto flex items-center justify-between relative">
-        <div className="flex-1 min-w-0 flex items-center gap-2">
-          {/* Mobile header - simplified with chat name as trigger */}
-          {isMobileFullscreen ? (
-            <MobileChatHeader
-              chatId={chatId}
-              onCreateNew={onCreateNewSubChat}
-              onBackToChats={onBackToChats}
-              onOpenPreview={onOpenPreview}
-              canOpenPreview={canOpenPreview}
-              onOpenDiff={onOpenDiff}
-              canOpenDiff={canOpenDiff}
-              diffStats={diffStats}
-              onOpenTerminal={onOpenTerminal}
-              canOpenTerminal={canOpenTerminal}
-              isArchived={isArchived}
-              onRestore={onRestoreWorkspace}
-            />
-          ) : (
-            <>
-              {/* Header controls - desktop only */}
-              <AgentsHeaderControls
-                isSidebarOpen={isSidebarOpen}
-                onToggleSidebar={onToggleSidebar}
-                hasUnseenChanges={hasAnyUnseenChanges}
+        {/* Left side header items - hidden in split mode */}
+        {viewMode !== "split" && (
+          <div className="flex-1 min-w-0 flex items-center gap-2">
+            {/* Mobile header - simplified with chat name as trigger */}
+            {isMobileFullscreen ? (
+              <MobileChatHeader
+                chatId={chatId}
+                onCreateNew={onCreateNewSubChat}
+                onBackToChats={onBackToChats}
+                onOpenPreview={onOpenPreview}
+                canOpenPreview={canOpenPreview}
+                onOpenDiff={onOpenDiff}
+                canOpenDiff={canOpenDiff}
+                diffStats={diffStats}
+                onOpenTerminal={onOpenTerminal}
+                canOpenTerminal={canOpenTerminal}
+                isArchived={isArchived}
+                onRestore={onRestoreWorkspace}
               />
-              {/* Workspace context badge */}
-              <WorkspaceContextBadge
-                branch={branch}
-                baseBranch={baseBranch}
-                worktreePath={worktreePath}
-              />
-              {/* MCP Servers indicator */}
-              <McpServersIndicator
-                projectPath={originalProjectPath}
-                providerId={effectiveProvider}
-              />
-              {/* Provider indicator */}
-              <ProviderIndicator chatId={chatId} subChatId={subChatId} />
-            </>
-          )}
-        </div>
+            ) : (
+              <>
+                {/* Header controls - desktop only */}
+                <AgentsHeaderControls
+                  isSidebarOpen={isSidebarOpen}
+                  onToggleSidebar={onToggleSidebar}
+                  hasUnseenChanges={hasAnyUnseenChanges}
+                />
+                {/* Workspace context badge */}
+                <WorkspaceContextBadge
+                  branch={branch}
+                  baseBranch={baseBranch}
+                  worktreePath={worktreePath}
+                />
+                {/* MCP Servers indicator */}
+                <McpServersIndicator
+                  projectPath={originalProjectPath}
+                  providerId={effectiveProvider}
+                />
+                {/* Provider indicator */}
+                <ProviderIndicator chatId={chatId} subChatId={subChatId} />
+              </>
+            )}
+          </div>
+        )}
+        {/* Spacer when in split mode */}
+        {viewMode === "split" && <div className="flex-1" />}
         {/* Open Preview Button - shows when preview is closed (desktop only) */}
-        {!isMobileFullscreen &&
+        {viewMode !== "split" &&
+          !isMobileFullscreen &&
           !isPreviewSidebarOpen &&
           sandboxId &&
           (canOpenPreview ? (
@@ -178,32 +200,98 @@ export function ChatHeader({
               </span>
             </PreviewSetupHoverCard>
           ))}
-        {/* Terminal Button - shows when terminal is closed and worktree exists (desktop only) */}
-        {!isMobileFullscreen && !isTerminalSidebarOpen && worktreePath && (
-          <Tooltip delayDuration={500}>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onOpenTerminal}
-                className="h-6 w-6 p-0 hover:bg-foreground/10 transition-colors text-foreground shrink-0 rounded-md ml-2"
-                aria-label="Open terminal"
-              >
-                <TerminalSquare className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              Open terminal
-              <Kbd>⌘J</Kbd>
-            </TooltipContent>
-          </Tooltip>
+        {/* Dev Server View Mode Toggle - shows when runCommand is configured (desktop only) */}
+        {!isMobileFullscreen && runCommand && onSetViewMode && (
+          <div className="flex items-center gap-0.5 ml-2 bg-muted/50 rounded-md p-0.5">
+            <Button
+              variant={viewMode === "chat" ? "secondary" : "ghost"}
+              size="sm"
+              className="h-5 px-1.5 text-[11px] rounded-sm"
+              onClick={() => onSetViewMode("chat")}
+            >
+              Chat
+            </Button>
+            <Button
+              variant={viewMode === "split" ? "secondary" : "ghost"}
+              size="sm"
+              className="h-5 px-1.5 text-[11px] rounded-sm"
+              onClick={() => {
+                onSetViewMode("split");
+                if (!isDevServerRunning && !isDevServerStarting) {
+                  onStartDevServer?.();
+                }
+              }}
+            >
+              Split
+            </Button>
+            <Button
+              variant={viewMode === "preview" ? "secondary" : "ghost"}
+              size="sm"
+              className="h-5 px-1.5 text-[11px] rounded-sm"
+              onClick={() => {
+                onSetViewMode("preview");
+                if (!isDevServerRunning && !isDevServerStarting) {
+                  onStartDevServer?.();
+                }
+              }}
+            >
+              Preview
+            </Button>
+            {/* Running indicator / Stop button */}
+            {(isDevServerRunning || isDevServerStarting) && (
+              <Tooltip delayDuration={300}>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 w-5 p-0 rounded-sm ml-0.5"
+                    onClick={onStopDevServer}
+                  >
+                    {isDevServerStarting ? (
+                      <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+                    ) : (
+                      <SquareIcon className="h-2.5 w-2.5 text-red-500 fill-red-500" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  {isDevServerStarting ? "Starting..." : "Stop dev server"}
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </div>
         )}
-        {/* Open In Dropdown - shows when project path is available (desktop only) */}
-        {!isMobileFullscreen && (worktreePath || originalProjectPath) && (
-          <OpenInDropdown path={worktreePath || originalProjectPath || ""} />
-        )}
-        {/* Chats Sidebar Toggle Button - shows on desktop only */}
-        {!isMobileFullscreen && (
+        {/* Terminal Button - shows when terminal is closed and worktree exists (desktop only, hidden in split) */}
+        {viewMode !== "split" &&
+          !isMobileFullscreen &&
+          !isTerminalSidebarOpen &&
+          worktreePath && (
+            <Tooltip delayDuration={500}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onOpenTerminal}
+                  className="h-6 w-6 p-0 hover:bg-foreground/10 transition-colors text-foreground shrink-0 rounded-md ml-2"
+                  aria-label="Open terminal"
+                >
+                  <TerminalSquare className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                Open terminal
+                <Kbd>⌘J</Kbd>
+              </TooltipContent>
+            </Tooltip>
+          )}
+        {/* Open In Dropdown - shows when project path is available (desktop only, hidden in split) */}
+        {viewMode !== "split" &&
+          !isMobileFullscreen &&
+          (worktreePath || originalProjectPath) && (
+            <OpenInDropdown path={worktreePath || originalProjectPath || ""} />
+          )}
+        {/* Chats Sidebar Toggle Button - shows on desktop only, hidden in split */}
+        {viewMode !== "split" && !isMobileFullscreen && (
           <Tooltip delayDuration={500}>
             <TooltipTrigger asChild>
               <Button
@@ -226,8 +314,8 @@ export function ChatHeader({
             </TooltipContent>
           </Tooltip>
         )}
-        {/* Restore Button - shows when viewing archived workspace (desktop only) */}
-        {!isMobileFullscreen && isArchived && (
+        {/* Restore Button - shows when viewing archived workspace (desktop only, hidden in split) */}
+        {viewMode !== "split" && !isMobileFullscreen && isArchived && (
           <Tooltip delayDuration={500}>
             <TooltipTrigger asChild>
               <Button

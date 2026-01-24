@@ -7,6 +7,7 @@ import { chatsRouter } from "./chats";
 import { debugRouter } from "./debug";
 import { externalRouter } from "./external";
 import { filesRouter } from "./files";
+import { portsRouter } from "./ports";
 import { projectsRouter } from "./projects";
 import { providersRouter } from "./providers";
 import { ralphRouter } from "./ralph";
@@ -25,6 +26,7 @@ export function createAppRouter(_getWindow: () => BrowserWindow | null) {
     chats: chatsRouter,
     chat: chatRouter,
     terminal: terminalRouter,
+    ports: portsRouter,
     external: externalRouter,
     files: filesRouter,
     debug: debugRouter,

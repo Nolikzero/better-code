@@ -155,7 +155,7 @@ export const projectsRouter = router({
     }),
 
   /**
-   * Update project settings (name, worktreeInitCommand)
+   * Update project settings (name, worktreeInitCommand, runCommand)
    */
   update: publicProcedure
     .input(
@@ -163,6 +163,7 @@ export const projectsRouter = router({
         id: z.string(),
         name: z.string().min(1).optional(),
         worktreeInitCommand: z.string().nullable().optional(),
+        runCommand: z.string().nullable().optional(),
       }),
     )
     .mutation(({ input }) => {
@@ -174,6 +175,9 @@ export const projectsRouter = router({
       }
       if (input.worktreeInitCommand !== undefined) {
         updates.worktreeInitCommand = input.worktreeInitCommand;
+      }
+      if (input.runCommand !== undefined) {
+        updates.runCommand = input.runCommand;
       }
 
       return db

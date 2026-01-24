@@ -28,6 +28,8 @@ export const projects = sqliteTable("projects", {
   gitRepo: text("git_repo"),
   // Custom command to run after creating a worktree
   worktreeInitCommand: text("worktree_init_command"),
+  // Dev server run command (e.g., "bun dev", "npm run dev")
+  runCommand: text("run_command"),
 });
 
 export const projectsRelations = relations(projects, ({ many }) => ({

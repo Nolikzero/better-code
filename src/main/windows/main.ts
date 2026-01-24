@@ -222,6 +222,7 @@ export function createMainWindow(): BrowserWindow {
       sandbox: false, // Required for electron-trpc
       webSecurity: true,
       partition: "persist:main", // Use persistent session for cookies
+      webviewTag: true, // Enable <webview> for local dev server preview
     },
   });
 

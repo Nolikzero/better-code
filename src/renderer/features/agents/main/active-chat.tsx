@@ -52,12 +52,14 @@ import {
   agentModeAtom,
   agentsPreviewSidebarOpenAtom,
   agentsPreviewSidebarWidthAtom,
+  agentsSidebarOpenAtom,
   agentsSubChatUnseenChangesAtom,
   agentsUnseenChangesAtom,
   askUserQuestionResultsAtom,
   changesSectionCollapsedAtom,
   chatInputHeightAtom,
   chatsSidebarOpenAtom,
+  chatViewModeAtomFamily,
   clearLoading,
   codeSnippetsAtomFamily,
   compactingSubChatsAtom,
@@ -95,6 +97,7 @@ import { useAgentModeManagement } from "../hooks/use-agent-mode-management";
 import { useAgentsFileUpload } from "../hooks/use-agents-file-upload";
 import { useBranchSwitchConfirmation } from "../hooks/use-branch-switch-confirmation";
 import { useChangedFilesTracking } from "../hooks/use-changed-files-tracking";
+import { useDevServer } from "../hooks/use-dev-server";
 import { useDiffManagement } from "../hooks/use-diff-management";
 import { useDraftManagement } from "../hooks/use-draft-management";
 import { useFocusInputOnEnter } from "../hooks/use-focus-input-on-enter";
@@ -127,6 +130,7 @@ import { AgentPreview } from "../ui/agent-preview";
 import { AgentUserQuestion } from "../ui/agent-user-question";
 import { BranchSwitchDialog } from "../ui/branch-switch-dialog";
 import { ChatTitleEditor } from "../ui/chat-title-editor";
+import { LocalPreview } from "../ui/local-preview";
 // DiffSidebar moved to left sidebar - see LeftSidebarChangesView
 import { PLAYBACK_SPEEDS, type PlaybackSpeed } from "../ui/message-controls";
 import { getProviderIcon } from "../ui/provider-icons";
@@ -1609,6 +1613,7 @@ export function ChatView({
   );
   const [isChatsSidebarOpen, setIsChatsSidebarOpen] =
     useAtom(chatsSidebarOpenAtom);
+  const setAgentsSidebarOpen = useSetAtom(agentsSidebarOpenAtom);
   // Clear "unseen changes" when chat is opened
   useEffect(() => {
     setUnseenChanges((prev: Set<string>) => {
@@ -1847,21 +1852,78 @@ export function ChatView({
   const previewPort = meta?.sandboxConfig?.port ?? 3000;
 
   // Check if preview can be opened (sandbox with port exists and not quick setup)
-  const canOpenPreview = !!(
+  const canOpenSandboxPreview = !!(
     sandboxId &&
     !isQuickSetup &&
     meta?.sandboxConfig?.port
   );
 
+  // Fetch project data to get runCommand
+  const { data: projectData } = trpc.projects.get.useQuery(
+    { id: agentChat?.projectId ?? "" },
+    { enabled: !!agentChat?.projectId },
+  );
+  const runCommand = projectData?.runCommand;
+
+  // Dev server view mode state
+  const [viewMode, setViewMode] = useAtom(chatViewModeAtomFamily(chatId));
+
+  // Dev server hook
+  const {
+    startDevServer,
+    stopDevServer,
+    isRunning: isDevServerRunning,
+    isStarting: isDevServerStarting,
+  } = useDevServer({
+    chatId,
+    workspaceId: chatId,
+    cwd: worktreePath || originalProjectPath || "",
+    runCommand: runCommand ?? null,
+  });
+
+  // Can open local preview (when runCommand is configured)
+  const canOpenLocalPreview = !!runCommand;
+  const _canOpenPreview = canOpenSandboxPreview || canOpenLocalPreview;
+
   // Check if diff can be opened (worktree for desktop, sandbox for web)
   const canOpenDiff = !!worktreePath || !!sandboxId;
 
-  // Close preview sidebar if preview becomes unavailable
+  // Close preview sidebar if preview becomes unavailable (sandbox mode only)
   useEffect(() => {
-    if (!canOpenPreview && isPreviewSidebarOpen) {
+    if (
+      !canOpenSandboxPreview &&
+      !canOpenLocalPreview &&
+      isPreviewSidebarOpen
+    ) {
       setIsPreviewSidebarOpen(false);
     }
-  }, [canOpenPreview, isPreviewSidebarOpen, setIsPreviewSidebarOpen]);
+  }, [
+    canOpenSandboxPreview,
+    canOpenLocalPreview,
+    isPreviewSidebarOpen,
+    setIsPreviewSidebarOpen,
+  ]);
+
+  // When dev server stops, fall back to chat mode if in preview-only mode
+  useEffect(() => {
+    if (!isDevServerRunning && !isDevServerStarting && viewMode === "preview") {
+      setViewMode("chat");
+    }
+  }, [isDevServerRunning, isDevServerStarting, viewMode, setViewMode]);
+
+  // Auto-hide left/right sidebars when entering split or preview mode
+  useEffect(() => {
+    if (viewMode === "split" || viewMode === "preview") {
+      setAgentsSidebarOpen(false);
+      setIsChatsSidebarOpen(false);
+      setIsTerminalSidebarOpen(false);
+    }
+  }, [
+    viewMode,
+    setAgentsSidebarOpen,
+    setIsChatsSidebarOpen,
+    setIsTerminalSidebarOpen,
+  ]);
 
   // Note: We no longer forcibly close diff sidebar when canOpenDiff is false.
   // The sidebar render is guarded by canOpenDiff, so it naturally hides.
@@ -2830,10 +2892,21 @@ export function ChatView({
       <div className="flex h-full flex-col">
         {/* Main content */}
         <div className="flex-1 overflow-hidden flex">
-          {/* Chat Panel */}
+          {/* Chat Panel - hidden in preview-only mode, 1/3 width in split mode */}
           <div
-            className="flex-1 flex flex-col overflow-hidden relative"
-            style={{ minWidth: "350px" }}
+            className={cn(
+              "flex flex-col overflow-hidden relative",
+              viewMode === "preview" && canOpenLocalPreview && "hidden",
+              viewMode === "split" && canOpenLocalPreview
+                ? "w-1/3 shrink-0"
+                : "flex-1",
+            )}
+            style={{
+              minWidth:
+                viewMode === "split" && canOpenLocalPreview
+                  ? undefined
+                  : "350px",
+            }}
           >
             {/* Chat Header - hidden in overlay mode */}
             {!shouldHideChatHeader && !isOverlayMode && (
@@ -2846,10 +2919,17 @@ export function ChatView({
                 hasAnyUnseenChanges={hasAnyUnseenChanges}
                 onCreateNewSubChat={handleCreateNewSubChat}
                 onBackToChats={onBackToChats}
-                canOpenPreview={canOpenPreview}
+                canOpenPreview={canOpenSandboxPreview}
                 isPreviewSidebarOpen={isPreviewSidebarOpen}
                 onOpenPreview={() => setIsPreviewSidebarOpen(true)}
                 sandboxId={sandboxId}
+                runCommand={runCommand}
+                viewMode={viewMode}
+                onSetViewMode={setViewMode}
+                isDevServerRunning={isDevServerRunning}
+                isDevServerStarting={isDevServerStarting}
+                onStartDevServer={startDevServer}
+                onStopDevServer={stopDevServer}
                 canOpenDiff={canOpenDiff}
                 isDiffSidebarOpen={isDiffSidebarOpen}
                 diffStats={diffStats}
@@ -2966,80 +3046,106 @@ export function ChatView({
             )}
           </div>
 
-          {/* Preview Sidebar - hidden on mobile fullscreen and when preview is not available */}
-          {canOpenPreview && !isMobileFullscreen && (
-            <ResizableSidebar
-              isOpen={isPreviewSidebarOpen}
-              onClose={() => setIsPreviewSidebarOpen(false)}
-              widthAtom={agentsPreviewSidebarWidthAtom}
-              minWidth={350}
-              side="right"
-              animationDuration={0}
-              initialWidth={0}
-              exitWidth={0}
-              showResizeTooltip={true}
-              className="bg-tl-background border-l"
-              style={{ borderLeftWidth: "0.5px" }}
-            >
-              {isQuickSetup ? (
-                <div className="flex flex-col h-full">
-                  {/* Header with close button */}
-                  <div className="flex items-center justify-end px-3 h-10 bg-tl-background shrink-0 border-b border-border/50">
-                    <Button
-                      variant="ghost"
-                      className="h-7 w-7 p-0 hover:bg-muted transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] rounded-md"
-                      onClick={() => setIsPreviewSidebarOpen(false)}
-                    >
-                      <IconCloseSidebarRight className="h-4 w-4 text-muted-foreground" />
-                    </Button>
-                  </div>
-                  {/* Content */}
-                  <div className="flex flex-col items-center justify-center flex-1 p-6 text-center">
-                    <div className="text-muted-foreground mb-4">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="48"
-                        height="48"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="opacity-50"
+          {/* Sandbox Preview Sidebar - for cloud sandbox mode */}
+          {canOpenSandboxPreview &&
+            !canOpenLocalPreview &&
+            !isMobileFullscreen && (
+              <ResizableSidebar
+                isOpen={isPreviewSidebarOpen}
+                onClose={() => setIsPreviewSidebarOpen(false)}
+                widthAtom={agentsPreviewSidebarWidthAtom}
+                minWidth={350}
+                side="right"
+                animationDuration={0}
+                initialWidth={0}
+                exitWidth={0}
+                showResizeTooltip={true}
+                className="bg-tl-background border-l"
+                style={{ borderLeftWidth: "0.5px" }}
+              >
+                {isQuickSetup ? (
+                  <div className="flex flex-col h-full">
+                    {/* Header with close button */}
+                    <div className="flex items-center justify-end px-3 h-10 bg-tl-background shrink-0 border-b border-border/50">
+                      <Button
+                        variant="ghost"
+                        className="h-7 w-7 p-0 hover:bg-muted transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] rounded-md"
+                        onClick={() => setIsPreviewSidebarOpen(false)}
                       >
-                        <rect
-                          x="2"
-                          y="3"
-                          width="20"
-                          height="14"
-                          rx="2"
-                          ry="2"
-                        />
-                        <line x1="8" y1="21" x2="16" y2="21" />
-                        <line x1="12" y1="17" x2="12" y2="21" />
-                      </svg>
+                        <IconCloseSidebarRight className="h-4 w-4 text-muted-foreground" />
+                      </Button>
                     </div>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Preview not available
-                    </p>
-                    <p className="text-xs text-muted-foreground/70 max-w-[200px]">
-                      Set up this repository to enable live preview
-                    </p>
+                    {/* Content */}
+                    <div className="flex flex-col items-center justify-center flex-1 p-6 text-center">
+                      <div className="text-muted-foreground mb-4">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="48"
+                          height="48"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="opacity-50"
+                        >
+                          <rect
+                            x="2"
+                            y="3"
+                            width="20"
+                            height="14"
+                            rx="2"
+                            ry="2"
+                          />
+                          <line x1="8" y1="21" x2="16" y2="21" />
+                          <line x1="12" y1="17" x2="12" y2="21" />
+                        </svg>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Preview not available
+                      </p>
+                      <p className="text-xs text-muted-foreground/70 max-w-[200px]">
+                        Set up this repository to enable live preview
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <AgentPreview
+                ) : (
+                  <AgentPreview
+                    chatId={chatId}
+                    sandboxId={sandboxId}
+                    port={previewPort}
+                    repository={repository}
+                    hideHeader={false}
+                    onClose={() => setIsPreviewSidebarOpen(false)}
+                  />
+                )}
+              </ResizableSidebar>
+            )}
+
+          {/* Local Dev Server Preview - split mode (2/3 width) */}
+          {canOpenLocalPreview &&
+            !isMobileFullscreen &&
+            viewMode === "split" && (
+              <div className="w-2/3 shrink-0 flex flex-col overflow-hidden border-l border-border/50">
+                <LocalPreview
                   chatId={chatId}
-                  sandboxId={sandboxId}
-                  port={previewPort}
-                  repository={repository}
-                  hideHeader={false}
-                  onClose={() => setIsPreviewSidebarOpen(false)}
+                  onClose={() => setViewMode("chat")}
                 />
-              )}
-            </ResizableSidebar>
-          )}
+              </div>
+            )}
+
+          {/* Local Dev Server Preview - full preview mode */}
+          {canOpenLocalPreview &&
+            !isMobileFullscreen &&
+            viewMode === "preview" && (
+              <div className="flex-1 flex flex-col overflow-hidden">
+                <LocalPreview
+                  chatId={chatId}
+                  onClose={() => setViewMode("chat")}
+                />
+              </div>
+            )}
 
           {/* Terminal Sidebar - shows when worktree exists (desktop only) */}
           {worktreePath && (

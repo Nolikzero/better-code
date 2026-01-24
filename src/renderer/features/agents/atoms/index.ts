@@ -258,6 +258,86 @@ export const agentsPreviewSidebarOpenAtom = atomWithStorage<boolean>(
   { getOnInit: true },
 );
 
+// ========================================
+// Dev Server Preview State
+// ========================================
+
+// Dev server running state per chat
+export type DevServerState = {
+  paneId: string;
+  port: number | null;
+  status: "starting" | "running" | "stopped" | "error";
+};
+
+const devServerStatesStorageAtom = atomWithStorage<
+  Record<string, DevServerState | null>
+>("agents:devServerStates", {}, undefined, { getOnInit: true });
+
+export const devServerStateAtomFamily = atomFamily((chatId: string) =>
+  atom(
+    (get) => get(devServerStatesStorageAtom)[chatId] ?? null,
+    (get, set, newState: DevServerState | null) => {
+      const current = get(devServerStatesStorageAtom);
+      set(devServerStatesStorageAtom, { ...current, [chatId]: newState });
+    },
+  ),
+);
+
+// View mode for the chat area: "chat" | "split" | "preview"
+export type ChatViewMode = "chat" | "split" | "preview";
+
+const chatViewModesStorageAtom = atomWithStorage<Record<string, ChatViewMode>>(
+  "agents:chatViewModes",
+  {},
+  undefined,
+  { getOnInit: true },
+);
+
+export const chatViewModeAtomFamily = atomFamily((chatId: string) =>
+  atom(
+    (get) => get(chatViewModesStorageAtom)[chatId] ?? "chat",
+    (get, set, newMode: ChatViewMode) => {
+      const current = get(chatViewModesStorageAtom);
+      set(chatViewModesStorageAtom, { ...current, [chatId]: newMode });
+    },
+  ),
+);
+
+// Detected ports from dev server per chat
+const devServerPortsStorageAtom = atomWithStorage<Record<string, number[]>>(
+  "agents:devServerPorts",
+  {},
+  undefined,
+  { getOnInit: true },
+);
+
+export const devServerPortsAtomFamily = atomFamily((chatId: string) =>
+  atom(
+    (get) => get(devServerPortsStorageAtom)[chatId] ?? [],
+    (get, set, update: number[] | ((prev: number[]) => number[])) => {
+      const current = get(devServerPortsStorageAtom);
+      const prev = current[chatId] ?? [];
+      const newPorts = typeof update === "function" ? update(prev) : update;
+      set(devServerPortsStorageAtom, { ...current, [chatId]: newPorts });
+    },
+  ),
+);
+
+// Local preview URL (http://localhost:{port}) per chat
+const localPreviewUrlsStorageAtom = atomWithStorage<
+  Record<string, string | null>
+>("agents:localPreviewUrls", {}, undefined, { getOnInit: true });
+
+export const localPreviewUrlAtomFamily = atomFamily((chatId: string) =>
+  atom(
+    (get) => get(localPreviewUrlsStorageAtom)[chatId] ?? null,
+    (get, set, newUrl: string | null) => {
+      const current = get(localPreviewUrlsStorageAtom);
+      set(localPreviewUrlsStorageAtom, { ...current, [chatId]: newUrl });
+    },
+  ),
+);
+
 // Diff sidebar (right) width (global - same width for all chats)
 export const agentsDiffSidebarWidthAtom = atomWithStorage<number>(
   "agents-diff-sidebar-width",

@@ -19,7 +19,6 @@
     "package:dir": "electron-vite build && electron-builder --dir",
     "release": "rm -rf out dist && bun run package:mac",
     "sync:public": "./scripts/sync-to-public.sh",
-    "icon:generate": "node scripts/generate-icon.mjs",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",

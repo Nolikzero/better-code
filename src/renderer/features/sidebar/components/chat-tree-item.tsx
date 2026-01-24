@@ -123,10 +123,10 @@ export const ChatTreeItem = React.memo(function ChatTreeItem({
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         className={cn(
-          "w-full text-left py-1.5 cursor-pointer group relative flex items-start gap-1 mt-2",
+          "w-full text-left py-1.5 cursor-pointer group relative flex items-start gap-1",
           "transition-colors duration-150 rounded-md",
           "outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70",
-          "pl-1 pr-2",
+          "px-2",
           isSelected
             ? "bg-foreground/5 text-foreground"
             : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground",
@@ -211,17 +211,19 @@ export const ChatTreeItem = React.memo(function ChatTreeItem({
             )}
           </div>
 
-          {/* Branch badge */}
-          {branch && (
-            <div className="flex items-center gap-1 text-[11px] text-muted-foreground/60">
-              <GitBranch className="h-3 w-3" />
-              <span className="truncate">{branch}</span>
-            </div>
-          )}
-
-          {/* File stats at workspace level */}
-          {((fileAdditions ?? 0) > 0 || (fileDeletions ?? 0) > 0) && (
-            <div className="flex items-center gap-1 text-[11px] text-muted-foreground/60">
+          {/* Branch + file stats metadata row */}
+          {(branch || (fileAdditions ?? 0) > 0 || (fileDeletions ?? 0) > 0) && (
+            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground/60">
+              {branch && (
+                <>
+                  <GitBranch className="h-3 w-3 shrink-0" />
+                  <span className="truncate max-w-[100px]">{branch}</span>
+                </>
+              )}
+              {branch &&
+                ((fileAdditions ?? 0) > 0 || (fileDeletions ?? 0) > 0) && (
+                  <span>&middot;</span>
+                )}
               {(fileAdditions ?? 0) > 0 && (
                 <span className="text-green-600 dark:text-green-500">
                   +{fileAdditions}

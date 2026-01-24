@@ -39,12 +39,15 @@ import {
   activeChatDiffDataAtom,
   agentsUnseenChangesAtom,
   archivePopoverOpenAtom,
+  draftsSectionCollapsedAtom,
   expandedChatIdsAtom,
   justCreatedIdsAtom,
   loadingSubChatsAtom,
   mainContentActiveTabAtom,
+  pinnedSectionCollapsedAtom,
   prActionsAtom,
   previousAgentChatIdAtom,
+  recentSectionCollapsedAtom,
   selectedAgentChatIdAtom,
   selectedDraftIdAtom,
   selectedProjectAtom,
@@ -126,6 +129,17 @@ export function ChatsSidebar({
 
   // Track initial mount to skip footer animation on load
   const hasFooterAnimated = useRef(false);
+
+  // Section collapse states
+  const [pinnedCollapsed, setPinnedCollapsed] = useAtom(
+    pinnedSectionCollapsedAtom,
+  );
+  const [recentCollapsed, setRecentCollapsed] = useAtom(
+    recentSectionCollapsedAtom,
+  );
+  const [draftsCollapsed, setDraftsCollapsed] = useAtom(
+    draftsSectionCollapsedAtom,
+  );
 
   // Pinned chats (stored in localStorage per project)
   const [pinnedChatIds, setPinnedChatIds] = useState<Set<string>>(new Set());
@@ -927,7 +941,7 @@ export function ChatsSidebar({
         )}
       >
         {/* Search */}
-        <div className="px-2 pt-3 pb-3 shrink-0">
+        <div className="px-3 pt-3 pb-2 shrink-0">
           <div className="space-y-2">
             <div className="relative">
               <Input
@@ -984,234 +998,247 @@ export function ChatsSidebar({
         </div>
 
         {/* Scrollable Agents List */}
-        <div className="flex-1 min-h-0 relative">
-          <div
-            ref={scrollContainerRef}
-            onScroll={handleAgentsScroll}
-            className={cn(
-              "h-full overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent",
-              isMultiSelectMode ? "px-0" : "px-2",
-            )}
-          >
-            {/* Drafts Section */}
-            {drafts.length > 0 && !searchQuery && (
-              <div className={cn("mb-4", isMultiSelectMode ? "px-0" : "-mx-1")}>
-                <div
-                  className={cn(
-                    "flex items-center h-4 mb-1",
-                    isMultiSelectMode ? "pl-3" : "pl-2",
-                  )}
-                >
-                  <h3 className="text-xs font-medium text-muted-foreground whitespace-nowrap">
-                    Drafts
-                  </h3>
-                </div>
-                <div className="list-none p-0 m-0">
-                  {drafts.map((draft) => {
-                    const isSelected =
-                      selectedDraftId === draft.id && !selectedChatId;
-                    return (
-                      <div
-                        key={draft.id}
-                        onClick={() => {
-                          setSelectedChatId(null);
-                          setSelectedDraftId(draft.id);
-                          if (isMobileFullscreen && onChatSelect) {
-                            onChatSelect();
-                          }
-                        }}
-                        className={cn(
-                          "w-full text-left py-1.5 cursor-pointer group relative mt-2",
-                          "transition-colors duration-150",
-                          "outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70",
-                          isMultiSelectMode ? "px-3" : "pl-2 pr-2",
-                          !isMultiSelectMode && "rounded-md",
-                          isSelected
-                            ? "bg-foreground/5 text-foreground"
-                            : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground",
-                        )}
-                      >
-                        <div className="flex items-start gap-2.5">
-                          <div className="pt-0.5">
-                            <div className="relative shrink-0 w-4 h-4">
-                              {draft.project?.gitOwner &&
-                              draft.project?.gitProvider === "github" ? (
-                                <img
-                                  src={`https://github.com/${draft.project.gitOwner}.png?size=64`}
-                                  alt={draft.project.gitOwner}
-                                  className="h-4 w-4 rounded-xs shrink-0"
-                                />
-                              ) : (
-                                <FolderGit2 className="h-4 w-4 shrink-0 text-muted-foreground" />
-                              )}
-                            </div>
+        <div className="flex-1 min-h-0 relative flex flex-col">
+          {/* Drafts Section */}
+          {drafts.length > 0 && !searchQuery && (
+            <div className="shrink-0 max-h-[25%] overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
+              <SidebarListSection
+                title="Drafts"
+                count={drafts.length}
+                isCollapsed={draftsCollapsed}
+                onToggleCollapsed={() => setDraftsCollapsed((prev) => !prev)}
+                isMultiSelectMode={isMultiSelectMode}
+              >
+                {drafts.map((draft) => {
+                  const isSelected =
+                    selectedDraftId === draft.id && !selectedChatId;
+                  return (
+                    <div
+                      key={draft.id}
+                      onClick={() => {
+                        setSelectedChatId(null);
+                        setSelectedDraftId(draft.id);
+                        if (isMobileFullscreen && onChatSelect) {
+                          onChatSelect();
+                        }
+                      }}
+                      className={cn(
+                        "w-full text-left py-1 cursor-pointer group relative",
+                        "transition-colors duration-150",
+                        "outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70",
+                        isMultiSelectMode ? "px-3" : "px-3",
+                        !isMultiSelectMode && "rounded-md",
+                        isSelected
+                          ? "bg-foreground/5 text-foreground"
+                          : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground",
+                      )}
+                    >
+                      <div className="flex items-start gap-2.5">
+                        <div className="pt-0.5">
+                          <div className="relative shrink-0 w-4 h-4">
+                            {draft.project?.gitOwner &&
+                            draft.project?.gitProvider === "github" ? (
+                              <img
+                                src={`https://github.com/${draft.project.gitOwner}.png?size=64`}
+                                alt={draft.project.gitOwner}
+                                className="h-4 w-4 rounded-xs shrink-0"
+                              />
+                            ) : (
+                              <FolderGit2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+                            )}
                           </div>
-                          <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-                            <div className="flex items-center gap-1">
-                              <span className="truncate block text-sm leading-tight flex-1">
-                                {draft.text.slice(0, 50)}
-                                {draft.text.length > 50 ? "..." : ""}
-                              </span>
-                              {!isMultiSelectMode && !isMobileFullscreen && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteDraft(draft.id);
-                                  }}
-                                  tabIndex={-1}
-                                  className="shrink-0 text-muted-foreground hover:text-foreground active:text-foreground transition-[opacity,transform,color] duration-150 ease-out opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto active:scale-[0.97]"
-                                  aria-label="Delete draft"
-                                >
-                                  <TrashIcon className="h-3.5 w-3.5" />
-                                </button>
+                        </div>
+                        <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                          <div className="flex items-center gap-1">
+                            <span className="truncate block text-sm leading-tight flex-1">
+                              {draft.text.slice(0, 50)}
+                              {draft.text.length > 50 ? "..." : ""}
+                            </span>
+                            {!isMultiSelectMode && !isMobileFullscreen && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteDraft(draft.id);
+                                }}
+                                tabIndex={-1}
+                                className="shrink-0 text-muted-foreground hover:text-foreground active:text-foreground transition-[opacity,transform,color] duration-150 ease-out opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto active:scale-[0.97]"
+                                aria-label="Delete draft"
+                              >
+                                <TrashIcon className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </div>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[11px] text-muted-foreground/60 truncate">
+                              <span className="text-blue-500">Draft</span>
+                              {draft.project?.gitRepo
+                                ? ` \u2022 ${draft.project.gitRepo}`
+                                : draft.project?.name
+                                  ? ` \u2022 ${draft.project.name}`
+                                  : ""}
+                            </span>
+                            <span className="text-[11px] text-muted-foreground/60 shrink-0">
+                              {formatTime(
+                                new Date(draft.updatedAt).toISOString(),
                               )}
-                            </div>
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-[11px] text-muted-foreground/60 truncate">
-                                <span className="text-blue-500">Draft</span>
-                                {draft.project?.gitRepo
-                                  ? ` • ${draft.project.gitRepo}`
-                                  : draft.project?.name
-                                    ? ` • ${draft.project.name}`
-                                    : ""}
-                              </span>
-                              <span className="text-[11px] text-muted-foreground/60 shrink-0">
-                                {formatTime(
-                                  new Date(draft.updatedAt).toISOString(),
-                                )}
-                              </span>
-                            </div>
+                            </span>
                           </div>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
+                    </div>
+                  );
+                })}
+              </SidebarListSection>
+            </div>
+          )}
+
+          {/* Pinned section */}
+          {pinnedAgents.length > 0 && (
+            <div
+              className={cn(
+                "flex flex-col min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent",
+                unpinnedAgents.length > 0 ? "max-h-[50%] shrink-0" : "flex-1",
+              )}
+            >
+              <SidebarListSection
+                title="Pinned"
+                count={pinnedAgents.length}
+                isCollapsed={pinnedCollapsed}
+                onToggleCollapsed={() => setPinnedCollapsed((prev) => !prev)}
+                isMultiSelectMode={isMultiSelectMode}
+                showBorder={drafts.length > 0 && !searchQuery}
+              >
+                {pinnedAgents.map((chat) => {
+                  const isLoading = loadingChatIds.has(chat.id);
+                  const isSelected = selectedChatId === chat.id;
+                  const hasPendingPlan = workspacePendingPlans.has(chat.id);
+                  const project = projectsMap.get(chat.projectId);
+                  const activeSubChat =
+                    useAgentSubChatStore.getState().activeSubChatId;
+                  const subChats =
+                    (chat as typeof chat & { subChats?: SubChatMeta[] })
+                      .subChats || [];
+                  const stats = workspaceFileStats.get(chat.id);
+
+                  return (
+                    <ChatTreeItem
+                      key={chat.id}
+                      id={chat.id}
+                      name={chat.name}
+                      branch={chat.branch}
+                      isExpanded={expandedChatIds.includes(chat.id)}
+                      isSelected={isSelected}
+                      isLoading={isLoading}
+                      hasUnseenChanges={unseenChanges.has(chat.id)}
+                      hasPendingPlan={hasPendingPlan}
+                      isJustCreated={justCreatedIds.has(chat.id)}
+                      subChats={subChats}
+                      activeSubChatId={activeSubChat}
+                      loadingSubChatIds={new Set([...loadingSubChats.keys()])}
+                      gitOwner={project?.gitOwner}
+                      gitProvider={project?.gitProvider}
+                      fileAdditions={stats?.additions}
+                      fileDeletions={stats?.deletions}
+                      fileCount={stats?.fileCount}
+                      onToggleExpand={() => handleToggleExpand(chat.id)}
+                      onSelect={() => handleChatClick(chat.id)}
+                      onSelectSubChat={(subChatId) =>
+                        handleSubChatSelect(chat.id, subChatId)
+                      }
+                      onArchive={() =>
+                        archiveChatMutation.mutate({ id: chat.id })
+                      }
+                      onCreateSubChat={() => handleCreateSubChat(chat.id)}
+                      onDeleteSubChat={handleDeleteSubChat}
+                    />
+                  );
+                })}
+              </SidebarListSection>
+            </div>
+          )}
+
+          {/* Recent/unpinned section - takes remaining space */}
+          {unpinnedAgents.length > 0 && (
+            <div
+              ref={scrollContainerRef}
+              onScroll={handleAgentsScroll}
+              className="flex flex-col min-h-0 flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent"
+            >
+              <SidebarListSection
+                title={pinnedAgents.length > 0 ? "Recent" : "Workspaces"}
+                count={unpinnedAgents.length}
+                isCollapsed={recentCollapsed}
+                onToggleCollapsed={() => setRecentCollapsed((prev) => !prev)}
+                isMultiSelectMode={isMultiSelectMode}
+                showBorder={
+                  pinnedAgents.length > 0 || (drafts.length > 0 && !searchQuery)
+                }
+              >
+                {unpinnedAgents.map((chat) => {
+                  const isLoading = loadingChatIds.has(chat.id);
+                  const isSelected = selectedChatId === chat.id;
+                  const hasPendingPlan = workspacePendingPlans.has(chat.id);
+                  const project = projectsMap.get(chat.projectId);
+                  const activeSubChat =
+                    useAgentSubChatStore.getState().activeSubChatId;
+                  const subChats =
+                    (chat as typeof chat & { subChats?: SubChatMeta[] })
+                      .subChats || [];
+                  const stats = workspaceFileStats.get(chat.id);
+
+                  return (
+                    <ChatTreeItem
+                      key={chat.id}
+                      id={chat.id}
+                      name={chat.name}
+                      branch={chat.branch}
+                      isExpanded={expandedChatIds.includes(chat.id)}
+                      isSelected={isSelected}
+                      isLoading={isLoading}
+                      hasUnseenChanges={unseenChanges.has(chat.id)}
+                      hasPendingPlan={hasPendingPlan}
+                      isJustCreated={justCreatedIds.has(chat.id)}
+                      subChats={subChats}
+                      activeSubChatId={activeSubChat}
+                      loadingSubChatIds={new Set([...loadingSubChats.keys()])}
+                      gitOwner={project?.gitOwner}
+                      gitProvider={project?.gitProvider}
+                      fileAdditions={stats?.additions}
+                      fileDeletions={stats?.deletions}
+                      fileCount={stats?.fileCount}
+                      onToggleExpand={() => handleToggleExpand(chat.id)}
+                      onSelect={() => handleChatClick(chat.id)}
+                      onSelectSubChat={(subChatId) =>
+                        handleSubChatSelect(chat.id, subChatId)
+                      }
+                      onArchive={() =>
+                        archiveChatMutation.mutate({ id: chat.id })
+                      }
+                      onCreateSubChat={() => handleCreateSubChat(chat.id)}
+                      onDeleteSubChat={handleDeleteSubChat}
+                    />
+                  );
+                })}
+              </SidebarListSection>
+            </div>
+          )}
+
+          {/* Empty state */}
+          {filteredChats.length === 0 && drafts.length === 0 && (
+            <div className="flex flex-1 flex-col items-center justify-center px-4 py-8 text-center">
+              <div className="mb-3 rounded-full bg-muted p-3">
+                <FolderGit2 className="h-5 w-5 text-muted-foreground" />
               </div>
-            )}
-
-            {/* Chats Section - Tree View */}
-            {filteredChats.length > 0 ? (
-              <div className={cn("mb-4", isMultiSelectMode ? "px-0" : "-mx-1")}>
-                {/* Pinned section */}
-                {pinnedAgents.length > 0 && (
-                  <SidebarListSection
-                    title="Pinned workspaces"
-                    isMultiSelectMode={isMultiSelectMode}
-                    className="mb-3"
-                  >
-                    {pinnedAgents.map((chat) => {
-                      const isLoading = loadingChatIds.has(chat.id);
-                      const isSelected = selectedChatId === chat.id;
-                      const hasPendingPlan = workspacePendingPlans.has(chat.id);
-                      const project = projectsMap.get(chat.projectId);
-                      const activeSubChat =
-                        useAgentSubChatStore.getState().activeSubChatId;
-                      const subChats =
-                        (chat as typeof chat & { subChats?: SubChatMeta[] })
-                          .subChats || [];
-                      const stats = workspaceFileStats.get(chat.id);
-
-                      return (
-                        <ChatTreeItem
-                          key={chat.id}
-                          id={chat.id}
-                          name={chat.name}
-                          branch={chat.branch}
-                          isExpanded={expandedChatIds.includes(chat.id)}
-                          isSelected={isSelected}
-                          isLoading={isLoading}
-                          hasUnseenChanges={unseenChanges.has(chat.id)}
-                          hasPendingPlan={hasPendingPlan}
-                          isJustCreated={justCreatedIds.has(chat.id)}
-                          subChats={subChats}
-                          activeSubChatId={activeSubChat}
-                          loadingSubChatIds={
-                            new Set([...loadingSubChats.keys()])
-                          }
-                          gitOwner={project?.gitOwner}
-                          gitProvider={project?.gitProvider}
-                          fileAdditions={stats?.additions}
-                          fileDeletions={stats?.deletions}
-                          fileCount={stats?.fileCount}
-                          onToggleExpand={() => handleToggleExpand(chat.id)}
-                          onSelect={() => handleChatClick(chat.id)}
-                          onSelectSubChat={(subChatId) =>
-                            handleSubChatSelect(chat.id, subChatId)
-                          }
-                          onArchive={() =>
-                            archiveChatMutation.mutate({ id: chat.id })
-                          }
-                          onCreateSubChat={() => handleCreateSubChat(chat.id)}
-                          onDeleteSubChat={handleDeleteSubChat}
-                        />
-                      );
-                    })}
-                  </SidebarListSection>
-                )}
-
-                {/* Unpinned section */}
-                {unpinnedAgents.length > 0 && (
-                  <SidebarListSection
-                    title={
-                      pinnedAgents.length > 0
-                        ? "Recent workspaces"
-                        : "Workspaces"
-                    }
-                    isMultiSelectMode={isMultiSelectMode}
-                  >
-                    {unpinnedAgents.map((chat) => {
-                      const isLoading = loadingChatIds.has(chat.id);
-                      const isSelected = selectedChatId === chat.id;
-                      const hasPendingPlan = workspacePendingPlans.has(chat.id);
-                      const project = projectsMap.get(chat.projectId);
-                      const activeSubChat =
-                        useAgentSubChatStore.getState().activeSubChatId;
-                      const subChats =
-                        (chat as typeof chat & { subChats?: SubChatMeta[] })
-                          .subChats || [];
-                      const stats = workspaceFileStats.get(chat.id);
-
-                      return (
-                        <ChatTreeItem
-                          key={chat.id}
-                          id={chat.id}
-                          name={chat.name}
-                          branch={chat.branch}
-                          isExpanded={expandedChatIds.includes(chat.id)}
-                          isSelected={isSelected}
-                          isLoading={isLoading}
-                          hasUnseenChanges={unseenChanges.has(chat.id)}
-                          hasPendingPlan={hasPendingPlan}
-                          isJustCreated={justCreatedIds.has(chat.id)}
-                          subChats={subChats}
-                          activeSubChatId={activeSubChat}
-                          loadingSubChatIds={
-                            new Set([...loadingSubChats.keys()])
-                          }
-                          gitOwner={project?.gitOwner}
-                          gitProvider={project?.gitProvider}
-                          fileAdditions={stats?.additions}
-                          fileDeletions={stats?.deletions}
-                          fileCount={stats?.fileCount}
-                          onToggleExpand={() => handleToggleExpand(chat.id)}
-                          onSelect={() => handleChatClick(chat.id)}
-                          onSelectSubChat={(subChatId) =>
-                            handleSubChatSelect(chat.id, subChatId)
-                          }
-                          onArchive={() =>
-                            archiveChatMutation.mutate({ id: chat.id })
-                          }
-                          onCreateSubChat={() => handleCreateSubChat(chat.id)}
-                          onDeleteSubChat={handleDeleteSubChat}
-                        />
-                      );
-                    })}
-                  </SidebarListSection>
-                )}
-              </div>
-            ) : null}
-          </div>
+              <p className="text-sm font-medium text-foreground">
+                {searchQuery ? "No results" : "No workspaces"}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {searchQuery
+                  ? "Try a different search term"
+                  : "Create a new chat to get started"}
+              </p>
+            </div>
+          )}
 
           {/* Top gradient fade */}
           <div

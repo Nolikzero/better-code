@@ -65,7 +65,7 @@ export const SubchatInlineItem = React.memo(function SubchatInlineItem({
       onClick={onClick}
       onContextMenu={onContextMenu}
       className={cn(
-        "w-full text-left py-1 px-2 cursor-pointer group relative flex items-start gap-2 mt-1",
+        "w-full text-left py-1 px-2 cursor-pointer group relative flex items-start gap-2",
         "transition-colors duration-150 rounded-md",
         "outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70",
         isActive
@@ -125,7 +125,7 @@ export const SubchatInlineItem = React.memo(function SubchatInlineItem({
       {/* Content */}
       <div className="flex-1 min-w-0 flex flex-col gap-0.5">
         {/* Name */}
-        <span className="truncate block text-sm leading-tight">
+        <span className="truncate block text-xs font-medium leading-tight">
           {name || "New Chat"}
         </span>
 

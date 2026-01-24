@@ -791,6 +791,28 @@ export const changesSectionCollapsedAtom = atomWithStorage<boolean>(
   { getOnInit: true },
 );
 
+// Right sidebar section collapse states
+export const pinnedSectionCollapsedAtom = atomWithStorage<boolean>(
+  "agents:pinnedSectionCollapsed",
+  false,
+  undefined,
+  { getOnInit: true },
+);
+
+export const recentSectionCollapsedAtom = atomWithStorage<boolean>(
+  "agents:recentSectionCollapsed",
+  false,
+  undefined,
+  { getOnInit: true },
+);
+
+export const draftsSectionCollapsedAtom = atomWithStorage<boolean>(
+  "agents:draftsSectionCollapsed",
+  false,
+  undefined,
+  { getOnInit: true },
+);
+
 // ============================================================================
 // Commit History State
 // ============================================================================

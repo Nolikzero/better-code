@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.0.7]
+
+### Added
+
+- Local dev server preview with runCommand in project settings
+- Section collapse states for pinned, recent, and drafts in ChatsSidebar
+- Ralph auto-start functionality with backend integration for story continuation
+- Project settings dialog state management in ProjectSelectorHeader
+- Fallback for auto-continue story handling in processChunk
+
+### Changed
+
+- Worktree path generation now uses branch name instead of chatId
+- Enhanced git status watching with max-wait timer for improved event handling
+- Background color updated to transparent in SiriOrb and NewChatForm components
+- Format on save enabled with explicit quickfix and import organization code actions
+
+### Removed
+
+- Obsolete DIFF.md and OPENCODE.mdx files
+
 ## [0.0.6]
 
 ### Added

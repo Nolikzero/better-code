@@ -4,50 +4,108 @@ import { OpenCodeProvider } from "./opencode";
 /**
  * Provider initialization
  *
- * Registers all available AI providers with the global registry.
- * Call this during app startup before any provider operations.
+ * Providers are only loaded when enabled by the user (via onboarding/settings).
  */
 import { providerRegistry } from "./registry";
+import type { AIProvider, ProviderId } from "./types";
+
+const providerFactories: Record<ProviderId, () => AIProvider> = {
+  claude: () => new ClaudeProvider(),
+  codex: () => new CodexProvider(),
+  opencode: () => new OpenCodeProvider(),
+};
 
 let initialized = false;
+let enabledProviderIds: ProviderId[] = [];
+
+function normalizeProviderIds(ids: ProviderId[]): ProviderId[] {
+  return Array.from(new Set(ids));
+}
+
+async function registerProvider(id: ProviderId): Promise<void> {
+  if (providerRegistry.has(id)) return;
+
+  const providerFactory = providerFactories[id];
+  const provider = providerFactory();
+  providerRegistry.register(provider);
+  console.log(`[providers] Registered ${provider.id} provider`);
+
+  if (provider.initialize) {
+    provider.initialize().catch((error) => {
+      console.error(`[providers] ${provider.id} initialization failed:`, error);
+    });
+  }
+}
+
+async function unregisterProvider(id: ProviderId): Promise<void> {
+  const provider = providerRegistry.get(id);
+  if (!provider) return;
+
+  if (provider.shutdown) {
+    try {
+      await provider.shutdown();
+      console.log(`[providers] Shutdown ${provider.id} provider`);
+    } catch (error) {
+      console.error(`[providers] Failed to shutdown ${provider.id}:`, error);
+    }
+  }
+
+  providerRegistry.unregister(id);
+  console.log(`[providers] Unregistered ${id} provider`);
+}
 
 /**
- * Initialize and register all AI providers
+ * Enable a specific set of providers (registers + initializes as needed).
  */
-export async function initializeProviders(): Promise<void> {
-  if (initialized) {
+export async function setEnabledProviders(
+  providerIds: ProviderId[],
+): Promise<void> {
+  const desiredIds = normalizeProviderIds(providerIds);
+  const desiredSet = new Set(desiredIds);
+  const currentIds = providerRegistry.getIds();
+
+  // Remove providers no longer enabled
+  for (const id of currentIds) {
+    if (!desiredSet.has(id)) {
+      await unregisterProvider(id);
+    }
+  }
+
+  // Register newly enabled providers
+  for (const id of desiredIds) {
+    await registerProvider(id);
+  }
+
+  if (desiredIds.length > 0 && providerRegistry.has(desiredIds[0])) {
+    providerRegistry.setDefault(desiredIds[0]);
+  }
+
+  enabledProviderIds = desiredIds;
+  initialized = true;
+  console.log(
+    `[providers] Enabled providers: ${enabledProviderIds.join(", ") || "none"}`,
+  );
+}
+
+/**
+ * Initialize providers with a list (legacy entry point).
+ */
+export async function initializeProviders(
+  providerIds: ProviderId[] = [],
+): Promise<void> {
+  if (initialized && providerIds.length === 0) {
     console.log("[providers] Already initialized, skipping");
     return;
   }
 
+  if (providerIds.length === 0) {
+    console.log("[providers] Initialization skipped (no providers enabled)");
+    initialized = true;
+    return;
+  }
+
   console.log("[providers] Initializing providers...");
-
-  // Register Claude provider
-  const claudeProvider = new ClaudeProvider();
-  providerRegistry.register(claudeProvider);
-  console.log("[providers] Registered Claude provider");
-
-  // Register Codex provider
-  const codexProvider = new CodexProvider();
-  providerRegistry.register(codexProvider);
-  console.log("[providers] Registered Codex provider");
-
-  // Register OpenCode provider
-  const openCodeProvider = new OpenCodeProvider();
-  providerRegistry.register(openCodeProvider);
-  console.log("[providers] Registered OpenCode provider");
-
-  // Initialize OpenCode (starts server if needed)
-  // Do this asynchronously to not block startup
-  openCodeProvider.initialize().catch((error) => {
-    console.error("[providers] OpenCode initialization failed:", error);
-    // Don't fail startup - provider will be marked as unavailable
-  });
-
-  // Set Claude as default
-  providerRegistry.setDefault("claude");
-
-  initialized = true;
+  await setEnabledProviders(providerIds);
   console.log("[providers] Initialization complete");
 }
 
@@ -58,14 +116,7 @@ export async function shutdownProviders(): Promise<void> {
   console.log("[providers] Shutting down providers...");
 
   for (const provider of providerRegistry.getAll()) {
-    if (provider.shutdown) {
-      try {
-        await provider.shutdown();
-        console.log(`[providers] Shutdown ${provider.id} provider`);
-      } catch (error) {
-        console.error(`[providers] Failed to shutdown ${provider.id}:`, error);
-      }
-    }
+    await unregisterProvider(provider.id);
   }
 
   console.log("[providers] All providers shutdown complete");
@@ -83,4 +134,11 @@ function _isProvidersInitialized(): boolean {
  */
 function _resetProviderInitialization(): void {
   initialized = false;
+}
+
+/**
+ * Get the currently enabled providers (in-memory).
+ */
+export function getEnabledProviders(): ProviderId[] {
+  return [...enabledProviderIds];
 }

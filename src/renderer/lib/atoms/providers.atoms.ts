@@ -44,6 +44,14 @@ export type ProviderConfigUI = {
 // PROVIDER SELECTION ATOMS
 // ============================================
 
+// Enabled providers (persisted to localStorage)
+export const enabledProviderIdsAtom = atomWithStorage<ProviderId[]>(
+  "preferences:enabled-providers",
+  [],
+  undefined,
+  { getOnInit: true },
+);
+
 // Global default provider (persisted to localStorage)
 export const defaultProviderIdAtom = atomWithStorage<ProviderId>(
   "preferences:default-provider",

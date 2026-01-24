@@ -1,3 +1,4 @@
+import { useAtomValue } from "jotai";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -5,7 +6,7 @@ import {
   DropdownMenuTrigger,
 } from "../../../components/ui/dropdown-menu";
 import { CheckIcon, IconChevronDown } from "../../../components/ui/icons";
-import type { ProviderId } from "../../../lib/atoms";
+import { enabledProviderIdsAtom, type ProviderId } from "../../../lib/atoms";
 import { getProviderIcon, PROVIDERS } from "../ui/provider-icons";
 
 interface ProviderSelectorDropdownProps {
@@ -28,8 +29,14 @@ export function ProviderSelectorDropdown({
   open,
   onOpenChange,
 }: ProviderSelectorDropdownProps) {
+  const enabledProviders = useAtomValue(enabledProviderIdsAtom);
+  const availableProviders = enabledProviders.length
+    ? PROVIDERS.filter((p) => enabledProviders.includes(p.id))
+    : PROVIDERS;
   const currentProvider =
-    PROVIDERS.find((p) => p.id === providerId) || PROVIDERS[0];
+    availableProviders.find((p) => p.id === providerId) ||
+    availableProviders[0] ||
+    PROVIDERS[0];
 
   return (
     <DropdownMenu open={open} onOpenChange={onOpenChange}>
@@ -42,7 +49,7 @@ export function ProviderSelectorDropdown({
         <IconChevronDown className="h-3 w-3 shrink-0 opacity-50" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-[180px]">
-        {PROVIDERS.map((provider) => {
+        {availableProviders.map((provider) => {
           const isSelected = providerId === provider.id;
           return (
             <DropdownMenuItem

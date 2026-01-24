@@ -9,6 +9,7 @@ import {
   codexSandboxModeAtom,
   codexWebSearchModeAtom,
   defaultProviderIdAtom,
+  enabledProviderIdsAtom,
   extendedThinkingEnabledAtom,
   lastSelectedModelByProviderAtom,
   type ProviderId,
@@ -151,6 +152,7 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
 
     // Determine effective provider (config override -> subchat override -> chat override -> global default)
     const defaultProvider = appStore.get(defaultProviderIdAtom);
+    const enabledProviders = appStore.get(enabledProviderIdsAtom);
     const chatOverrides = appStore.get(chatProviderOverridesAtom);
     const subChatOverrides = appStore.get(subChatProviderOverridesAtom);
     const effectiveProvider =
@@ -158,6 +160,9 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
       subChatOverrides[this.config.subChatId] ||
       chatOverrides[this.config.chatId] ||
       defaultProvider;
+    const resolvedProvider = enabledProviders.includes(effectiveProvider)
+      ? effectiveProvider
+      : enabledProviders[0] || effectiveProvider;
 
     // Read per-subchat model override first
     const subChatModelOverrides = appStore.get(subChatModelOverridesAtom);
@@ -166,8 +171,8 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
     // Read model selection for the effective provider (fallback)
     const modelsByProvider = appStore.get(lastSelectedModelByProviderAtom);
     const modelString =
-      modelsByProvider[effectiveProvider] ||
-      (effectiveProvider === "claude" ? "sonnet" : "gpt-5.2-codex");
+      modelsByProvider[resolvedProvider] ||
+      (resolvedProvider === "claude" ? "sonnet" : "gpt-5.2-codex");
 
     // Legacy: still read from lastSelectedModelIdAtom for backwards compatibility with Claude
     const selectedModelId = appStore.get(lastSelectedModelIdAtom);
@@ -176,7 +181,7 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
     // Priority: per-subchat override -> legacy/global model
     const finalModelString = subChatModel
       ? subChatModel
-      : effectiveProvider === "claude"
+      : resolvedProvider === "claude"
         ? legacyModelString || modelString
         : modelString;
 
@@ -188,19 +193,19 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
 
     // Read Codex-specific settings (only used when provider is codex)
     const sandboxMode =
-      effectiveProvider === "codex"
+      resolvedProvider === "codex"
         ? appStore.get(codexSandboxModeAtom)
         : undefined;
     const approvalPolicy =
-      effectiveProvider === "codex"
+      resolvedProvider === "codex"
         ? appStore.get(codexApprovalPolicyAtom)
         : undefined;
     const reasoningEffort =
-      effectiveProvider === "codex"
+      resolvedProvider === "codex"
         ? appStore.get(codexReasoningEffortAtom)
         : undefined;
     const webSearchMode =
-      effectiveProvider === "codex"
+      resolvedProvider === "codex"
         ? appStore.get(codexWebSearchModeAtom)
         : undefined;
 
@@ -214,7 +219,7 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
     let chunkCount = 0;
     let lastChunkType = "";
     console.log(
-      `[SD] R:START sub=${subId} cwd=${this.config.cwd} projectPath=${this.config.projectPath || "(not set)"} provider=${effectiveProvider}`,
+      `[SD] R:START sub=${subId} cwd=${this.config.cwd} projectPath=${this.config.projectPath || "(not set)"} provider=${resolvedProvider}`,
     );
 
     return new ReadableStream({
@@ -231,7 +236,7 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
             projectPath: this.config.projectPath, // Original project path for MCP config lookup
             mode: currentMode as "plan" | "agent" | "ralph",
             sessionId,
-            providerId: effectiveProvider, // AI provider selection
+            providerId: resolvedProvider, // AI provider selection
             ...(maxThinkingTokens && { maxThinkingTokens }),
             ...(finalModelString && { model: finalModelString }),
             ...(images.length > 0 && { images }),
@@ -316,7 +321,7 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
                   mcpServers: chunk.mcpServers,
                   plugins: chunk.plugins,
                   skills: chunk.skills?.length,
-                  providerId: effectiveProvider,
+                  providerId: resolvedProvider,
                   // Debug: show all tools to check for MCP tools (format: mcp__servername__toolname)
                   allTools: chunk.tools,
                 });
@@ -326,7 +331,7 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
                   mcpServers: chunk.mcpServers,
                   plugins: chunk.plugins,
                   skills: chunk.skills,
-                  providerId: effectiveProvider,
+                  providerId: resolvedProvider,
                 });
               }
 
@@ -519,7 +524,7 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
                   readyToRetry: false,
                 });
                 // Store which provider triggered the auth error
-                appStore.set(authErrorProviderAtom, effectiveProvider);
+                appStore.set(authErrorProviderAtom, resolvedProvider);
                 // Show the login modal
                 appStore.set(agentsLoginModalOpenAtom, true);
                 // Use controller.error() instead of controller.close() so that

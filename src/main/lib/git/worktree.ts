@@ -879,7 +879,7 @@ export interface WorktreeResult {
 export async function createWorktreeForChat(
   projectPath: string,
   projectId: string,
-  chatId: string,
+  _chatId: string,
   selectedBaseBranch?: string,
   usedBranches?: string[],
 ): Promise<WorktreeResult> {

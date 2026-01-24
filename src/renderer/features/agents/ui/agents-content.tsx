@@ -28,6 +28,7 @@ import {
   subChatsQuickSwitchSelectedIndexAtom,
 } from "../../../lib/atoms";
 import { useIsMobile } from "../../../lib/hooks/use-mobile";
+import { appStore } from "../../../lib/jotai-store";
 import { api } from "../../../lib/mock-api";
 import { trpc } from "../../../lib/trpc";
 import { AgentsSidebar } from "../../sidebar/agents-sidebar";
@@ -38,7 +39,10 @@ import {
   agentsPreviewSidebarOpenAtom,
   agentsSidebarOpenAtom,
   centerFilePathAtom,
+  devServerPortsAtomFamily,
+  devServerStateAtomFamily,
   diffViewingModeAtom,
+  localPreviewUrlAtomFamily,
   mainContentActiveTabAtom,
   previousAgentChatIdAtom,
   projectDiffDataAtom,
@@ -170,6 +174,55 @@ export function AgentsContent() {
       setActiveSubChat: state.setActiveSubChat,
     })),
   );
+
+  const killTerminal = trpc.terminal.kill.useMutation();
+  const previousChatSelectionRef = useRef<{
+    chatId: string | null;
+    subChatId: string | null;
+    activeTab: string;
+  }>({
+    chatId: selectedChatId ?? null,
+    subChatId: activeSubChatId ?? null,
+    activeTab,
+  });
+
+  useEffect(() => {
+    const previous = previousChatSelectionRef.current;
+    const prevChatId = previous.chatId;
+    const prevSubChatId = previous.subChatId;
+    const prevTab = previous.activeTab;
+    const nextChatId = selectedChatId ?? null;
+    const nextSubChatId = activeSubChatId ?? null;
+    const nextTab = activeTab;
+
+    const stayedInSameChat = prevChatId !== null && prevChatId === nextChatId;
+    const movedFromSubChat =
+      stayedInSameChat &&
+      prevSubChatId !== null &&
+      prevSubChatId !== nextSubChatId;
+    const leftChatTab =
+      stayedInSameChat && prevTab === "chat" && nextTab !== "chat";
+
+    if (movedFromSubChat || leftChatTab) {
+      if (prevChatId) {
+        const prevDevServerState = appStore.get(
+          devServerStateAtomFamily(prevChatId),
+        );
+        if (prevDevServerState?.paneId) {
+          void killTerminal.mutateAsync({ paneId: prevDevServerState.paneId });
+        }
+        appStore.set(devServerStateAtomFamily(prevChatId), null);
+        appStore.set(localPreviewUrlAtomFamily(prevChatId), null);
+        appStore.set(devServerPortsAtomFamily(prevChatId), []);
+      }
+    }
+
+    previousChatSelectionRef.current = {
+      chatId: nextChatId,
+      subChatId: nextSubChatId,
+      activeTab: nextTab,
+    };
+  }, [selectedChatId, activeSubChatId, activeTab, killTerminal]);
 
   // Fetch teams for header
   const { data: teams } = api.teams.getUserTeams.useQuery(undefined, {

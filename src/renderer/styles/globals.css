@@ -544,10 +544,10 @@ html.vibrancy-active:not(.dark) [data-sonner-toast] {
    Transparent terminal with macOS blur effect
    ======================================== */
 
-/* When vibrancy is active, make terminal and xterm internals transparent */
-html.vibrancy-active [data-terminal-vibrancy="active"],
-html.vibrancy-active [data-terminal-vibrancy="active"] .xterm-viewport,
-html.vibrancy-active [data-terminal-vibrancy="active"] .xterm-screen {
+/* Make terminal and xterm internals transparent when terminal vibrancy is enabled */
+[data-terminal-vibrancy="active"],
+[data-terminal-vibrancy="active"] .xterm-viewport,
+[data-terminal-vibrancy="active"] .xterm-screen {
   background-color: transparent !important;
 }
 

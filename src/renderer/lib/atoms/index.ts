@@ -68,6 +68,7 @@ export {
   codexSandboxModeAtom,
   codexWebSearchModeAtom,
   defaultProviderIdAtom,
+  enabledProviderIdsAtom,
   lastSelectedModelByProviderAtom,
   PROVIDER_INFO,
   PROVIDER_MODELS,

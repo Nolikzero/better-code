@@ -19,7 +19,8 @@ import {
 import { closeDatabase, initDatabase } from "./lib/db";
 import { initDockMenu } from "./lib/dock-menu";
 import { branchWatcher } from "./lib/git/branch-watcher";
-import { initializeProviders, shutdownProviders } from "./lib/providers/init";
+import { shutdownProviders } from "./lib/providers/init";
+import { terminalManager } from "./lib/terminal/manager";
 import { initTray, updateTrayStatus } from "./lib/tray-menu";
 import { createMainWindow, getWindow } from "./windows/main";
 
@@ -315,13 +316,7 @@ if (gotTheLock) {
       console.error("[App] Failed to initialize database:", error);
     }
 
-    // Initialize providers
-    try {
-      await initializeProviders();
-      console.log("[App] Providers initialized");
-    } catch (error) {
-      console.error("[App] Failed to initialize providers:", error);
-    }
+    // Providers are initialized on-demand after onboarding/settings selection
 
     // Create main window
     createMainWindow();
@@ -383,6 +378,7 @@ if (gotTheLock) {
     if ((global as any).__cleanupTray) {
       (global as any).__cleanupTray();
     }
+    await terminalManager.cleanup();
     await branchWatcher.cleanup();
     await shutdownProviders();
     await closeDatabase();

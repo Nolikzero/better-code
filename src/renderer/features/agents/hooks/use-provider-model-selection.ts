@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   chatProviderOverridesAtom,
   defaultProviderIdAtom,
+  enabledProviderIdsAtom,
   lastSelectedModelByProviderAtom,
   type ProviderId,
   subChatModelOverridesAtom,
@@ -54,25 +55,30 @@ export function useProviderModelSelection(
     subChatModelOverridesAtom,
   );
   const [globalDefaultProvider] = useAtom(defaultProviderIdAtom);
+  const enabledProviders = useAtomValue(enabledProviderIdsAtom);
   const [modelByProvider, setModelByProvider] = useAtom(
     lastSelectedModelByProviderAtom,
   );
   const { getModels } = useProviders();
 
   // Use per-subchat override first, then per-chat override, otherwise global default
-  const effectiveProvider = useMemo(
-    () =>
+  const effectiveProvider = useMemo(() => {
+    const candidate =
       subChatProviderOverrides[subChatId] ||
       chatProviderOverrides[parentChatId] ||
-      globalDefaultProvider,
-    [
-      subChatProviderOverrides,
-      subChatId,
-      chatProviderOverrides,
-      parentChatId,
-      globalDefaultProvider,
-    ],
-  );
+      globalDefaultProvider;
+    if (enabledProviders.length === 0) return candidate;
+    return enabledProviders.includes(candidate)
+      ? candidate
+      : enabledProviders[0];
+  }, [
+    subChatProviderOverrides,
+    subChatId,
+    chatProviderOverrides,
+    parentChatId,
+    globalDefaultProvider,
+    enabledProviders,
+  ]);
 
   // Mutations to persist provider/model changes to database
   const updateSubChatProviderMutation =

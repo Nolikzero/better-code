@@ -57,11 +57,13 @@ export function Terminal({
 
   // Determine if the terminal should use transparency (Liquid Glass themes)
   const isTransparent = useMemo(() => {
-    if (!fullThemeData?.vibrancy?.enabled) return false;
+    const wantsVibrancy = fullThemeData?.vibrancy?.enabled === true;
+    if (!wantsVibrancy) return false;
     const bg =
       fullThemeData?.colors?.["terminal.background"] ||
       fullThemeData?.colors?.["editor.background"];
-    return hasTransparentAlpha(bg || "");
+    // Some themes may omit alpha in terminal background but still expect vibrancy.
+    return hasTransparentAlpha(bg || "") || wantsVibrancy;
   }, [fullThemeData]);
 
   // Ref for terminalCwd to avoid effect re-runs when cwd changes
@@ -160,6 +162,7 @@ export function Terminal({
     const initialThemeResult = getTerminalThemeWithTransparency(
       fullThemeData?.colors,
       isDark,
+      fullThemeData?.vibrancy?.enabled === true,
     );
     const { xterm, fitAddon, serializeAddon, cleanup } = createTerminalInstance(
       container,
@@ -368,6 +371,7 @@ export function Terminal({
       const result = getTerminalThemeWithTransparency(
         fullThemeData?.colors,
         isDark,
+        fullThemeData?.vibrancy?.enabled === true,
       );
       xtermRef.current.options.theme = result.theme;
     }

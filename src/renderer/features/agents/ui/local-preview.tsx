@@ -207,7 +207,9 @@ export function LocalPreview({ chatId, onClose }: LocalPreviewProps) {
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
           <Globe className="h-10 w-10 text-muted-foreground/40 mb-3" />
           <p className="text-sm text-muted-foreground">
-            {isStarting ? "Starting dev server..." : "Waiting for dev server..."}
+            {isStarting
+              ? "Starting dev server..."
+              : "Waiting for dev server..."}
           </p>
           <p className="text-xs text-muted-foreground/70 mt-1">
             The preview will appear when a port is detected
@@ -339,7 +341,8 @@ export function LocalPreview({ chatId, onClose }: LocalPreviewProps) {
       <div
         className={cn(
           "flex-1 relative overflow-hidden",
-          viewportPreset !== "desktop" && "flex items-center justify-center p-3",
+          viewportPreset !== "desktop" &&
+            "flex items-center justify-center p-3",
         )}
       >
         <div

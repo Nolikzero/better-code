@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { getEnabledProviders, setEnabledProviders } from "../../providers/init";
 import { providerRegistry } from "../../providers/registry";
 import type { ProviderId } from "../../providers/types";
 import { publicProcedure, router } from "../index";
@@ -25,7 +26,25 @@ interface FlatProviderStatus {
   models: Array<{ id: string; name: string; displayName: string }>;
 }
 
+const providerIdSchema = z.enum(["claude", "codex", "opencode"]);
+
 export const providersRouter = router({
+  /**
+   * Get enabled providers (user-selected)
+   */
+  getEnabled: publicProcedure.query((): ProviderId[] => {
+    return getEnabledProviders();
+  }),
+
+  /**
+   * Enable a specific set of providers
+   */
+  setEnabled: publicProcedure
+    .input(z.object({ providerIds: z.array(providerIdSchema) }))
+    .mutation(async ({ input }): Promise<ProviderId[]> => {
+      await setEnabledProviders(input.providerIds as ProviderId[]);
+      return getEnabledProviders();
+    }),
   /**
    * List all available providers with their status
    */
@@ -45,7 +64,7 @@ export const providersRouter = router({
    * Get status for a single provider
    */
   getStatus: publicProcedure
-    .input(z.object({ providerId: z.enum(["claude", "codex", "opencode"]) }))
+    .input(z.object({ providerId: providerIdSchema }))
     .query(async ({ input }): Promise<FlatProviderStatus | null> => {
       const status = await providerRegistry.getStatus(
         input.providerId as ProviderId,
@@ -66,7 +85,7 @@ export const providersRouter = router({
    * Check if a provider is available and authenticated
    */
   isReady: publicProcedure
-    .input(z.object({ providerId: z.enum(["claude", "codex", "opencode"]) }))
+    .input(z.object({ providerId: providerIdSchema }))
     .query(async ({ input }) => {
       const status = await providerRegistry.getStatus(
         input.providerId as ProviderId,
@@ -105,7 +124,7 @@ export const providersRouter = router({
    * Get models for a specific provider
    */
   getModels: publicProcedure
-    .input(z.object({ providerId: z.enum(["claude", "codex", "opencode"]) }))
+    .input(z.object({ providerId: providerIdSchema }))
     .query(async ({ input }) => {
       const status = await providerRegistry.getStatus(
         input.providerId as ProviderId,

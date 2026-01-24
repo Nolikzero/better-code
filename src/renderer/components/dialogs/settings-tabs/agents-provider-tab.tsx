@@ -8,6 +8,7 @@ import {
   codexReasoningEffortAtom,
   codexSandboxModeAtom,
   defaultProviderIdAtom,
+  enabledProviderIdsAtom,
   lastSelectedModelByProviderAtom,
   PROVIDER_INFO,
   PROVIDER_MODELS,
@@ -25,6 +26,7 @@ import {
   SelectItem,
   SelectTrigger,
 } from "../../ui/select";
+import { Switch } from "../../ui/switch";
 
 // Hook to detect narrow screen
 function useIsNarrowScreen(): boolean {
@@ -79,6 +81,9 @@ function ProviderStatus({
 
 export function AgentsProviderTab() {
   const [defaultProvider, setDefaultProvider] = useAtom(defaultProviderIdAtom);
+  const [enabledProviders, setEnabledProviders] = useAtom(
+    enabledProviderIdsAtom,
+  );
   const [modelsByProvider, setModelsByProvider] = useAtom(
     lastSelectedModelByProviderAtom,
   );
@@ -91,6 +96,25 @@ export function AgentsProviderTab() {
 
   // Fetch provider status from backend
   const { data: providers, isLoading } = trpc.providers.list.useQuery();
+
+  const allProviderIds = Object.keys(PROVIDER_INFO) as ProviderId[];
+  const selectableProviders = enabledProviders.length
+    ? enabledProviders
+    : allProviderIds;
+
+  const handleToggleProvider = (providerId: ProviderId) => {
+    setEnabledProviders((prev) => {
+      if (prev.includes(providerId)) {
+        if (prev.length === 1) return prev;
+        const next = prev.filter((id) => id !== providerId);
+        if (defaultProvider === providerId && next.length > 0) {
+          setDefaultProvider(next[0]);
+        }
+        return next;
+      }
+      return [...prev, providerId];
+    });
+  };
 
   const handleProviderChange = (value: ProviderId) => {
     setDefaultProvider(value);
@@ -138,15 +162,61 @@ export function AgentsProviderTab() {
                 </span>
               </SelectTrigger>
               <SelectContent>
-                {(Object.keys(PROVIDER_INFO) as ProviderId[]).map(
-                  (providerId) => (
-                    <SelectItem key={providerId} value={providerId}>
-                      {PROVIDER_INFO[providerId].name}
-                    </SelectItem>
-                  ),
-                )}
+                {selectableProviders.map((providerId) => (
+                  <SelectItem key={providerId} value={providerId}>
+                    {PROVIDER_INFO[providerId].name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
+          </div>
+        </div>
+      </div>
+
+      {/* Enabled Providers Section */}
+      <div className="bg-background rounded-lg border border-border overflow-hidden">
+        <div className="p-4 space-y-4">
+          <div className="flex flex-col space-y-1">
+            <span className="text-sm font-medium text-foreground">
+              Enabled Providers
+            </span>
+            <span className="text-xs text-muted-foreground">
+              Choose which providers to load at startup (at least one)
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            {allProviderIds.map((providerId) => {
+              const enabled = enabledProviders.includes(providerId);
+              const isLastEnabled = enabled && enabledProviders.length === 1;
+              return (
+                <div
+                  key={providerId}
+                  className="flex items-center justify-between py-2 border-b border-border last:border-0"
+                >
+                  <div className="flex flex-col gap-1">
+                    <span className="text-sm font-medium">
+                      {PROVIDER_INFO[providerId].name}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {PROVIDER_INFO[providerId].description}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {isLastEnabled && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        Required
+                      </Badge>
+                    )}
+                    <Switch
+                      checked={enabled}
+                      disabled={isLastEnabled}
+                      onCheckedChange={() => handleToggleProvider(providerId)}
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -209,40 +279,38 @@ export function AgentsProviderTab() {
           </div>
 
           <div className="space-y-3">
-            {(Object.keys(PROVIDER_MODELS) as ProviderId[]).map(
-              (providerId) => (
-                <div
-                  key={providerId}
-                  className="flex items-center justify-between"
-                >
-                  <span className="text-sm text-muted-foreground">
-                    {PROVIDER_INFO[providerId].name}
-                  </span>
+            {selectableProviders.map((providerId) => (
+              <div
+                key={providerId}
+                className="flex items-center justify-between"
+              >
+                <span className="text-sm text-muted-foreground">
+                  {PROVIDER_INFO[providerId].name}
+                </span>
 
-                  <Select
-                    value={modelsByProvider[providerId]}
-                    onValueChange={(value) =>
-                      handleModelChange(providerId, value)
-                    }
-                  >
-                    <SelectTrigger className="w-[180px]">
-                      <span className="text-xs">
-                        {PROVIDER_MODELS[providerId].find(
-                          (m) => m.id === modelsByProvider[providerId],
-                        )?.displayName || modelsByProvider[providerId]}
-                      </span>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PROVIDER_MODELS[providerId].map((model) => (
-                        <SelectItem key={model.id} value={model.id}>
-                          {model.displayName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              ),
-            )}
+                <Select
+                  value={modelsByProvider[providerId]}
+                  onValueChange={(value) =>
+                    handleModelChange(providerId, value)
+                  }
+                >
+                  <SelectTrigger className="w-[180px]">
+                    <span className="text-xs">
+                      {PROVIDER_MODELS[providerId].find(
+                        (m) => m.id === modelsByProvider[providerId],
+                      )?.displayName || modelsByProvider[providerId]}
+                    </span>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PROVIDER_MODELS[providerId].map((model) => (
+                      <SelectItem key={model.id} value={model.id}>
+                        {model.displayName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ))}
           </div>
         </div>
       </div>

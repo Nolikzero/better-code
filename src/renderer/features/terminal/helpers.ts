@@ -157,9 +157,12 @@ export function createTerminalInstance(
   const serializeAddon = new SerializeAddon();
   xterm.loadAddon(serializeAddon);
 
-  // 5. Load GPU-accelerated renderer (Canvas/WebGL addons support allowTransparency)
-  console.log("[Terminal:create] Step 5: Loading renderer");
-  const renderer = loadRenderer(xterm);
+  // 5. Load GPU-accelerated renderer (skip when transparency is active)
+  // WebGL/Canvas renderers don't respect alpha and will render opaque black.
+  console.log("[Terminal:create] Step 5: Loading renderer", {
+    skip: isTransparent,
+  });
+  const renderer = isTransparent ? { dispose: () => {} } : loadRenderer(xterm);
 
   // Debug: Check dimensions after renderer
   const coreAfter = (

@@ -111,16 +111,28 @@ export function getTerminalTheme(isDark: boolean): ITheme {
 export function getTerminalThemeWithTransparency(
   themeColors: Record<string, string> | null | undefined,
   isDark: boolean,
+  forceTransparent = false,
 ): TerminalThemeResult {
   if (!themeColors) {
-    const theme = getTerminalTheme(isDark);
+    const theme = { ...getTerminalTheme(isDark) };
+    if (forceTransparent) {
+      theme.background = "transparent";
+    }
     return {
       theme,
-      isTransparent: false,
-      containerBackground: theme.background || (isDark ? "#121212" : "#fafafa"),
+      isTransparent: forceTransparent,
+      containerBackground: forceTransparent
+        ? "transparent"
+        : theme.background || (isDark ? "#121212" : "#fafafa"),
     };
   }
-  return extractTerminalThemeWithTransparency(themeColors);
+  const result = extractTerminalThemeWithTransparency(themeColors);
+  if (forceTransparent && !result.isTransparent) {
+    result.theme.background = "transparent";
+    result.isTransparent = true;
+    result.containerBackground = "transparent";
+  }
+  return result;
 }
 
 export const TERMINAL_OPTIONS: ITerminalOptions = {

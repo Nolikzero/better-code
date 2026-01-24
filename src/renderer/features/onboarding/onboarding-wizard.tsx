@@ -14,12 +14,14 @@ import {
   Terminal,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useState } from "react";
+import type { Dispatch, SetStateAction } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Badge } from "../../components/ui/badge";
 import { Logo } from "../../components/ui/logo";
 import {
   defaultProviderIdAtom,
+  enabledProviderIdsAtom,
   onboardingCompletedAtom,
   PROVIDER_INFO,
   type ProviderId,
@@ -70,12 +72,37 @@ function StepProgress({
 // ============================================
 
 function ProviderStatusBadge({
+  enabled,
   available,
   authenticated,
 }: {
-  available: boolean;
-  authenticated: boolean;
+  enabled: boolean;
+  available?: boolean;
+  authenticated?: boolean;
 }) {
+  if (!enabled) {
+    return (
+      <Badge
+        variant="outline"
+        className="text-[10px] py-0 px-1.5 font-normal gap-1 text-muted-foreground border-border"
+      >
+        Optional
+      </Badge>
+    );
+  }
+
+  if (available === undefined || authenticated === undefined) {
+    return (
+      <Badge
+        variant="outline"
+        className="text-[10px] py-0 px-1.5 font-normal gap-1 text-muted-foreground border-border"
+      >
+        <Loader2 className="w-2.5 h-2.5 animate-spin" />
+        Checking
+      </Badge>
+    );
+  }
+
   if (!available) {
     return (
       <Badge
@@ -323,8 +350,8 @@ function ProviderCard({
     id: string;
     name: string;
     description: string;
-    available: boolean;
-    authStatus: { authenticated: boolean };
+    available?: boolean;
+    authStatus?: { authenticated?: boolean };
   };
   selected: boolean;
   onSelect: () => void;
@@ -367,8 +394,9 @@ function ProviderCard({
           <div className="flex items-center justify-between gap-2">
             <span className="font-medium text-sm">{provider.name}</span>
             <ProviderStatusBadge
+              enabled={selected}
               available={provider.available}
-              authenticated={provider.authStatus.authenticated}
+              authenticated={provider.authStatus?.authenticated}
             />
           </div>
           <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
@@ -376,19 +404,8 @@ function ProviderCard({
           </p>
         </div>
 
-        <div
-          className={cn(
-            "w-4 h-4 rounded-full border-2 shrink-0 mt-0.5 flex items-center justify-center transition-colors",
-            selected ? "border-primary bg-primary" : "border-border",
-          )}
-        >
-          {selected && (
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              className="w-1.5 h-1.5 rounded-full bg-primary-foreground"
-            />
-          )}
+        <div className="w-4 h-4 shrink-0 mt-0.5 flex items-center justify-center">
+          {selected && <Check className="w-3.5 h-3.5 text-primary" />}
         </div>
       </div>
     </motion.button>
@@ -458,12 +475,16 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
 
 function ProviderStep({
   onNext,
-  selectedProvider,
-  setSelectedProvider,
+  selectedProviders,
+  setSelectedProviders,
+  activeProvider,
+  setActiveProvider,
 }: {
   onNext: () => void;
-  selectedProvider: ProviderId;
-  setSelectedProvider: (id: ProviderId) => void;
+  selectedProviders: ProviderId[];
+  setSelectedProviders: Dispatch<SetStateAction<ProviderId[]>>;
+  activeProvider: ProviderId;
+  setActiveProvider: (id: ProviderId) => void;
 }) {
   const {
     data: providers,
@@ -472,9 +493,43 @@ function ProviderStep({
     isRefetching,
   } = trpc.providers.list.useQuery();
 
-  const selectedProviderData = providers?.find(
-    (p) => p.id === selectedProvider,
+  const utils = trpc.useUtils();
+  const setEnabledProvidersMutation = trpc.providers.setEnabled.useMutation({
+    onSuccess: () => {
+      utils.providers.list.invalidate();
+    },
+  });
+
+  const selectedProviderData = providers?.find((p) => p.id === activeProvider);
+
+  const toggleProvider = (providerId: ProviderId) => {
+    setSelectedProviders((prev) => {
+      if (prev.includes(providerId)) {
+        if (prev.length === 1) return prev;
+        return prev.filter((id) => id !== providerId);
+      }
+      return [...prev, providerId];
+    });
+    setActiveProvider(providerId);
+  };
+
+  const canContinue = selectedProviders.length > 0;
+
+  const providerIds = Object.keys(PROVIDER_INFO) as ProviderId[];
+  const providerStatusById = new Map(
+    (providers || []).map((provider) => [provider.id, provider]),
   );
+
+  const lastEnabledSignature = useRef<string>("");
+  useEffect(() => {
+    if (selectedProviders.length === 0) return;
+    const signature = selectedProviders.slice().sort().join(",");
+    if (lastEnabledSignature.current === signature) return;
+    lastEnabledSignature.current = signature;
+    setEnabledProvidersMutation.mutate({
+      providerIds: selectedProviders,
+    });
+  }, [selectedProviders, setEnabledProvidersMutation]);
 
   return (
     <motion.div
@@ -489,7 +544,7 @@ function ProviderStep({
           Choose Your Provider
         </h1>
         <p className="text-sm text-muted-foreground">
-          Select which AI assistant to use for coding
+          Select the providers you want to enable (at least one)
         </p>
       </div>
 
@@ -518,22 +573,31 @@ function ProviderStep({
           </div>
         ) : (
           <div className="space-y-2">
-            {providers?.map((provider) => (
-              <ProviderCard
-                key={provider.id}
-                provider={provider}
-                selected={selectedProvider === provider.id}
-                onSelect={() => setSelectedProvider(provider.id as ProviderId)}
-              />
-            ))}
+            {providerIds.map((providerId) => {
+              const status = providerStatusById.get(providerId);
+              return (
+                <ProviderCard
+                  key={providerId}
+                  provider={{
+                    id: providerId,
+                    name: PROVIDER_INFO[providerId].name,
+                    description: PROVIDER_INFO[providerId].description,
+                    available: status?.available,
+                    authStatus: status?.authStatus,
+                  }}
+                  selected={selectedProviders.includes(providerId)}
+                  onSelect={() => toggleProvider(providerId)}
+                />
+              );
+            })}
           </div>
         )}
       </div>
 
       <AnimatePresence>
-        {selectedProviderData && (
+        {selectedProviderData && selectedProviders.includes(activeProvider) && (
           <SetupInstructions
-            providerId={selectedProvider}
+            providerId={activeProvider}
             available={selectedProviderData.available}
             authenticated={selectedProviderData.authStatus.authenticated}
           />
@@ -544,14 +608,18 @@ function ProviderStep({
         <motion.button
           type="button"
           onClick={onNext}
+          disabled={!canContinue}
           whileTap={{ scale: 0.97 }}
-          className="w-full h-9 px-4 bg-primary text-primary-foreground rounded-md text-sm font-medium transition-colors hover:bg-primary/90 flex items-center justify-center gap-2 shadow-[0_0_0_0.5px_rgb(23,23,23),inset_0_0_0_1px_rgba(255,255,255,0.14)]"
+          className={cn(
+            "w-full h-9 px-4 bg-primary text-primary-foreground rounded-md text-sm font-medium transition-colors hover:bg-primary/90 flex items-center justify-center gap-2 shadow-[0_0_0_0.5px_rgb(23,23,23),inset_0_0_0_1px_rgba(255,255,255,0.14)]",
+            !canContinue && "opacity-50 cursor-not-allowed hover:bg-primary",
+          )}
         >
           Continue
           <ChevronRight className="w-4 h-4" />
         </motion.button>
         <p className="text-xs text-muted-foreground text-center">
-          You can change your provider anytime in Settings
+          You can change your providers anytime in Settings
         </p>
       </div>
     </motion.div>
@@ -785,16 +853,32 @@ function ReadyStep({ onComplete }: { onComplete: () => void }) {
 
 export function OnboardingWizard() {
   const [currentStep, setCurrentStep] = useState<Step>("welcome");
-  const [selectedProvider, setSelectedProvider] =
-    useState<ProviderId>("claude");
+  const [enabledProviders, setEnabledProviders] = useAtom(
+    enabledProviderIdsAtom,
+  );
+  const [selectedProviders, setSelectedProviders] = useState<ProviderId[]>(
+    enabledProviders.length > 0 ? enabledProviders : [],
+  );
+  const [activeProvider, setActiveProvider] = useState<ProviderId>(
+    selectedProviders[0] ?? "claude",
+  );
 
   const setOnboardingCompleted = useSetAtom(onboardingCompletedAtom);
   const setDefaultProvider = useSetAtom(defaultProviderIdAtom);
 
   const steps: Step[] = ["welcome", "provider", "repository", "ready"];
 
+  useEffect(() => {
+    if (selectedProviders.length === 0) return;
+    if (!selectedProviders.includes(activeProvider)) {
+      setActiveProvider(selectedProviders[0]);
+    }
+  }, [activeProvider, selectedProviders]);
+
   const handleComplete = () => {
-    setDefaultProvider(selectedProvider);
+    const fallbackProvider = selectedProviders[0] || "claude";
+    setEnabledProviders(selectedProviders);
+    setDefaultProvider(fallbackProvider);
     setOnboardingCompleted(true);
   };
 
@@ -826,8 +910,10 @@ export function OnboardingWizard() {
             <ProviderStep
               key="provider"
               onNext={goToNext}
-              selectedProvider={selectedProvider}
-              setSelectedProvider={setSelectedProvider}
+              selectedProviders={selectedProviders}
+              setSelectedProviders={setSelectedProviders}
+              activeProvider={activeProvider}
+              setActiveProvider={setActiveProvider}
             />
           )}
           {currentStep === "repository" && (

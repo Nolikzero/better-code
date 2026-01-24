@@ -19,6 +19,7 @@ import {
 } from "../../../components/ui/popover";
 import {
   defaultProviderIdAtom,
+  enabledProviderIdsAtom,
   lastSelectedModelByProviderAtom,
   type ProviderId,
 } from "../../../lib/atoms";
@@ -150,17 +151,26 @@ export function NewChatForm({
   }, [selectedProject, projectsList, validatedProject, setSelectedProject]);
   // Provider & model selection (from global atoms + tRPC)
   const [defaultProvider, setDefaultProvider] = useAtom(defaultProviderIdAtom);
+  const enabledProviders = useAtomValue(enabledProviderIdsAtom);
   const [modelByProvider, setModelByProvider] = useAtom(
     lastSelectedModelByProviderAtom,
   );
   const { providers, getModels } = useProviders();
 
+  const fallbackProviderId =
+    enabledProviders[0] || PROVIDERS[0]?.id || "claude";
+  const effectiveDefaultProvider = enabledProviders.includes(defaultProvider)
+    ? defaultProvider
+    : fallbackProviderId;
+
   // Derive current provider and model from tRPC data
   const _currentProvider =
-    providers.find((p) => p.id === defaultProvider) || PROVIDERS[0];
-  const providerModels = getModels(defaultProvider);
+    providers.find((p) => p.id === effectiveDefaultProvider) ||
+    PROVIDERS.find((p) => p.id === effectiveDefaultProvider) ||
+    PROVIDERS[0];
+  const providerModels = getModels(effectiveDefaultProvider);
   const currentModelId =
-    modelByProvider[defaultProvider] || providerModels[0]?.id;
+    modelByProvider[effectiveDefaultProvider] || providerModels[0]?.id;
   const _currentModel =
     providerModels.find((m) => m.id === currentModelId) || providerModels[0];
 

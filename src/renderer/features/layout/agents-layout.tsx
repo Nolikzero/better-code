@@ -24,6 +24,7 @@ import { useIsMobile } from "../../lib/hooks/use-mobile";
 import { useUpdateChecker } from "../../lib/hooks/use-update-checker";
 import { trpc } from "../../lib/trpc";
 import { isDesktopApp } from "../../lib/utils/platform";
+import type { ChatViewMode } from "../agents/atoms";
 import {
   activeChatDiffDataAtom,
   chatViewModeAtomFamily,
@@ -31,7 +32,6 @@ import {
   selectedAgentChatIdAtom,
   selectedProjectAtom,
 } from "../agents/atoms";
-import type { ChatViewMode } from "../agents/atoms";
 import { useAgentsHotkeys } from "../agents/lib/agents-hotkeys-manager";
 import { useAgentSubChatStore } from "../agents/stores/sub-chat-store";
 import { AgentsContent } from "../agents/ui/agents-content";
@@ -323,7 +323,10 @@ export function AgentsLayout() {
       setSidebarOpen(false);
       return;
     }
-    if (selectedChatViewMode === "split" || selectedChatViewMode === "preview") {
+    if (
+      selectedChatViewMode === "split" ||
+      selectedChatViewMode === "preview"
+    ) {
       setSidebarOpen(false);
       return;
     }

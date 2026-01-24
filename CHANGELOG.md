@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.0.8]
+
+### Added
+
+- Provider management features with improved terminal transparency handling
+- Local preview viewport presets with better error handling
+- Chat view mode integration and sidebar visibility updates
+
+### Removed
+
+- Icon generation and sync-to-public scripts from the package workflow
+- Obsolete fizzy-prancing-pinwheel plan document
+
 ## [0.0.7]
 
 ### Added

@@ -2898,7 +2898,7 @@ export function ChatView({
               "flex flex-col overflow-hidden relative",
               viewMode === "preview" && canOpenLocalPreview && "hidden",
               viewMode === "split" && canOpenLocalPreview
-                ? "w-1/3 shrink-0"
+                ? "w-1/3 max-w-[500px] shrink-0"
                 : "flex-1",
             )}
             style={{

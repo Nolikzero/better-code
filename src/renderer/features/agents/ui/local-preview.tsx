@@ -1,7 +1,15 @@
 "use client";
 
 import { useAtom, useAtomValue } from "jotai";
-import { ChevronDown, Globe, RotateCw, X } from "lucide-react";
+import {
+  ChevronDown,
+  Globe,
+  Monitor,
+  RotateCw,
+  Smartphone,
+  Tablet,
+  X,
+} from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "../../../components/ui/button";
 import { trpc } from "../../../lib/trpc";
@@ -25,6 +33,14 @@ interface LocalPreviewProps {
   onClose?: () => void;
 }
 
+const VIEWPORT_PRESETS = {
+  mobile: { label: "Mobile", width: 393, height: 852, Icon: Smartphone },
+  tablet: { label: "Tablet", width: 820, height: 1180, Icon: Tablet },
+  desktop: { label: "Desktop", width: null, height: null, Icon: Monitor },
+} as const;
+
+type ViewportPreset = keyof typeof VIEWPORT_PRESETS;
+
 export function LocalPreview({ chatId, onClose }: LocalPreviewProps) {
   const [localPreviewUrl, setLocalPreviewUrl] = useAtom(
     localPreviewUrlAtomFamily(chatId),
@@ -35,6 +51,9 @@ export function LocalPreview({ chatId, onClose }: LocalPreviewProps) {
   const [currentUrl, setCurrentUrl] = useState(localPreviewUrl || "");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isPortMenuOpen, setIsPortMenuOpen] = useState(false);
+  const [viewportPreset, setViewportPreset] =
+    useState<ViewportPreset>("desktop");
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [logLines, setLogLines] = useState<string[]>([]);
   const portMenuRef = useRef<HTMLDivElement>(null);
   const webviewRef = useRef<Electron.WebviewTag | null>(null);
@@ -42,6 +61,7 @@ export function LocalPreview({ chatId, onClose }: LocalPreviewProps) {
 
   const isStarting = devServerState?.status === "starting";
   const devServerPaneId = `devserver:${chatId}`;
+  const activeViewport = VIEWPORT_PRESETS[viewportPreset];
 
   // Derive current port from the preview URL
   const currentPort = localPreviewUrl
@@ -104,6 +124,7 @@ export function LocalPreview({ chatId, onClose }: LocalPreviewProps) {
 
     const handleDidStartLoading = () => {
       setIsLoading(true);
+      setLoadError(null);
     };
 
     const handleDidStopLoading = () => {
@@ -121,9 +142,12 @@ export function LocalPreview({ chatId, onClose }: LocalPreviewProps) {
       setCurrentUrl(event.url);
     };
 
-    const handleDidFailLoad = () => {
+    const handleDidFailLoad = (event: Electron.DidFailLoadEvent) => {
       setIsLoading(false);
       setIsRefreshing(false);
+      setLoadError(
+        `${event.errorDescription || "Failed to load"} (${event.errorCode})`,
+      );
     };
 
     webview.addEventListener("did-start-loading", handleDidStartLoading);
@@ -147,6 +171,7 @@ export function LocalPreview({ chatId, onClose }: LocalPreviewProps) {
   const handleReload = useCallback(() => {
     if (isRefreshing) return;
     setIsRefreshing(true);
+    setLoadError(null);
     const webview = webviewRef.current;
     if (webview) {
       webview.reload();
@@ -164,30 +189,46 @@ export function LocalPreview({ chatId, onClose }: LocalPreviewProps) {
   // Show waiting state when no URL yet
   if (!localPreviewUrl) {
     return (
-      <div className="flex flex-col h-full items-center justify-center p-6 text-center">
-        <Globe className="h-10 w-10 text-muted-foreground/40 mb-3" />
-        <p className="text-sm text-muted-foreground">
-          {isStarting ? "Starting dev server..." : "Waiting for dev server..."}
-        </p>
-        <p className="text-xs text-muted-foreground/70 mt-1">
-          The preview will appear when a port is detected
-        </p>
-        {/* Compact log block */}
-        {isStarting && logLines.length > 0 && (
-          <div className="mt-4 w-full max-w-md max-h-40 overflow-auto rounded-md border text-left">
-            <div className="p-2 font-mono text-[11px] text-muted-foreground/80 leading-4">
-              {logLines.map((line, i) => (
-                <div key={i} className="whitespace-pre-wrap break-all">
-                  {line}
-                </div>
-              ))}
-              <div ref={logsEndRef} />
-            </div>
+      <div className="flex flex-col h-full bg-tl-background">
+        <div className="flex items-center gap-2 px-3 h-10 bg-tl-background shrink-0 border-b border-border/50">
+          <div className="flex-1 min-w-0 text-xs text-muted-foreground">
+            Local preview
           </div>
-        )}
-        {isStarting && (
-          <div className="mt-3 w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
-        )}
+          {onClose && (
+            <Button
+              variant="ghost"
+              className="h-7 w-7 p-0 hover:bg-muted rounded-md shrink-0"
+              onClick={onClose}
+            >
+              <X className="h-3.5 w-3.5 text-muted-foreground" />
+            </Button>
+          )}
+        </div>
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+          <Globe className="h-10 w-10 text-muted-foreground/40 mb-3" />
+          <p className="text-sm text-muted-foreground">
+            {isStarting ? "Starting dev server..." : "Waiting for dev server..."}
+          </p>
+          <p className="text-xs text-muted-foreground/70 mt-1">
+            The preview will appear when a port is detected
+          </p>
+          {/* Compact log block */}
+          {isStarting && logLines.length > 0 && (
+            <div className="mt-4 w-full max-w-md max-h-40 overflow-auto rounded-md border text-left">
+              <div className="p-2 font-mono text-[11px] text-muted-foreground/80 leading-4">
+                {logLines.map((line, i) => (
+                  <div key={i} className="whitespace-pre-wrap break-all">
+                    {line}
+                  </div>
+                ))}
+                <div ref={logsEndRef} />
+              </div>
+            </div>
+          )}
+          {isStarting && (
+            <div className="mt-3 w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+          )}
+        </div>
       </div>
     );
   }
@@ -259,6 +300,30 @@ export function LocalPreview({ chatId, onClose }: LocalPreviewProps) {
           </div>
         </div>
 
+        <div className="flex items-center rounded-md bg-muted/40 p-0.5 shrink-0">
+          {(Object.keys(VIEWPORT_PRESETS) as ViewportPreset[]).map((preset) => {
+            const { label, Icon } = VIEWPORT_PRESETS[preset];
+            const isActive = preset === viewportPreset;
+            return (
+              <button
+                key={preset}
+                type="button"
+                onClick={() => setViewportPreset(preset)}
+                aria-pressed={isActive}
+                className={cn(
+                  "h-6 px-2 rounded-md flex items-center gap-1 text-[11px] transition-colors",
+                  isActive
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <Icon className="h-3 w-3" />
+                <span className="hidden sm:inline">{label}</span>
+              </button>
+            );
+          })}
+        </div>
+
         {onClose && (
           <Button
             variant="ghost"
@@ -271,15 +336,63 @@ export function LocalPreview({ chatId, onClose }: LocalPreviewProps) {
       </div>
 
       {/* Webview */}
-      <div className="flex-1 relative overflow-hidden">
-        <webview
-          ref={webviewRef as any}
-          src={localPreviewUrl}
-          className="w-full h-full"
-          // @ts-expect-error webview attributes not in React types
-          allowpopups="true"
-          style={{ display: "flex", flex: 1 }}
-        />
+      <div
+        className={cn(
+          "flex-1 relative overflow-hidden",
+          viewportPreset !== "desktop" && "flex items-center justify-center p-3",
+        )}
+      >
+        <div
+          className={cn(
+            "relative bg-background",
+            viewportPreset === "desktop" ? "w-full h-full" : "w-full h-full",
+            viewportPreset !== "desktop" &&
+              "rounded-xl border border-border/50 shadow-sm overflow-hidden",
+          )}
+          style={
+            viewportPreset === "desktop"
+              ? undefined
+              : {
+                  width: `${activeViewport.width}px`,
+                  height: `${activeViewport.height}px`,
+                  maxWidth: "100%",
+                  maxHeight: "100%",
+                }
+          }
+        >
+          <webview
+            ref={webviewRef as any}
+            src={localPreviewUrl}
+            className="w-full h-full"
+            // @ts-expect-error webview attributes not in React types
+            allowpopups="true"
+            style={{ display: "flex", flex: 1 }}
+          />
+          {loadError && (
+            <div className="absolute inset-0 flex items-center justify-center bg-background/95">
+              <div className="max-w-md text-center px-4">
+                <Globe className="h-9 w-9 text-muted-foreground/60 mx-auto mb-3" />
+                <div className="text-sm font-medium text-foreground">
+                  Preview failed to load
+                </div>
+                <div className="text-xs text-muted-foreground mt-1 break-words">
+                  {loadError}
+                </div>
+                <div className="text-xs text-muted-foreground/70 mt-2 break-words">
+                  {currentUrl}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="mt-3 h-7 px-2 text-xs"
+                  onClick={handleReload}
+                >
+                  Retry
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

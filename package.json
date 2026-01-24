@@ -18,7 +18,6 @@
     "package:linux": "electron-vite build && electron-builder --linux",
     "package:dir": "electron-vite build && electron-builder --dir",
     "release": "rm -rf out dist && bun run package:mac",
-    "sync:public": "./scripts/sync-to-public.sh",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",

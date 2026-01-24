@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.0.9]
+
+### Added
+
+- Terminal transparency support for scrollable elements
+
+### Changed
+
+- Refined terminal UI components for cleaner layout and interactions
+- Updated README with refreshed screenshots and media assets
+
 ## [0.0.8]
 
 ### Added

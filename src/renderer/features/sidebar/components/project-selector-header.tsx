@@ -9,10 +9,6 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import {
-  agentsSettingsDialogActiveTabAtom,
-  agentsSettingsDialogOpenAtom,
-} from "../../../lib/atoms";
-import {
   Command,
   CommandEmpty,
   CommandGroup,
@@ -32,6 +28,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "../../../components/ui/tooltip";
+import {
+  agentsSettingsDialogActiveTabAtom,
+  agentsSettingsDialogOpenAtom,
+} from "../../../lib/atoms";
 import { api } from "../../../lib/mock-api";
 import { trpc } from "../../../lib/trpc";
 import { cn } from "../../../lib/utils";
@@ -427,7 +427,6 @@ export function ProjectSelectorHeader({
           <Plus className="h-4 w-4" />
         </button>
       )}
-
     </div>
   );
 }

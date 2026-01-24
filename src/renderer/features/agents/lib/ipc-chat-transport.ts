@@ -31,6 +31,7 @@ import {
   lastSelectedModelIdAtom,
   MODEL_ID_MAP,
   pendingAuthRetryMessageAtom,
+  pendingRalphAutoStartsAtom,
   pendingUserQuestionsAtom,
   ralphInjectedPromptsAtom,
   ralphPrdStatusesAtom,
@@ -470,6 +471,22 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
 
                 // Invalidate ralph query cache to update UI immediately (show badge)
                 invalidateRalphQueries();
+                return;
+              }
+
+              if (chunk.type === "ralph-auto-continue") {
+                // Backend signals frontend to send continuation message after stream ends
+                const currentAutoStarts = new Map(
+                  appStore.get(pendingRalphAutoStartsAtom),
+                );
+                currentAutoStarts.set(this.config.subChatId, {
+                  subChatId: this.config.subChatId,
+                  completedStoryId: chunk.completedStoryId,
+                  continuationMessage: chunk.continuationMessage,
+                  nextStoryId: chunk.nextStoryId,
+                  nextStoryTitle: chunk.nextStoryTitle,
+                });
+                appStore.set(pendingRalphAutoStartsAtom, currentAutoStarts);
                 return;
               }
 

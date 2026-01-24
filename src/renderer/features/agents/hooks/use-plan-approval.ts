@@ -1,6 +1,7 @@
 "use client";
 
 import type { Chat } from "@ai-sdk/react";
+import type { AgentMode } from "@shared/types";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo } from "react";
 import { resolvedKeybindingsAtom } from "../../../lib/keybindings";
@@ -13,6 +14,7 @@ export interface UsePlanApprovalOptions {
   messages: Chat<any>["messages"];
   sendMessage: Chat<any>["sendMessage"];
   isStreaming: boolean;
+  mode: AgentMode;
   setAgentMode: (mode: "plan" | "agent" | "ralph") => void;
 }
 
@@ -31,11 +33,13 @@ export interface UsePlanApprovalReturn {
 export function usePlanApproval(
   options: UsePlanApprovalOptions,
 ): UsePlanApprovalReturn {
-  const { subChatId, messages, sendMessage, isStreaming, setAgentMode } =
+  const { subChatId, messages, sendMessage, isStreaming, setAgentMode, mode } =
     options;
 
   // Check if there's an unapproved plan (ExitPlanMode without subsequent "Implement plan")
   const hasUnapprovedPlan = useMemo(() => {
+    if (mode === "ralph") return false;
+
     // If the latest assistant message is an ExitPlanMode with a plan, it's unapproved
     const lastMsg = messages.length > 0 ? messages[messages.length - 1] : null;
     if (lastMsg && lastMsg.role === "assistant") {

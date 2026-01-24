@@ -5,12 +5,14 @@ import { useAtomValue } from "jotai";
 import { useEffect, useRef, useState } from "react";
 import { appStore } from "../../../lib/jotai-store";
 import { trpc } from "../../../lib/trpc";
-import { ralphInjectedPromptsAtom } from "../atoms";
+import { pendingRalphAutoStartsAtom, ralphInjectedPromptsAtom } from "../atoms";
 
 export interface UseRalphAutoStartOptions {
   subChatId: string;
   agentMode: "plan" | "agent" | "ralph";
+  isStreaming: boolean;
   messages: Chat<any>["messages"];
+  sendMessage: Chat<any>["sendMessage"];
   setMessages: (messages: any[] | ((prev: any[]) => any[])) => void;
 }
 
@@ -32,18 +34,23 @@ export interface UseRalphAutoStartReturn {
 }
 
 /**
- * Hook to manage Ralph PRD UI workflows:
+ * Hook to manage Ralph PRD workflows:
  * - Loading Ralph state (PRD existence, next story) for UI display
  * - Auto-opening setup dialog when switching to Ralph mode without PRD
  * - Injecting modified prompts into chat messages for display
- *
- * Note: Auto-continuation between stories is handled entirely on the backend
- * via the RalphOrchestrator continuation loop in the chat subscription.
+ * - Auto-continuing to next story after stream ends (driven by backend signal)
  */
 export function useRalphAutoStart(
   options: UseRalphAutoStartOptions,
 ): UseRalphAutoStartReturn {
-  const { subChatId, agentMode, messages, setMessages } = options;
+  const {
+    subChatId,
+    agentMode,
+    isStreaming,
+    messages,
+    sendMessage,
+    setMessages,
+  } = options;
 
   // Ralph state query - to check if PRD exists for showing setup dialog
   const { data: ralphState } = trpc.ralph.getState.useQuery(
@@ -96,6 +103,36 @@ export function useRalphAutoStart(
       }
     }
   }, [myInjectedPrompt, subChatId, messages.length, setMessages]);
+
+  // Auto-continue to next story when backend signals and stream has ended
+  const pendingRalphAutoStarts = useAtomValue(pendingRalphAutoStartsAtom);
+  const myPendingAutoStart = pendingRalphAutoStarts.get(subChatId) ?? null;
+
+  useEffect(() => {
+    // Only auto-start when:
+    // 1. There's a pending auto-start for this sub-chat
+    // 2. Not currently streaming (stream has ended with "finish")
+    if (!myPendingAutoStart || isStreaming) return;
+
+    // Clear immediately to prevent double-sends
+    const updated = new Map(appStore.get(pendingRalphAutoStartsAtom));
+    updated.delete(subChatId);
+    appStore.set(pendingRalphAutoStartsAtom, updated);
+
+    const { continuationMessage, nextStoryId } = myPendingAutoStart;
+
+    console.log(
+      "[ralph] Auto-starting story:",
+      nextStoryId,
+      "with pre-built message",
+    );
+
+    // Send the continuation as a new user message (new turn, new stream)
+    sendMessage({
+      role: "user",
+      parts: [{ type: "text", text: continuationMessage }],
+    });
+  }, [myPendingAutoStart, isStreaming, sendMessage, subChatId]);
 
   return {
     ralphSetupOpen,

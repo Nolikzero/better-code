@@ -125,6 +125,13 @@ export type UIMessageChunk =
       learnings: string[];
     }
   | { type: "ralph-prompt-injected"; text: string }
+  | {
+      type: "ralph-auto-continue";
+      nextStoryId: string;
+      nextStoryTitle: string;
+      continuationMessage: string;
+      completedStoryId?: string;
+    }
   | { type: "ralph-prd-generating"; message: string }
   | {
       type: "ralph-prd-generated";

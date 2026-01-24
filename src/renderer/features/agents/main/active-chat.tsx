@@ -547,6 +547,7 @@ function ChatViewInner({
     sendMessage,
     isStreaming: status === "streaming" || status === "submitted",
     setAgentMode,
+    mode: agentMode,
   });
 
   // Ralph auto-start hook - handles PRD state, setup dialog, and story auto-start
@@ -557,7 +558,9 @@ function ChatViewInner({
   } = useRalphAutoStart({
     subChatId,
     agentMode,
+    isStreaming: status === "streaming" || status === "submitted",
     messages,
+    sendMessage,
     setMessages,
   });
 

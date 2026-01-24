@@ -284,7 +284,7 @@ export const chatRouter = router({
     )
     .subscription(({ input }) => {
       return observable<UIMessageChunk>((emit) => {
-        let abortController = new AbortController();
+        const abortController = new AbortController();
         const streamId = crypto.randomUUID();
 
         const subId = input.subChatId.slice(-8);
@@ -491,376 +491,321 @@ export const chatRouter = router({
             const providerConfig =
               await provider.getProviderConfig?.(lookupPath);
 
-            // Build initial final prompt
-            let finalPrompt = orchestrator
+            // Build final prompt
+            const finalPrompt = orchestrator
               ? modifiedPrompt
               : buildFinalPrompt(cleanedPrompt, agentMentions, skillMentions);
 
-            // === Ralph continuation loop ===
-            // For ralph mode, the loop continues after story completion to auto-start next story.
-            // For non-ralph mode, the loop runs exactly once.
-            let continueLoop = true;
-            let isFirstIteration = true;
-            let accumulatedMessages = messagesToSave;
-            let lastSessionId: string | undefined =
-              input.sessionId || existingSessionId || undefined;
-            let lastPlanCompleted = false;
+            // 7. Accumulation state
+            const parts: any[] = [];
+            let currentText = "";
+            let metadata: any = {};
+            let planCompleted = false;
+            const suppressedStreamingTools = new Set<string>();
 
-            while (continueLoop && isObservableActive) {
-              continueLoop = false;
+            // 8. Stream from provider
+            try {
+              for await (const chunk of provider.chat({
+                subChatId: input.subChatId,
+                chatId: input.chatId,
+                prompt: finalPrompt,
+                cwd: input.cwd,
+                projectPath: input.projectPath,
+                mode: effectiveMode === "ralph" ? "agent" : effectiveMode,
+                sessionId: input.sessionId || existingSessionId || undefined,
+                model: input.model,
+                maxThinkingTokens: input.maxThinkingTokens,
+                abortController,
+                addDirs: input.addDirs,
+                images: input.images,
+                // Claude-specific options
+                mcpServers: providerConfig?.mcpServers,
+                agents:
+                  Object.keys(agentsOption).length > 0
+                    ? agentsOption
+                    : undefined,
+                onAskUserQuestion: createAskUserQuestionCallback(
+                  input.subChatId,
+                  safeEmit,
+                  parts,
+                ),
+                onFileChanged: (filePath, toolType, subChatId) => {
+                  const windows = BrowserWindow.getAllWindows();
+                  for (const win of windows) {
+                    win.webContents.send("file-changed", {
+                      filePath,
+                      type: toolType,
+                      subChatId,
+                    });
+                  }
+                },
+                onStderr: (data) => {
+                  console.error("[claude stderr]", data);
+                },
+                // Codex-specific options
+                sandboxMode: input.sandboxMode,
+                approvalPolicy: input.approvalPolicy,
+                reasoningEffort: input.reasoningEffort,
+                outputSchema: input.outputSchema,
+                networkAccessEnabled: input.networkAccessEnabled,
+                webSearchMode: input.webSearchMode,
+                // OpenCode-specific
+                emittedDiffKeys: existingEmittedDiffKeys,
+              })) {
+                if (abortController.signal.aborted) break;
 
-              // Track whether this is a continuation (for skipping images, etc.)
-              const isContinuation = !isFirstIteration;
+                chunkCount++;
+                lastChunkType = chunk.type;
 
-              // For continuation iterations, prepare next story stream
-              if (isContinuation && orchestrator) {
-                const nextStory = orchestrator.getNextContinuationStory();
-                if (!nextStory) break;
-                const completedStoryId =
-                  orchestrator.getLastCompletedStoryId() || "";
-                const contPrompt =
-                  orchestrator.buildContinuationMessage(nextStory);
+                // Ralph orchestration: track plan/story signals
+                orchestrator?.processChunk(chunk);
 
-                // Create synthetic user message and persist
-                const contUserMessage = {
-                  id: crypto.randomUUID(),
-                  role: "user",
-                  parts: [{ type: "text", text: contPrompt }],
-                };
-                accumulatedMessages = [...accumulatedMessages, contUserMessage];
+                // Suppress Edit/Write tool input streaming for performance
+                if (
+                  chunk.type === "tool-input-start" &&
+                  (chunk.toolName === "Edit" || chunk.toolName === "Write")
+                ) {
+                  suppressedStreamingTools.add(chunk.toolCallId);
+                  continue;
+                }
+                if (
+                  chunk.type === "tool-input-delta" &&
+                  suppressedStreamingTools.has(chunk.toolCallId)
+                ) {
+                  continue;
+                }
 
-                // Emit transition event for frontend UI
-                const ralphService = getRalphService();
-                const prd = ralphService.getPrd(input.subChatId);
-                const stats = prd
-                  ? ralphService.getStats(prd)
-                  : { completed: 0, total: 0 };
-                safeEmit({
-                  type: "ralph-story-transition",
-                  completedStoryId,
-                  nextStoryId: nextStory.id,
-                  nextStoryTitle: nextStory.title,
-                  storiesCompleted: stats.completed,
-                  storiesTotal: stats.total,
-                } as UIMessageChunk);
+                // Emit to frontend
+                if (!safeEmit(chunk)) {
+                  console.log(
+                    `[SD] M:EMIT_CLOSED sub=${subId} type=${chunk.type}`,
+                  );
+                  break;
+                }
 
-                // Reset orchestrator and prepare for next iteration
-                orchestrator.resetForContinuation();
-                orchestrator.updateForContinuation(
-                  contPrompt,
-                  accumulatedMessages,
-                );
-                const decision = orchestrator.prepareStream();
-                effectiveMode = decision.effectiveMode;
-                modifiedPrompt = decision.modifiedPrompt;
-                finalPrompt = modifiedPrompt;
-
-                // Notify frontend to update in-memory Chat message
-                safeEmit({
-                  type: "ralph-prompt-injected",
-                  text: modifiedPrompt,
-                } as UIMessageChunk);
-
-                // Create new abort controller for this iteration
-                abortController = new AbortController();
-
-                console.log(
-                  `[SD] M:RALPH_CONTINUE sub=${subId} story=${nextStory.id}`,
-                );
-              }
-              isFirstIteration = false;
-
-              // 7. Accumulation state (reset per iteration)
-              const parts: any[] = [];
-              let currentText = "";
-              let metadata: any = {};
-              let planCompleted = false;
-              const suppressedStreamingTools = new Set<string>();
-
-              // 8. Stream from provider
-              try {
-                for await (const chunk of provider.chat({
-                  subChatId: input.subChatId,
-                  chatId: input.chatId,
-                  prompt: finalPrompt,
-                  cwd: input.cwd,
-                  projectPath: input.projectPath,
-                  mode: effectiveMode === "ralph" ? "agent" : effectiveMode,
-                  sessionId: lastSessionId,
-                  model: input.model,
-                  maxThinkingTokens: input.maxThinkingTokens,
-                  abortController,
-                  addDirs: input.addDirs,
-                  images: !isContinuation ? input.images : undefined,
-                  // Claude-specific options
-                  mcpServers: providerConfig?.mcpServers,
-                  agents:
-                    Object.keys(agentsOption).length > 0
-                      ? agentsOption
-                      : undefined,
-                  onAskUserQuestion: createAskUserQuestionCallback(
-                    input.subChatId,
-                    safeEmit,
-                    parts,
-                  ),
-                  onFileChanged: (filePath, toolType, subChatId) => {
-                    const windows = BrowserWindow.getAllWindows();
-                    for (const win of windows) {
-                      win.webContents.send("file-changed", {
-                        filePath,
-                        type: toolType,
-                        subChatId,
+                // Accumulate based on chunk type
+                switch (chunk.type) {
+                  case "text-delta":
+                    currentText += chunk.delta;
+                    break;
+                  case "text-end":
+                    if (currentText.trim()) {
+                      parts.push({ type: "text", text: currentText });
+                      currentText = "";
+                    }
+                    break;
+                  case "tool-input-available": {
+                    const existingTool = parts.find(
+                      (p: any) =>
+                        p.type?.startsWith("tool-") &&
+                        p.toolCallId === chunk.toolCallId,
+                    );
+                    if (existingTool) {
+                      existingTool.input = chunk.input;
+                      existingTool.state = "call";
+                    } else {
+                      parts.push({
+                        type: `tool-${chunk.toolName}`,
+                        toolCallId: chunk.toolCallId,
+                        toolName: chunk.toolName,
+                        input: chunk.input,
+                        state: "call",
                       });
                     }
-                  },
-                  onStderr: (data) => {
-                    console.error("[claude stderr]", data);
-                  },
-                  // Codex-specific options
-                  sandboxMode: input.sandboxMode,
-                  approvalPolicy: input.approvalPolicy,
-                  reasoningEffort: input.reasoningEffort,
-                  outputSchema: input.outputSchema,
-                  networkAccessEnabled: input.networkAccessEnabled,
-                  webSearchMode: input.webSearchMode,
-                  // OpenCode-specific
-                  emittedDiffKeys: existingEmittedDiffKeys,
-                })) {
-                  if (abortController.signal.aborted) break;
-
-                  chunkCount++;
-                  lastChunkType = chunk.type;
-
-                  // Ralph orchestration: track plan/story signals
-                  orchestrator?.processChunk(chunk);
-
-                  // Suppress Edit/Write tool input streaming for performance
-                  if (
-                    chunk.type === "tool-input-start" &&
-                    (chunk.toolName === "Edit" || chunk.toolName === "Write")
-                  ) {
-                    suppressedStreamingTools.add(chunk.toolCallId);
-                    continue;
+                    break;
                   }
-                  if (
-                    chunk.type === "tool-input-delta" &&
-                    suppressedStreamingTools.has(chunk.toolCallId)
-                  ) {
-                    continue;
-                  }
-
-                  // Emit to frontend
-                  if (!safeEmit(chunk)) {
-                    console.log(
-                      `[SD] M:EMIT_CLOSED sub=${subId} type=${chunk.type}`,
+                  case "tool-output-available": {
+                    const toolPart = parts.find(
+                      (p: any) =>
+                        p.type?.startsWith("tool-") &&
+                        p.toolCallId === chunk.toolCallId,
                     );
+                    if (toolPart) {
+                      toolPart.result = chunk.output;
+                      toolPart.state = "result";
+                    }
+
+                    // Abort stream if plan is complete (Ralph planning phase)
+                    if (orchestrator?.shouldAbortAfterPlanComplete()) {
+                      planCompleted = true;
+                      abortController.abort();
+                    }
                     break;
                   }
-
-                  // Accumulate based on chunk type
-                  switch (chunk.type) {
-                    case "text-delta":
-                      currentText += chunk.delta;
-                      break;
-                    case "text-end":
-                      if (currentText.trim()) {
-                        parts.push({ type: "text", text: currentText });
-                        currentText = "";
-                      }
-                      break;
-                    case "tool-input-available": {
-                      const existingTool = parts.find(
-                        (p: any) =>
-                          p.type?.startsWith("tool-") &&
-                          p.toolCallId === chunk.toolCallId,
-                      );
-                      if (existingTool) {
-                        existingTool.input = chunk.input;
-                        existingTool.state = "call";
-                      } else {
-                        parts.push({
-                          type: `tool-${chunk.toolName}`,
-                          toolCallId: chunk.toolCallId,
-                          toolName: chunk.toolName,
-                          input: chunk.input,
-                          state: "call",
-                        });
-                      }
-                      break;
+                  case "message-metadata":
+                    metadata = { ...metadata, ...chunk.messageMetadata };
+                    break;
+                  case "system-Compact": {
+                    const existingCompact = parts.find(
+                      (p: any) =>
+                        p.type === "system-Compact" &&
+                        p.toolCallId === chunk.toolCallId,
+                    );
+                    if (existingCompact) {
+                      existingCompact.state = chunk.state;
+                    } else {
+                      parts.push({
+                        type: "system-Compact",
+                        toolCallId: chunk.toolCallId,
+                        state: chunk.state,
+                      });
                     }
-                    case "tool-output-available": {
-                      const toolPart = parts.find(
-                        (p: any) =>
-                          p.type?.startsWith("tool-") &&
-                          p.toolCallId === chunk.toolCallId,
-                      );
-                      if (toolPart) {
-                        toolPart.result = chunk.output;
-                        toolPart.state = "result";
-                      }
-
-                      // Abort stream if plan is complete (Ralph planning phase)
-                      if (orchestrator?.shouldAbortAfterPlanComplete()) {
-                        planCompleted = true;
-                        abortController.abort();
-                      }
-                      break;
-                    }
-                    case "message-metadata":
-                      metadata = { ...metadata, ...chunk.messageMetadata };
-                      break;
-                    case "system-Compact": {
-                      const existingCompact = parts.find(
-                        (p: any) =>
-                          p.type === "system-Compact" &&
-                          p.toolCallId === chunk.toolCallId,
-                      );
-                      if (existingCompact) {
-                        existingCompact.state = chunk.state;
-                      } else {
-                        parts.push({
-                          type: "system-Compact",
-                          toolCallId: chunk.toolCallId,
-                          state: chunk.state,
-                        });
-                      }
-                      break;
-                    }
-                  }
-
-                  if (planCompleted) break;
-                  if (!isObservableActive) {
-                    console.log(`[SD] M:OBSERVER_CLOSED_STREAM sub=${subId}`);
                     break;
                   }
                 }
 
-                // Flush remaining text
-                if (currentText.trim()) {
-                  parts.push({ type: "text", text: currentText });
+                if (planCompleted) break;
+                if (!isObservableActive) {
+                  console.log(`[SD] M:OBSERVER_CLOSED_STREAM sub=${subId}`);
+                  break;
                 }
+              }
 
-                // Ralph post-stream processing
-                if (orchestrator) {
-                  const prdAbort = new AbortController();
-                  await orchestrator.finalize(parts, prdAbort);
+              // Flush remaining text
+              if (currentText.trim()) {
+                parts.push({ type: "text", text: currentText });
+              }
+
+              // Ralph post-stream processing
+              if (orchestrator) {
+                const prdAbort = new AbortController();
+                await orchestrator.finalize(parts, prdAbort);
+              }
+
+              // 9. Save to DB
+              if (parts.length > 0) {
+                const assistantMessage = {
+                  id: crypto.randomUUID(),
+                  role: "assistant",
+                  parts,
+                  metadata,
+                };
+                const finalMessages = [...messagesToSave, assistantMessage];
+
+                const { fileStats, hasPendingPlanApproval } =
+                  computeAllStats(finalMessages);
+
+                const resolvedSessionId =
+                  metadata.sessionId || existingSessionId || undefined;
+
+                db.update(subChats)
+                  .set({
+                    messages: JSON.stringify(finalMessages),
+                    sessionId: resolvedSessionId,
+                    streamId: null,
+                    updatedAt: new Date(),
+                    hasPendingPlanApproval,
+                    fileAdditions: fileStats.additions,
+                    fileDeletions: fileStats.deletions,
+                    fileCount: fileStats.fileCount,
+                    ...(metadata.emittedDiffKeys && {
+                      emittedDiffKeys: JSON.stringify(metadata.emittedDiffKeys),
+                    }),
+                  })
+                  .where(eq(subChats.id, input.subChatId))
+                  .run();
+                db.update(chats)
+                  .set({ updatedAt: new Date() })
+                  .where(eq(chats.id, input.chatId))
+                  .run();
+
+                chatStatsEmitter.emitStatsUpdate({
+                  type: "file-stats",
+                  chatId: input.chatId,
+                  subChatId: input.subChatId,
+                });
+              } else {
+                db.update(subChats)
+                  .set({
+                    sessionId:
+                      metadata.sessionId || existingSessionId || undefined,
+                    streamId: null,
+                    updatedAt: new Date(),
+                  })
+                  .where(eq(subChats.id, input.subChatId))
+                  .run();
+              }
+
+              // Ralph: signal frontend to auto-continue with next story
+              if (orchestrator?.shouldAutoContinue()) {
+                const nextStory = orchestrator.getNextContinuationStory();
+                if (nextStory) {
+                  const completedStoryId =
+                    orchestrator.getLastCompletedStoryId() || "";
+                  const continuationMessage =
+                    orchestrator.buildContinuationMessage(nextStory);
+                  const ralphService = getRalphService();
+                  const prd = ralphService.getPrd(input.subChatId);
+                  const stats = prd
+                    ? ralphService.getStats(prd)
+                    : { completed: 0, total: 0 };
+
+                  safeEmit({
+                    type: "ralph-story-transition",
+                    completedStoryId,
+                    nextStoryId: nextStory.id,
+                    nextStoryTitle: nextStory.title,
+                    storiesCompleted: stats.completed,
+                    storiesTotal: stats.total,
+                  } as UIMessageChunk);
+
+                  safeEmit({
+                    type: "ralph-auto-continue",
+                    nextStoryId: nextStory.id,
+                    nextStoryTitle: nextStory.title,
+                    continuationMessage,
+                    completedStoryId,
+                  } as UIMessageChunk);
                 }
+              }
+            } catch (streamError) {
+              // Save accumulated parts even on error
+              console.log(
+                `[SD] M:CATCH_SAVE sub=${subId} aborted=${abortController.signal.aborted} parts=${parts.length}`,
+              );
+              if (currentText.trim()) {
+                parts.push({ type: "text", text: currentText });
+              }
+              if (parts.length > 0) {
+                const assistantMessage = {
+                  id: crypto.randomUUID(),
+                  role: "assistant",
+                  parts,
+                  metadata,
+                };
+                const finalMessages = [...messagesToSave, assistantMessage];
 
-                // 9. Save iteration to DB
-                if (parts.length > 0) {
-                  const assistantMessage = {
-                    id: crypto.randomUUID(),
-                    role: "assistant",
-                    parts,
-                    metadata,
-                  };
-                  accumulatedMessages = [
-                    ...accumulatedMessages,
-                    assistantMessage,
-                  ];
+                const { fileStats, hasPendingPlanApproval } =
+                  computeAllStats(finalMessages);
 
-                  const { fileStats, hasPendingPlanApproval } =
-                    computeAllStats(accumulatedMessages);
+                db.update(subChats)
+                  .set({
+                    messages: JSON.stringify(finalMessages),
+                    sessionId:
+                      metadata.sessionId || existingSessionId || undefined,
+                    streamId: null,
+                    updatedAt: new Date(),
+                    hasPendingPlanApproval,
+                    fileAdditions: fileStats.additions,
+                    fileDeletions: fileStats.deletions,
+                    fileCount: fileStats.fileCount,
+                  })
+                  .where(eq(subChats.id, input.subChatId))
+                  .run();
+                db.update(chats)
+                  .set({ updatedAt: new Date() })
+                  .where(eq(chats.id, input.chatId))
+                  .run();
 
-                  db.update(subChats)
-                    .set({
-                      messages: JSON.stringify(accumulatedMessages),
-                      sessionId: metadata.sessionId || lastSessionId,
-                      streamId: null,
-                      updatedAt: new Date(),
-                      hasPendingPlanApproval,
-                      fileAdditions: fileStats.additions,
-                      fileDeletions: fileStats.deletions,
-                      fileCount: fileStats.fileCount,
-                      ...(metadata.emittedDiffKeys && {
-                        emittedDiffKeys: JSON.stringify(
-                          metadata.emittedDiffKeys,
-                        ),
-                      }),
-                    })
-                    .where(eq(subChats.id, input.subChatId))
-                    .run();
+                chatStatsEmitter.emitStatsUpdate({
+                  type: "file-stats",
+                  chatId: input.chatId,
+                  subChatId: input.subChatId,
+                });
+              }
 
-                  chatStatsEmitter.emitStatsUpdate({
-                    type: "file-stats",
-                    chatId: input.chatId,
-                    subChatId: input.subChatId,
-                  });
-                } else {
-                  db.update(subChats)
-                    .set({
-                      sessionId: metadata.sessionId || lastSessionId,
-                      streamId: null,
-                      updatedAt: new Date(),
-                    })
-                    .where(eq(subChats.id, input.subChatId))
-                    .run();
-                }
-
-                // Carry session ID across iterations
-                if (metadata.sessionId) {
-                  lastSessionId = metadata.sessionId;
-                }
-
-                // Track plan completion for logging
-                if (planCompleted) {
-                  lastPlanCompleted = true;
-                }
-
-                // Check if ralph orchestrator wants to auto-continue
-                if (orchestrator?.shouldAutoContinue()) {
-                  continueLoop = true;
-                }
-              } catch (streamError) {
-                // Save accumulated parts even on error
-                console.log(
-                  `[SD] M:CATCH_SAVE sub=${subId} aborted=${abortController.signal.aborted} parts=${parts.length}`,
-                );
-                if (currentText.trim()) {
-                  parts.push({ type: "text", text: currentText });
-                }
-                if (parts.length > 0) {
-                  const assistantMessage = {
-                    id: crypto.randomUUID(),
-                    role: "assistant",
-                    parts,
-                    metadata,
-                  };
-                  accumulatedMessages = [
-                    ...accumulatedMessages,
-                    assistantMessage,
-                  ];
-
-                  const { fileStats, hasPendingPlanApproval } =
-                    computeAllStats(accumulatedMessages);
-
-                  db.update(subChats)
-                    .set({
-                      messages: JSON.stringify(accumulatedMessages),
-                      sessionId: metadata.sessionId || lastSessionId,
-                      streamId: null,
-                      updatedAt: new Date(),
-                      hasPendingPlanApproval,
-                      fileAdditions: fileStats.additions,
-                      fileDeletions: fileStats.deletions,
-                      fileCount: fileStats.fileCount,
-                    })
-                    .where(eq(subChats.id, input.subChatId))
-                    .run();
-
-                  chatStatsEmitter.emitStatsUpdate({
-                    type: "file-stats",
-                    chatId: input.chatId,
-                    subChatId: input.subChatId,
-                  });
-                }
-
-                if (!abortController.signal.aborted) {
-                  emitError(streamError, `${providerId} provider error`);
-                }
-
-                // Don't continue after error
-                break;
+              if (!abortController.signal.aborted) {
+                emitError(streamError, `${providerId} provider error`);
               }
             }
 
@@ -871,7 +816,7 @@ export const chatRouter = router({
               .run();
 
             const duration = ((Date.now() - streamStart) / 1000).toFixed(1);
-            const reason = lastPlanCompleted ? "plan_complete" : "ok";
+            const reason = planCompleted ? "plan_complete" : "ok";
             console.log(
               `[SD] M:END sub=${subId} reason=${reason} n=${chunkCount} last=${lastChunkType} t=${duration}s`,
             );

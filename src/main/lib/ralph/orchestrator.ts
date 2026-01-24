@@ -191,25 +191,6 @@ export class RalphOrchestrator {
   }
 
   /**
-   * Reset internal state for the next continuation iteration.
-   */
-  resetForContinuation(): void {
-    this.capturedPlanText = null;
-    this.exitPlanModeCallId = null;
-    this.planCompleted = false;
-    this.autoContinueNextStory = null;
-    this.lastCompletedStoryId = null;
-  }
-
-  /**
-   * Update config for continuation iteration with new prompt and messages.
-   */
-  updateForContinuation(prompt: string, messages: any[]): void {
-    this.config.originalPrompt = prompt;
-    this.config.existingMessages = messages;
-  }
-
-  /**
    * Build the continuation message for a story (used by the backend loop).
    */
   buildContinuationMessage(nextStory: UserStory): string {

@@ -15,11 +15,7 @@ import {
   parseProgressBlock,
 } from "./parser";
 import { generatePrdFromPlan } from "./prd-generator";
-import {
-  buildRalphPlanningPrompt,
-  buildRalphSystemPrompt,
-  checkForCompletion,
-} from "./prompt";
+import { buildRalphPlanningPrompt, buildRalphSystemPrompt } from "./prompt";
 
 export interface RalphOrchestratorConfig {
   chatId: string;
@@ -298,21 +294,6 @@ ${instructions} Remember to output \`<story-complete>${nextStory.id}</story-comp
     if (!fullText.trim()) return;
 
     const ralphService = getRalphService();
-
-    // 1. Check for full completion signal
-    if (checkForCompletion(fullText)) {
-      console.log("[ralph] Detected <promise>COMPLETE</promise> signal");
-      const prd = ralphService.getPrd(this.config.subChatId);
-      if (prd) {
-        for (const story of prd.stories) {
-          if (!story.passes) {
-            ralphService.markStoryComplete(this.config.subChatId, story.id);
-          }
-        }
-      }
-      this.emit({ type: "ralph-complete" } as UIMessageChunk);
-      return;
-    }
 
     // 2. Parse progress block
     const progress = parseProgressBlock(fullText);

@@ -150,7 +150,7 @@ After completing the current story successfully:
 
 Output the story completion tag: \`<story-complete>${nextStory?.id || "US-XXX"}</story-complete>\`
 
-**IMPORTANT**: If this is the LAST remaining story (check the stories list above - if only one story has [ ] and the rest are [x]), you MUST also output: \`<promise>COMPLETE</promise>\`
+**IMPORTANT**: If this is the LAST remaining story (check the stories list above - if only one story has [ ] and the rest are [x]).\`
 
 These tags are **required** - they tell the system to mark the story as done and either continue to the next one or complete the PRD.
 
@@ -194,13 +194,6 @@ function getNextStory(prd: RalphPrdData): UserStory | null {
 function getStats(prd: RalphPrdData): { completed: number; total: number } {
   const completed = prd.stories.filter((story) => story.passes).length;
   return { completed, total: prd.stories.length };
-}
-
-/**
- * Check if output contains completion signal
- */
-export function checkForCompletion(output: string): boolean {
-  return output.includes("<promise>COMPLETE</promise>");
 }
 
 /**

@@ -47,6 +47,7 @@ class FileWatcher extends EventEmitter {
   private directoryWatchers = new Map<string, DirectoryWatcherEntry>();
   private gitWatchers = new Map<string, GitWatcherEntry>();
   private debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private gitMaxWaitTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
   /**
    * Start watching a directory for file changes.
@@ -186,14 +187,37 @@ class FileWatcher extends EventEmitter {
         clearTimeout(existingTimer);
       }
 
-      const timer = setTimeout(() => {
+      const emitGitEvent = () => {
         this.debounceTimers.delete(debounceKey);
+        this.gitMaxWaitTimers.delete(debounceKey);
         const event: GitChangeEvent = {
           type: "statusChanged",
           worktreePath: normalizedPath,
         };
         this.emit(`git:${normalizedPath}`, event);
-      }, 1000); // Debounce git events to coalesce rapid file writes during agent streaming
+      };
+
+      // Start max-wait timer on first call in a burst.
+      // Guarantees event fires at least every 3s during continuous writes.
+      if (!this.gitMaxWaitTimers.has(debounceKey)) {
+        const maxWaitTimer = setTimeout(() => {
+          const trailingTimer = this.debounceTimers.get(debounceKey);
+          if (trailingTimer) {
+            clearTimeout(trailingTimer);
+          }
+          emitGitEvent();
+        }, 3000);
+        this.gitMaxWaitTimers.set(debounceKey, maxWaitTimer);
+      }
+
+      // Trailing debounce — fires if no new calls arrive within 1s
+      const timer = setTimeout(() => {
+        const maxWaitTimer = this.gitMaxWaitTimers.get(debounceKey);
+        if (maxWaitTimer) {
+          clearTimeout(maxWaitTimer);
+        }
+        emitGitEvent();
+      }, 1000);
 
       this.debounceTimers.set(debounceKey, timer);
     };
@@ -230,12 +254,17 @@ class FileWatcher extends EventEmitter {
       entry.watcher.close();
       this.gitWatchers.delete(normalizedPath);
 
-      // Clean up any pending debounce timers
+      // Clean up any pending debounce and max-wait timers
       const debounceKey = `git:${normalizedPath}`;
       const timer = this.debounceTimers.get(debounceKey);
       if (timer) {
         clearTimeout(timer);
         this.debounceTimers.delete(debounceKey);
+      }
+      const maxWaitTimer = this.gitMaxWaitTimers.get(debounceKey);
+      if (maxWaitTimer) {
+        clearTimeout(maxWaitTimer);
+        this.gitMaxWaitTimers.delete(debounceKey);
       }
     }
   }
@@ -249,6 +278,12 @@ class FileWatcher extends EventEmitter {
       clearTimeout(timer);
     }
     this.debounceTimers.clear();
+
+    // Clear all max-wait timers
+    for (const timer of this.gitMaxWaitTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.gitMaxWaitTimers.clear();
 
     // Close all directory watchers
     const closePromises: Promise<void>[] = [];

@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.10]
+
+### Changed
+
+- Removed completion signal check and cleaned up prompt instructions
+
 ## [0.0.9]
 
 ### Added

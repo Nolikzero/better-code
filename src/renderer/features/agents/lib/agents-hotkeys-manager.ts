@@ -135,8 +135,7 @@ export function useAgentsHotkeys(
 
       // Action-based hotkeys
       for (const { binding, actionId } of actionBindings) {
-        // Only "open-shortcuts" works in inputs
-        if (isInInput && binding.id !== "general.show-shortcuts") continue;
+        if (isInInput && !binding.allowInInput) continue;
 
         if (matchesBinding(e, binding.binding)) {
           e.preventDefault();

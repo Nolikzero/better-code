@@ -444,10 +444,7 @@ export function TerminalSidebar({
     >
       <div className="flex flex-col h-full min-w-0 overflow-hidden">
         {/* Header with tabs */}
-        <div
-          className="flex items-center gap-1 pl-1 pr-2 py-1.5 shrink-0"
-          style={{ backgroundColor: terminalBg }}
-        >
+        <div className="flex items-center gap-1 pl-1 pr-2 py-1.5 shrink-0">
           {/* Terminal Tabs */}
           {terminals.length > 0 && (
             <TerminalTabs
@@ -488,10 +485,7 @@ export function TerminalSidebar({
         </div>
 
         {/* Terminal Content */}
-        <div
-          className="flex-1 min-h-0 min-w-0 overflow-hidden"
-          style={{ backgroundColor: terminalBg }}
-        >
+        <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
           {activeTerminal && canRenderTerminal ? (
             <motion.div
               key={activeTerminal.paneId}

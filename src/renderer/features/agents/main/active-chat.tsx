@@ -240,6 +240,7 @@ function ChatViewInner({
   originalProjectPath,
   isOverlayMode = false,
   overlayContent,
+  viewMode,
 }: {
   chat: Chat<any>;
   subChatId: string;
@@ -262,6 +263,7 @@ function ChatViewInner({
   originalProjectPath?: string;
   isOverlayMode?: boolean;
   overlayContent?: React.ReactNode;
+  viewMode: "chat" | "split" | "preview";
 }) {
   // UNCONTROLLED: just track if editor has content for send button
   const [hasContent, setHasContent] = useState(false);
@@ -1208,7 +1210,9 @@ function ChatViewInner({
             onOpenChange={setIsModelDropdownOpen}
           />
         )}
-        {effectiveProvider === "codex" && <WebSearchModeSelector />}
+        {effectiveProvider === "codex" && viewMode === "chat" && (
+          <WebSearchModeSelector />
+        )}
         <AddedDirectoriesBadge subChatId={subChatId} />
       </>
     ),
@@ -2974,6 +2978,7 @@ export function ChatView({
                 originalProjectPath={originalProjectPath}
                 isOverlayMode={isOverlayMode}
                 overlayContent={overlayContent}
+                viewMode={viewMode}
               />
             ) : (
               <>

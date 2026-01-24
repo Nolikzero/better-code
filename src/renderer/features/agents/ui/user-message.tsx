@@ -123,9 +123,6 @@ export const UserMessage = memo(function UserMessage({
         data-user-message-id={msg.id}
         className={cn(
           "[&>div]:!mb-4 pointer-events-auto",
-          // Sticky within the group container
-          // No z-index here to avoid blocking dropdowns/tooltips
-          "sticky",
           isMobile
             ? CHAT_LAYOUT.stickyTopMobile
             : CHAT_LAYOUT.stickyTopSidebarClosed,

@@ -12,7 +12,19 @@
 
 ---
 
-![BetterCode Screenshot](screenshot.png)
+![Start screen](./media/screenshot.png)
+*Start screen.*
+
+## Screenshots
+
+![Preview](./media/preview.png)
+*Browser integration.*
+
+![File view](./media/fileview.png)
+*View project files.*
+
+![Diff view](./media/diff.png)
+*Viewing diff changes.*
 
 ## Features
 

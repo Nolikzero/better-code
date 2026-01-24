@@ -417,7 +417,7 @@ export function Terminal({
     [paneId],
   );
 
-  const terminalBg = useMemo(() => {
+  const _terminalBg = useMemo(() => {
     // When transparency is active, let vibrancy/CSS handle the background
     if (isTransparent) {
       return "transparent";
@@ -436,7 +436,6 @@ export function Terminal({
     <div
       role="application"
       className="relative h-full w-full overflow-hidden"
-      style={{ backgroundColor: terminalBg }}
       data-terminal-vibrancy={isTransparent ? "active" : undefined}
       onDragOver={handleDragOver}
       onDrop={handleDrop}

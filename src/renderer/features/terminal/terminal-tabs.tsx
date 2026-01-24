@@ -159,7 +159,7 @@ const TerminalTab = memo(
               "outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70",
               "overflow-hidden px-1.5 py-0.5 whitespace-nowrap min-w-[50px] gap-1.5",
               isActive
-                ? "bg-muted text-foreground max-w-[180px]"
+                ? "text-foreground max-w-[180px]"
                 : "hover:bg-muted/80 max-w-[150px]",
             )}
           >
@@ -481,19 +481,7 @@ export const TerminalTabs = memo(function TerminalTabs({
           WebkitAppRegion: "no-drag",
         }}
       >
-        {/* Gradient to cover content peeking from the left */}
-        <div
-          className="w-6 h-full"
-          style={{
-            background: terminalBg
-              ? `linear-gradient(to right, transparent, ${terminalBg})`
-              : undefined,
-          }}
-        />
-        <div
-          className="h-full flex items-center pr-1"
-          style={{ backgroundColor: terminalBg }}
-        >
+        <div className="h-full flex items-center pr-1">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button

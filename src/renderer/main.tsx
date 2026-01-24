@@ -1,9 +1,6 @@
-// react-scan must be imported before React to hijack React DevTools
-import { scan } from "react-scan";
-
-scan({
-  enabled: import.meta.env.DEV,
-});
+// scan({
+//   enabled: import.meta.env.DEV,
+// });
 
 import ReactDOM from "react-dom/client";
 import { App } from "./App";

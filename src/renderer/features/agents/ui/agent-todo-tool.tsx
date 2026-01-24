@@ -491,11 +491,7 @@ export const AgentTodoTool = memo(function AgentTodoTool({
 
   return (
     <div
-      className={cn(
-        "mx-2",
-        // Make entire creation todo sticky
-        isCreationToolCall && "sticky bg-background",
-      )}
+      className={cn("mx-2", isCreationToolCall && "bg-background")}
       style={
         isCreationToolCall
           ? {

@@ -1,4 +1,4 @@
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
   ChevronDown,
   Folder,
@@ -8,7 +8,10 @@ import {
   Settings,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { ProjectSettingsDialog } from "../../../components/dialogs/project-settings-dialog";
+import {
+  agentsSettingsDialogActiveTabAtom,
+  agentsSettingsDialogOpenAtom,
+} from "../../../lib/atoms";
 import {
   Command,
   CommandEmpty,
@@ -72,7 +75,8 @@ export function ProjectSelectorHeader({
   const [selectedProject, setSelectedProject] = useAtom(selectedProjectAtom);
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [showProjectSettings, setShowProjectSettings] = useState(false);
+  const setSettingsDialogOpen = useSetAtom(agentsSettingsDialogOpenAtom);
+  const setSettingsActiveTab = useSetAtom(agentsSettingsDialogActiveTabAtom);
 
   const { data: projects, isLoading: isLoadingProjects } =
     trpc.projects.list.useQuery();
@@ -402,9 +406,12 @@ export function ProjectSelectorHeader({
       {/* Settings button */}
       {validSelection && (
         <button
-          onClick={() => setShowProjectSettings(true)}
+          onClick={() => {
+            setSettingsActiveTab("profile");
+            setSettingsDialogOpen(true);
+          }}
           className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-          title="Project settings"
+          title="Settings"
         >
           <Settings className="h-4 w-4" />
         </button>
@@ -421,14 +428,6 @@ export function ProjectSelectorHeader({
         </button>
       )}
 
-      {/* Project Settings Dialog */}
-      {validSelection && (
-        <ProjectSettingsDialog
-          open={showProjectSettings}
-          onOpenChange={setShowProjectSettings}
-          projectId={validSelection.id}
-        />
-      )}
     </div>
   );
 }

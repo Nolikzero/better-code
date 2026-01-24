@@ -389,6 +389,20 @@ ${instructions} Remember to output \`<story-complete>${nextStory.id}</story-comp
       } else {
         console.log("[ralph] Story already completed (likely via git commit)");
       }
+
+      // Fallback: ensure auto-continue is set even if checkGitCommit missed it
+      // (e.g., commit regex didn't match feat: [US-xxx] pattern, or storyId
+      // extraction failed while isGitCommitOutput returned true)
+      if (hasMoreStories && !this.autoContinueNextStory) {
+        const nextStory = ralphService.getNextStory(prd!);
+        if (nextStory) {
+          this.autoContinueNextStory = nextStory;
+          console.log(
+            "[ralph] Fallback auto-continue set for story:",
+            nextStory.id,
+          );
+        }
+      }
     } else if (progress) {
       // Standalone progress block (no story-complete tag)
       console.log("[ralph] Standalone progress for story:", progress.storyId);

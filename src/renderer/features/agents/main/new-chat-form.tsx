@@ -557,13 +557,13 @@ export function NewChatForm({
     () =>
       isDarkMode
         ? {
-            bg: "oklch(20% 0.02 264.695)",
+            bg: "transparent",
             c1: "oklch(70% 0.22 350)", // Brighter pink for dark mode
             c2: "oklch(75% 0.2 200)", // Brighter blue for dark mode
             c3: "oklch(72% 0.22 280)", // Brighter purple for dark mode
           }
         : {
-            bg: "oklch(95% 0.02 264.695)",
+            bg: "transparent",
             c1: "oklch(75% 0.15 350)", // Pastel pink
             c2: "oklch(80% 0.12 200)", // Pastel blue
             c3: "oklch(78% 0.14 280)", // Pastel purple/lavender

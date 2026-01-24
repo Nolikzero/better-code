@@ -48,7 +48,7 @@ const SiriOrb: React.FC<SiriOrbProps> = ({
   animationDuration = 20,
 }) => {
   const defaultColors = {
-    bg: "oklch(95% 0.02 264.695)",
+    bg: "transparent",
     c1: "oklch(75% 0.15 350)", // Pastel pink
     c2: "oklch(80% 0.12 200)", // Pastel blue
     c3: "oklch(78% 0.14 280)", // Pastel purple/lavender

@@ -8,6 +8,7 @@ import {
   RotateCw,
   Smartphone,
   Tablet,
+  Terminal,
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -55,22 +56,52 @@ export function LocalPreview({ chatId, onClose }: LocalPreviewProps) {
     useState<ViewportPreset>("desktop");
   const [loadError, setLoadError] = useState<string | null>(null);
   const [logLines, setLogLines] = useState<string[]>([]);
+  const [isLogsOpen, setIsLogsOpen] = useState(false);
   const portMenuRef = useRef<HTMLDivElement>(null);
-  const webviewRef = useRef<Electron.WebviewTag | null>(null);
+  const logsMenuRef = useRef<HTMLDivElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const logsEndRef = useRef<HTMLDivElement>(null);
 
   const isStarting = devServerState?.status === "starting";
   const devServerPaneId = `devserver:${chatId}`;
   const activeViewport = VIEWPORT_PRESETS[viewportPreset];
 
+  // Track if we've loaded initial logs for this session
+  const hasLoadedInitialLogs = useRef(false);
+
+  // Fetch existing output buffer when component mounts (to get logs from before we subscribed)
+  const { data: outputData } = trpc.terminal.getOutput.useQuery(
+    { paneId: devServerPaneId },
+    { enabled: devServerState?.status === "running" },
+  );
+
+  // Populate logs from buffer on initial load (only once per session)
+  useEffect(() => {
+    if (
+      outputData?.output &&
+      outputData.output.length > 0 &&
+      !hasLoadedInitialLogs.current
+    ) {
+      const allOutput = outputData.output.join("");
+      const cleaned = stripAnsi(allOutput);
+      const lines = cleaned.split("\n").filter((l) => l.trim().length > 0);
+      if (lines.length > 0) {
+        setLogLines(lines.slice(-200));
+        // Mark as loaded only after successfully setting logs
+        hasLoadedInitialLogs.current = true;
+      }
+    }
+  }, [outputData]);
+
   // Derive current port from the preview URL
   const currentPort = localPreviewUrl
     ? Number.parseInt(new URL(localPreviewUrl).port, 10)
     : null;
 
-  // Subscribe to terminal stream to capture startup logs
+  // Subscribe to terminal stream to capture server logs (startup and runtime)
+  const isServerActive = isStarting || devServerState?.status === "running";
   trpc.terminal.stream.useSubscription(devServerPaneId, {
-    enabled: isStarting,
+    enabled: isServerActive,
     onData: (event) => {
       if (event.type === "data") {
         const cleaned = stripAnsi(event.data);
@@ -87,6 +118,7 @@ export function LocalPreview({ chatId, onClose }: LocalPreviewProps) {
   useEffect(() => {
     if (isStarting) {
       setLogLines([]);
+      hasLoadedInitialLogs.current = false;
     }
   }, [isStarting]);
 
@@ -99,6 +131,7 @@ export function LocalPreview({ chatId, onClose }: LocalPreviewProps) {
   useEffect(() => {
     if (localPreviewUrl) {
       setCurrentUrl(localPreviewUrl);
+      setIsLoading(true); // Start loading when URL changes
     }
   }, [localPreviewUrl]);
 
@@ -117,64 +150,67 @@ export function LocalPreview({ chatId, onClose }: LocalPreviewProps) {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [isPortMenuOpen]);
 
-  // Set up webview event listeners
+  // Close logs menu on outside click
   useEffect(() => {
-    const webview = webviewRef.current;
-    if (!webview) return;
+    if (!isLogsOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (
+        logsMenuRef.current &&
+        !logsMenuRef.current.contains(e.target as Node)
+      ) {
+        setIsLogsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [isLogsOpen]);
 
-    const handleDidStartLoading = () => {
-      setIsLoading(true);
+  // Set up iframe event listeners
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+
+    const handleLoad = () => {
+      setIsLoading(false);
+      setIsRefreshing(false);
       setLoadError(null);
+      // Try to get current URL from iframe (works for same-origin localhost)
+      try {
+        const iframeUrl = iframe.contentWindow?.location.href;
+        if (iframeUrl && iframeUrl !== "about:blank") {
+          setCurrentUrl(iframeUrl);
+        }
+      } catch {
+        // Cross-origin restriction - keep the original URL
+      }
     };
 
-    const handleDidStopLoading = () => {
+    const handleError = () => {
       setIsLoading(false);
       setIsRefreshing(false);
+      setLoadError("Failed to load preview");
     };
 
-    const handleDidNavigate = (event: Electron.DidNavigateEvent) => {
-      setCurrentUrl(event.url);
-    };
-
-    const handleDidNavigateInPage = (
-      event: Electron.DidNavigateInPageEvent,
-    ) => {
-      setCurrentUrl(event.url);
-    };
-
-    const handleDidFailLoad = (event: Electron.DidFailLoadEvent) => {
-      setIsLoading(false);
-      setIsRefreshing(false);
-      setLoadError(
-        `${event.errorDescription || "Failed to load"} (${event.errorCode})`,
-      );
-    };
-
-    webview.addEventListener("did-start-loading", handleDidStartLoading);
-    webview.addEventListener("did-stop-loading", handleDidStopLoading);
-    webview.addEventListener("did-navigate", handleDidNavigate);
-    webview.addEventListener("did-navigate-in-page", handleDidNavigateInPage);
-    webview.addEventListener("did-fail-load", handleDidFailLoad);
+    iframe.addEventListener("load", handleLoad);
+    iframe.addEventListener("error", handleError);
 
     return () => {
-      webview.removeEventListener("did-start-loading", handleDidStartLoading);
-      webview.removeEventListener("did-stop-loading", handleDidStopLoading);
-      webview.removeEventListener("did-navigate", handleDidNavigate);
-      webview.removeEventListener(
-        "did-navigate-in-page",
-        handleDidNavigateInPage,
-      );
-      webview.removeEventListener("did-fail-load", handleDidFailLoad);
+      iframe.removeEventListener("load", handleLoad);
+      iframe.removeEventListener("error", handleError);
     };
   }, [localPreviewUrl]);
 
   const handleReload = useCallback(() => {
     if (isRefreshing) return;
     setIsRefreshing(true);
+    setIsLoading(true);
     setLoadError(null);
-    const webview = webviewRef.current;
-    if (webview) {
-      webview.reload();
+    const iframe = iframeRef.current;
+    if (iframe) {
+      // Reload by resetting the src attribute
+      const currentSrc = iframe.src;
+      iframe.src = "";
+      iframe.src = currentSrc;
     }
   }, [isRefreshing]);
 
@@ -269,7 +305,7 @@ export function LocalPreview({ chatId, onClose }: LocalPreviewProps) {
               <ChevronDown className="h-3 w-3" />
             </Button>
             {isPortMenuOpen && (
-              <div className="absolute top-full left-0 mt-1 z-50 bg-popover border border-border rounded-md shadow-md py-1 min-w-[100px]">
+              <div className="absolute top-full left-0 mt-1 z-50 bg-background border border-border rounded-md shadow-md py-1 min-w-[100px]">
                 {detectedPorts.map((port) => (
                   <button
                     key={port}
@@ -312,18 +348,51 @@ export function LocalPreview({ chatId, onClose }: LocalPreviewProps) {
                 type="button"
                 onClick={() => setViewportPreset(preset)}
                 aria-pressed={isActive}
+                title={label}
                 className={cn(
-                  "h-6 px-2 rounded-md flex items-center gap-1 text-[11px] transition-colors",
+                  "h-6 w-6 rounded-md flex items-center justify-center transition-colors",
                   isActive
                     ? "bg-background text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                <Icon className="h-3 w-3" />
-                <span className="hidden sm:inline">{label}</span>
+                <Icon className="h-3.5 w-3.5" />
               </button>
             );
           })}
+        </div>
+
+        {/* Server logs dropdown */}
+        <div className="relative" ref={logsMenuRef}>
+          <Button
+            variant="ghost"
+            className={cn(
+              "h-7 w-7 p-0 hover:bg-muted rounded-md shrink-0",
+              logLines.length > 0 && "text-foreground",
+            )}
+            onClick={() => setIsLogsOpen(!isLogsOpen)}
+            title="Server logs"
+          >
+            <Terminal className="h-3.5 w-3.5 text-muted-foreground" />
+          </Button>
+          {isLogsOpen && (
+            <div className="absolute top-full right-0 mt-1 z-50 w-80 max-h-64 overflow-auto bg-background border border-border rounded-md shadow-lg">
+              {logLines.length > 0 ? (
+                <div className="p-2 font-mono text-[11px] text-muted-foreground leading-4">
+                  {logLines.map((line, i) => (
+                    <div key={i} className="whitespace-pre-wrap break-all">
+                      {line}
+                    </div>
+                  ))}
+                  <div ref={logsEndRef} />
+                </div>
+              ) : (
+                <p className="p-3 text-xs text-muted-foreground text-center">
+                  No logs yet
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         {onClose && (
@@ -337,7 +406,7 @@ export function LocalPreview({ chatId, onClose }: LocalPreviewProps) {
         )}
       </div>
 
-      {/* Webview */}
+      {/* Iframe */}
       <div
         className={cn(
           "flex-1 relative overflow-hidden",
@@ -363,13 +432,15 @@ export function LocalPreview({ chatId, onClose }: LocalPreviewProps) {
                 }
           }
         >
-          <webview
-            ref={webviewRef as any}
+          <iframe
+            ref={iframeRef}
             src={localPreviewUrl}
-            className="w-full h-full"
-            // @ts-expect-error webview attributes not in React types
-            allowpopups="true"
-            style={{ display: "flex", flex: 1 }}
+            className="w-full h-full border-0"
+            title="Local Preview"
+            onLoad={() => {
+              setIsLoading(false);
+              setIsRefreshing(false);
+            }}
           />
           {loadError && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/95">

@@ -1,7 +1,7 @@
 "use client";
 
-import { useAtom, useSetAtom } from "jotai";
-import { useCallback } from "react";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useCallback, useEffect, useRef } from "react";
 import { trpc } from "../../../lib/trpc";
 import {
   chatViewModeAtomFamily,
@@ -29,11 +29,13 @@ export function useDevServer({
   const [detectedPorts, setDetectedPorts] = useAtom(
     devServerPortsAtomFamily(chatId),
   );
+  const viewMode = useAtomValue(chatViewModeAtomFamily(chatId));
   const setViewMode = useSetAtom(chatViewModeAtomFamily(chatId));
   const setLocalPreviewUrl = useSetAtom(localPreviewUrlAtomFamily(chatId));
 
   const createTerminal = trpc.terminal.createOrAttach.useMutation();
   const killTerminal = trpc.terminal.kill.useMutation();
+  const startedThisSessionRef = useRef(false);
 
   const devServerPaneId = `devserver:${chatId}`;
   const isActive =
@@ -117,6 +119,25 @@ export function useDevServer({
     setDetectedPorts,
     devServerPaneId,
   ]);
+
+  // Auto-start dev server when app opens in split/preview mode
+  // Note: devServerState may be persisted as "running" from previous session,
+  // but the actual terminal is dead. We use startedThisSessionRef to track
+  // if we've already started in the current app session.
+  useEffect(() => {
+    if (startedThisSessionRef.current) return; // Already started this session
+    if (!runCommand || !cwd) return; // Wait for data to load
+    if (devServerState?.status === "starting") return; // Currently starting
+
+    // Auto-start if view mode is split or preview
+    if (viewMode === "split" || viewMode === "preview") {
+      const timer = setTimeout(() => {
+        startedThisSessionRef.current = true;
+        startDevServer();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [viewMode, runCommand, cwd, devServerState?.status, startDevServer]);
 
   const stopDevServer = useCallback(async () => {
     if (!devServerState?.paneId) return;

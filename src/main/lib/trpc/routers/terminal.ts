@@ -123,6 +123,17 @@ export const terminalRouter = router({
     }),
 
   /**
+   * Get the output buffer for a terminal session.
+   * Returns all captured output since the session started.
+   */
+  getOutput: publicProcedure
+    .input(z.object({ paneId: z.string().min(1) }))
+    .query(({ input }) => {
+      const buffer = terminalManager.getOutputBuffer(input.paneId);
+      return { output: buffer || [] };
+    }),
+
+  /**
    * Get workspace cwd for terminal initialization
    */
 

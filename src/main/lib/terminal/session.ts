@@ -96,9 +96,18 @@ export async function createSession(
     shell,
     startTime: Date.now(),
     usedFallback: useFallbackShell,
+    outputBuffer: [],
   };
 
+  // Max buffer size (in chunks) - keeps last ~200KB of output
+  const MAX_BUFFER_SIZE = 500;
+
   ptyProcess.onData((data) => {
+    // Store in buffer for later retrieval
+    session.outputBuffer.push(data);
+    if (session.outputBuffer.length > MAX_BUFFER_SIZE) {
+      session.outputBuffer.shift();
+    }
     onData(paneId, data);
   });
 

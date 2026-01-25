@@ -13,6 +13,8 @@ export interface TerminalSession {
   shell: string;
   startTime: number;
   usedFallback: boolean;
+  /** Output buffer for retrieving terminal history (last N bytes) */
+  outputBuffer: string[];
 }
 
 interface TerminalDataEvent {

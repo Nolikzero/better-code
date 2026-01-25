@@ -114,6 +114,7 @@ class TerminalManager extends EventEmitter {
 
       // Clean up session after delay
       const timeout = setTimeout(() => {
+        this.clearOutputBuffer(paneId);
         this.sessions.delete(paneId);
       }, 5000);
       timeout.unref();
@@ -249,6 +250,30 @@ class TerminalManager extends EventEmitter {
       cwd: session.cwd,
       lastActive: session.lastActive,
     };
+  }
+
+  /**
+   * Get the output buffer for a terminal session.
+   * Returns a copy of all captured output since the session started.
+   */
+  getOutputBuffer(paneId: string): string[] | null {
+    const session = this.sessions.get(paneId);
+    if (!session) {
+      return null;
+    }
+    // Return a copy to prevent external mutation of internal state
+    return [...session.outputBuffer];
+  }
+
+  /**
+   * Clear the output buffer for a terminal session.
+   * Called internally during session cleanup.
+   */
+  private clearOutputBuffer(paneId: string): void {
+    const session = this.sessions.get(paneId);
+    if (session) {
+      session.outputBuffer.length = 0;
+    }
   }
 
   async killByWorkspaceId(

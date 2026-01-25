@@ -345,7 +345,10 @@ export class OpenCodeProvider implements AIProvider {
           query: { directory: options.cwd },
           body: {
             parts,
-            ...(options.mode === "plan" && { agent: "plan" }),
+            // Map plan/agent mode to OpenCode agents: "plan" for read-only, "build" for full permissions
+            agent: options.mode === "plan" ? "plan" : "build",
+            ...(options.tools && { tools: options.tools }),
+            ...(options.systemPrompt && { system: options.systemPrompt }),
             ...(modelInfo && {
               model: {
                 providerID: modelInfo.providerID,

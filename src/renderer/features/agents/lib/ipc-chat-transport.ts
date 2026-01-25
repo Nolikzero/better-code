@@ -25,6 +25,7 @@ import {
 } from "../../sidebar/hooks/use-desktop-notifications";
 import {
   addedDirectoriesAtomFamily,
+  agentModeAtom,
   askUserQuestionResultsAtom,
   authErrorProviderAtom,
   compactingSubChatsAtom,
@@ -393,11 +394,40 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
 
               if (chunk.type === "ralph-complete") {
                 toast.success("Ralph: All stories complete!", {
-                  description: "All PRD stories have been implemented.",
+                  description:
+                    "All PRD stories have been implemented. Switching to Agent mode.",
                   duration: 5000,
                 });
-                // Invalidate ralph query cache to update UI immediately
+
+                // Invalidate ralph query cache to update badge UI
                 invalidateRalphQueries();
+
+                // === Auto-switch to Agent mode ===
+                // 1. Update database
+                trpcClient.chats.updateSubChatMode
+                  .mutate({
+                    id: this.config.subChatId,
+                    mode: "agent",
+                  })
+                  .catch((err) => {
+                    console.warn(
+                      "[ralph] Failed to update sub-chat mode in DB:",
+                      err,
+                    );
+                  });
+
+                // 2. Update Zustand store (for UI consistency)
+                useAgentSubChatStore
+                  .getState()
+                  .updateSubChatMode(this.config.subChatId, "agent");
+
+                // 3. Update global atom ONLY if this is the active sub-chat
+                const activeSubChatId =
+                  useAgentSubChatStore.getState().activeSubChatId;
+                if (activeSubChatId === this.config.subChatId) {
+                  appStore.set(agentModeAtom, "agent");
+                }
+
                 // Don't pass to stream - handled via toast
                 return;
               }

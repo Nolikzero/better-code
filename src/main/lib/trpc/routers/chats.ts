@@ -884,7 +884,9 @@ export const chatsRouter = router({
         if (project && chat.worktreePath !== project.path) {
           const result = await removeWorktree(project.path, chat.worktreePath);
           if (!result.success) {
-            console.warn(`[Worktree] Cleanup failed for chat ${input.id}: ${result.error}`);
+            console.warn(
+              `[Worktree] Cleanup failed for chat ${input.id}: ${result.error}`,
+            );
           }
         }
       }

@@ -67,6 +67,10 @@ export interface ChatSessionOptions {
   webSearchMode?: WebSearchMode;
   // OpenCode-specific: persisted diff keys for deduplication across turns
   emittedDiffKeys?: string[];
+  // OpenCode-specific: tool enable/disable map
+  tools?: Record<string, boolean>;
+  // OpenCode-specific: custom system prompt
+  systemPrompt?: string;
 }
 
 // Provider interface - must be implemented by all providers

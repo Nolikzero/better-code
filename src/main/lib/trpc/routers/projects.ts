@@ -216,10 +216,15 @@ export const projectsRouter = router({
 
       // Cleanup worktrees for each chat (in parallel for speed)
       const cleanupPromises = projectChats
-        .filter((chat) => chat.worktreePath && chat.worktreePath !== project.path)
+        .filter(
+          (chat) => chat.worktreePath && chat.worktreePath !== project.path,
+        )
         .map(async (chat) => {
           try {
-            const result = await removeWorktree(project.path, chat.worktreePath!);
+            const result = await removeWorktree(
+              project.path,
+              chat.worktreePath!,
+            );
             if (!result.success) {
               console.warn(
                 `[Projects] Worktree cleanup failed for chat ${chat.id}: ${result.error}`,

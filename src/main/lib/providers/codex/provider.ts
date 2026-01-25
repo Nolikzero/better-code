@@ -343,13 +343,21 @@ export class CodexProvider implements AIProvider {
       // Get SDK client
       const client = this.getClient();
 
-      // Build thread options
+      // Check if we're in plan mode - this affects sandbox, approval, and reasoning settings
+      const isPlanMode = options.mode === "plan";
+
+      // Build thread options with plan mode specific settings
       const threadOptions: ThreadOptions = {
         model: options.model,
         workingDirectory: options.cwd,
-        sandboxMode: "workspace-write",
-        approvalPolicy: this.mapApprovalPolicy(options),
-        modelReasoningEffort: this.mapReasoningEffort(options.reasoningEffort),
+        // Plan mode uses read-only sandbox, agent mode uses workspace-write
+        sandboxMode: isPlanMode ? "read-only" : "workspace-write",
+        // Plan mode uses on-request approval, agent mode uses configured policy
+        approvalPolicy: isPlanMode ? "never" : this.mapApprovalPolicy(options),
+        // Plan mode uses high reasoning effort for thorough analysis
+        modelReasoningEffort: isPlanMode
+          ? "high"
+          : this.mapReasoningEffort(options.reasoningEffort),
         additionalDirectories: options.addDirs,
         skipGitRepoCheck: true, // Allow non-git directories
         // SDK enhancement options

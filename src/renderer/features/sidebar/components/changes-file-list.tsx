@@ -22,10 +22,14 @@ import {
   centerDiffSelectedFileAtom,
   deselectAllDiffFilesAtom,
   hoveredDiffFileAtom,
+  isDiffFileMultiSelectModeAtom,
   mainContentActiveTabAtom,
   refreshDiffTriggerAtom,
   selectAllDiffFilesAtom,
+  selectDiffFileRangeAtom,
   selectedDiffFilesAtom,
+  selectedDiffFilesCountAtom,
+  setDiffFileAnchorAtom,
   toggleDiffFileSelectionAtom,
 } from "../../agents/atoms";
 import type {
@@ -93,10 +97,13 @@ interface FileItemProps {
   isSelected: boolean;
   onFileHover: (path: string) => void;
   onFileLeave: () => void;
-  onFileClick: (path: string) => void;
+  onFileClick: (path: string, e: React.MouseEvent) => void;
   onCheckboxClick: (e: React.MouseEvent, path: string) => void;
   onDiscardChanges: (path: string, status: string | null) => void;
+  onBatchDiscardChanges: () => void;
   registerRef: (path: string, el: HTMLDivElement | null) => void;
+  isMultiSelectMode: boolean;
+  selectedCount: number;
 }
 
 const FileItem = memo(function FileItem({
@@ -108,7 +115,10 @@ const FileItem = memo(function FileItem({
   onFileClick,
   onCheckboxClick,
   onDiscardChanges,
+  onBatchDiscardChanges,
   registerRef,
+  isMultiSelectMode,
+  selectedCount,
 }: FileItemProps) {
   const displayPath = getDisplayPath(file.oldPath, file.newPath);
   const fileName = getFileName(displayPath);
@@ -144,7 +154,7 @@ const FileItem = memo(function FileItem({
 
           {/* Clickable area for opening diff */}
           <button
-            onClick={() => onFileClick(displayPath)}
+            onClick={(e) => onFileClick(displayPath, e)}
             className="flex items-center gap-2 flex-1 min-w-0 text-left focus:outline-none"
           >
             {/* File icon */}
@@ -205,13 +215,23 @@ const FileItem = memo(function FileItem({
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent>
-        <ContextMenuItem
-          onClick={() => onDiscardChanges(displayPath, status)}
-          className="text-destructive focus:text-destructive"
-        >
-          <RotateCcw className="mr-2 h-4 w-4" />
-          {status === "new" ? "Delete File" : "Discard Changes"}
-        </ContextMenuItem>
+        {isMultiSelectMode && isSelected ? (
+          <ContextMenuItem
+            onClick={onBatchDiscardChanges}
+            className="text-destructive focus:text-destructive"
+          >
+            <RotateCcw className="mr-2 h-4 w-4" />
+            Discard {selectedCount} selected files
+          </ContextMenuItem>
+        ) : (
+          <ContextMenuItem
+            onClick={() => onDiscardChanges(displayPath, status)}
+            className="text-destructive focus:text-destructive"
+          >
+            <RotateCcw className="mr-2 h-4 w-4" />
+            {status === "new" ? "Delete File" : "Discard Changes"}
+          </ContextMenuItem>
+        )}
       </ContextMenuContent>
     </ContextMenu>
   );
@@ -244,6 +264,10 @@ export const ChangesFileList = memo(function ChangesFileList({
   const toggleSelection = useSetAtom(toggleDiffFileSelectionAtom);
   const selectAll = useSetAtom(selectAllDiffFilesAtom);
   const deselectAll = useSetAtom(deselectAllDiffFilesAtom);
+  const isMultiSelectMode = useAtomValue(isDiffFileMultiSelectModeAtom);
+  const selectedCount = useAtomValue(selectedDiffFilesCountAtom);
+  const selectRange = useSetAtom(selectDiffFileRangeAtom);
+  const setAnchor = useSetAtom(setDiffFileAnchorAtom);
 
   // Refresh trigger to update diff data after git operations
   const setRefreshTrigger = useSetAtom(refreshDiffTriggerAtom);
@@ -260,6 +284,15 @@ export const ChangesFileList = memo(function ChangesFileList({
     onSuccess: () => {
       // Trigger diff refresh
       setRefreshTrigger((prev) => prev + 1);
+    },
+  });
+
+  // Batch discard mutation for multiple files
+  const discardBatchMutation = trpc.changes.discardChangesBatch.useMutation({
+    onSuccess: () => {
+      // Trigger diff refresh and clear selection
+      setRefreshTrigger((prev) => prev + 1);
+      deselectAll();
     },
   });
 
@@ -289,6 +322,24 @@ export const ChangesFileList = memo(function ChangesFileList({
     },
     [worktreePath],
   );
+
+  // Handle batch discard for multiple selected files
+  const handleBatchDiscardChanges = useCallback(() => {
+    if (!parsedFileDiffs || selectedFiles.size === 0) return;
+
+    const filesToDiscard = Array.from(selectedFiles).map((filePath) => {
+      const file = parsedFileDiffs.find(
+        (f) => getDisplayPath(f.oldPath, f.newPath) === filePath,
+      );
+      const status = file ? getFileStatus(file.oldPath, file.newPath) : null;
+      return { filePath, isNew: status === "new" };
+    });
+
+    discardBatchMutation.mutate({
+      worktreePath,
+      files: filesToDiscard,
+    });
+  }, [parsedFileDiffs, selectedFiles, worktreePath, discardBatchMutation]);
 
   // Ref for scroll container and file items
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -323,13 +374,24 @@ export const ChangesFileList = memo(function ChangesFileList({
     [selectionState, deselectAll, selectAll, allFilePaths],
   );
 
-  // Handle individual file checkbox click
+  // Handle individual file checkbox click with modifier keys
   const handleCheckboxClick = useCallback(
     (e: React.MouseEvent, filePath: string) => {
       e.stopPropagation();
-      toggleSelection(filePath);
+
+      if (e.shiftKey) {
+        // Shift+click: range selection
+        selectRange({ filePath, allFiles: allFilePaths });
+      } else if (e.metaKey || e.ctrlKey) {
+        // Cmd/Ctrl+click: toggle without changing anchor
+        toggleSelection(filePath);
+      } else {
+        // Normal click: toggle and update anchor
+        toggleSelection(filePath);
+        setAnchor(filePath);
+      }
     },
-    [toggleSelection],
+    [toggleSelection, selectRange, setAnchor, allFilePaths],
   );
 
   // Auto-scroll sidebar when hovered file changes (from center diff hover)
@@ -367,17 +429,39 @@ export const ChangesFileList = memo(function ChangesFileList({
     }
   }, [hoveredFile, isCenterDiffOpen, isCollapsed]);
 
-  // Handler for clicking a file
+  // Handler for clicking a file (with modifier key support)
   const handleFileClick = useCallback(
-    (filePath: string) => {
-      // Switch to changes tab
+    (filePath: string, e: React.MouseEvent) => {
+      if (e.shiftKey) {
+        // Shift+click: range selection (don't open diff)
+        e.preventDefault();
+        selectRange({ filePath, allFiles: allFilePaths });
+        return;
+      }
+
+      if (e.metaKey || e.ctrlKey) {
+        // Cmd/Ctrl+click: toggle selection (don't open diff)
+        e.preventDefault();
+        toggleSelection(filePath);
+        setAnchor(filePath);
+        return;
+      }
+
+      // Normal click: open diff view and update anchor
       setActiveTab("changes");
-      // Set the selected file for highlighting
       setCenterDiffSelectedFile(filePath);
-      // Trigger scroll to file
       setFocusedDiffFile(filePath);
+      setAnchor(filePath);
     },
-    [setActiveTab, setCenterDiffSelectedFile, setFocusedDiffFile],
+    [
+      setActiveTab,
+      setCenterDiffSelectedFile,
+      setFocusedDiffFile,
+      selectRange,
+      toggleSelection,
+      setAnchor,
+      allFilePaths,
+    ],
   );
 
   // Handler for hovering a file - sync highlight with center diff (no scroll)
@@ -449,6 +533,12 @@ export const ChangesFileList = memo(function ChangesFileList({
             <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
           )}
           <span className="text-xs font-medium text-foreground">Changes</span>
+          {/* Selection count badge */}
+          {isMultiSelectMode && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">
+              {selectedCount} selected
+            </span>
+          )}
           {/* Stats badge */}
           {!diffStats.isLoading && (
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground ml-auto">
@@ -503,7 +593,10 @@ export const ChangesFileList = memo(function ChangesFileList({
                       onFileClick={handleFileClick}
                       onCheckboxClick={handleCheckboxClick}
                       onDiscardChanges={handleDiscardChanges}
+                      onBatchDiscardChanges={handleBatchDiscardChanges}
                       registerRef={registerFileRef}
+                      isMultiSelectMode={isMultiSelectMode}
+                      selectedCount={selectedCount}
                     />
                   );
                 })}

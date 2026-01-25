@@ -5,14 +5,7 @@
 import { Chat, useChat } from "@ai-sdk/react";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { ChevronDown, ChevronUp, MessageSquare } from "lucide-react";
-import {
-  useCallback,
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useStickToBottom } from "use-stick-to-bottom";
 import { Button } from "../../../components/ui/button";
@@ -501,13 +494,20 @@ function ChatViewInner({
 
   // Use subChatId as stable key to prevent HMR-induced duplicate resume requests
   // resume: !!streamId to reconnect to active streams (background streaming support)
-  const { messages, sendMessage, setMessages, status, stop, regenerate } =
-    useChat({
-      id: subChatId,
-      chat,
-      resume: !!streamId,
-      experimental_throttle: 100,
-    });
+  const {
+    messages,
+    sendMessage,
+    setMessages,
+    status,
+    stop,
+    regenerate,
+    error,
+  } = useChat({
+    id: subChatId,
+    chat,
+    resume: !!streamId,
+    experimental_throttle: 100,
+  });
 
   // Scroll management via use-stick-to-bottom for smooth auto-scrolling
   const { scrollRef, contentRef, scrollToBottom } = useStickToBottom({
@@ -614,6 +614,17 @@ function ChatViewInner({
       prevStatusRef.current = status;
     }
   }, [status, subChatId, messages.length]);
+
+  // Monitor error state from useChat and show toast when errors occur
+  useEffect(() => {
+    if (error && status === "error") {
+      toast.error("Something went wrong", {
+        description: error.message || "An unexpected error occurred",
+        duration: 8000,
+      });
+      console.error(`[Chat] Error in sub=${subChatId.slice(-8)}:`, error);
+    }
+  }, [error, status, subChatId]);
 
   const isStreaming = status === "streaming" || status === "submitted";
 
@@ -1950,7 +1961,9 @@ export function ChatView({
   });
 
   // Subscribe to git status changes for real-time diff updates
-  const gitWatcherSubscriberId = useId();
+  // Use chatId-based ID instead of useId() to ensure stable subscription IDs
+  // that don't change when the component remounts during chat switches
+  const gitWatcherSubscriberId = `git-watcher-${chatId}`;
   trpc.changes.watchGitStatus.useSubscription(
     {
       worktreePath: worktreePath ?? "",
@@ -1969,7 +1982,8 @@ export function ChatView({
   );
 
   // Subscribe to branch changes for real-time detection
-  const branchWatcherSubscriberId = useId();
+  // Use chatId-based ID for stable subscription IDs (same reason as above)
+  const branchWatcherSubscriberId = `branch-watcher-${chatId}`;
   trpc.changes.watchBranchChange.useSubscription(
     {
       chatId,
@@ -2333,6 +2347,9 @@ export function ChatView({
           // Note: sidebar timestamp update is handled via optimistic update in handleSend
           // No need to refetch here as it would overwrite the optimistic update with stale data
         },
+        onError: (error) => {
+          console.error(`[Chat] Error in sub=${subChatId.slice(-8)}:`, error);
+        },
       });
 
       agentChatStore.set(subChatId, newChat, chatId);
@@ -2523,6 +2540,9 @@ export function ChatView({
 
           // Note: sidebar timestamp update is handled via optimistic update in handleSend
           // No need to refetch here as it would overwrite the optimistic update with stale data
+        },
+        onError: (error) => {
+          console.error(`[Chat] Error in sub=${newId.slice(-8)}:`, error);
         },
       });
       agentChatStore.set(newId, newChat, chatId);

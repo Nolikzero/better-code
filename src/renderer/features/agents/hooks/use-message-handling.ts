@@ -3,6 +3,7 @@
 import type { Chat } from "@ai-sdk/react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useRef } from "react";
+import { toast } from "sonner";
 import { getQueryClient } from "../../../contexts/TRPCProvider";
 import {
   addedDirectoriesAtomFamily,
@@ -300,7 +301,21 @@ export function useMessageHandling(
     // Force scroll to bottom when sending a message
     scrollToBottom();
 
-    await sendMessage({ role: "user", parts });
+    try {
+      await sendMessage({ role: "user", parts });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to send message";
+      toast.error("Message failed to send", {
+        description: errorMessage,
+        duration: 5000,
+      });
+      // Restore editor content so user can retry
+      if (finalText) {
+        editorRef.current?.setValue(finalText);
+      }
+      console.error("[handleSend] sendMessage failed:", error);
+    }
   }, [
     sandboxSetupStatus,
     isArchived,
@@ -423,7 +438,24 @@ export function useMessageHandling(
     scrollToBottom();
 
     // Now send the message
-    await sendMessage({ role: "user", parts: messageParts });
+    try {
+      await sendMessage({ role: "user", parts: messageParts });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to send message";
+      toast.error("Message failed to send", {
+        description: errorMessage,
+        duration: 5000,
+      });
+      // Restore editor content so user can retry
+      if (text) {
+        editorRef.current?.setValue(text);
+      }
+      console.error(
+        "[handleConfirmBranchSwitchForMessage] sendMessage failed:",
+        error,
+      );
+    }
   }, [
     branchSwitchForMessage,
     addToHistory,

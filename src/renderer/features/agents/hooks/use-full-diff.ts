@@ -1,10 +1,10 @@
 "use client";
 
-import { useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 import { parseUnifiedDiff } from "../../../../shared/utils";
 import { trpcClient } from "../../../lib/trpc";
-import { fullDiffDataAtom } from "../atoms";
+import { fullDiffDataAtom, refreshDiffTriggerAtom } from "../atoms";
 
 interface UseFullDiffOptions {
   worktreePath: string | null;
@@ -18,6 +18,10 @@ interface UseFullDiffOptions {
 export function useFullDiff({ worktreePath, enabled }: UseFullDiffOptions) {
   const setFullDiffData = useSetAtom(fullDiffDataAtom);
   const abortRef = useRef(false);
+
+  // Subscribe to refresh trigger from external components (discard changes, etc.)
+  const refreshDiffTrigger = useAtomValue(refreshDiffTriggerAtom);
+  const isInitialMountRef = useRef(true);
 
   const fetchFullDiff = useCallback(async () => {
     if (!worktreePath) return;
@@ -147,4 +151,16 @@ export function useFullDiff({ worktreePath, enabled }: UseFullDiffOptions) {
       abortRef.current = true;
     };
   }, [enabled, fetchFullDiff]);
+
+  // Refetch when refresh trigger is incremented (e.g., after discard changes)
+  useEffect(() => {
+    // Skip the initial mount - the effect above handles that
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false;
+      return;
+    }
+    if (enabled) {
+      fetchFullDiff();
+    }
+  }, [refreshDiffTrigger, enabled, fetchFullDiff]);
 }

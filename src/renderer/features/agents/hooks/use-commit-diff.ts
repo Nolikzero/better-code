@@ -1,10 +1,10 @@
 "use client";
 
-import { useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 import { parseUnifiedDiff } from "../../../../shared/utils";
 import { trpcClient } from "../../../lib/trpc";
-import { commitDiffDataAtom } from "../atoms";
+import { commitDiffDataAtom, refreshDiffTriggerAtom } from "../atoms";
 
 interface UseCommitDiffOptions {
   worktreePath: string | null;
@@ -23,6 +23,10 @@ export function useCommitDiff({
 }: UseCommitDiffOptions) {
   const setCommitDiffData = useSetAtom(commitDiffDataAtom);
   const abortRef = useRef(false);
+
+  // Subscribe to refresh trigger from external components (discard changes, etc.)
+  const refreshDiffTrigger = useAtomValue(refreshDiffTriggerAtom);
+  const isInitialMountRef = useRef(true);
 
   const fetchCommitDiff = useCallback(async () => {
     if (!commitHash || !worktreePath) return;
@@ -159,4 +163,16 @@ export function useCommitDiff({
       abortRef.current = true;
     };
   }, [enabled, commitHash, fetchCommitDiff]);
+
+  // Refetch when refresh trigger is incremented (e.g., after discard changes)
+  useEffect(() => {
+    // Skip the initial mount - the effect above handles that
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false;
+      return;
+    }
+    if (enabled && commitHash) {
+      fetchCommitDiff();
+    }
+  }, [refreshDiffTrigger, enabled, commitHash, fetchCommitDiff]);
 }

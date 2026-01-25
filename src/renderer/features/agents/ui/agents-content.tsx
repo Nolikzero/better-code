@@ -39,6 +39,7 @@ import {
   agentsPreviewSidebarOpenAtom,
   agentsSidebarOpenAtom,
   centerFilePathAtom,
+  chatViewModeAtomFamily,
   devServerPortsAtomFamily,
   devServerStateAtomFamily,
   diffViewingModeAtom,
@@ -112,6 +113,27 @@ export function AgentsContent() {
 
   // Track viewing mode to ensure overlay shows when user explicitly navigates to commit/full view
   const viewingMode = useAtomValue(diffViewingModeAtom);
+
+  // Auto-switch away from File/Changes tabs when they become unavailable
+  // This must be in AgentsContent (not MainContentTabs) because MainContentTabs
+  // may not render when there's nothing to show
+  useEffect(() => {
+    if (activeTab === "file" && !hasFile) {
+      setActiveTab("chat");
+    }
+    if (
+      activeTab === "changes" &&
+      !hasChanges &&
+      viewingMode.type === "uncommitted"
+    ) {
+      setActiveTab("chat");
+    }
+  }, [activeTab, hasFile, hasChanges, viewingMode.type, setActiveTab]);
+
+  // Track chat view mode (chat/split/preview) to hide tabs in split/preview mode
+  const chatViewMode = useAtomValue(
+    chatViewModeAtomFamily(selectedChatId ?? ""),
+  );
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -998,11 +1020,11 @@ export function AgentsContent() {
         style={{ minWidth: "350px" }}
       >
         {/* Tab bar - only show when chat is selected (not for project-level view) */}
+        {/* Hide tabs in split/preview mode since the preview takes over */}
         {(hasFile || hasChanges || viewingMode.type !== "uncommitted") &&
           (activeSubChatId || !selectedChatId) &&
-          !(!selectedChatId && !sidebarOpen && activeTab === "chat") && (
-            <MainContentTabs />
-          )}
+          !(!selectedChatId && !sidebarOpen && activeTab === "chat") &&
+          chatViewMode === "chat" && <MainContentTabs />}
 
         {/* Content area */}
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">

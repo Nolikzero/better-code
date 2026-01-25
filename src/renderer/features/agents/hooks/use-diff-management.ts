@@ -278,10 +278,10 @@ export function useDiffManagement({
       setDiffStats((prev) => ({ ...prev, isLoading: false }));
     } finally {
       isFetchingDiffRef.current = false;
-      // If a refetch was requested while we were fetching, schedule it
+      // If a refetch was requested while we were fetching, schedule it immediately
       if (pendingRefetchRef.current) {
         pendingRefetchRef.current = false;
-        setTimeout(() => fetchDiffStats(), 300);
+        queueMicrotask(() => fetchDiffStats());
       }
     }
   }, [worktreePath, sandboxId, chatId, baseBranch]);

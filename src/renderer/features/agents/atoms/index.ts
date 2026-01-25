@@ -424,6 +424,67 @@ export const deselectAllDiffFilesAtom = atom(null, (_get, set) => {
   set(selectedDiffFilesAtom, new Set<string>());
 });
 
+// Anchor point for shift+click range selection
+export const diffFileSelectionAnchorAtom = atom<string | null>(null);
+
+// Multi-select mode indicator (more than one file selected)
+export const isDiffFileMultiSelectModeAtom = atom((get) => {
+  return get(selectedDiffFilesAtom).size > 1;
+});
+
+// Selected files count
+export const selectedDiffFilesCountAtom = atom((get) => {
+  return get(selectedDiffFilesAtom).size;
+});
+
+// Range selection for shift+click
+export const selectDiffFileRangeAtom = atom(
+  null,
+  (
+    get,
+    set,
+    { filePath, allFiles }: { filePath: string; allFiles: string[] },
+  ) => {
+    const currentSet = get(selectedDiffFilesAtom);
+    const anchor = get(diffFileSelectionAnchorAtom);
+
+    // Find anchor index
+    let anchorIndex = anchor ? allFiles.indexOf(anchor) : -1;
+    if (anchorIndex === -1 && currentSet.size > 0) {
+      anchorIndex = allFiles.findIndex((f) => currentSet.has(f));
+    }
+
+    const clickedIndex = allFiles.indexOf(filePath);
+    if (clickedIndex === -1) return;
+
+    if (anchorIndex === -1) {
+      // No anchor: select clicked and set as anchor
+      const newSet = new Set(currentSet);
+      newSet.add(filePath);
+      set(selectedDiffFilesAtom, newSet);
+      set(diffFileSelectionAnchorAtom, filePath);
+      return;
+    }
+
+    // Range selection
+    const start = Math.min(anchorIndex, clickedIndex);
+    const end = Math.max(anchorIndex, clickedIndex);
+    const newSet = new Set(currentSet);
+    for (let i = start; i <= end; i++) {
+      newSet.add(allFiles[i]!);
+    }
+    set(selectedDiffFilesAtom, newSet);
+  },
+);
+
+// Set anchor for selection (used on normal clicks)
+export const setDiffFileAnchorAtom = atom(
+  null,
+  (_get, set, filePath: string | null) => {
+    set(diffFileSelectionAnchorAtom, filePath);
+  },
+);
+
 // Commit message input
 export const commitMessageAtom = atom<string>("");
 

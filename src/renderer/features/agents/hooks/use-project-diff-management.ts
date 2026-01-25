@@ -74,6 +74,7 @@ export function useProjectDiffManagement({
   // Fetch control refs
   const isFetchingDiffRef = useRef(false);
   const lastFetchTimeRef = useRef<number>(0);
+  const pendingRefetchRef = useRef(false);
 
   // Main fetch function
   const fetchDiffStats = useCallback(async () => {
@@ -91,14 +92,16 @@ export function useProjectDiffManagement({
       return;
     }
 
-    // Throttle fetches
+    // Throttle fetches - but queue if throttled
     const now = Date.now();
     if (now - lastFetchTimeRef.current < DIFF_THROTTLE_MS) {
+      pendingRefetchRef.current = true;
       return;
     }
 
-    // Prevent duplicate parallel fetches
+    // Prevent duplicate parallel fetches - queue if already fetching
     if (isFetchingDiffRef.current) {
+      pendingRefetchRef.current = true;
       return;
     }
     isFetchingDiffRef.current = true;
@@ -267,6 +270,15 @@ export function useProjectDiffManagement({
       setDiffStats((prev) => ({ ...prev, isLoading: false }));
     } finally {
       isFetchingDiffRef.current = false;
+      // Process pending refetch if queued during fetch or throttle
+      if (pendingRefetchRef.current) {
+        pendingRefetchRef.current = false;
+        // Reset throttle and schedule refetch
+        setTimeout(() => {
+          lastFetchTimeRef.current = 0;
+          fetchDiffStats();
+        }, 100);
+      }
     }
   }, [projectId, projectPath, enabled, setProjectDiffData]);
 

@@ -2,7 +2,7 @@
 
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { FileText, GitBranch, MessageSquare, X } from "lucide-react";
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo } from "react";
 import {
   Tooltip,
   TooltipContent,
@@ -67,25 +67,8 @@ export function MainContentTabs() {
   const hasFile = !!filePath;
   const fileName = getFileName(filePath);
 
-  // Track previous tab visibility to handle auto-switch
-  const prevHasFileRef = useRef(hasFile);
-  const prevHasChangesRef = useRef(hasChanges);
-
-  // Auto-fallback logic: switch to chat if current tab becomes unavailable
-  useEffect(() => {
-    if (activeTab === "file" && !hasFile) {
-      setActiveTab("chat");
-    }
-    if (
-      activeTab === "changes" &&
-      !hasChanges &&
-      viewingMode.type === "uncommitted"
-    ) {
-      setActiveTab("chat");
-    }
-    prevHasFileRef.current = hasFile;
-    prevHasChangesRef.current = hasChanges;
-  }, [activeTab, hasFile, hasChanges, viewingMode.type, setActiveTab]);
+  // Note: Auto-fallback logic (switching to chat when file/changes tabs become unavailable)
+  // is now handled in AgentsContent to ensure it runs even when this component doesn't render
 
   const tabs: TabConfig[] = useMemo(
     () => [

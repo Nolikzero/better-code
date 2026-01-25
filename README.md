@@ -101,7 +101,7 @@ bun run dev              # Start with hot reload
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Electron Application                      │
+│                    Electron Application                     │
 ├─────────────────┬─────────────────┬─────────────────────────┤
 │  Main Process   │     Preload     │   Renderer Process      │
 │  (Node.js)      │  (IPC Bridge)   │      (React 19)         │

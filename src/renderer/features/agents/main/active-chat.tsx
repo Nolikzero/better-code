@@ -1598,7 +1598,9 @@ export function ChatView({
   const [selectedTeamId] = useAtom(selectedTeamIdAtom);
   const [agentMode] = useAtom(agentModeAtom);
   const isPlanMode = agentMode === "plan";
+  const loadingSubChats = useAtomValue(loadingSubChatsAtom);
   const setLoadingSubChats = useSetAtom(loadingSubChatsAtom);
+  const isAnySubChatStreaming = loadingSubChats.size > 0;
   const unseenChanges = useAtomValue(agentsUnseenChangesAtom);
   const setUnseenChanges = useSetAtom(agentsUnseenChangesAtom);
   const setSubChatUnseenChanges = useSetAtom(agentsSubChatUnseenChangesAtom);
@@ -1951,6 +1953,7 @@ export function ChatView({
     parsedFileDiffs,
     prefetchedFileContents,
     commits,
+    fetchDiffStats,
     fetchDiffStatsRef,
   } = useDiffManagement({
     chatId,
@@ -2005,6 +2008,18 @@ export function ChatView({
       },
     },
   );
+
+  // Force refresh diff during streaming at regular intervals
+  // This bypasses debouncing to ensure live updates during file writes
+  useEffect(() => {
+    if (!isAnySubChatStreaming || !worktreePath) return;
+
+    const interval = setInterval(() => {
+      fetchDiffStats();
+    }, 2500);
+
+    return () => clearInterval(interval);
+  }, [isAnySubChatStreaming, worktreePath, fetchDiffStats]);
 
   // PR actions hook - handles create PR, commit to PR, review
   const {

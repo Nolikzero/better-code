@@ -116,7 +116,7 @@ export function LeftSidebarChangesView() {
   if (!diffData || !workingPath || !hasAnythingToShow) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center px-4 py-8 text-center">
-        <div className="mb-3 rounded-full bg-muted p-3">
+        <div className="mb-3 rounded-full bg-background/10 p-3">
           <GitBranch className="h-5 w-5 text-muted-foreground" />
         </div>
         <p className="text-sm font-medium text-foreground">No changes</p>

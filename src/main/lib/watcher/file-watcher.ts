@@ -1,6 +1,7 @@
 import { EventEmitter } from "node:events";
 import * as path from "node:path";
 import chokidar, { type FSWatcher } from "chokidar";
+import { clearStatusCache } from "../git/status-cache";
 
 /** Directories to ignore when watching */
 const IGNORED_DIRECTORIES = [
@@ -190,6 +191,8 @@ class FileWatcher extends EventEmitter {
       const emitGitEvent = () => {
         this.debounceTimers.delete(debounceKey);
         this.gitMaxWaitTimers.delete(debounceKey);
+        // Clear status cache before emitting so next fetch gets fresh data
+        clearStatusCache(normalizedPath);
         const event: GitChangeEvent = {
           type: "statusChanged",
           worktreePath: normalizedPath,

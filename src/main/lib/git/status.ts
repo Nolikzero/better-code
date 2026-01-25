@@ -15,14 +15,12 @@ import {
   parseGitStatus,
   parseNameStatus,
 } from "./utils/parse-status";
+import {
+  STATUS_CACHE_TTL,
+  getStatusCache,
+  setStatusCache,
+} from "./status-cache";
 import { getDefaultBranch, getWorktreeDiff } from "./worktree";
-
-// TTL cache for getStatus results to prevent redundant git subprocess calls
-const statusCache = new Map<
-  string,
-  { data: GitChangesStatus; timestamp: number }
->();
-const STATUS_CACHE_TTL = 1000; // 1 second
 
 export const createStatusRouter = () => {
   return router({
@@ -37,7 +35,7 @@ export const createStatusRouter = () => {
         assertRegisteredWorktree(input.worktreePath);
 
         // Return cached result if still fresh
-        const cached = statusCache.get(input.worktreePath);
+        const cached = getStatusCache(input.worktreePath);
         if (cached && Date.now() - cached.timestamp < STATUS_CACHE_TTL) {
           return cached.data;
         }
@@ -77,10 +75,7 @@ export const createStatusRouter = () => {
           hasUpstream: trackingStatus.hasUpstream,
         };
 
-        statusCache.set(input.worktreePath, {
-          data: result,
-          timestamp: Date.now(),
-        });
+        setStatusCache(input.worktreePath, result);
         return result;
       }),
 

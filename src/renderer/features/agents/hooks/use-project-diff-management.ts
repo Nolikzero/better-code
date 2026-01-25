@@ -8,7 +8,7 @@ import {
   type ParsedDiffFile,
   parseUnifiedDiff,
 } from "../../../../shared/utils";
-import { trpcClient } from "../../../lib/trpc";
+import { trpc, trpcClient } from "../../../lib/trpc";
 import { projectDiffDataAtom, refreshDiffTriggerAtom } from "../atoms";
 
 // Re-export types for convenience
@@ -75,6 +75,29 @@ export function useProjectDiffManagement({
   const isFetchingDiffRef = useRef(false);
   const lastFetchTimeRef = useRef<number>(0);
   const pendingRefetchRef = useRef(false);
+
+  // Ref to hold fetchDiffStats for subscription callback (avoids stale closure)
+  const fetchDiffStatsRef = useRef<(() => Promise<void>) | null>(null);
+
+  // Subscribe to git status changes for real-time updates
+  const gitWatcherSubscriberId = `project-git-watcher-${projectId}`;
+  trpc.changes.watchGitStatus.useSubscription(
+    {
+      worktreePath: projectPath ?? "",
+      subscriberId: gitWatcherSubscriberId,
+    },
+    {
+      enabled: !!projectPath && enabled,
+      onData: () => {
+        // Reset throttle and refetch when git changes detected
+        lastFetchTimeRef.current = 0;
+        fetchDiffStatsRef.current?.();
+      },
+      onError: (error) => {
+        console.error("[useProjectDiffManagement] Git watch error:", error);
+      },
+    },
+  );
 
   // Main fetch function
   const fetchDiffStats = useCallback(async () => {
@@ -281,6 +304,9 @@ export function useProjectDiffManagement({
       }
     }
   }, [projectId, projectPath, enabled, setProjectDiffData]);
+
+  // Keep ref updated for subscription callback
+  fetchDiffStatsRef.current = fetchDiffStats;
 
   // Fetch diff stats on mount and when project changes
   useEffect(() => {

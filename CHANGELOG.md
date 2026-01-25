@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.0.11]
+
+### Added
+
+- Live updates for diff stats during streaming with regular refresh intervals
+- Status cache for git status results with file watcher integration for real-time updates
+- Plan mode support for Codex and OpenCode providers with function call item handling
+- Batch discard changes for multiple files with enhanced selection handling in changes file list
+- Output buffer for terminal sessions with enhanced log retrieval
+
+### Changed
+
+- Enhanced worktree cleanup during project deletion
+- Improved chat deletion confirmation dialog in UI
+- Updated screenshot for improved visual representation
+
+### Fixed
+
+- Background color for empty state indicators in sidebar components
+- Formatting in Electron application diagram
+
 ## [0.0.10]
 
 ### Changed

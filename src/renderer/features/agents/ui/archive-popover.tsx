@@ -1,13 +1,17 @@
 "use client";
 
 import { useAtom } from "jotai";
+import { X } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import {
   ArchiveIcon,
+  CheckIcon,
   GitHubLogo,
   IconTextUndo,
   SearchIcon,
+  TrashIcon,
 } from "../../../components/ui/icons";
 import { Input } from "../../../components/ui/input";
 import {
@@ -33,6 +37,7 @@ export function ArchivePopover({ trigger }: ArchivePopoverProps) {
   const [open, setOpen] = useAtom(archivePopoverOpenAtom);
   const [searchQuery, setSearchQuery] = useAtom(archiveSearchQueryAtom);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const popoverContentRef = useRef<HTMLDivElement>(null);
   const chatItemRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -70,6 +75,17 @@ export function ArchivePopover({ trigger }: ArchivePopoverProps) {
       utils.chats.list.invalidate();
       utils.chats.listWithSubChats.invalidate();
       utils.chats.listArchived.invalidate();
+    },
+  });
+
+  const deleteMutation = trpc.chats.delete.useMutation({
+    onSuccess: () => {
+      utils.chats.listArchived.invalidate();
+      setConfirmDeleteId(null);
+    },
+    onError: (error) => {
+      toast.error(`Failed to delete: ${error.message}`);
+      setConfirmDeleteId(null);
     },
   });
 
@@ -161,6 +177,13 @@ export function ArchivePopover({ trigger }: ArchivePopoverProps) {
       setOpen(false);
     }
   }, [archivedChats, open, setOpen]);
+
+  // Reset confirmation state when popover closes
+  useEffect(() => {
+    if (!open) {
+      setConfirmDeleteId(null);
+    }
+  }, [open]);
 
   const formatTime = (dateInput: Date | string) => {
     const date = dateInput instanceof Date ? dateInput : new Date(dateInput);
@@ -310,6 +333,42 @@ export function ArchivePopover({ trigger }: ArchivePopoverProps) {
                         >
                           <IconTextUndo className="h-3 w-3" />
                         </button>
+                        {/* Delete button with confirmation */}
+                        {confirmDeleteId === chat.id ? (
+                          <div className="flex gap-0.5">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteMutation.mutate({ id: chat.id });
+                              }}
+                              className="shrink-0 text-destructive hover:text-destructive/80 transition-colors"
+                              aria-label="Confirm delete"
+                            >
+                              <CheckIcon className="h-3 w-3" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setConfirmDeleteId(null);
+                              }}
+                              className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                              aria-label="Cancel delete"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setConfirmDeleteId(chat.id);
+                            }}
+                            className="shrink-0 text-muted-foreground hover:text-destructive transition-colors"
+                            aria-label="Delete permanently"
+                          >
+                            <TrashIcon className="h-3 w-3" />
+                          </button>
+                        )}
                       </div>
                       {/* Bottom line: Branch (left) and Time (right) */}
                       <div className="flex items-center justify-between gap-2">

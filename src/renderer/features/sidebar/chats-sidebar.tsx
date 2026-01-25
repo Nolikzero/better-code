@@ -1023,7 +1023,7 @@ export function ChatsSidebar({
                         }
                       }}
                       className={cn(
-                        "w-full text-left py-1 cursor-pointer group relative",
+                        "w-full text-left py-1 cursor-pointer group relative mt-1",
                         "transition-colors duration-150",
                         "outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70",
                         isMultiSelectMode ? "px-3" : "px-3",

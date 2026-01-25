@@ -873,17 +873,18 @@ export const chatsRouter = router({
         }
       }
 
-      // Cleanup worktree if it was created (has branch = was a real worktree, not just project path)
-      if (chat?.worktreePath && chat?.branch) {
+      // Cleanup worktree if it exists and is a real worktree (not the project path itself)
+      if (chat?.worktreePath) {
         const project = db
           .select()
           .from(projects)
           .where(eq(projects.id, chat.projectId))
           .get();
-        if (project) {
+        // Only remove if worktreePath differs from project path (real worktree, not local mode)
+        if (project && chat.worktreePath !== project.path) {
           const result = await removeWorktree(project.path, chat.worktreePath);
           if (!result.success) {
-            console.warn(`[Worktree] Cleanup failed: ${result.error}`);
+            console.warn(`[Worktree] Cleanup failed for chat ${input.id}: ${result.error}`);
           }
         }
       }

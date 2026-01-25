@@ -2,8 +2,8 @@ import { desc, eq } from "drizzle-orm";
 import { BrowserWindow, dialog } from "electron";
 import { basename } from "path";
 import { z } from "zod";
-import { getDatabase, projects } from "../../db";
-import { getGitRemoteInfo, getWorktreeDiff } from "../../git";
+import { chats, getDatabase, projects } from "../../db";
+import { getGitRemoteInfo, getWorktreeDiff, removeWorktree } from "../../git";
 import { publicProcedure, router } from "../index";
 
 export const projectsRouter = router({
@@ -189,12 +189,67 @@ export const projectsRouter = router({
     }),
 
   /**
-   * Delete a project and all its chats
+   * Delete a project and all its chats (with worktree cleanup)
    */
   delete: publicProcedure
     .input(z.object({ id: z.string() }))
-    .mutation(({ input }) => {
+    .mutation(async ({ input }) => {
       const db = getDatabase();
+
+      // Get project first (needed for path comparison and worktree removal)
+      const project = db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, input.id))
+        .get();
+
+      if (!project) {
+        return null;
+      }
+
+      // Get all chats for this project to cleanup worktrees
+      const projectChats = db
+        .select()
+        .from(chats)
+        .where(eq(chats.projectId, input.id))
+        .all();
+
+      // Cleanup worktrees for each chat (in parallel for speed)
+      const cleanupPromises = projectChats
+        .filter((chat) => chat.worktreePath && chat.worktreePath !== project.path)
+        .map(async (chat) => {
+          try {
+            const result = await removeWorktree(project.path, chat.worktreePath!);
+            if (!result.success) {
+              console.warn(
+                `[Projects] Worktree cleanup failed for chat ${chat.id}: ${result.error}`,
+              );
+            }
+            return { chatId: chat.id, success: result.success };
+          } catch (error) {
+            console.warn(
+              `[Projects] Worktree cleanup error for chat ${chat.id}:`,
+              error,
+            );
+            return { chatId: chat.id, success: false };
+          }
+        });
+
+      // Wait for all cleanup attempts (don't block on failures)
+      const cleanupResults = await Promise.allSettled(cleanupPromises);
+      const failedCount = cleanupResults.filter(
+        (r) =>
+          r.status === "rejected" ||
+          (r.status === "fulfilled" && !r.value.success),
+      ).length;
+
+      if (failedCount > 0) {
+        console.warn(
+          `[Projects] ${failedCount}/${cleanupPromises.length} worktree cleanups failed`,
+        );
+      }
+
+      // Now delete project (cascades to chats in DB)
       return db
         .delete(projects)
         .where(eq(projects.id, input.id))

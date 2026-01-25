@@ -123,7 +123,7 @@ export const ChatTreeItem = React.memo(function ChatTreeItem({
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         className={cn(
-          "w-full text-left py-1.5 cursor-pointer group relative flex items-start gap-1",
+          "w-full text-left py-1.5 cursor-pointer group relative flex items-start gap-1 mt-1",
           "transition-colors duration-150 rounded-md",
           "outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70",
           "px-2",

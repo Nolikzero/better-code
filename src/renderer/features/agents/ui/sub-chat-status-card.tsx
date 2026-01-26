@@ -1,7 +1,7 @@
 "use client";
 
 import { useSetAtom } from "jotai";
-import { ChevronUp } from "lucide-react";
+import { ChevronUp, ListPlus, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { memo, useEffect, useMemo, useState } from "react";
 import { Button } from "../../../components/ui/button";
@@ -12,6 +12,7 @@ import {
   diffViewingModeAtom,
   filteredDiffFilesAtom,
   mainContentActiveTabAtom,
+  type QueuedMessage,
   type SubChatFileChange,
 } from "../atoms";
 import { getFileIconByExtension } from "../mentions";
@@ -43,6 +44,10 @@ interface SubChatStatusCardProps {
   isOverlayMode?: boolean;
   isInputFocused?: boolean;
   onStop?: () => void;
+  // Message queue props
+  messageQueue?: QueuedMessage[];
+  onRemoveFromQueue?: (messageId: string) => void;
+  onClearQueue?: () => void;
 }
 
 export const SubChatStatusCard = memo(function SubChatStatusCard({
@@ -52,6 +57,9 @@ export const SubChatStatusCard = memo(function SubChatStatusCard({
   isCompacting,
   changedFiles,
   onStop,
+  messageQueue = [],
+  onRemoveFromQueue,
+  onClearQueue,
 }: SubChatStatusCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const setActiveTab = useSetAtom(mainContentActiveTabAtom);
@@ -71,8 +79,8 @@ export const SubChatStatusCard = memo(function SubChatStatusCard({
     return { additions, deletions, fileCount: changedFiles.length };
   }, [changedFiles]);
 
-  // Don't show if no changed files and not streaming
-  if (!isStreaming && changedFiles.length === 0) {
+  // Don't show if no changed files, not streaming, and no queued messages
+  if (!isStreaming && changedFiles.length === 0 && messageQueue.length === 0) {
     return null;
   }
 
@@ -159,6 +167,67 @@ export const SubChatStatusCard = memo(function SubChatStatusCard({
         )}
       </AnimatePresence>
 
+      {/* Queued messages - expands when input is focused */}
+      <AnimatePresence initial={false}>
+        {isInputFocused && messageQueue.length > 0 && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+            className="overflow-hidden"
+          >
+            <div className="border-b border-border">
+              <div className="px-3 py-1.5 text-xs text-muted-foreground flex items-center justify-between border-b border-border/50">
+                <span className="font-medium">Queued Messages</span>
+                {onClearQueue && messageQueue.length > 1 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 px-2 text-xs text-muted-foreground hover:text-foreground"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onClearQueue();
+                    }}
+                  >
+                    Clear all
+                  </Button>
+                )}
+              </div>
+              <div className="max-h-[150px] overflow-y-auto">
+                {messageQueue.map((message, index) => (
+                  <div
+                    key={message.id}
+                    className="flex items-start gap-2 px-3 py-1.5 text-xs group hover:bg-muted/50"
+                  >
+                    <span className="text-muted-foreground shrink-0 mt-0.5 tabular-nums">
+                      {index + 1}.
+                    </span>
+                    <p className="flex-1 text-foreground line-clamp-2 break-words">
+                      {message.text || "(Attachment)"}
+                    </p>
+                    {onRemoveFromQueue && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onRemoveFromQueue(message.id);
+                        }}
+                        aria-label="Remove from queue"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Header - always at bottom */}
       <div
         role={changedFiles.length > 0 ? "button" : undefined}
@@ -216,6 +285,19 @@ export const SubChatStatusCard = memo(function SubChatStatusCard({
                   </span>
                 </>
               )}
+            </span>
+          )}
+
+          {/* Queue indicator - shown when messages are queued */}
+          {messageQueue.length > 0 && (
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              {(changedFiles.length > 0 || isStreaming) && (
+                <span className="text-border">•</span>
+              )}
+              <ListPlus className="w-3.5 h-3.5" />
+              <span>
+                {messageQueue.length} queued
+              </span>
             </span>
           )}
         </div>

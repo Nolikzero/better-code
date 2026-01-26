@@ -128,7 +128,6 @@ import { LocalPreview } from "../ui/local-preview";
 // DiffSidebar moved to left sidebar - see LeftSidebarChangesView
 import { PLAYBACK_SPEEDS, type PlaybackSpeed } from "../ui/message-controls";
 import { getProviderIcon } from "../ui/provider-icons";
-import { MessageQueueDisplay } from "../ui/message-queue-display";
 import { SubChatStatusCard } from "../ui/sub-chat-status-card";
 import { WorktreeInitProgress } from "../ui/worktree-init-progress";
 import { autoRenameAgentChat } from "../utils/auto-rename";
@@ -1443,25 +1442,10 @@ function ChatViewInner({
               : "opacity-0 invisible max-h-0 overflow-hidden pointer-events-none",
           )}
         >
-          {/* Message queue display - shows queued messages */}
-          {messageQueue.length > 0 && (
-            <div className="px-2 -mb-6 relative z-0">
-              <div className="w-full max-w-2xl mx-auto px-2">
-                <MessageQueueDisplay
-                  queue={messageQueue}
-                  onRemove={(messageId) =>
-                    setMessageQueue((prev) =>
-                      prev.filter((m) => m.id !== messageId),
-                    )
-                  }
-                  onClearAll={() => setMessageQueue([])}
-                />
-              </div>
-            </div>
-          )}
-
           {/* Sub-chat status card - pinned above input */}
-          {(isStreaming || changedFilesForSubChat.length > 0) &&
+          {(isStreaming ||
+            changedFilesForSubChat.length > 0 ||
+            messageQueue.length > 0) &&
             !(pendingQuestions?.subChatId === subChatId) && (
               <div className="px-2 -mb-6 relative z-0">
                 <div className="w-full max-w-2xl mx-auto px-2">
@@ -1474,6 +1458,13 @@ function ChatViewInner({
                     isOverlayMode={messages?.length !== 0}
                     isInputFocused={isInputFocused}
                     onStop={handleStop}
+                    messageQueue={messageQueue}
+                    onRemoveFromQueue={(messageId) =>
+                      setMessageQueue((prev) =>
+                        prev.filter((m) => m.id !== messageId),
+                      )
+                    }
+                    onClearQueue={() => setMessageQueue([])}
                   />
                 </div>
               </div>
@@ -1484,7 +1475,9 @@ function ChatViewInner({
             ref={inputContainerRef}
             className={cn(
               "px-2 pb-2 shadow-xs shadow-background relative z-20",
-              (isStreaming || changedFilesForSubChat.length > 0) &&
+              (isStreaming ||
+                changedFilesForSubChat.length > 0 ||
+                messageQueue.length > 0) &&
                 !(pendingQuestions?.subChatId === subChatId) &&
                 "-mt-3 pt-3",
               // In overlay mode, add top border for visual separation

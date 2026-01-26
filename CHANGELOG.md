@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.0.12]
+
+### Added
+
+- Message queue system for streaming messages with UI display for queued messages
+- Message queue display integrated into sub-chat status card
+
+### Removed
+
+- Standalone message queue component (consolidated into status card)
+
 ## [0.0.11]
 
 ### Added

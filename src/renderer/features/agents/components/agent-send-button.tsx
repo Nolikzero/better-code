@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUp } from "lucide-react";
+import { ArrowUp, Plus } from "lucide-react";
 import { memo } from "react";
 import { Button } from "../../../components/ui/button";
 import { EnterIcon, IconSpinner } from "../../../components/ui/icons";
@@ -30,6 +30,10 @@ interface AgentSendButtonProps {
   ariaLabel?: string;
   /** Whether this is plan mode (orange styling) */
   isPlanMode?: boolean;
+  /** Whether the button should show "Queue" mode (streaming but has content) */
+  isQueueMode?: boolean;
+  /** Number of messages currently in queue */
+  queueCount?: number;
 }
 
 export const AgentSendButton = memo(function AgentSendButton({
@@ -42,12 +46,17 @@ export const AgentSendButton = memo(function AgentSendButton({
   size = "sm",
   ariaLabel,
   isPlanMode = false,
+  isQueueMode = false,
+  queueCount = 0,
 }: AgentSendButtonProps) {
   // Note: Enter shortcut is now handled by input components directly
 
   // Determine the actual click handler based on state
   const handleClick = () => {
-    if (isStreaming && onStop) {
+    if (isQueueMode) {
+      // Queue mode: clicking sends/queues the message, not stop
+      onClick();
+    } else if (isStreaming && onStop) {
       onStop();
     } else {
       onClick();
@@ -59,6 +68,9 @@ export const AgentSendButton = memo(function AgentSendButton({
 
   // Determine icon to show
   const getIcon = () => {
+    if (isQueueMode) {
+      return <Plus className="size-4" />;
+    }
     if (isStreaming) {
       return (
         <div className="w-2.5 h-2.5 bg-current rounded-[2px] shrink-0 mx-auto" />
@@ -72,6 +84,21 @@ export const AgentSendButton = memo(function AgentSendButton({
 
   // Determine tooltip content
   const getTooltipContent = () => {
+    if (isQueueMode) {
+      return (
+        <span className="flex items-center">
+          Queue message
+          {queueCount > 0 && (
+            <span className="ml-1 text-muted-foreground">
+              ({queueCount} pending)
+            </span>
+          )}
+          <Kbd className="-me-1 ms-1">
+            <EnterIcon className="size-2.5 inline" />
+          </Kbd>
+        </span>
+      );
+    }
     if (isStreaming)
       return (
         <span className="flex items-center gap-1">
@@ -95,6 +122,7 @@ export const AgentSendButton = memo(function AgentSendButton({
   // Determine aria-label
   const getAriaLabel = () => {
     if (ariaLabel) return ariaLabel;
+    if (isQueueMode) return "Queue message";
     if (isStreaming) return "Stop generation";
     if (isSubmitting) return "Generating...";
     return "Send message";

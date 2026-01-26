@@ -60,6 +60,7 @@ import {
   justCreatedIdsAtom,
   loadingSubChatsAtom,
   mainContentActiveTabAtom,
+  messageQueueAtomFamily,
   pendingAuthRetryMessageAtom,
   pendingUserQuestionsAtom,
   prActionsAtom,
@@ -127,6 +128,7 @@ import { LocalPreview } from "../ui/local-preview";
 // DiffSidebar moved to left sidebar - see LeftSidebarChangesView
 import { PLAYBACK_SPEEDS, type PlaybackSpeed } from "../ui/message-controls";
 import { getProviderIcon } from "../ui/provider-icons";
+import { MessageQueueDisplay } from "../ui/message-queue-display";
 import { SubChatStatusCard } from "../ui/sub-chat-status-card";
 import { WorktreeInitProgress } from "../ui/worktree-init-progress";
 import { autoRenameAgentChat } from "../utils/auto-rename";
@@ -426,6 +428,11 @@ function ChatViewInner({
     codeSnippetsAtomFamily(subChatId),
   );
 
+  // Message queue state for queueing messages while streaming
+  const [messageQueue, setMessageQueue] = useAtom(
+    messageQueueAtomFamily(subChatId),
+  );
+
   // Remove a code snippet by ID
   const removeCodeSnippet = useCallback(
     (snippetId: string) => {
@@ -707,6 +714,42 @@ function ChatViewInner({
     pendingQuestions?.toolUseId,
     setPendingQuestions,
   ]);
+
+  // Track previous streaming state for queue processing
+  const prevIsStreamingForQueueRef = useRef(isStreaming);
+
+  // Auto-send next queued message when streaming finishes
+  useEffect(() => {
+    const wasStreaming = prevIsStreamingForQueueRef.current;
+    prevIsStreamingForQueueRef.current = isStreaming;
+
+    // Detect streaming -> not streaming transition
+    if (wasStreaming && !isStreaming && messageQueue.length > 0) {
+      // Small delay to ensure UI updates before sending next message
+      const timeout = setTimeout(async () => {
+        const [nextMessage, ...remainingQueue] = messageQueue;
+        if (nextMessage) {
+          setMessageQueue(remainingQueue);
+          try {
+            await sendMessage({ role: "user", parts: nextMessage.parts });
+          } catch (error) {
+            // Restore message to front of queue on failure
+            setMessageQueue((prev) => [nextMessage, ...prev]);
+            const errorMessage =
+              error instanceof Error
+                ? error.message
+                : "Failed to send queued message";
+            toast.error("Queued message failed to send", {
+              description: errorMessage,
+              duration: 5000,
+            });
+            console.error("[auto-send queue] sendMessage failed:", error);
+          }
+        }
+      }, 100);
+      return () => clearTimeout(timeout);
+    }
+  }, [isStreaming, messageQueue, setMessageQueue, sendMessage]);
 
   // Sync pending questions with messages state
   // This handles: 1) restoring on chat switch, 2) clearing when question is answered/timed out
@@ -1263,18 +1306,21 @@ function ChatViewInner({
         </Button>
       );
     }
+    // Queue mode: streaming + has content = can queue message
+    const hasContentToSend =
+      hasContent || images.length > 0 || files.length > 0;
+    const isQueueMode = isStreaming && hasContentToSend;
+
     return (
       <AgentSendButton
         isStreaming={isStreaming}
         isSubmitting={false}
-        disabled={
-          (!hasContent && images.length === 0 && files.length === 0) ||
-          isUploading ||
-          isStreaming
-        }
+        disabled={!hasContentToSend || isUploading}
         onClick={stableHandleSend}
         onStop={handleStop}
         isPlanMode={isPlanMode}
+        isQueueMode={isQueueMode}
+        queueCount={messageQueue.length}
       />
     );
   }, [
@@ -1288,6 +1334,7 @@ function ChatViewInner({
     stableHandleSend,
     handleStop,
     isPlanMode,
+    messageQueue.length,
   ]);
 
   return (
@@ -1396,6 +1443,23 @@ function ChatViewInner({
               : "opacity-0 invisible max-h-0 overflow-hidden pointer-events-none",
           )}
         >
+          {/* Message queue display - shows queued messages */}
+          {messageQueue.length > 0 && (
+            <div className="px-2 -mb-6 relative z-0">
+              <div className="w-full max-w-2xl mx-auto px-2">
+                <MessageQueueDisplay
+                  queue={messageQueue}
+                  onRemove={(messageId) =>
+                    setMessageQueue((prev) =>
+                      prev.filter((m) => m.id !== messageId),
+                    )
+                  }
+                  onClearAll={() => setMessageQueue([])}
+                />
+              </div>
+            </div>
+          )}
+
           {/* Sub-chat status card - pinned above input */}
           {(isStreaming || changedFilesForSubChat.length > 0) &&
             !(pendingQuestions?.subChatId === subChatId) && (

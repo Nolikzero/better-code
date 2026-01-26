@@ -10,7 +10,10 @@ import {
   codeSnippetsAtomFamily,
   historyNavAtomFamily,
   mainContentActiveTabAtom,
+  messageQueueAtomFamily,
   promptHistoryAtomFamily,
+  type QueuedMessage,
+  type QueuedMessagePart,
 } from "../atoms";
 import type { useBranchSwitchConfirmation } from "../hooks/use-branch-switch-confirmation";
 import { clearSubChatDraft } from "../lib/drafts";
@@ -119,6 +122,7 @@ export function useMessageHandling(
   );
   const setActiveTab = useSetAtom(mainContentActiveTabAtom);
   const _addedDirs = useAtomValue(addedDirectoriesAtomFamily(subChatId));
+  const [, setMessageQueue] = useAtom(messageQueueAtomFamily(subChatId));
 
   const isStreaming = status === "streaming" || status === "submitted";
 
@@ -164,7 +168,7 @@ export function useMessageHandling(
 
     // Build message parts FIRST (before any state changes)
     // Include base64Data for API transmission
-    const parts: any[] = [
+    const parts: QueuedMessagePart[] = [
       ...images
         .filter((img) => !img.isLoading && img.url)
         .map((img) => ({
@@ -204,6 +208,31 @@ export function useMessageHandling(
 
     if (finalText) {
       parts.push({ type: "text", text: finalText });
+    }
+
+    // If currently streaming, queue the message instead of sending
+    if (isStreaming) {
+      const queuedMessage: QueuedMessage = {
+        id: crypto.randomUUID(),
+        text: finalText || "(Attachment)",
+        parts,
+        timestamp: Date.now(),
+      };
+      setMessageQueue((prev) => [...prev, queuedMessage]);
+
+      // Clear editor and attachments (same as normal send flow)
+      editorRef.current?.clear();
+      currentDraftTextRef.current = "";
+      if (parentChatId) {
+        clearSubChatDraft(parentChatId, subChatId);
+      }
+      clearAll();
+      if (codeSnippets.length > 0) {
+        setCodeSnippets([]);
+      }
+
+      // Don't send - it's queued
+      return;
     }
 
     // Check if branch switch is needed before sending (local mode only)
@@ -341,6 +370,8 @@ export function useMessageHandling(
     utils,
     scrollToBottom,
     sendMessage,
+    isStreaming,
+    setMessageQueue,
   ]);
 
   // Handler for confirming branch switch and then sending the pending message

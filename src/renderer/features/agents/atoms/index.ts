@@ -1164,3 +1164,63 @@ import type { FileMentionOption } from "../mentions/types";
 // Pending file mentions to be added to chat input
 // Set by project tree context menu or drag, consumed by active-chat
 export const pendingFileMentionsAtom = atom<FileMentionOption[]>([]);
+
+// ============================================================================
+// Message Queue (for queueing messages while streaming)
+// ============================================================================
+
+// Types for message parts that can be queued
+export interface DataImagePart {
+  type: "data-image";
+  data: {
+    url: string;
+    mediaType?: string;
+    filename: string;
+    base64Data?: string;
+  };
+}
+
+export interface DataFilePart {
+  type: "data-file";
+  data: {
+    url: string;
+    mediaType?: string;
+    filename: string;
+    size?: number;
+  };
+}
+
+export interface TextPart {
+  type: "text";
+  text: string;
+}
+
+export type QueuedMessagePart = DataImagePart | DataFilePart | TextPart;
+
+// Type for a queued message - stores pre-built message parts for later sending
+export interface QueuedMessage {
+  id: string;
+  text: string; // Display text for UI
+  parts: QueuedMessagePart[];
+  timestamp: number;
+}
+
+// Internal storage atom for all message queues (Map of subChatId -> QueuedMessage[])
+const messageQueueStorageAtom = atom<Record<string, QueuedMessage[]>>({});
+
+// atomFamily to get/set message queue per subChatId
+export const messageQueueAtomFamily = atomFamily((subChatId: string) =>
+  atom(
+    (get) => get(messageQueueStorageAtom)[subChatId] ?? [],
+    (
+      get,
+      set,
+      update: QueuedMessage[] | ((prev: QueuedMessage[]) => QueuedMessage[]),
+    ) => {
+      const current = get(messageQueueStorageAtom);
+      const existing = current[subChatId] ?? [];
+      const updated = typeof update === "function" ? update(existing) : update;
+      set(messageQueueStorageAtom, { ...current, [subChatId]: updated });
+    },
+  ),
+);

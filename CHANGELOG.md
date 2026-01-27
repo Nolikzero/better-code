@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.0.13]
+
+### Added
+
+- Project file indexing with SQLite and FTS5 for fast search
+- Desktop notifications preferences with notifications integrated into chat flow
+- Path-segment fuzzy matching for enhanced file search
+
+### Changed
+
+- Enhanced multi-repo support with refactored diff management
+- Exclude noisy files from diffs for cleaner output
+- Code cleanup and improved readability across codebase
+- Removed console logs from file watcher and project diff management hooks
+
 ## [0.0.12]
 
 ### Added

@@ -37,6 +37,9 @@ export function parseGitStatus(
 
   for (const file of status.files) {
     const path = file.path;
+    const basename = path.split("/").pop() ?? path;
+    if (basename === ".DS_Store") continue;
+
     const index = file.index;
     const working = file.working_dir;
 

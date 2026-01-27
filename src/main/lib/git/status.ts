@@ -8,7 +8,7 @@ import type {
 import { publicProcedure, router } from "../trpc";
 import { fileWatcher, type GitChangeEvent } from "../watcher/file-watcher";
 import { type BranchChangeEvent, branchWatcher } from "./branch-watcher";
-import { LOCK_FILE_EXCLUDES } from "./constants";
+import { DIFF_EXCLUDES } from "./constants";
 import { assertRegisteredWorktree, secureFs } from "./security";
 import { getStatusCache, setStatusCache } from "./status-cache";
 import { applyNumstatToFiles } from "./utils/apply-numstat";
@@ -125,7 +125,7 @@ export const createStatusRouter = () => {
         assertRegisteredWorktree(input.worktreePath);
 
         const git = simpleGit(input.worktreePath);
-        const lockFileExcludes = LOCK_FILE_EXCLUDES;
+        const diffExcludes = DIFF_EXCLUDES;
 
         try {
           const diff = await git.diff([
@@ -133,7 +133,7 @@ export const createStatusRouter = () => {
             input.commitHash,
             "--no-color",
             "--",
-            ...lockFileExcludes,
+            ...diffExcludes,
           ]);
           return { diff: diff || "" };
         } catch {
@@ -144,7 +144,7 @@ export const createStatusRouter = () => {
               input.commitHash,
               "--no-color",
               "--",
-              ...lockFileExcludes,
+              ...diffExcludes,
             ]);
             return { diff: diff || "" };
           } catch (e) {

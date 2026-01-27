@@ -18,6 +18,29 @@ export function matchesMultiWordSearch(
 }
 
 /**
+ * Score how well query path segments match a file path.
+ * Returns number of skipped intermediate segments (-1 = no match).
+ * Note: intentionally duplicated from file-index.ts (backend vs frontend).
+ */
+function pathSegmentScore(querySegments: string[], filePath: string): number {
+  const pathSegments = filePath.toLowerCase().split("/");
+  let qi = 0;
+  let skipped = 0;
+  for (
+    let pi = 0;
+    pi < pathSegments.length && qi < querySegments.length;
+    pi++
+  ) {
+    if (pathSegments[pi].includes(querySegments[qi])) {
+      qi++;
+    } else if (qi > 0) {
+      skipped++;
+    }
+  }
+  return qi === querySegments.length ? skipped : -1;
+}
+
+/**
  * Sort files by relevance to search query
  * Priority: exact match > starts with > shorter match > contains in filename > alphabetical
  * Supports multi-word search - splits by whitespace, all words must match
@@ -27,6 +50,22 @@ export function sortFilesByRelevance<
   T extends { label: string; path?: string },
 >(files: T[], searchText: string): T[] {
   if (!searchText) return files;
+
+  // Path-segment sorting: when query contains `/`, sort by segment proximity
+  if (searchText.includes("/") && files[0]?.path) {
+    const segments = searchText.toLowerCase().split("/").filter(Boolean);
+    return [...files].sort((a, b) => {
+      const aScore = pathSegmentScore(segments, a.path ?? a.label);
+      const bScore = pathSegmentScore(segments, b.path ?? b.label);
+      // Non-matches (-1) sort last
+      if (aScore === -1 && bScore === -1)
+        return (a.path ?? a.label).length - (b.path ?? b.label).length;
+      if (aScore === -1) return 1;
+      if (bScore === -1) return -1;
+      if (aScore !== bScore) return aScore - bScore;
+      return (a.path ?? a.label).length - (b.path ?? b.label).length;
+    });
+  }
 
   const searchLower = searchText.toLowerCase();
   const searchWords = searchLower.split(/\s+/).filter(Boolean);

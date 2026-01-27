@@ -2,13 +2,15 @@
  * Shared constants for git operations.
  */
 
-/** Git pathspec patterns to exclude lock files from diffs and numstats. */
-export const LOCK_FILE_EXCLUDES = [
+/** Git pathspec patterns to exclude noisy files from diffs and numstats. */
+export const DIFF_EXCLUDES = [
   ":!*.lock",
   ":!*-lock.*",
   ":!package-lock.json",
   ":!pnpm-lock.yaml",
   ":!yarn.lock",
+  ":!.DS_Store",
+  ":!**/.DS_Store",
 ] as const;
 
 /** Common default branch name candidates, in priority order. */
@@ -20,11 +22,13 @@ export const DEFAULT_BRANCH_CANDIDATES = [
 ] as const;
 
 /**
- * Check if a filename matches a lock file pattern.
+ * Check if a file should be excluded from diffs.
  * Used to filter untracked files before intent-to-add.
  */
-export function isLockFile(filename: string): boolean {
+export function isExcludedFile(filename: string): boolean {
+  const basename = filename.split("/").pop() ?? filename;
   return (
+    basename === ".DS_Store" ||
     filename.endsWith(".lock") ||
     filename.includes("-lock.") ||
     filename === "package-lock.json" ||

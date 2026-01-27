@@ -410,8 +410,37 @@ class ProjectFileIndex {
   }
 
   /**
+   * Check if query segments match a file path in order, allowing skipped
+   * intermediate directories. Returns the number of skipped segments
+   * (lower = tighter match), or -1 if no match.
+   */
+  private matchPathSegments(
+    querySegments: string[],
+    pathSegments: string[],
+  ): number {
+    let qi = 0;
+    let skipped = 0;
+    for (
+      let pi = 0;
+      pi < pathSegments.length && qi < querySegments.length;
+      pi++
+    ) {
+      if (pathSegments[pi].includes(querySegments[qi])) {
+        qi++;
+      } else if (qi > 0) {
+        skipped++;
+      }
+    }
+    return qi === querySegments.length ? skipped : -1;
+  }
+
+  /**
    * Search the index. Returns results in <5ms for 50k+ files.
    * Triggers a background refresh if the cooldown has elapsed.
+   *
+   * When the query contains `/`, uses path-segment fuzzy matching:
+   * each segment must appear in order in the result path, but
+   * intermediate directories can be skipped.
    */
   search(query: string, limit = 50): SearchResult[] {
     if (this._state !== "ready") return [];
@@ -424,6 +453,54 @@ class ProjectFileIndex {
 
       if (!query) {
         rows = this.searchAllStmt.all(limit) as typeof rows;
+      } else if (query.includes("/")) {
+        // Path-segment fuzzy matching
+        const segments = query.split("/").filter(Boolean);
+        const querySegments = segments.map((s) => s.toLowerCase());
+
+        // Search the index using ALL segments to narrow candidates
+        const searchLimit = Math.max(limit * 4, 200);
+        const hasShortSegment = segments.some((s) => s.length < 3);
+
+        if (hasShortSegment) {
+          // LIKE fallback: match all segments as substrings of the path
+          const pattern = `%${segments.join("%")}%`;
+          rows = this.likeSearchStmt.all(
+            pattern,
+            pattern,
+            searchLimit,
+          ) as typeof rows;
+        } else {
+          // FTS5: AND all segments together
+          const ftsQuery = segments
+            .map((s) => `"${s.replace(/"/g, '""')}"`)
+            .join(" AND ");
+          rows = this.searchStmt.all(ftsQuery, searchLimit) as typeof rows;
+        }
+
+        // Post-filter: check all query segments appear in order
+        const scored: Array<{ row: (typeof rows)[0]; skipped: number }> = [];
+        for (const row of rows) {
+          const pathSegments = row.path.toLowerCase().split("/");
+          const skipped = this.matchPathSegments(querySegments, pathSegments);
+          if (skipped >= 0) {
+            scored.push({ row, skipped });
+          }
+        }
+
+        // Sort by fewest skipped segments, then shortest path
+        scored.sort(
+          (a, b) =>
+            a.skipped - b.skipped || a.row.path.length - b.row.path.length,
+        );
+
+        return scored.slice(0, limit).map(({ row }) => ({
+          id: `${row.type}:local:${row.path}`,
+          label: row.filename,
+          path: row.path,
+          repository: "local",
+          type: row.type as "file" | "folder",
+        }));
       } else {
         // FTS5 trigram tokenizer needs at least 3 chars per term.
         // For shorter queries, fall back to LIKE.

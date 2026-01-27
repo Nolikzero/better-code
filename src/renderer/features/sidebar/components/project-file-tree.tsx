@@ -2,9 +2,10 @@
 
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { ChevronRight, FolderOpen, MessageSquarePlus } from "lucide-react";
+import { ChevronsDownUp, ChevronRight, FolderOpen, MessageSquarePlus } from "lucide-react";
 import {
   memo,
+  startTransition,
   useCallback,
   useEffect,
   useId,
@@ -275,11 +276,11 @@ export function ProjectFileTree() {
     },
   );
 
-  // Build flattened tree for virtualization
-  const flattenedTree = useMemo(() => {
+  // Build flattened tree structure (recalculates only when structure changes)
+  const flattenedStructure = useMemo(() => {
     if (!rootEntries) return [];
 
-    const result: TreeNode[] = [];
+    const result: { entry: FileTreeEntry; depth: number; isExpanded: boolean }[] = [];
     const MAX_DEPTH = 50;
 
     const addEntries = (
@@ -290,24 +291,14 @@ export function ProjectFileTree() {
       if (depth > MAX_DEPTH) return;
 
       for (const entry of entries) {
-        const isExpanded = expandedFolders.includes(entry.path);
-        const isLoading = loadingFolders.has(entry.path);
+        const isExpanded = expandedFolders.has(entry.path);
         const cachedChildren = directoryCache[entry.path];
+        const expanded = entry.type === "folder" && isExpanded;
 
-        result.push({
-          entry,
-          depth,
-          isExpanded: entry.type === "folder" && isExpanded,
-          isLoading,
-        });
+        result.push({ entry, depth, isExpanded: expanded });
 
         // If folder is expanded and has cached children, add them (skip if already visited)
-        if (
-          entry.type === "folder" &&
-          isExpanded &&
-          cachedChildren &&
-          !visited.has(entry.path)
-        ) {
+        if (expanded && cachedChildren && !visited.has(entry.path)) {
           visited.add(entry.path);
           addEntries(cachedChildren, depth + 1, visited);
         }
@@ -316,7 +307,17 @@ export function ProjectFileTree() {
 
     addEntries(rootEntries, 0, new Set());
     return result;
-  }, [rootEntries, expandedFolders, loadingFolders, directoryCache]);
+  }, [rootEntries, expandedFolders, directoryCache]);
+
+  // Derive full TreeNode[] with loading state (cheap — doesn't trigger structure recalc)
+  const flattenedTree: TreeNode[] = useMemo(
+    () =>
+      flattenedStructure.map((node) => ({
+        ...node,
+        isLoading: loadingFolders.has(node.entry.path),
+      })),
+    [flattenedStructure, loadingFolders],
+  );
 
   // Virtualizer for efficient rendering of large trees
   const virtualizer = useVirtualizer({
@@ -337,15 +338,22 @@ export function ProjectFileTree() {
       }
       lastToggleTimeRef.current[folderPath] = now;
 
-      // Use functional update to avoid stale closure issues on first click
-      let isExpanding = false;
-      setExpandedFolders((prev) => {
-        const isCurrentlyExpanded = prev.includes(folderPath);
-        isExpanding = !isCurrentlyExpanded;
-        if (isCurrentlyExpanded) {
-          return prev.filter((p) => p !== folderPath);
-        }
-        return [...prev, folderPath];
+      // Check current state synchronously before startTransition
+      // (startTransition defers execution, so we can't read mutated locals after it)
+      const isCurrentlyExpanded = expandedFolders.has(folderPath);
+      const isExpanding = !isCurrentlyExpanded;
+
+      // Wrap in startTransition to keep UI responsive during large tree recalculations
+      startTransition(() => {
+        setExpandedFolders((prev) => {
+          const next = new Set(prev);
+          if (isCurrentlyExpanded) {
+            next.delete(folderPath);
+          } else {
+            next.add(folderPath);
+          }
+          return next;
+        });
       });
 
       // Load directory contents if not cached and we're expanding
@@ -376,7 +384,7 @@ export function ProjectFileTree() {
         }
       }
     },
-    [setExpandedFolders, directoryCache, browsePath],
+    [expandedFolders, setExpandedFolders, directoryCache, browsePath],
   );
 
   // Handle file click - open in center view
@@ -430,6 +438,12 @@ export function ProjectFileTree() {
     [createMentionOption],
   );
 
+  const handleCollapseAll = useCallback(() => {
+    setExpandedFolders(new Set());
+  }, [setExpandedFolders]);
+
+  const hasExpandedFolders = expandedFolders.size > 0;
+
   // Track which entry was right-clicked for the shared context menu
   const [contextMenuEntry, setContextMenuEntry] =
     useState<FileTreeEntry | null>(null);
@@ -467,7 +481,7 @@ export function ProjectFileTree() {
 
     const loadExpandedFolders = async () => {
       // Find expanded folders that don't have cached contents
-      const foldersToLoad = expandedFolders.filter(
+      const foldersToLoad = [...expandedFolders].filter(
         (folderPath) => !directoryCache[folderPath],
       );
 
@@ -476,42 +490,37 @@ export function ProjectFileTree() {
       // Mark all as loading
       setLoadingFolders((prev) => {
         const next = new Set(prev);
-        //foldersToLoad.forEach((path) => next.add(path));
         for (const path of foldersToLoad) {
           next.add(path);
         }
         return next;
       });
 
-      // Load all in parallel
-      const results = await Promise.allSettled(
-        foldersToLoad.map(async (folderPath) => {
-          const entries = await trpcClient.files.listDirectory.query({
-            projectPath: browsePath,
-            relativePath: folderPath,
-            showHidden: false,
-          });
-          return { folderPath, entries };
-        }),
-      );
+      try {
+        // Batch-load all directories in a single call
+        const results = await trpcClient.files.batchListDirectories.query({
+          projectPath: browsePath,
+          relativePaths: foldersToLoad,
+          showHidden: false,
+        });
 
-      // Update cache with successful results
-      const newCache: Record<string, FileTreeEntry[]> = {};
-      for (const result of results) {
-        if (result.status === "fulfilled" && result.value.entries) {
-          newCache[result.value.folderPath] = result.value
-            .entries as FileTreeEntry[];
+        const newCache: Record<string, FileTreeEntry[]> = {};
+        for (const [folderPath, entries] of Object.entries(results)) {
+          if (entries) {
+            newCache[folderPath] = entries as FileTreeEntry[];
+          }
         }
-      }
 
-      if (Object.keys(newCache).length > 0) {
-        setDirectoryCache((prev) => ({ ...prev, ...newCache }));
+        if (Object.keys(newCache).length > 0) {
+          setDirectoryCache((prev) => ({ ...prev, ...newCache }));
+        }
+      } catch (error) {
+        console.error("Failed to batch-load directories:", error);
       }
 
       // Clear loading state
       setLoadingFolders((prev) => {
         const next = new Set(prev);
-        // foldersToLoad.forEach((path) => next.delete(path));
         for (const path of foldersToLoad) {
           next.delete(path);
         }
@@ -534,14 +543,18 @@ export function ProjectFileTree() {
 
       // Find which folders need to be expanded
       const foldersToExpand = parentPaths.filter(
-        (path) => !expandedFolders.includes(path),
+        (path) => !expandedFolders.has(path),
       );
 
       // Expand all parent folders
       if (foldersToExpand.length > 0) {
-        setExpandedFolders((prev) => [
-          ...new Set([...prev, ...foldersToExpand]),
-        ]);
+        setExpandedFolders((prev) => {
+          const next = new Set(prev);
+          for (const p of foldersToExpand) {
+            next.add(p);
+          }
+          return next;
+        });
 
         // Load directory contents for new expanded folders
         const foldersToLoad = foldersToExpand.filter(
@@ -551,39 +564,35 @@ export function ProjectFileTree() {
         if (foldersToLoad.length > 0) {
           setLoadingFolders((prev) => {
             const next = new Set(prev);
-            // foldersToLoad.forEach((p) => next.add(p));
             for (const p of foldersToLoad) {
               next.add(p);
             }
             return next;
           });
 
-          const results = await Promise.allSettled(
-            foldersToLoad.map(async (folderPath) => {
-              const entries = await trpcClient.files.listDirectory.query({
-                projectPath: browsePath,
-                relativePath: folderPath,
-                showHidden: false,
-              });
-              return { folderPath, entries };
-            }),
-          );
+          try {
+            const results = await trpcClient.files.batchListDirectories.query({
+              projectPath: browsePath,
+              relativePaths: foldersToLoad,
+              showHidden: false,
+            });
 
-          const newCache: Record<string, FileTreeEntry[]> = {};
-          for (const result of results) {
-            if (result.status === "fulfilled" && result.value.entries) {
-              newCache[result.value.folderPath] = result.value
-                .entries as FileTreeEntry[];
+            const newCache: Record<string, FileTreeEntry[]> = {};
+            for (const [folderPath, entries] of Object.entries(results)) {
+              if (entries) {
+                newCache[folderPath] = entries as FileTreeEntry[];
+              }
             }
-          }
 
-          if (Object.keys(newCache).length > 0) {
-            setDirectoryCache((prev) => ({ ...prev, ...newCache }));
+            if (Object.keys(newCache).length > 0) {
+              setDirectoryCache((prev) => ({ ...prev, ...newCache }));
+            }
+          } catch (error) {
+            console.error("Failed to batch-load directories for reveal:", error);
           }
 
           setLoadingFolders((prev) => {
             const next = new Set(prev);
-            // foldersToLoad.forEach((p) => next.delete(p));
             for (const p of foldersToLoad) {
               next.delete(p);
             }
@@ -647,6 +656,21 @@ export function ProjectFileTree() {
   }
 
   return (
+    <div className="flex flex-col flex-1 min-h-0">
+      <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/30">
+        <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+          Project tree
+        </span>
+        {hasExpandedFolders && (
+          <button
+            onClick={handleCollapseAll}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+            title="Collapse all"
+          >
+            <ChevronsDownUp className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <div
@@ -699,5 +723,6 @@ export function ProjectFileTree() {
         )}
       </ContextMenuContent>
     </ContextMenu>
+    </div>
   );
 }

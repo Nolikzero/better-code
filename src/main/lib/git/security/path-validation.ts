@@ -1,4 +1,5 @@
-import { isAbsolute, normalize, resolve, sep } from "node:path";
+import { existsSync, realpathSync } from "node:fs";
+import { isAbsolute, join, normalize, resolve, sep } from "node:path";
 import { eq } from "drizzle-orm";
 import { chats, getDatabase, projects } from "../../db";
 
@@ -84,6 +85,25 @@ export function assertRegisteredWorktree(workspacePath: string): void {
     return;
   }
 
+  // Check if this is a sub-repo under a registered project path.
+  // Allow child directories that contain a .git directory (multi-repo workspace).
+  // Use realpathSync to resolve symlinks and prevent symlink-based path escapes.
+  const allProjects = db.select().from(projects).all();
+  for (const project of allProjects) {
+    try {
+      const realWorkspacePath = realpathSync(workspacePath);
+      const realProjectDir = realpathSync(project.path);
+      if (
+        realWorkspacePath.startsWith(realProjectDir + sep) &&
+        existsSync(join(realWorkspacePath, ".git"))
+      ) {
+        return;
+      }
+    } catch {
+      // Path doesn't exist or can't be resolved — skip
+    }
+  }
+
   throw new PathValidationError(
     "Workspace path not registered in database",
     "UNREGISTERED_WORKTREE",
@@ -132,7 +152,7 @@ export interface ValidatePathOptions {
  *
  * @throws PathValidationError if path is invalid
  */
-function validateRelativePath(
+export function validateRelativePath(
   filePath: string,
   options: ValidatePathOptions = {},
 ): void {

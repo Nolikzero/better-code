@@ -10,6 +10,7 @@ import { createFileContentsRouter } from "./file-contents";
 import { createGitOperationsRouter } from "./git-operations";
 import { createStagingRouter } from "./staging";
 import { createStatusRouter } from "./status";
+import { parseGitRemoteUrl } from "./utils/parse-remote-url";
 
 const execAsync = promisify(exec);
 
@@ -26,6 +27,8 @@ export {
 } from "./providers";
 // Re-export worktree utilities
 export * from "./worktree";
+// Re-export multi-repo utilities
+export * from "./multi-repo";
 // Re-export types
 
 /**
@@ -66,66 +69,7 @@ async function isGitRepo(path: string): Promise<boolean> {
   }
 }
 
-/**
- * Parse a git remote URL to extract provider, owner, and repo
- * Handles both formats:
- * - https://github.com/owner/repo.git
- * - git@github.com:owner/repo.git
- */
-function parseGitRemoteUrl(url: string): Omit<GitRemoteInfo, "remoteUrl"> {
-  // Normalize the URL
-  let normalized = url.trim();
-
-  // Remove .git suffix
-  if (normalized.endsWith(".git")) {
-    normalized = normalized.slice(0, -4);
-  }
-
-  // Try to extract provider, owner, repo
-  let provider: GitProvider = null;
-  let owner: string | null = null;
-  let repo: string | null = null;
-
-  // Match HTTPS format: https://github.com/owner/repo
-  const httpsMatch = normalized.match(
-    /https?:\/\/(github\.com|gitlab\.com|bitbucket\.org)\/([^/]+)\/([^/]+)/,
-  );
-  if (httpsMatch) {
-    const [, host, ownerPart, repoPart] = httpsMatch;
-    provider =
-      host === "github.com"
-        ? "github"
-        : host === "gitlab.com"
-          ? "gitlab"
-          : host === "bitbucket.org"
-            ? "bitbucket"
-            : null;
-    owner = ownerPart || null;
-    repo = repoPart || null;
-    return { provider, owner, repo };
-  }
-
-  // Match SSH format: git@github.com:owner/repo
-  const sshMatch = normalized.match(
-    /git@(github\.com|gitlab\.com|bitbucket\.org):([^/]+)\/(.+)/,
-  );
-  if (sshMatch) {
-    const [, host, ownerPart, repoPart] = sshMatch;
-    provider =
-      host === "github.com"
-        ? "github"
-        : host === "gitlab.com"
-          ? "gitlab"
-          : host === "bitbucket.org"
-            ? "bitbucket"
-            : null;
-    owner = ownerPart || null;
-    repo = repoPart || null;
-    return { provider, owner, repo };
-  }
-
-  return { provider: null, owner: null, repo: null };
-}
+// parseGitRemoteUrl is imported from ./utils/parse-remote-url
 
 /**
  * Get git remote info for a project path
@@ -162,7 +106,9 @@ export async function getGitRemoteInfo(
 
     return {
       remoteUrl,
-      ...parsed,
+      provider: parsed.provider,
+      owner: parsed.owner,
+      repo: parsed.repo,
     };
   } catch {
     // No remote configured or other error

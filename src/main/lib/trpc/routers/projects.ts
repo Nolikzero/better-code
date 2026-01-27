@@ -3,8 +3,73 @@ import { BrowserWindow, dialog } from "electron";
 import { basename } from "path";
 import { z } from "zod";
 import { chats, getDatabase, projects } from "../../db";
-import { getGitRemoteInfo, getWorktreeDiff, removeWorktree } from "../../git";
+import { getGitRemoteInfo, getWorktreeDiff, getWorktreeNumstat, removeWorktree } from "../../git";
+import { detectSubRepos } from "../../git/multi-repo";
+import { assertRegisteredWorktree } from "../../git/security/path-validation";
 import { publicProcedure, router } from "../index";
+
+interface RepoInfo {
+  name: string;
+  path: string;
+  relativePath: string;
+}
+
+/**
+ * Resolve the list of repos for a multi-repo project.
+ * Uses knownRepos if provided (skipping detectSubRepos), otherwise detects sub-repos.
+ */
+async function resolveMultiRepos(
+  projectId: string,
+  knownRepos?: RepoInfo[],
+): Promise<RepoInfo[]> {
+  if (knownRepos && knownRepos.length > 0) {
+    for (const repo of knownRepos) {
+      assertRegisteredWorktree(repo.path);
+    }
+    return knownRepos;
+  }
+
+  const db = getDatabase();
+  const project = db
+    .select()
+    .from(projects)
+    .where(eq(projects.id, projectId))
+    .get();
+
+  if (!project?.path) {
+    return [];
+  }
+
+  const detection = await detectSubRepos(project.path);
+  const repoPaths: RepoInfo[] = [];
+
+  if (detection.isRootRepo) {
+    repoPaths.push({
+      name: basename(project.path),
+      path: project.path,
+      relativePath: ".",
+    });
+  }
+
+  for (const sub of detection.subRepos) {
+    repoPaths.push(sub);
+  }
+
+  return repoPaths;
+}
+
+function buildDiffResponse(
+  repo: RepoInfo,
+  result: { success: boolean; diff?: string; error?: string },
+) {
+  return {
+    name: repo.name,
+    path: repo.path,
+    relativePath: repo.relativePath,
+    diff: result.success ? result.diff || "" : null,
+    error: result.success ? undefined : result.error,
+  };
+}
 
 export const projectsRouter = router({
   /**
@@ -22,7 +87,7 @@ export const projectsRouter = router({
     .input(z.object({ id: z.string() }))
     .query(({ input }) => {
       const db = getDatabase();
-      return db.select().from(projects).where(eq(projects.id, input.id)).get();
+      return db.select().from(projects).where(eq(projects.id, input.id)).get() ?? null;
     }),
 
   /**
@@ -57,8 +122,11 @@ export const projectsRouter = router({
     const folderPath = result.filePaths[0]!;
     const folderName = basename(folderPath);
 
-    // Get git remote info
-    const gitInfo = await getGitRemoteInfo(folderPath);
+    // Get git remote info and multi-repo detection in parallel
+    const [gitInfo, multiRepoResult] = await Promise.all([
+      getGitRemoteInfo(folderPath),
+      detectSubRepos(folderPath),
+    ]);
 
     const db = getDatabase();
 
@@ -79,6 +147,7 @@ export const projectsRouter = router({
           gitProvider: gitInfo.provider,
           gitOwner: gitInfo.owner,
           gitRepo: gitInfo.repo,
+          isMultiRepo: multiRepoResult.isMultiRepo,
         })
         .where(eq(projects.id, existing.id))
         .returning()
@@ -97,6 +166,7 @@ export const projectsRouter = router({
         gitProvider: gitInfo.provider,
         gitOwner: gitInfo.owner,
         gitRepo: gitInfo.repo,
+        isMultiRepo: multiRepoResult.isMultiRepo,
       })
       .returning()
       .get();
@@ -119,11 +189,31 @@ export const projectsRouter = router({
         .get();
 
       if (existing) {
-        return existing;
+        // Update git info and multi-repo detection (may have changed since creation)
+        const [gitInfo, multiRepoResult] = await Promise.all([
+          getGitRemoteInfo(input.path),
+          detectSubRepos(input.path),
+        ]);
+        return db
+          .update(projects)
+          .set({
+            updatedAt: new Date(),
+            gitRemoteUrl: gitInfo.remoteUrl,
+            gitProvider: gitInfo.provider,
+            gitOwner: gitInfo.owner,
+            gitRepo: gitInfo.repo,
+            isMultiRepo: multiRepoResult.isMultiRepo,
+          })
+          .where(eq(projects.id, existing.id))
+          .returning()
+          .get();
       }
 
-      // Get git remote info
-      const gitInfo = await getGitRemoteInfo(input.path);
+      // Get git remote info and multi-repo detection in parallel
+      const [gitInfo, multiRepoResult] = await Promise.all([
+        getGitRemoteInfo(input.path),
+        detectSubRepos(input.path),
+      ]);
 
       return db
         .insert(projects)
@@ -134,6 +224,7 @@ export const projectsRouter = router({
           gitProvider: gitInfo.provider,
           gitOwner: gitInfo.owner,
           gitRepo: gitInfo.repo,
+          isMultiRepo: multiRepoResult.isMultiRepo,
         })
         .returning()
         .get();
@@ -328,5 +419,129 @@ export const projectsRouter = router({
       }
 
       return { diff: result.diff || "" };
+    }),
+
+  /**
+   * Detect sub-repositories inside a project directory.
+   * Returns whether the root is a git repo, and lists any sub-repos.
+   */
+  detectRepos: publicProcedure
+    .input(z.object({ projectId: z.string() }))
+    .query(async ({ input }) => {
+      const db = getDatabase();
+      const project = db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, input.projectId))
+        .get();
+
+      if (!project?.path) {
+        return { isRootRepo: false, isMultiRepo: false, subRepos: [] };
+      }
+
+      return detectSubRepos(project.path);
+    }),
+
+  /**
+   * Get git diffs for all sub-repositories in a multi-repo project.
+   * Returns per-repo diff data for repos that have changes.
+   */
+  getMultiRepoDiff: publicProcedure
+    .input(
+      z.object({
+        projectId: z.string(),
+        /** Optional pre-resolved repo paths to skip detectSubRepos call */
+        knownRepos: z
+          .array(
+            z.object({
+              name: z.string(),
+              path: z.string(),
+              relativePath: z.string(),
+            }),
+          )
+          .optional(),
+      }),
+    )
+    .query(async ({ input }) => {
+      const repoPaths = await resolveMultiRepos(input.projectId, input.knownRepos);
+      if (repoPaths.length === 0) return { repos: [] };
+
+      const results = await Promise.all(
+        repoPaths.map(async (repo) => {
+          const result = await getWorktreeDiff(repo.path, undefined, {
+            uncommittedOnly: true,
+            skipUntracked: true,
+          });
+          return buildDiffResponse(repo, result);
+        }),
+      );
+
+      return { repos: results };
+    }),
+
+  /**
+   * Get git diff for a single repository path.
+   * Used for incremental updates when a file watcher fires.
+   */
+  getSingleRepoDiff: publicProcedure
+    .input(
+      z.object({
+        repoPath: z.string(),
+        repoName: z.string(),
+        relativePath: z.string(),
+      }),
+    )
+    .query(async ({ input }) => {
+      // Validate that repoPath is within a registered project
+      assertRegisteredWorktree(input.repoPath);
+
+      const result = await getWorktreeDiff(input.repoPath, undefined, {
+        uncommittedOnly: true,
+      });
+      return buildDiffResponse(
+        { name: input.repoName, path: input.repoPath, relativePath: input.relativePath },
+        result,
+      );
+    }),
+
+  /**
+   * Get lightweight diff stats (numstat) for all sub-repositories.
+   * Returns file count, additions, deletions per repo without full diff content.
+   */
+  getMultiRepoStats: publicProcedure
+    .input(
+      z.object({
+        projectId: z.string(),
+        knownRepos: z
+          .array(
+            z.object({
+              name: z.string(),
+              path: z.string(),
+              relativePath: z.string(),
+            }),
+          )
+          .optional(),
+      }),
+    )
+    .query(async ({ input }) => {
+      const repoPaths = await resolveMultiRepos(input.projectId, input.knownRepos);
+      if (repoPaths.length === 0) return { repos: [] };
+
+      const results = await Promise.all(
+        repoPaths.map(async (repo) => {
+          const result = await getWorktreeNumstat(repo.path);
+          return {
+            name: repo.name,
+            path: repo.path,
+            relativePath: repo.relativePath,
+            fileCount: result.success ? result.fileCount ?? 0 : 0,
+            additions: result.success ? result.additions ?? 0 : 0,
+            deletions: result.success ? result.deletions ?? 0 : 0,
+            error: result.success ? undefined : result.error,
+          };
+        }),
+      );
+
+      return { repos: results };
     }),
 });

@@ -30,6 +30,8 @@ export const projects = sqliteTable("projects", {
   worktreeInitCommand: text("worktree_init_command"),
   // Dev server run command (e.g., "bun dev", "npm run dev")
   runCommand: text("run_command"),
+  // Whether this project contains multiple git repositories
+  isMultiRepo: integer("is_multi_repo", { mode: "boolean" }).default(false),
 });
 
 export const projectsRelations = relations(projects, ({ many }) => ({
@@ -72,6 +74,7 @@ export const chats = sqliteTable(
       table.projectId,
       table.branch,
     ),
+    worktreePathIdx: index("chats_worktree_path_idx").on(table.worktreePath),
   }),
 );
 

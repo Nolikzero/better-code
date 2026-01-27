@@ -34,7 +34,6 @@ import { trpc } from "../../../lib/trpc";
 import { AgentsSidebar } from "../../sidebar/agents-sidebar";
 import { TerminalSidebar, terminalSidebarOpenAtom } from "../../terminal";
 import {
-  activeChatDiffDataAtom,
   agentsMobileViewModeAtom,
   agentsPreviewSidebarOpenAtom,
   agentsSidebarOpenAtom,
@@ -43,13 +42,14 @@ import {
   devServerPortsAtomFamily,
   devServerStateAtomFamily,
   diffViewingModeAtom,
+  effectiveDiffDataAtom,
   localPreviewUrlAtomFamily,
   mainContentActiveTabAtom,
   previousAgentChatIdAtom,
-  projectDiffDataAtom,
   selectedAgentChatIdAtom,
   selectedProjectAtom,
 } from "../atoms";
+import { useMultiRepoDiffManagement } from "../hooks/use-multi-repo-diff-management";
 import { useProjectDiffManagement } from "../hooks/use-project-diff-management";
 import { ChatView } from "../main/active-chat";
 import { NewChatForm } from "../main/new-chat-form";
@@ -91,23 +91,27 @@ export function AgentsContent() {
   // Selected project for project-level file/changes view
   const selectedProject = useAtomValue(selectedProjectAtom);
 
-  // Use the global atom that's updated by active-chat.tsx via git watcher
-  // This ensures real-time updates when files change
-  const chatDiffData = useAtomValue(activeChatDiffDataAtom);
-  const projectDiffData = useAtomValue(projectDiffDataAtom);
+  // Multi-repo diff management (must run first so isMultiRepo is available)
+  const { isMultiRepo } = useMultiRepoDiffManagement({
+    projectId: selectedProject?.id ?? null,
+    projectPath: selectedProject?.path ?? null,
+    enabled: !!selectedProject,
+  });
 
-  // Use project diff management when no chat is selected
+  // Project-level diff management - disabled when multi-repo is active
+  // because getMultiRepoDiff already includes root repo data
   useProjectDiffManagement({
     projectId: selectedProject?.id ?? null,
     projectPath: selectedProject?.path ?? null,
-    enabled: !selectedChatId && !!selectedProject,
+    enabled: !!selectedProject && !isMultiRepo,
   });
 
-  // Determine which diff data to use: chat-level when chat selected, project-level otherwise
-  const effectiveDiffData = selectedChatId ? chatDiffData : projectDiffData;
+  // Use centralized effective diff data atom for tab fallback logic
+  const { diffData: effectiveDiffData, showMultiRepo } = useAtomValue(effectiveDiffDataAtom);
   const hasChanges =
     (effectiveDiffData?.diffStats?.hasChanges ?? false) ||
-    (effectiveDiffData?.commits?.length ?? 0) > 0;
+    (effectiveDiffData?.commits?.length ?? 0) > 0 ||
+    showMultiRepo;
 
   const hasFile = !!filePath;
 

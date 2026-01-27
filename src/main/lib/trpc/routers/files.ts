@@ -13,6 +13,10 @@ import {
   IGNORED_EXTENSIONS,
   IGNORED_FILES,
 } from "../../files/scan-ignore-lists";
+import {
+  assertRegisteredWorktree,
+  validateRelativePath,
+} from "../../git/security/path-validation";
 import { publicProcedure, router } from "../index";
 
 // Entry type for files and folders
@@ -20,6 +24,83 @@ interface FileEntry {
   path: string;
   type: "file" | "folder";
 }
+
+// Directory listing entry (returned to frontend)
+interface DirectoryEntry {
+  name: string;
+  path: string;
+  type: "file" | "folder";
+  isHidden: boolean;
+}
+
+// LRU cache for directory listings
+class DirectoryLRUCache {
+  private cache = new Map<string, { entries: DirectoryEntry[]; timestamp: number }>();
+  private maxEntries: number;
+  private ttlMs: number;
+
+  constructor(maxEntries = 5000, ttlMs = 60000) {
+    this.maxEntries = maxEntries;
+    this.ttlMs = ttlMs;
+  }
+
+  private makeKey(projectPath: string, relativePath: string, showHidden: boolean): string {
+    return `${projectPath}\0${relativePath}\0${showHidden}`;
+  }
+
+  get(projectPath: string, relativePath: string, showHidden: boolean): DirectoryEntry[] | null {
+    const key = this.makeKey(projectPath, relativePath, showHidden);
+    const entry = this.cache.get(key);
+    if (!entry) return null;
+    if (Date.now() - entry.timestamp > this.ttlMs) {
+      this.cache.delete(key);
+      return null;
+    }
+    // Move to end (most recently used)
+    this.cache.delete(key);
+    this.cache.set(key, entry);
+    return entry.entries;
+  }
+
+  set(projectPath: string, relativePath: string, showHidden: boolean, entries: DirectoryEntry[]): void {
+    const key = this.makeKey(projectPath, relativePath, showHidden);
+    this.cache.delete(key); // Remove if exists (for LRU ordering)
+    this.cache.set(key, { entries, timestamp: Date.now() });
+    // Evict oldest entries if over limit
+    if (this.cache.size > this.maxEntries) {
+      const firstKey = this.cache.keys().next().value;
+      if (firstKey !== undefined) {
+        this.cache.delete(firstKey);
+      }
+    }
+  }
+
+  /** Invalidate all entries for a project whose relativePath starts with the given prefix */
+  invalidateByPrefix(projectPath: string, pathPrefix: string): void {
+    const prefix = `${projectPath}\0${pathPrefix}`;
+    for (const key of [...this.cache.keys()]) {
+      if (key.startsWith(prefix)) {
+        this.cache.delete(key);
+      }
+    }
+  }
+
+  /** Invalidate all entries for a project */
+  invalidateProject(projectPath: string): void {
+    const prefix = `${projectPath}\0`;
+    for (const key of [...this.cache.keys()]) {
+      if (key.startsWith(prefix)) {
+        this.cache.delete(key);
+      }
+    }
+  }
+
+  clear(): void {
+    this.cache.clear();
+  }
+}
+
+const directoryCache = new DirectoryLRUCache();
 
 // Fallback: shallow scan cache for when FTS5 index is still building
 const shallowCache = new Map<
@@ -147,6 +228,80 @@ async function fallbackSearch(
   }));
 }
 
+/** Shared implementation for listing a single directory with LRU caching */
+async function listDirectoryImpl(
+  projectPath: string,
+  relativePath: string,
+  showHidden: boolean,
+): Promise<DirectoryEntry[]> {
+  if (!projectPath) return [];
+
+  // Validate that projectPath is a registered project/worktree
+  assertRegisteredWorktree(projectPath);
+
+  // Validate relativePath to prevent path traversal
+  if (relativePath) {
+    validateRelativePath(relativePath, { allowRoot: true });
+  }
+
+  // Check cache first
+  const cached = directoryCache.get(projectPath, relativePath, showHidden);
+  if (cached) return cached;
+
+  const targetPath = relativePath
+    ? join(projectPath, relativePath)
+    : projectPath;
+
+  try {
+    const pathStat = await stat(targetPath);
+    if (!pathStat.isDirectory()) return [];
+
+    const dirEntries = await readdir(targetPath, { withFileTypes: true });
+    const entries: DirectoryEntry[] = [];
+
+    for (const entry of dirEntries) {
+      const isHidden = entry.name.startsWith(".");
+      const entryRelPath = relativePath
+        ? join(relativePath, entry.name)
+        : entry.name;
+
+      if (entry.isDirectory()) {
+        if (IGNORED_DIRS.has(entry.name)) continue;
+        if (isHidden && !showHidden) {
+          if (
+            !entry.name.startsWith(".github") &&
+            !entry.name.startsWith(".vscode")
+          ) {
+            continue;
+          }
+        }
+        entries.push({ name: entry.name, path: entryRelPath, type: "folder", isHidden });
+      } else if (entry.isFile()) {
+        if (IGNORED_FILES.has(entry.name)) continue;
+        if (isHidden && !showHidden) continue;
+        const ext = entry.name.includes(".")
+          ? `.${entry.name.split(".").pop()?.toLowerCase()}`
+          : "";
+        if (IGNORED_EXTENSIONS.has(ext)) {
+          if (!ALLOWED_LOCK_FILES.has(entry.name)) continue;
+        }
+        entries.push({ name: entry.name, path: entryRelPath, type: "file", isHidden });
+      }
+    }
+
+    entries.sort((a, b) => {
+      if (a.type !== b.type) return a.type === "folder" ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+
+    directoryCache.set(projectPath, relativePath, showHidden, entries);
+    return entries;
+  } catch (error) {
+    console.error("[files] Error listing directory:", error);
+    return [];
+  }
+}
+
 export const filesRouter = router({
   /**
    * Search files and folders in a local project directory
@@ -219,6 +374,7 @@ export const filesRouter = router({
     .input(z.object({ projectPath: z.string() }))
     .mutation(({ input }) => {
       shallowCache.delete(input.projectPath);
+      directoryCache.invalidateProject(input.projectPath);
       // Close and rebuild the FTS5 index
       fileIndexManager.close(input.projectPath);
       return { success: true };
@@ -236,92 +392,29 @@ export const filesRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      const { projectPath, relativePath, showHidden } = input;
+      return listDirectoryImpl(input.projectPath, input.relativePath, input.showHidden);
+    }),
 
-      if (!projectPath) {
-        return [];
-      }
-
-      const targetPath = relativePath
-        ? join(projectPath, relativePath)
-        : projectPath;
-
-      try {
-        const pathStat = await stat(targetPath);
-        if (!pathStat.isDirectory()) {
-          return [];
-        }
-
-        const dirEntries = await readdir(targetPath, { withFileTypes: true });
-        const entries: Array<{
-          name: string;
-          path: string;
-          type: "file" | "folder";
-          isHidden: boolean;
-        }> = [];
-
-        for (const entry of dirEntries) {
-          const isHidden = entry.name.startsWith(".");
-          const entryRelPath = relativePath
-            ? join(relativePath, entry.name)
-            : entry.name;
-
-          if (entry.isDirectory()) {
-            // Skip ignored directories
-            if (IGNORED_DIRS.has(entry.name)) continue;
-            // Skip hidden directories unless showHidden is true
-            if (isHidden && !showHidden) {
-              // Allow .github, .vscode
-              if (
-                !entry.name.startsWith(".github") &&
-                !entry.name.startsWith(".vscode")
-              ) {
-                continue;
-              }
-            }
-
-            entries.push({
-              name: entry.name,
-              path: entryRelPath,
-              type: "folder",
-              isHidden,
-            });
-          } else if (entry.isFile()) {
-            // Skip ignored files
-            if (IGNORED_FILES.has(entry.name)) continue;
-            // Skip hidden files unless showHidden is true
-            if (isHidden && !showHidden) continue;
-
-            // Check extension
-            const ext = entry.name.includes(".")
-              ? `.${entry.name.split(".").pop()?.toLowerCase()}`
-              : "";
-            if (IGNORED_EXTENSIONS.has(ext)) {
-              if (!ALLOWED_LOCK_FILES.has(entry.name)) continue;
-            }
-
-            entries.push({
-              name: entry.name,
-              path: entryRelPath,
-              type: "file",
-              isHidden,
-            });
-          }
-        }
-
-        // Sort: folders first, then alphabetically
-        entries.sort((a, b) => {
-          if (a.type !== b.type) {
-            return a.type === "folder" ? -1 : 1;
-          }
-          return a.name.localeCompare(b.name);
-        });
-
-        return entries;
-      } catch (error) {
-        console.error("[files] Error listing directory:", error);
-        return [];
-      }
+  /**
+   * Batch-list multiple directories in a single call (for reveal & mount restore)
+   */
+  batchListDirectories: publicProcedure
+    .input(
+      z.object({
+        projectPath: z.string(),
+        relativePaths: z.array(z.string()),
+        showHidden: z.boolean().default(false),
+      }),
+    )
+    .query(async ({ input }) => {
+      const { projectPath, relativePaths, showHidden } = input;
+      const results: Record<string, DirectoryEntry[]> = {};
+      await Promise.all(
+        relativePaths.map(async (relPath) => {
+          results[relPath] = await listDirectoryImpl(projectPath, relPath, showHidden);
+        }),
+      );
+      return results;
     }),
 
   /**
@@ -340,6 +433,12 @@ export const filesRouter = router({
       if (!projectPath || !relativePath) {
         return { content: "", error: "Invalid path" };
       }
+
+      // Validate that projectPath is a registered project/worktree
+      assertRegisteredWorktree(projectPath);
+
+      // Validate relativePath to prevent path traversal
+      validateRelativePath(relativePath);
 
       const filePath = join(projectPath, relativePath);
 
@@ -391,6 +490,17 @@ export const filesRouter = router({
         const eventName = `directory:${directoryPath}`;
 
         const onDirectoryChange = (event: DirectoryChangeEvent) => {
+          // Invalidate backend directory cache for the changed path's parent
+          const relPath = event.relativePath;
+          const parentDir = relPath.includes("/")
+            ? relPath.substring(0, relPath.lastIndexOf("/"))
+            : "";
+          // Invalidate the parent directory listing
+          directoryCache.invalidateByPrefix(directoryPath, parentDir);
+          // Also invalidate the exact directory if it was removed/added
+          if (event.type === "addDir" || event.type === "unlinkDir") {
+            directoryCache.invalidateByPrefix(directoryPath, relPath);
+          }
           emit.next(event);
         };
 

@@ -1,6 +1,7 @@
 import { EventEmitter } from "node:events";
 import * as path from "node:path";
 import chokidar, { type FSWatcher } from "chokidar";
+import { clearDiffCache } from "../git/diff-cache";
 import { clearStatusCache } from "../git/status-cache";
 
 /** Directories to ignore when watching */
@@ -149,8 +150,10 @@ class FileWatcher extends EventEmitter {
 
     if (existing) {
       existing.subscribers.add(subscriberId);
+      console.log(`[FileWatcher] watchGitStatus: added subscriber ${subscriberId} to existing watcher for ${normalizedPath} (${existing.subscribers.size} subscribers)`);
       return;
     }
+    console.log(`[FileWatcher] watchGitStatus: creating NEW watcher for ${normalizedPath} (subscriber: ${subscriberId})`);
 
     const gitDir = path.join(normalizedPath, ".git");
 
@@ -181,7 +184,8 @@ class FileWatcher extends EventEmitter {
       },
     );
 
-    const handleGitChange = () => {
+    const handleGitChange = (changedPath?: string) => {
+      console.log(`[FileWatcher] Git change detected for ${normalizedPath}`, changedPath ? `file: ${changedPath}` : '');
       const debounceKey = `git:${normalizedPath}`;
       const existingTimer = this.debounceTimers.get(debounceKey);
       if (existingTimer) {
@@ -191,12 +195,14 @@ class FileWatcher extends EventEmitter {
       const emitGitEvent = () => {
         this.debounceTimers.delete(debounceKey);
         this.gitMaxWaitTimers.delete(debounceKey);
-        // Clear status cache before emitting so next fetch gets fresh data
+        // Clear caches before emitting so next fetch gets fresh data
         clearStatusCache(normalizedPath);
+        clearDiffCache(normalizedPath);
         const event: GitChangeEvent = {
           type: "statusChanged",
           worktreePath: normalizedPath,
         };
+        console.log(`[FileWatcher] Emitting git event for ${normalizedPath}`, `listeners: ${this.listenerCount(`git:${normalizedPath}`)}`);
         this.emit(`git:${normalizedPath}`, event);
       };
 
@@ -252,8 +258,10 @@ class FileWatcher extends EventEmitter {
     if (!entry) return;
 
     entry.subscribers.delete(subscriberId);
+    console.log(`[FileWatcher] unwatchGitStatus: removed subscriber ${subscriberId} from ${normalizedPath} (${entry.subscribers.size} remaining)`);
 
     if (entry.subscribers.size === 0) {
+      console.log(`[FileWatcher] unwatchGitStatus: closing watcher for ${normalizedPath} (no subscribers left)`);
       entry.watcher.close();
       this.gitWatchers.delete(normalizedPath);
 

@@ -365,15 +365,6 @@ export const diffSidebarOpenAtomFamily = atomFamily((chatId: string) =>
   ),
 );
 
-// Legacy global atom - kept for backwards compatibility, maps to empty string key
-// TODO: Remove after migration
-export const agentsDiffSidebarOpenAtom = atomWithStorage<boolean>(
-  "agents-diff-sidebar-open",
-  false,
-  undefined,
-  { getOnInit: true },
-);
-
 // Focused file path in diff sidebar (for scroll-to-file feature)
 // Set by AgentEditTool on click, consumed by AgentDiffView
 export const agentsFocusedDiffFileAtom = atom<string | null>(null);
@@ -891,6 +882,111 @@ export interface ProjectDiffData {
 
 export const projectDiffDataAtom = atom<ProjectDiffData | null>(null);
 
+// Multi-repo diff data (set by useMultiRepoDiffManagement when project has multiple git repos)
+export interface MultiRepoDiffEntry {
+  name: string;
+  path: string;
+  relativePath: string;
+  diffStats: DiffStats;
+  diffContent: string | null;
+  parsedFileDiffs: ParsedFileDiff[] | null;
+  prefetchedFileContents: Record<string, string>;
+}
+
+export interface MultiRepoDiffData {
+  projectId: string;
+  projectPath: string;
+  isMultiRepo: boolean;
+  isRootRepo: boolean;
+  repos: MultiRepoDiffEntry[];
+}
+
+export const multiRepoDiffDataAtom = atom<MultiRepoDiffData | null>(null);
+
+/** Callback to fetch full diff for a single repo on expand. Set by useMultiRepoDiffManagement. */
+export const fetchSingleRepoDiffAtom = atom<
+  ((relativePath: string) => Promise<void>) | null
+>(null);
+
+/**
+ * Derived atom that centralizes the fallback logic for which diff data to display.
+ * When a chat is selected but has no own diffs, falls back to project-level data.
+ */
+export interface EffectiveDiffInfo {
+  isProjectLevel: boolean;
+  useProjectFallback: boolean;
+  /** The diff data to display (chat-level or project-level) */
+  diffData: ActiveChatDiffData | ProjectDiffData | null;
+  /** Whether to show multi-repo grouped view */
+  showMultiRepo: boolean;
+  multiRepoDiffData: MultiRepoDiffData | null;
+}
+
+/**
+ * Pure function that computes effective diff data from the various sources.
+ * Centralizes the fallback logic: chat with dedicated worktree → own diffs,
+ * local-mode chat → project-level diffs.
+ */
+export function getEffectiveDiffData(
+  selectedChatId: string | null,
+  chatDiff: ActiveChatDiffData | null,
+  projectDiff: ProjectDiffData | null,
+  multiRepoDiff: MultiRepoDiffData | null,
+  selectedProject: { id: string; path: string } | null | undefined,
+): EffectiveDiffInfo {
+  const isProjectLevel = !selectedChatId;
+
+  const chatHasDedicatedWorktree = !!chatDiff?.worktreePath
+    && !!selectedProject?.path
+    && chatDiff.worktreePath !== selectedProject.path;
+  const useProjectFallback = !!selectedChatId && !chatHasDedicatedWorktree;
+
+  let resolvedProjectDiff = projectDiff;
+  if (useProjectFallback && chatDiff && selectedProject) {
+    resolvedProjectDiff = {
+      projectId: selectedProject.id,
+      projectPath: chatDiff.worktreePath ?? selectedProject.path,
+      diffStats: chatDiff.diffStats,
+      diffContent: chatDiff.diffContent,
+      parsedFileDiffs: chatDiff.parsedFileDiffs,
+      prefetchedFileContents: chatDiff.prefetchedFileContents,
+      commits: chatDiff.commits,
+    };
+  }
+
+  return {
+    isProjectLevel,
+    useProjectFallback,
+    diffData: (isProjectLevel || useProjectFallback) ? resolvedProjectDiff : chatDiff,
+    showMultiRepo: (isProjectLevel || useProjectFallback)
+      && !!multiRepoDiff?.isMultiRepo
+      && multiRepoDiff.repos.length > 0,
+    multiRepoDiffData: multiRepoDiff,
+  };
+}
+
+export const effectiveDiffDataAtom = atom<EffectiveDiffInfo>((get) => {
+  return getEffectiveDiffData(
+    get(selectedAgentChatIdAtom),
+    get(activeChatDiffDataAtom),
+    get(projectDiffDataAtom),
+    get(multiRepoDiffDataAtom),
+    get(selectedProjectAtom),
+  );
+});
+
+// Which sub-repo sections are collapsed in the left sidebar (keyed by repo relativePath)
+export const collapsedSubReposAtom = atomWithStorage<Record<string, boolean>>(
+  "agents:collapsedSubRepos",
+  {},
+  undefined,
+  { getOnInit: true },
+);
+
+// Active worktree path override for multi-repo file clicks
+// When set, center diff view uses this instead of projectDiffData.projectPath
+export const multiRepoActiveWorktreePathAtom = atom<string | null>(null);
+
 // Trigger to refresh diff data - increment to trigger refetch
 // Used by components that modify the worktree (discard changes, etc.)
 export const refreshDiffTriggerAtom = atom<number>(0);
@@ -1066,7 +1162,7 @@ export const leftSidebarActiveTabAtom = atomWithStorage<LeftSidebarTab>(
   { getOnInit: true },
 );
 
-// Expanded folders per project (persisted)
+// Expanded folders per project (persisted as arrays in localStorage)
 // Maps projectPath -> array of expanded folder relative paths
 export const expandedFoldersAtom = atomWithStorage<Record<string, string[]>>(
   "agents:expandedFolders",
@@ -1075,16 +1171,35 @@ export const expandedFoldersAtom = atomWithStorage<Record<string, string[]>>(
   { getOnInit: true },
 );
 
+// Derived atom that converts persisted arrays to Sets for O(1) lookups
+const expandedFoldersSetsAtom = atom((get) => {
+  const raw = get(expandedFoldersAtom);
+  const sets: Record<string, Set<string>> = {};
+  for (const key in raw) {
+    sets[key] = new Set(raw[key]);
+  }
+  return sets;
+});
+
 // atomFamily to get/set expanded folders per project
+// Returns Set<string> for O(1) .has() lookups; setter accepts Set or updater function
 export const expandedFoldersAtomFamily = atomFamily((projectPath: string) =>
   atom(
-    (get) => get(expandedFoldersAtom)[projectPath] ?? [],
-    (get, set, update: string[] | ((prev: string[]) => string[])) => {
+    (get) => get(expandedFoldersSetsAtom)[projectPath] ?? new Set<string>(),
+    (
+      get,
+      set,
+      update: Set<string> | ((prev: Set<string>) => Set<string>),
+    ) => {
       const current = get(expandedFoldersAtom);
-      const prevPaths = current[projectPath] ?? [];
-      const newPaths =
-        typeof update === "function" ? update(prevPaths) : update;
-      set(expandedFoldersAtom, { ...current, [projectPath]: newPaths });
+      const prevSet =
+        get(expandedFoldersSetsAtom)[projectPath] ?? new Set<string>();
+      const newSet =
+        typeof update === "function" ? update(prevSet) : update;
+      set(expandedFoldersAtom, {
+        ...current,
+        [projectPath]: [...newSet],
+      });
     },
   ),
 );

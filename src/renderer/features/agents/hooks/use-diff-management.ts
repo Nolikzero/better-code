@@ -3,13 +3,19 @@
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CommitInfo } from "../../../../shared/changes-types";
-import {
-  type DiffStatsUI,
-  type ParsedDiffFile,
-  parseUnifiedDiff,
+import type {
+  DiffStatsUI,
+  ParsedDiffFile,
 } from "../../../../shared/utils";
 import { trpcClient } from "../../../lib/trpc";
 import { agentsDiffSidebarWidthAtom, refreshDiffTriggerAtom } from "../atoms";
+import {
+  EMPTY_DIFF_STATS,
+  LOADING_DIFF_STATS,
+  buildPrefetchList,
+  parseDiffAndStats,
+  prefetchFileContents,
+} from "./use-diff-fetch-core";
 
 // Re-export types for backwards compatibility
 export type DiffStats = DiffStatsUI;
@@ -49,13 +55,7 @@ export function useDiffManagement({
   baseBranch,
 }: UseDiffManagementOptions): UseDiffManagementReturn {
   // Diff stats state
-  const [diffStats, setDiffStats] = useState<DiffStats>({
-    fileCount: 0,
-    additions: 0,
-    deletions: 0,
-    isLoading: true,
-    hasChanges: false,
-  });
+  const [diffStats, setDiffStats] = useState<DiffStats>(LOADING_DIFF_STATS);
 
   // Commit history state
   const [commits, setCommits] = useState<CommitInfo[]>([]);
@@ -136,13 +136,7 @@ export function useDiffManagement({
   const fetchDiffStats = useCallback(async () => {
     // Desktop uses worktreePath, web uses sandboxId
     if (!worktreePath && !sandboxId) {
-      setDiffStats({
-        fileCount: 0,
-        additions: 0,
-        deletions: 0,
-        isLoading: false,
-        hasChanges: false,
-      });
+      setDiffStats(EMPTY_DIFF_STATS);
       setDiffContent(null);
       return;
     }
@@ -196,66 +190,21 @@ export function useDiffManagement({
       setDiffContent(rawDiff);
 
       if (rawDiff?.trim()) {
-        // Parse diff to get file list and stats
-        const parsedFiles = parseUnifiedDiff(rawDiff);
+        const { diffStats: newStats, parsedFileDiffs: parsedFiles } =
+          parseDiffAndStats(rawDiff);
 
-        // Store parsed files to avoid re-parsing in AgentDiffView
         setParsedFileDiffs(parsedFiles);
-
-        let additions = 0;
-        let deletions = 0;
-        for (const file of parsedFiles) {
-          additions += file.additions;
-          deletions += file.deletions;
-        }
-
-        setDiffStats({
-          fileCount: parsedFiles.length,
-          additions,
-          deletions,
-          isLoading: false,
-          hasChanges: additions > 0 || deletions > 0,
-        });
+        setDiffStats(newStats);
 
         // Desktop: prefetch file contents for instant diff view opening
-        const MAX_PREFETCH_FILES = 20;
-        const filesToPrefetch = parsedFiles.slice(0, MAX_PREFETCH_FILES);
-
-        if (worktreePath && filesToPrefetch.length > 0) {
-          // Capture current chatId for race condition check
+        if (worktreePath) {
           const currentChatId = chatId;
-
-          // Build list of files to fetch (filter out /dev/null)
-          const filesToFetch = filesToPrefetch
-            .map((file) => {
-              const filePath =
-                file.newPath && file.newPath !== "/dev/null"
-                  ? file.newPath
-                  : file.oldPath;
-              if (!filePath || filePath === "/dev/null") return null;
-              return { key: file.key, filePath };
-            })
-            .filter((f): f is { key: string; filePath: string } => f !== null);
+          const filesToFetch = buildPrefetchList(parsedFiles);
 
           if (filesToFetch.length > 0) {
-            // Single batch IPC call instead of multiple individual calls
-            trpcClient.changes.readMultipleWorkingFiles
-              .query({
-                worktreePath,
-                files: filesToFetch,
-              })
-              .then((results) => {
-                // Check if we're still on the same chat (prevent race condition)
-                if (currentChatId !== chatId) {
-                  return;
-                }
-
-                const contents: Record<string, string> = {};
-                for (const [key, result] of Object.entries(results)) {
-                  if (result.ok) {
-                    contents[key] = result.content;
-                  }
-                }
+            prefetchFileContents(worktreePath, filesToFetch)
+              .then((contents) => {
+                if (currentChatId !== chatId) return;
                 setPrefetchedFileContents(contents);
               })
               .catch((err) => {
@@ -264,13 +213,7 @@ export function useDiffManagement({
           }
         }
       } else {
-        setDiffStats({
-          fileCount: 0,
-          additions: 0,
-          deletions: 0,
-          isLoading: false,
-          hasChanges: false,
-        });
+        setDiffStats(EMPTY_DIFF_STATS);
         setParsedFileDiffs(null);
         setPrefetchedFileContents({});
       }

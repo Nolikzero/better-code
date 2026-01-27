@@ -143,6 +143,10 @@ export function NewChatForm({
     return exists ? selectedProject : null;
   }, [selectedProject, projectsList, isLoadingProjects]);
 
+  const isMultiRepo =
+    projectsList?.find((p) => p.id === validatedProject?.id)?.isMultiRepo ??
+    false;
+
   // Clear invalid project from storage
   useEffect(() => {
     if (selectedProject && projectsList && !validatedProject) {
@@ -823,13 +827,17 @@ export function NewChatForm({
       projectId: selectedProject.id,
       name: message.trim().slice(0, 50), // Use first 50 chars as chat name
       initialMessageParts: parts.length > 0 ? parts : undefined,
-      // Worktree mode: baseBranch is what to branch FROM
+      // Worktree mode: baseBranch is what to branch FROM (skip for multi-repo)
       baseBranch:
-        workMode === "worktree" ? selectedBranch || undefined : undefined,
-      // Local mode: selectedBranch is what to switch TO
+        !isMultiRepo && workMode === "worktree"
+          ? selectedBranch || undefined
+          : undefined,
+      // Local mode: selectedBranch is what to switch TO (skip for multi-repo)
       selectedBranch:
-        workMode === "local" ? selectedBranch || undefined : undefined,
-      useWorktree: workMode === "worktree",
+        !isMultiRepo && workMode === "local"
+          ? selectedBranch || undefined
+          : undefined,
+      useWorktree: !isMultiRepo && workMode === "worktree",
       mode: agentMode,
       providerId: defaultProvider,
       modelId: currentModelId || undefined,
@@ -1246,8 +1254,8 @@ export function NewChatForm({
                 <div className="mt-1.5 md:mt-2 ml-[5px] flex items-center gap-2">
                   <ProjectSelector />
 
-                  {/* Work mode selector - between project and branch */}
-                  {validatedProject && (
+                  {/* Work mode selector - between project and branch (hidden for multi-repo) */}
+                  {validatedProject && !isMultiRepo && (
                     <WorkModeSelector
                       value={workMode}
                       onChange={setWorkMode}
@@ -1255,8 +1263,8 @@ export function NewChatForm({
                     />
                   )}
 
-                  {/* Branch selector - visible for both local and worktree modes */}
-                  {validatedProject && (
+                  {/* Branch selector - hidden for multi-repo projects */}
+                  {validatedProject && !isMultiRepo && (
                     <Popover
                       open={branchPopoverOpen}
                       onOpenChange={(open) => {
@@ -1392,8 +1400,8 @@ export function NewChatForm({
                     </Popover>
                   )}
 
-                  {/* Create Branch Dialog */}
-                  {validatedProject && (
+                  {/* Create Branch Dialog - hidden for multi-repo projects */}
+                  {validatedProject && !isMultiRepo && (
                     <CreateBranchDialog
                       open={createBranchDialogOpen}
                       onOpenChange={setCreateBranchDialogOpen}

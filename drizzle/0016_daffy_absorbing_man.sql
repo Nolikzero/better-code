@@ -1,0 +1,1 @@
+ALTER TABLE `projects` ADD `is_multi_repo` integer DEFAULT false;

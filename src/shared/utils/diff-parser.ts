@@ -109,18 +109,35 @@ export function parseUnifiedDiff(diffText: string): ParsedDiffFile[] {
     for (const line of blockLines) {
       if (line.startsWith("Binary files ") && line.endsWith(" differ")) {
         isBinary = true;
+        // Parse paths from "Binary files /dev/null and b/path differ" or "Binary files a/path and b/path differ"
+        const binaryMatch = line.match(/^Binary files (.+?) and (.+?) differ$/);
+        if (binaryMatch) {
+          const rawOld = binaryMatch[1]!.trim();
+          const rawNew = binaryMatch[2]!.trim();
+          if (!oldPath) oldPath = rawOld.startsWith("a/") ? rawOld.slice(2) : rawOld === "/dev/null" ? "" : rawOld;
+          if (!newPath) newPath = rawNew.startsWith("b/") ? rawNew.slice(2) : rawNew === "/dev/null" ? "" : rawNew;
+        }
+      }
+
+      // Parse paths from "diff --git a/path b/path" header as fallback
+      if (line.startsWith("diff --git ")) {
+        const gitMatch = line.match(/^diff --git a\/(.+?) b\/(.+?)$/);
+        if (gitMatch) {
+          if (!oldPath) oldPath = gitMatch[1]!;
+          if (!newPath) newPath = gitMatch[2]!;
+        }
       }
 
       if (line.startsWith("--- ")) {
         const raw = line.slice(4).trim();
-        oldPath = raw.startsWith("a/") ? raw.slice(2) : raw;
+        oldPath = raw === "/dev/null" ? "" : raw.startsWith("a/") ? raw.slice(2) : raw;
         insideHunk = false;
         continue;
       }
 
       if (line.startsWith("+++ ")) {
         const raw = line.slice(4).trim();
-        newPath = raw.startsWith("b/") ? raw.slice(2) : raw;
+        newPath = raw === "/dev/null" ? "" : raw.startsWith("b/") ? raw.slice(2) : raw;
         insideHunk = false;
         continue;
       }

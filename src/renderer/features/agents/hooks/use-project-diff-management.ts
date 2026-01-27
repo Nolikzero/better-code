@@ -3,13 +3,19 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CommitInfo } from "../../../../shared/changes-types";
-import {
-  type DiffStatsUI,
-  type ParsedDiffFile,
-  parseUnifiedDiff,
+import type {
+  DiffStatsUI,
+  ParsedDiffFile,
 } from "../../../../shared/utils";
 import { trpc, trpcClient } from "../../../lib/trpc";
 import { projectDiffDataAtom, refreshDiffTriggerAtom } from "../atoms";
+import {
+  EMPTY_DIFF_STATS,
+  LOADING_DIFF_STATS,
+  buildPrefetchList,
+  parseDiffAndStats,
+  prefetchFileContents,
+} from "./use-diff-fetch-core";
 
 // Re-export types for convenience
 export type ProjectDiffStats = DiffStatsUI;
@@ -47,13 +53,7 @@ export function useProjectDiffManagement({
   const isInitialMountRef = useRef(true);
 
   // Diff stats state
-  const [diffStats, setDiffStats] = useState<ProjectDiffStats>({
-    fileCount: 0,
-    additions: 0,
-    deletions: 0,
-    isLoading: true,
-    hasChanges: false,
-  });
+  const [diffStats, setDiffStats] = useState<ProjectDiffStats>(LOADING_DIFF_STATS);
 
   // Commit history state
   const [commits, setCommits] = useState<CommitInfo[]>([]);
@@ -75,6 +75,8 @@ export function useProjectDiffManagement({
   const isFetchingDiffRef = useRef(false);
   const lastFetchTimeRef = useRef<number>(0);
   const pendingRefetchRef = useRef(false);
+  const enabledRef = useRef(enabled);
+  enabledRef.current = enabled;
 
   // Ref to hold fetchDiffStats for subscription callback (avoids stale closure)
   const fetchDiffStatsRef = useRef<(() => Promise<void>) | null>(null);
@@ -88,8 +90,9 @@ export function useProjectDiffManagement({
     },
     {
       enabled: !!projectPath && enabled,
-      onData: () => {
-        // Reset throttle and refetch when git changes detected
+      onData: (data) => {
+        console.log("[project-diff] Git watcher event received:", data, "enabled:", enabledRef.current);
+        // Reset throttle so git watcher events always trigger an immediate fetch
         lastFetchTimeRef.current = 0;
         fetchDiffStatsRef.current?.();
       },
@@ -101,14 +104,9 @@ export function useProjectDiffManagement({
 
   // Main fetch function
   const fetchDiffStats = useCallback(async () => {
+    console.log("[project-diff] fetchDiffStats called", { projectId, projectPath, enabled, isFetching: isFetchingDiffRef.current, lastFetch: lastFetchTimeRef.current });
     if (!projectId || !projectPath || !enabled) {
-      setDiffStats({
-        fileCount: 0,
-        additions: 0,
-        deletions: 0,
-        isLoading: false,
-        hasChanges: false,
-      });
+      setDiffStats(EMPTY_DIFF_STATS);
       setDiffContent(null);
       setParsedFileDiffs(null);
       setProjectDiffData(null);
@@ -147,141 +145,62 @@ export function useProjectDiffManagement({
       }
 
       const result = await trpcClient.projects.getDiff.query({ projectId });
+
+      // Abort if disabled while fetch was in flight
+      if (!enabledRef.current) {
+        console.log("[project-diff] Aborting fetch - hook disabled during flight");
+        return;
+      }
+
       const rawDiff = result.diff;
 
       // Store raw diff
       setDiffContent(rawDiff);
 
       if (rawDiff?.trim()) {
-        // Parse diff to get file list and stats
-        const parsedFiles = parseUnifiedDiff(rawDiff);
+        const { diffStats: newDiffStats, parsedFileDiffs: parsedFiles } =
+          parseDiffAndStats(rawDiff);
 
-        // Store parsed files
         setParsedFileDiffs(parsedFiles);
-
-        let additions = 0;
-        let deletions = 0;
-        for (const file of parsedFiles) {
-          additions += file.additions;
-          deletions += file.deletions;
-        }
-
-        const newDiffStats: ProjectDiffStats = {
-          fileCount: parsedFiles.length,
-          additions,
-          deletions,
-          isLoading: false,
-          hasChanges: additions > 0 || deletions > 0,
-        };
         setDiffStats(newDiffStats);
 
-        // Prefetch file contents for instant diff view opening
-        const MAX_PREFETCH_FILES = 20;
-        const filesToPrefetch = parsedFiles.slice(0, MAX_PREFETCH_FILES);
+        const currentProjectId = projectId;
+        const filesToFetch = buildPrefetchList(parsedFiles);
 
-        if (filesToPrefetch.length > 0) {
-          // Capture current projectId for race condition check
-          const currentProjectId = projectId;
-
-          // Build list of files to fetch (filter out /dev/null)
-          const filesToFetch = filesToPrefetch
-            .map((file) => {
-              const filePath =
-                file.newPath && file.newPath !== "/dev/null"
-                  ? file.newPath
-                  : file.oldPath;
-              if (!filePath || filePath === "/dev/null") return null;
-              return { key: file.key, filePath };
-            })
-            .filter((f): f is { key: string; filePath: string } => f !== null);
-
-          if (filesToFetch.length > 0) {
-            // Single batch IPC call
-            trpcClient.changes.readMultipleWorkingFiles
-              .query({
-                worktreePath: projectPath,
-                files: filesToFetch,
-              })
-              .then((results) => {
-                // Check if we're still on the same project
-                if (currentProjectId !== projectId) {
-                  return;
-                }
-
-                const contents: Record<string, string> = {};
-                for (const [key, result] of Object.entries(results)) {
-                  if (result.ok) {
-                    contents[key] = result.content;
-                  }
-                }
-                setPrefetchedFileContents(contents);
-
-                // Update global atom with complete data
-                setProjectDiffData({
-                  projectId: currentProjectId,
-                  projectPath,
-                  diffStats: newDiffStats,
-                  diffContent: rawDiff,
-                  parsedFileDiffs: parsedFiles,
-                  prefetchedFileContents: contents,
-                  commits: fetchedCommits,
-                });
-              })
-              .catch((err) => {
-                console.warn(
-                  "[project-diff] Failed to batch prefetch files:",
-                  err,
-                );
-                // Still update atom without prefetched contents
-                setProjectDiffData({
-                  projectId: currentProjectId,
-                  projectPath,
-                  diffStats: newDiffStats,
-                  diffContent: rawDiff,
-                  parsedFileDiffs: parsedFiles,
-                  prefetchedFileContents: {},
-                  commits: fetchedCommits,
-                });
-              });
-          } else {
-            // No files to prefetch, update atom immediately
-            setProjectDiffData({
-              projectId,
-              projectPath,
-              diffStats: newDiffStats,
-              diffContent: rawDiff,
-              parsedFileDiffs: parsedFiles,
-              prefetchedFileContents: {},
-              commits: fetchedCommits,
-            });
-          }
-        } else {
-          // Update atom with empty prefetched contents
+        const updateAtom = (contents: Record<string, string>) => {
           setProjectDiffData({
-            projectId,
+            projectId: currentProjectId,
             projectPath,
             diffStats: newDiffStats,
             diffContent: rawDiff,
             parsedFileDiffs: parsedFiles,
-            prefetchedFileContents: {},
+            prefetchedFileContents: contents,
             commits: fetchedCommits,
           });
+        };
+
+        if (filesToFetch.length > 0) {
+          prefetchFileContents(projectPath, filesToFetch)
+            .then((contents) => {
+              if (currentProjectId !== projectId) return;
+              setPrefetchedFileContents(contents);
+              updateAtom(contents);
+            })
+            .catch((err) => {
+              console.warn("[project-diff] Failed to batch prefetch files:", err);
+              updateAtom({});
+            });
+        } else {
+          updateAtom({});
         }
       } else {
-        const emptyStats: ProjectDiffStats = {
-          fileCount: 0,
-          additions: 0,
-          deletions: 0,
-          isLoading: false,
-          hasChanges: false,
-        };
-        setDiffStats(emptyStats);
+        setDiffStats(EMPTY_DIFF_STATS);
         setParsedFileDiffs(null);
         setPrefetchedFileContents({});
         setProjectDiffData({
           projectId,
           projectPath,
-          diffStats: emptyStats,
+          diffStats: EMPTY_DIFF_STATS,
           diffContent: null,
           parsedFileDiffs: null,
           prefetchedFileContents: {},
@@ -294,13 +213,15 @@ export function useProjectDiffManagement({
     } finally {
       isFetchingDiffRef.current = false;
       // Process pending refetch if queued during fetch or throttle
-      if (pendingRefetchRef.current) {
+      if (pendingRefetchRef.current && enabledRef.current) {
         pendingRefetchRef.current = false;
-        // Reset throttle and schedule refetch
         setTimeout(() => {
+          if (!enabledRef.current) return;
           lastFetchTimeRef.current = 0;
           fetchDiffStats();
         }, 100);
+      } else {
+        pendingRefetchRef.current = false;
       }
     }
   }, [projectId, projectPath, enabled, setProjectDiffData]);
@@ -315,14 +236,9 @@ export function useProjectDiffManagement({
       lastFetchTimeRef.current = 0;
       fetchDiffStats();
     } else {
-      // Clear state when disabled or no project
-      setDiffStats({
-        fileCount: 0,
-        additions: 0,
-        deletions: 0,
-        isLoading: false,
-        hasChanges: false,
-      });
+      // Clear state and pending fetches when disabled or no project
+      pendingRefetchRef.current = false;
+      setDiffStats(EMPTY_DIFF_STATS);
       setDiffContent(null);
       setParsedFileDiffs(null);
       setPrefetchedFileContents({});

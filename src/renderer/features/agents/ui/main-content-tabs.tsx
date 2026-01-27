@@ -10,13 +10,11 @@ import {
 } from "../../../components/ui/tooltip";
 import { cn } from "../../../lib/utils";
 import {
-  activeChatDiffDataAtom,
   centerFilePathAtom,
   diffViewingModeAtom,
+  effectiveDiffDataAtom,
   type MainContentTab,
   mainContentActiveTabAtom,
-  projectDiffDataAtom,
-  selectedAgentChatIdAtom,
 } from "../atoms";
 
 // Get filename from path
@@ -51,15 +49,14 @@ export function MainContentTabs() {
   const filePath = useAtomValue(centerFilePathAtom);
   const setFilePath = useSetAtom(centerFilePathAtom);
 
-  // Determine which diff data to use based on chat selection
-  const selectedChatId = useAtomValue(selectedAgentChatIdAtom);
-  const chatDiffData = useAtomValue(activeChatDiffDataAtom);
-  const projectDiffData = useAtomValue(projectDiffDataAtom);
+  // Use centralized effective diff data atom
+  const { diffData, showMultiRepo, multiRepoDiffData } = useAtomValue(effectiveDiffDataAtom);
 
-  // Use chat diff data when chat is selected, otherwise use project diff data
-  const diffData = selectedChatId ? chatDiffData : projectDiffData;
-  const hasChanges = diffData?.diffStats?.hasChanges ?? false;
-  const changesCount = diffData?.diffStats?.fileCount ?? 0;
+  const multiRepoFileCount = showMultiRepo
+    ? multiRepoDiffData!.repos.reduce((sum, r) => sum + r.diffStats.fileCount, 0)
+    : 0;
+  const hasChanges = (diffData?.diffStats?.hasChanges ?? false) || showMultiRepo;
+  const changesCount = (diffData?.diffStats?.fileCount ?? 0) + multiRepoFileCount;
 
   // Track viewing mode to avoid resetting tab when viewing commit/full diffs
   const viewingMode = useAtomValue(diffViewingModeAtom);

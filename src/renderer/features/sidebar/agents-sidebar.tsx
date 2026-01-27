@@ -38,9 +38,8 @@ import {
 } from "../../lib/atoms";
 import { cn } from "../../lib/utils";
 import {
-  activeChatDiffDataAtom,
+  effectiveDiffDataAtom,
   leftSidebarActiveTabAtom,
-  projectDiffDataAtom,
   selectedAgentChatIdAtom,
   selectedDraftIdAtom,
   selectedProjectAtom,
@@ -49,7 +48,6 @@ import {
   TrafficLightSpacer,
   TrafficLights,
 } from "../agents/components/traffic-light-spacer";
-import { useProjectDiffManagement } from "../agents/hooks/use-project-diff-management";
 import {
   LeftSidebarChangesView,
   LeftSidebarTabs,
@@ -94,7 +92,7 @@ export function AgentsSidebar({
   onChatSelect,
   hasChanges = false,
 }: AgentsSidebarProps) {
-  const [selectedChatId, setSelectedChatId] = useAtom(selectedAgentChatIdAtom);
+  const setSelectedChatId = useSetAtom(selectedAgentChatIdAtom);
   const [, setSelectedDraftId] = useAtom(selectedDraftIdAtom);
   const [isSidebarHovered, setIsSidebarHovered] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -107,19 +105,19 @@ export function AgentsSidebar({
   const selectedProject = useAtomValue(selectedProjectAtom);
   const activeTab = useAtomValue(leftSidebarActiveTabAtom);
 
-  // Fetch project-level diff when no chat is selected
-  // This ensures diff data is available even before the changes tab is opened
-  useProjectDiffManagement({
-    projectId: selectedProject?.id ?? null,
-    projectPath: selectedProject?.path ?? null,
-    enabled: !selectedChatId && !!selectedProject,
-  });
+  // Project-level and multi-repo diff management are handled by agents-content.tsx
+  // (single instance per hook to avoid conflicting atom writes)
 
-  // Use either chat-level or project-level diff data based on selection
-  const chatDiffData = useAtomValue(activeChatDiffDataAtom);
-  const projectDiffData = useAtomValue(projectDiffDataAtom);
-  const activeDiffData = selectedChatId ? chatDiffData : projectDiffData;
-  const changesCount = activeDiffData?.diffStats?.fileCount ?? 0;
+  // Use centralized effective diff data for consistent count and view
+  const { diffData: effectiveDiffData, showMultiRepo, multiRepoDiffData } =
+    useAtomValue(effectiveDiffDataAtom);
+  const multiRepoChangesCount = multiRepoDiffData?.repos.reduce(
+    (sum, repo) => sum + (repo.diffStats?.fileCount ?? 0),
+    0,
+  ) ?? 0;
+  const changesCount = showMultiRepo
+    ? multiRepoChangesCount
+    : (effectiveDiffData?.diffStats?.fileCount ?? 0);
 
   const setSettingsDialogOpen = useSetAtom(agentsSettingsDialogOpenAtom);
   const setSettingsActiveTab = useSetAtom(agentsSettingsDialogActiveTabAtom);

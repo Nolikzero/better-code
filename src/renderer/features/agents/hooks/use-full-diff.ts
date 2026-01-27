@@ -2,9 +2,15 @@
 
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
-import { parseUnifiedDiff } from "../../../../shared/utils";
 import { trpcClient } from "../../../lib/trpc";
 import { fullDiffDataAtom, refreshDiffTriggerAtom } from "../atoms";
+import {
+  EMPTY_DIFF_STATS,
+  LOADING_DIFF_STATS,
+  buildPrefetchList,
+  parseDiffAndStats,
+  prefetchFileContents,
+} from "./use-diff-fetch-core";
 
 interface UseFullDiffOptions {
   worktreePath: string | null;
@@ -31,13 +37,7 @@ export function useFullDiff({ worktreePath, enabled }: UseFullDiffOptions) {
     setFullDiffData({
       diffContent: null,
       parsedFileDiffs: null,
-      diffStats: {
-        fileCount: 0,
-        additions: 0,
-        deletions: 0,
-        isLoading: true,
-        hasChanges: false,
-      },
+      diffStats: LOADING_DIFF_STATS,
       prefetchedFileContents: {},
       isLoading: true,
     });
@@ -52,55 +52,23 @@ export function useFullDiff({ worktreePath, enabled }: UseFullDiffOptions) {
       const rawDiff = result.diff;
 
       if (rawDiff?.trim()) {
-        const parsedFiles = parseUnifiedDiff(rawDiff);
-
-        let additions = 0;
-        let deletions = 0;
-        for (const file of parsedFiles) {
-          additions += file.additions;
-          deletions += file.deletions;
-        }
+        const { diffStats, parsedFileDiffs } = parseDiffAndStats(rawDiff);
 
         setFullDiffData({
           diffContent: rawDiff,
-          parsedFileDiffs: parsedFiles,
-          diffStats: {
-            fileCount: parsedFiles.length,
-            additions,
-            deletions,
-            isLoading: false,
-            hasChanges: parsedFiles.length > 0,
-          },
+          parsedFileDiffs,
+          diffStats,
           prefetchedFileContents: {},
           isLoading: false,
         });
 
         // Prefetch file contents for instant diff rendering
-        if (worktreePath && parsedFiles.length > 0) {
-          const MAX_PREFETCH = 20;
-          const filesToFetch = parsedFiles
-            .slice(0, MAX_PREFETCH)
-            .map((file) => {
-              const filePath =
-                file.newPath && file.newPath !== "/dev/null"
-                  ? file.newPath
-                  : file.oldPath;
-              if (!filePath || filePath === "/dev/null") return null;
-              return { key: file.key, filePath };
-            })
-            .filter((f): f is { key: string; filePath: string } => f !== null);
-
+        if (worktreePath) {
+          const filesToFetch = buildPrefetchList(parsedFileDiffs);
           if (filesToFetch.length > 0) {
-            trpcClient.changes.readMultipleWorkingFiles
-              .query({ worktreePath, files: filesToFetch })
-              .then((results) => {
+            prefetchFileContents(worktreePath, filesToFetch)
+              .then((contents) => {
                 if (abortRef.current) return;
-                const contents: Record<string, string> = {};
-                for (const [key, result] of Object.entries(results)) {
-                  if (result.ok) {
-                    contents[key] = result.content;
-                  }
-                }
                 setFullDiffData((prev) =>
                   prev ? { ...prev, prefetchedFileContents: contents } : prev,
                 );
@@ -112,13 +80,7 @@ export function useFullDiff({ worktreePath, enabled }: UseFullDiffOptions) {
         setFullDiffData({
           diffContent: null,
           parsedFileDiffs: null,
-          diffStats: {
-            fileCount: 0,
-            additions: 0,
-            deletions: 0,
-            isLoading: false,
-            hasChanges: false,
-          },
+          diffStats: EMPTY_DIFF_STATS,
           prefetchedFileContents: {},
           isLoading: false,
         });
@@ -129,13 +91,7 @@ export function useFullDiff({ worktreePath, enabled }: UseFullDiffOptions) {
       setFullDiffData({
         diffContent: null,
         parsedFileDiffs: null,
-        diffStats: {
-          fileCount: 0,
-          additions: 0,
-          deletions: 0,
-          isLoading: false,
-          hasChanges: false,
-        },
+        diffStats: EMPTY_DIFF_STATS,
         prefetchedFileContents: {},
         isLoading: false,
       });

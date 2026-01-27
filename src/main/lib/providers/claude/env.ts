@@ -10,6 +10,7 @@ import {
   getProcessEnvAsRecord,
   isWindows,
 } from "../../platform";
+import { clearCachedBinary, getCachedBinary, setCachedBinary } from "../binary-cache";
 
 // Cache the shell environment
 let cachedShellEnv: Record<string, string> | null = null;
@@ -200,11 +201,19 @@ export function getClaudeBinaryPath(): ClaudeBinaryResult | null {
     return cachedBinaryResult;
   }
 
+  // Check disk cache
+  const diskCached = getCachedBinary("claude");
+  if (diskCached !== undefined) {
+    cachedBinaryResult = diskCached as ClaudeBinaryResult | null;
+    return cachedBinaryResult;
+  }
+
   // 1. Try bundled binary first
   const bundledPath = getBundledClaudeBinaryPath();
   if (isExecutable(bundledPath)) {
     console.log("[claude-binary] Using bundled binary:", bundledPath);
     cachedBinaryResult = { path: bundledPath, source: "bundled" };
+    setCachedBinary("claude", cachedBinaryResult);
     return cachedBinaryResult;
   }
 
@@ -217,6 +226,7 @@ export function getClaudeBinaryPath(): ClaudeBinaryResult | null {
   if (systemPath) {
     console.log("[claude-binary] Found in system path:", systemPath);
     cachedBinaryResult = { path: systemPath, source: "system-install" };
+    setCachedBinary("claude", cachedBinaryResult);
     return cachedBinaryResult;
   }
 
@@ -225,11 +235,13 @@ export function getClaudeBinaryPath(): ClaudeBinaryResult | null {
   if (pathLookup) {
     console.log("[claude-binary] Found in PATH:", pathLookup);
     cachedBinaryResult = { path: pathLookup, source: "system-path" };
+    setCachedBinary("claude", cachedBinaryResult);
     return cachedBinaryResult;
   }
 
   console.error("[claude-binary] Claude Code binary not found anywhere!");
   cachedBinaryResult = null;
+  setCachedBinary("claude", null);
   return null;
 }
 
@@ -238,6 +250,7 @@ export function getClaudeBinaryPath(): ClaudeBinaryResult | null {
  */
 function _clearClaudeBinaryCache(): void {
   cachedBinaryResult = undefined;
+  clearCachedBinary("claude");
 }
 
 /**

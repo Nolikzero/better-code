@@ -2,6 +2,7 @@ import { shell } from "electron";
 import simpleGit from "simple-git";
 import { z } from "zod";
 import { publicProcedure, router } from "../trpc";
+import { clearDiffCache } from "./diff-cache";
 import { isUpstreamMissingError } from "./git-utils";
 import { fetchGitHubPRStatus } from "./github";
 import type { GitProvider } from "./index";
@@ -13,6 +14,8 @@ import {
   gitStash,
   gitStashPop,
 } from "./security";
+import { clearStatusCache } from "./status-cache";
+import { parseGitRemoteUrl } from "./utils/parse-remote-url";
 
 async function hasUpstreamBranch(
   git: ReturnType<typeof simpleGit>,
@@ -23,6 +26,11 @@ async function hasUpstreamBranch(
   } catch {
     return false;
   }
+}
+
+function invalidateCaches(worktreePath: string): void {
+  clearStatusCache(worktreePath);
+  clearDiffCache(worktreePath);
 }
 
 export const createGitOperationsRouter = () => {
@@ -43,6 +51,7 @@ export const createGitOperationsRouter = () => {
 
           const git = simpleGit(input.worktreePath);
           const result = await git.commit(input.message);
+          invalidateCaches(input.worktreePath);
           return { success: true, hash: result.commit };
         },
       ),
@@ -70,6 +79,7 @@ export const createGitOperationsRouter = () => {
           // Commit the staged files
           const git = simpleGit(input.worktreePath);
           const result = await git.commit(input.message);
+          invalidateCaches(input.worktreePath);
           return { success: true, hash: result.commit };
         },
       ),
@@ -84,6 +94,7 @@ export const createGitOperationsRouter = () => {
       )
       .mutation(async ({ input }): Promise<{ success: boolean }> => {
         await gitStash(input.worktreePath, input.message);
+        invalidateCaches(input.worktreePath);
         return { success: true };
       }),
 
@@ -96,6 +107,7 @@ export const createGitOperationsRouter = () => {
       )
       .mutation(async ({ input }): Promise<{ success: boolean }> => {
         await gitStashPop(input.worktreePath);
+        invalidateCaches(input.worktreePath);
         return { success: true };
       }),
 
@@ -131,6 +143,7 @@ export const createGitOperationsRouter = () => {
           await git.push();
         }
         await git.fetch();
+        invalidateCaches(input.worktreePath);
         return { success: true };
       }),
 
@@ -156,6 +169,7 @@ export const createGitOperationsRouter = () => {
           }
           throw error;
         }
+        invalidateCaches(input.worktreePath);
         return { success: true };
       }),
 
@@ -178,12 +192,14 @@ export const createGitOperationsRouter = () => {
             const branch = await git.revparse(["--abbrev-ref", "HEAD"]);
             await git.push(["--set-upstream", "origin", branch.trim()]);
             await git.fetch();
+            invalidateCaches(input.worktreePath);
             return { success: true };
           }
           throw error;
         }
         await git.push();
         await git.fetch();
+        invalidateCaches(input.worktreePath);
         return { success: true };
       }),
 
@@ -218,55 +234,31 @@ export const createGitOperationsRouter = () => {
           const remoteUrl = (await git.remote(["get-url", "origin"])) || "";
           const provider = input.provider as GitProvider;
 
+          const parsed = parseGitRemoteUrl(remoteUrl);
+
           // Use provider-aware URL generation if provider is known
-          if (provider && provider !== "bitbucket") {
-            // Extract repo URL from remote
-            let repoUrl: string | null = null;
-
-            if (provider === "github") {
-              const match = remoteUrl
-                .trim()
-                .match(/github\.com[:/](.+?)(?:\.git)?$/);
-              if (match) {
-                repoUrl = `https://github.com/${match[1].replace(/\.git$/, "")}`;
-              }
-            } else if (provider === "gitlab") {
-              const match = remoteUrl
-                .trim()
-                .match(/gitlab\.com[:/](.+?)(?:\.git)?$/);
-              if (match) {
-                repoUrl = `https://gitlab.com/${match[1].replace(/\.git$/, "")}`;
-              }
-            }
-
-            if (repoUrl) {
-              const url = getCompareUrl(
-                provider,
-                repoUrl,
-                branch,
-                input.baseBranch,
-              );
-              if (url) {
-                await shell.openExternal(url);
-                await git.fetch();
-                return { success: true, url };
-              }
+          if (parsed.repoUrl && provider && provider !== "bitbucket") {
+            const url = getCompareUrl(
+              provider,
+              parsed.repoUrl,
+              branch,
+              input.baseBranch,
+            );
+            if (url) {
+              await shell.openExternal(url);
+              await git.fetch();
+              return { success: true, url };
             }
           }
 
-          // Fallback to GitHub-only logic for backwards compatibility
-          const repoMatch = remoteUrl
-            .trim()
-            .match(/github\.com[:/](.+?)(?:\.git)?$/);
-
-          if (!repoMatch) {
+          // Fallback to parsed URL or fail
+          if (!parsed.repoUrl) {
             throw new Error(
               "Could not determine repository URL. Ensure the remote is configured for GitHub or GitLab.",
             );
           }
 
-          const repo = repoMatch[1].replace(/\.git$/, "");
-          const url = `https://github.com/${repo}/compare/${branch}?expand=1`;
+          const url = `${parsed.repoUrl}/compare/${branch}?expand=1`;
 
           await shell.openExternal(url);
           await git.fetch();

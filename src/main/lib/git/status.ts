@@ -15,12 +15,9 @@ import {
   parseGitStatus,
   parseNameStatus,
 } from "./utils/parse-status";
-import {
-  STATUS_CACHE_TTL,
-  getStatusCache,
-  setStatusCache,
-} from "./status-cache";
+import { getStatusCache, setStatusCache } from "./status-cache";
 import { getDefaultBranch, getWorktreeDiff } from "./worktree";
+import { LOCK_FILE_EXCLUDES } from "./constants";
 
 export const createStatusRouter = () => {
   return router({
@@ -34,10 +31,10 @@ export const createStatusRouter = () => {
       .query(async ({ input }): Promise<GitChangesStatus> => {
         assertRegisteredWorktree(input.worktreePath);
 
-        // Return cached result if still fresh
+        // Return cached result if still fresh (TTL enforced inside getStatusCache)
         const cached = getStatusCache(input.worktreePath);
-        if (cached && Date.now() - cached.timestamp < STATUS_CACHE_TTL) {
-          return cached.data;
+        if (cached) {
+          return cached;
         }
 
         const git = simpleGit(input.worktreePath);
@@ -128,13 +125,7 @@ export const createStatusRouter = () => {
         assertRegisteredWorktree(input.worktreePath);
 
         const git = simpleGit(input.worktreePath);
-        const lockFileExcludes = [
-          ":!*.lock",
-          ":!*-lock.*",
-          ":!package-lock.json",
-          ":!pnpm-lock.yaml",
-          ":!yarn.lock",
-        ];
+        const lockFileExcludes = LOCK_FILE_EXCLUDES;
 
         try {
           const diff = await git.diff([

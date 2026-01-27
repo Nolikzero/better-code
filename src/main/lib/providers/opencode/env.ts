@@ -10,6 +10,7 @@ import {
   getProcessEnvAsRecord,
   isWindows,
 } from "../../platform";
+import { clearCachedBinary, getCachedBinary, setCachedBinary } from "../binary-cache";
 import type { OpenCodeBinaryResult } from "./types";
 
 // Cache for resolved binary path
@@ -357,11 +358,19 @@ export function getOpenCodeBinaryPath(): OpenCodeBinaryResult | null {
     return cachedBinaryResult;
   }
 
+  // Check disk cache
+  const diskCached = getCachedBinary("opencode");
+  if (diskCached !== undefined) {
+    cachedBinaryResult = diskCached as OpenCodeBinaryResult | null;
+    return cachedBinaryResult;
+  }
+
   // 1. Try bundled binary first (if we bundle it)
   const bundledPath = getBundledOpenCodeBinaryPath();
   if (isExecutable(bundledPath)) {
     console.log("[opencode-binary] Using bundled binary:", bundledPath);
     cachedBinaryResult = { path: bundledPath, source: "bundled" };
+    setCachedBinary("opencode", cachedBinaryResult);
     return cachedBinaryResult;
   }
 
@@ -374,6 +383,7 @@ export function getOpenCodeBinaryPath(): OpenCodeBinaryResult | null {
   if (systemPath) {
     console.log("[opencode-binary] Found in system path:", systemPath);
     cachedBinaryResult = { path: systemPath, source: "system-install" };
+    setCachedBinary("opencode", cachedBinaryResult);
     return cachedBinaryResult;
   }
 
@@ -382,6 +392,7 @@ export function getOpenCodeBinaryPath(): OpenCodeBinaryResult | null {
   if (npmGlobalPath) {
     console.log("[opencode-binary] Found in npm global:", npmGlobalPath);
     cachedBinaryResult = { path: npmGlobalPath, source: "npm-global" };
+    setCachedBinary("opencode", cachedBinaryResult);
     return cachedBinaryResult;
   }
 
@@ -390,12 +401,14 @@ export function getOpenCodeBinaryPath(): OpenCodeBinaryResult | null {
   if (pathLookup) {
     console.log("[opencode-binary] Found in PATH:", pathLookup);
     cachedBinaryResult = { path: pathLookup, source: "system-path" };
+    setCachedBinary("opencode", cachedBinaryResult);
     return cachedBinaryResult;
   }
 
   console.error("[opencode-binary] OpenCode CLI not found!");
   console.error("[opencode-binary] Install via: npm install -g opencode");
   cachedBinaryResult = null;
+  setCachedBinary("opencode", null);
   return null;
 }
 
@@ -404,6 +417,7 @@ export function getOpenCodeBinaryPath(): OpenCodeBinaryResult | null {
  */
 export function clearOpenCodeBinaryCache(): void {
   cachedBinaryResult = undefined;
+  clearCachedBinary("opencode");
 }
 
 /**

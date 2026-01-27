@@ -62,6 +62,7 @@ interface ChangesFileListProps {
   prActions: PrActionsState | null;
   isCollapsed: boolean;
   onToggleCollapsed: () => void;
+  onBeforeFileClick?: () => void;
 }
 
 // Helper functions moved outside component to avoid recreation
@@ -251,6 +252,7 @@ export const ChangesFileList = memo(function ChangesFileList({
   prActions,
   isCollapsed,
   onToggleCollapsed,
+  onBeforeFileClick,
 }: ChangesFileListProps) {
   const setActiveTab = useSetAtom(mainContentActiveTabAtom);
   const setCenterDiffSelectedFile = useSetAtom(centerDiffSelectedFileAtom);
@@ -448,6 +450,7 @@ export const ChangesFileList = memo(function ChangesFileList({
       }
 
       // Normal click: open diff view and update anchor
+      onBeforeFileClick?.();
       setActiveTab("changes");
       setCenterDiffSelectedFile(filePath);
       setFocusedDiffFile(filePath);
@@ -461,6 +464,7 @@ export const ChangesFileList = memo(function ChangesFileList({
       toggleSelection,
       setAnchor,
       allFilePaths,
+      onBeforeFileClick,
     ],
   );
 

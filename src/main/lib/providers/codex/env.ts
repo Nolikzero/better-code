@@ -10,6 +10,7 @@ import {
   getProcessEnvAsRecord,
   isWindows,
 } from "../../platform";
+import { getCachedBinary, setCachedBinary } from "../binary-cache";
 
 // Cache for resolved binary path
 let cachedBinaryResult: CodexBinaryResult | null | undefined;
@@ -337,11 +338,19 @@ export function getCodexBinaryPath(): CodexBinaryResult | null {
     return cachedBinaryResult;
   }
 
+  // Check disk cache
+  const diskCached = getCachedBinary("codex");
+  if (diskCached !== undefined) {
+    cachedBinaryResult = diskCached as CodexBinaryResult | null;
+    return cachedBinaryResult;
+  }
+
   // 1. Try bundled binary first (if we bundle it)
   const bundledPath = getBundledCodexBinaryPath();
   if (isExecutable(bundledPath)) {
     console.log("[codex-binary] Using bundled binary:", bundledPath);
     cachedBinaryResult = { path: bundledPath, source: "bundled" };
+    setCachedBinary("codex", cachedBinaryResult);
     return cachedBinaryResult;
   }
 
@@ -354,6 +363,7 @@ export function getCodexBinaryPath(): CodexBinaryResult | null {
   if (systemPath) {
     console.log("[codex-binary] Found in system path:", systemPath);
     cachedBinaryResult = { path: systemPath, source: "system-install" };
+    setCachedBinary("codex", cachedBinaryResult);
     return cachedBinaryResult;
   }
 
@@ -362,6 +372,7 @@ export function getCodexBinaryPath(): CodexBinaryResult | null {
   if (npmGlobalPath) {
     console.log("[codex-binary] Found in npm global:", npmGlobalPath);
     cachedBinaryResult = { path: npmGlobalPath, source: "npm-global" };
+    setCachedBinary("codex", cachedBinaryResult);
     return cachedBinaryResult;
   }
 
@@ -370,12 +381,14 @@ export function getCodexBinaryPath(): CodexBinaryResult | null {
   if (pathLookup) {
     console.log("[codex-binary] Found in PATH:", pathLookup);
     cachedBinaryResult = { path: pathLookup, source: "system-path" };
+    setCachedBinary("codex", cachedBinaryResult);
     return cachedBinaryResult;
   }
 
   console.error("[codex-binary] OpenAI Codex CLI not found!");
   console.error("[codex-binary] Install via: npm install -g @openai/codex");
   cachedBinaryResult = null;
+  setCachedBinary("codex", null);
   return null;
 }
 

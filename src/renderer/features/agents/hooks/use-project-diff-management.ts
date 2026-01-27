@@ -88,13 +88,7 @@ export function useProjectDiffManagement({
     },
     {
       enabled: !!projectPath && enabled,
-      onData: (data) => {
-        console.log(
-          "[project-diff] Git watcher event received:",
-          data,
-          "enabled:",
-          enabledRef.current,
-        );
+      onData: (_data) => {
         // Reset throttle so git watcher events always trigger an immediate fetch
         lastFetchTimeRef.current = 0;
         fetchDiffStatsRef.current?.();
@@ -107,13 +101,6 @@ export function useProjectDiffManagement({
 
   // Main fetch function
   const fetchDiffStats = useCallback(async () => {
-    console.log("[project-diff] fetchDiffStats called", {
-      projectId,
-      projectPath,
-      enabled,
-      isFetching: isFetchingDiffRef.current,
-      lastFetch: lastFetchTimeRef.current,
-    });
     if (!projectId || !projectPath || !enabled) {
       setDiffStats(EMPTY_DIFF_STATS);
       setDiffContent(null);
@@ -157,9 +144,6 @@ export function useProjectDiffManagement({
 
       // Abort if disabled while fetch was in flight
       if (!enabledRef.current) {
-        console.log(
-          "[project-diff] Aborting fetch - hook disabled during flight",
-        );
         return;
       }
 

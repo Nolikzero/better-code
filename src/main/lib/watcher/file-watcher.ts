@@ -150,14 +150,8 @@ class FileWatcher extends EventEmitter {
 
     if (existing) {
       existing.subscribers.add(subscriberId);
-      console.log(
-        `[FileWatcher] watchGitStatus: added subscriber ${subscriberId} to existing watcher for ${normalizedPath} (${existing.subscribers.size} subscribers)`,
-      );
       return;
     }
-    console.log(
-      `[FileWatcher] watchGitStatus: creating NEW watcher for ${normalizedPath} (subscriber: ${subscriberId})`,
-    );
 
     const gitDir = path.join(normalizedPath, ".git");
 
@@ -188,11 +182,7 @@ class FileWatcher extends EventEmitter {
       },
     );
 
-    const handleGitChange = (changedPath?: string) => {
-      console.log(
-        `[FileWatcher] Git change detected for ${normalizedPath}`,
-        changedPath ? `file: ${changedPath}` : "",
-      );
+    const handleGitChange = (_changedPath?: string) => {
       const debounceKey = `git:${normalizedPath}`;
       const existingTimer = this.debounceTimers.get(debounceKey);
       if (existingTimer) {
@@ -209,10 +199,6 @@ class FileWatcher extends EventEmitter {
           type: "statusChanged",
           worktreePath: normalizedPath,
         };
-        console.log(
-          `[FileWatcher] Emitting git event for ${normalizedPath}`,
-          `listeners: ${this.listenerCount(`git:${normalizedPath}`)}`,
-        );
         this.emit(`git:${normalizedPath}`, event);
       };
 
@@ -268,14 +254,8 @@ class FileWatcher extends EventEmitter {
     if (!entry) return;
 
     entry.subscribers.delete(subscriberId);
-    console.log(
-      `[FileWatcher] unwatchGitStatus: removed subscriber ${subscriberId} from ${normalizedPath} (${entry.subscribers.size} remaining)`,
-    );
 
     if (entry.subscribers.size === 0) {
-      console.log(
-        `[FileWatcher] unwatchGitStatus: closing watcher for ${normalizedPath} (no subscribers left)`,
-      );
       entry.watcher.close();
       this.gitWatchers.delete(normalizedPath);
 

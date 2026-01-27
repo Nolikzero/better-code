@@ -17,6 +17,7 @@ import {
   setupFocusUpdateCheck,
 } from "./lib/auto-updater";
 import { closeDatabase, initDatabase } from "./lib/db";
+import { fileIndexManager } from "./lib/files/file-index";
 import { initDockMenu } from "./lib/dock-menu";
 import { branchWatcher } from "./lib/git/branch-watcher";
 import { shutdownProviders } from "./lib/providers/init";
@@ -381,6 +382,7 @@ if (gotTheLock) {
     await terminalManager.cleanup();
     await branchWatcher.cleanup();
     await shutdownProviders();
+    fileIndexManager.closeAll();
     await closeDatabase();
   });
 

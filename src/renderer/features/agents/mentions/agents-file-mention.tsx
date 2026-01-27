@@ -1,6 +1,7 @@
 "use client";
 
 import { keepPreviousData } from "@tanstack/react-query";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { useAtomValue } from "jotai";
 import { ChevronRight } from "lucide-react";
 import {
@@ -11,6 +12,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { toast } from "sonner";
 import { IconSpinner } from "../../../components/ui/icons";
 import {
   Tooltip,
@@ -89,18 +91,53 @@ export const AgentsFileMention = memo(function AgentsFileMention({
   const sessionInfo = useAtomValue(sessionInfoAtom);
 
   // Fetch skills from filesystem (cached for 5 minutes)
-  const { data: skills = [], isFetching: _isFetchingSkills } =
+  const { data: skills = [], isLoading: isLoadingSkills } =
     trpc.skills.listEnabled.useQuery(undefined, {
       enabled: isOpen,
       staleTime: 5 * 60 * 1000, // 5 minutes - skills don't change frequently
     });
 
   // Fetch custom agents from filesystem (cached for 5 minutes)
-  const { data: customAgents = [], isFetching: _isFetchingAgents } =
+  const { data: customAgents = [], isLoading: isLoadingAgents } =
     trpc.agents.listEnabled.useQuery(undefined, {
       enabled: isOpen,
       staleTime: 5 * 60 * 1000, // 5 minutes - agents don't change frequently
     });
+
+  // Poll index status while building to show a toast
+  const { data: indexStatus } = trpc.files.indexStatus.useQuery(
+    { projectPath: projectPath || "" },
+    {
+      enabled: isOpen && !!projectPath,
+      refetchInterval: (query) =>
+        query.state.data?.state === "building" ? 1000 : false,
+    },
+  );
+
+  const indexToastId = useRef<string | number | null>(null);
+  useEffect(() => {
+    if (indexStatus?.state === "building") {
+      if (!indexToastId.current) {
+        indexToastId.current = toast.loading("Indexing project files...", {
+          position: "top-center",
+          duration: Infinity,
+        });
+      }
+    } else if (indexStatus?.state === "ready" && indexToastId.current) {
+      toast.success("File index ready", {
+        id: indexToastId.current,
+        position: "top-center",
+        duration: 2000,
+      });
+      indexToastId.current = null;
+    }
+    return () => {
+      if (indexToastId.current && indexStatus?.state === "building") {
+        toast.dismiss(indexToastId.current);
+        indexToastId.current = null;
+      }
+    };
+  }, [indexStatus?.state]);
 
   // Debounce search text (300ms to match canvas implementation)
   useEffect(() => {
@@ -110,13 +147,8 @@ export const AgentsFileMention = memo(function AgentsFileMention({
     return () => clearTimeout(timer);
   }, [searchText]);
 
-  // For multi-word search, send only first word to API (server filters by that),
-  // then filter results on client by all words
-  const apiSearchQuery = useMemo(() => {
-    if (!debouncedSearchText) return "";
-    const words = debouncedSearchText.split(/\s+/).filter(Boolean);
-    return words[0] || "";
-  }, [debouncedSearchText]);
+  // Send the full multi-word query to the server (FTS5 handles multi-word matching)
+  const apiSearchQuery = debouncedSearchText;
 
   // Fetch files from API
   // Priority: sandboxId (includes uncommitted) > branch (GitHub API) > cached file_tree
@@ -186,12 +218,8 @@ export const AgentsFileMention = memo(function AgentsFileMention({
   );
 
   const repoFileOptions: FileMentionOption[] = useMemo(() => {
-    const searchLower = debouncedSearchText.toLowerCase();
-
     const mapped = fileResults
       .filter((file) => !changedFilePaths.has(file.path))
-      // Client-side multi-word filtering (API only filtered by first word)
-      .filter((file) => matchesMultiWordSearch(file.path, searchLower))
       .map((file) => {
         // Get directory path (without filename/foldername) for inline display
         const pathParts = file.path.split("/");
@@ -207,9 +235,9 @@ export const AgentsFileMention = memo(function AgentsFileMention({
         };
       });
 
-    // Sort by relevance using shared function
-    return sortFilesByRelevance(mapped, debouncedSearchText);
-  }, [fileResults, changedFilePaths, debouncedSearchText]);
+    // Server returns results pre-sorted by FTS5 rank
+    return mapped;
+  }, [fileResults, changedFilePaths]);
 
   // Convert skills to mention options
   const skillOptions: FileMentionOption[] = useMemo(() => {
@@ -319,7 +347,9 @@ export const AgentsFileMention = memo(function AgentsFileMention({
   const hasSkills = skills.length > 0;
   const hasAgents = customAgents.length > 0;
   const hasTools = allToolOptions.length > 0;
-  const hasOnlyFiles = !hasSkills && !hasAgents && !hasTools;
+  // Only skip to files-only view after categories have loaded, so dropdown opens instantly with categories
+  const categoriesLoaded = !isLoadingSkills && !isLoadingAgents;
+  const hasOnlyFiles = categoriesLoaded && !hasSkills && !hasAgents && !hasTools;
 
   // Determine if we're in a subpage view (or showing files directly when no skills/agents/tools)
   const isInSubpage =
@@ -500,25 +530,22 @@ export const AgentsFileMention = memo(function AgentsFileMention({
       window.removeEventListener("keydown", handleKeyDown, { capture: true });
   }, [isOpen, options, selectedIndex, onSelect, onClose]);
 
-  // Auto-scroll selected item into view
+  // Virtualizer scrolls selected item into view automatically
+  const scrollElementRef = useRef<HTMLDivElement>(null);
+
+  const rowVirtualizer = useVirtualizer({
+    count: options.length,
+    getScrollElement: () => scrollElementRef.current,
+    estimateSize: () => 28, // h-7 = 28px
+    overscan: 5,
+    enabled: isOpen && options.length > 0,
+  });
+
+  // Auto-scroll selected item into view via virtualizer
   useEffect(() => {
-    if (!isOpen || !dropdownRef.current) return;
-
-    // Account for header element
-    const _headerOffset = 1;
-    if (selectedIndex === 0) {
-      dropdownRef.current.scrollTo({ top: 0, behavior: "auto" });
-      return;
-    }
-
-    const elements = dropdownRef.current.querySelectorAll(
-      "[data-option-index]",
-    );
-    const selectedElement = elements[selectedIndex] as HTMLElement;
-    if (selectedElement) {
-      selectedElement.scrollIntoView({ block: "nearest" });
-    }
-  }, [selectedIndex, isOpen]);
+    if (!isOpen || options.length === 0) return;
+    rowVirtualizer.scrollToIndex(selectedIndex, { align: "auto" });
+  }, [selectedIndex, isOpen, options.length, rowVirtualizer]);
 
   // Click outside
   useEffect(() => {
@@ -625,12 +652,11 @@ export const AgentsFileMention = memo(function AgentsFileMention({
           left: finalLeft,
           width: `${dropdownWidth}px`,
           maxHeight: `${computedMaxHeight}px`,
-          overflowY: "auto",
           transform: transformY,
         }}
       >
-        {/* Initial loading state (no previous data) */}
-        {isLoading && options.length === 0 && (
+        {/* Initial loading state — only show when in files view with no data yet */}
+        {isLoading && options.length === 0 && isInSubpage && (
           <div className="flex items-center gap-1.5 h-7 px-1.5 mx-1 text-xs text-muted-foreground">
             <IconSpinner className="h-3.5 w-3.5" />
             <span>Loading files...</span>
@@ -656,8 +682,6 @@ export const AgentsFileMention = memo(function AgentsFileMention({
         {/* File list */}
         {!isLoading && !error && options.length > 0 && (
           <>
-            {/* Flat list sorted by relevance */}
-
             {/* Header - only show in subpages or when searching, not in root view */}
             {(isInSubpage || debouncedSearchText) && (
               <div className="px-2.5 py-1.5 mx-1 text-xs font-medium text-muted-foreground flex items-center gap-1.5">
@@ -677,103 +701,138 @@ export const AgentsFileMention = memo(function AgentsFileMention({
                 )}
               </div>
             )}
-            {options.map((option, index) => {
-              const isSelected = selectedIndex === index;
-              const OptionIcon = getOptionIcon(option);
-              const isCategory = option.type === "category";
-              const showTooltip = !isCategory && option.path;
+            {/* Virtualized list */}
+            <div
+              ref={scrollElementRef}
+              style={{
+                overflowY: "auto",
+                maxHeight: `${computedMaxHeight - (showsHeader ? headerHeight : 0) - paddingHeight}px`,
+              }}
+            >
+              <div
+                style={{
+                  height: `${rowVirtualizer.getTotalSize()}px`,
+                  width: "100%",
+                  position: "relative",
+                }}
+              >
+                {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                  const index = virtualRow.index;
+                  const option = options[index];
+                  const isSelected = selectedIndex === index;
+                  const OptionIcon = getOptionIcon(option);
+                  const isCategory = option.type === "category";
+                  const showTooltip = !isCategory && option.path;
 
-              const itemContent = (
-                <div
-                  data-option-index={index}
-                  onClick={() => onSelect(option)}
-                  onMouseEnter={() => {
-                    setHoverIndex(index);
-                    setSelectedIndex(index);
-                  }}
-                  onMouseLeave={() => {
-                    setHoverIndex((prev) => (prev === index ? null : prev));
-                  }}
-                  className={cn(
-                    "group inline-flex w-[calc(100%-8px)] mx-1 items-center whitespace-nowrap outline-hidden",
-                    "h-7 px-1.5 justify-start text-xs rounded-md",
-                    "transition-colors cursor-pointer select-none gap-1.5",
-                    isSelected
-                      ? "dark:bg-neutral-800 bg-accent text-foreground"
-                      : "text-muted-foreground dark:hover:bg-neutral-800 hover:bg-accent hover:text-foreground",
-                  )}
-                >
-                  <OptionIcon className="h-3 w-3 text-muted-foreground shrink-0" />
-                  <span className="flex items-center gap-1 w-full min-w-0">
-                    <span
+                  const itemContent = (
+                    <div
+                      data-option-index={index}
+                      onClick={() => onSelect(option)}
+                      onMouseEnter={() => {
+                        setHoverIndex(index);
+                        setSelectedIndex(index);
+                      }}
+                      onMouseLeave={() => {
+                        setHoverIndex((prev) =>
+                          prev === index ? null : prev,
+                        );
+                      }}
                       className={cn(
-                        "shrink-0 whitespace-nowrap",
-                        isCategory && "font-medium",
+                        "group inline-flex w-[calc(100%-8px)] mx-1 items-center whitespace-nowrap outline-hidden",
+                        "h-7 px-1.5 justify-start text-xs rounded-md",
+                        "transition-colors cursor-pointer select-none gap-1.5",
+                        isSelected
+                          ? "dark:bg-neutral-800 bg-accent text-foreground"
+                          : "text-muted-foreground dark:hover:bg-neutral-800 hover:bg-accent hover:text-foreground",
                       )}
                     >
-                      {option.label}
-                    </span>
-                    {/* Diff stats for changed files */}
-                    {(option.additions || option.deletions) && (
-                      <span className="shrink-0 flex items-center gap-1 text-[10px] font-mono">
-                        {option.additions ? (
-                          <span className="text-green-500">
-                            +{option.additions}
-                          </span>
-                        ) : null}
-                        {option.deletions ? (
-                          <span className="text-red-500">
-                            -{option.deletions}
-                          </span>
-                        ) : null}
-                      </span>
-                    )}
-                    {/* Show truncated path for files only, not for skills/agents (they show in tooltip) */}
-                    {option.truncatedPath &&
-                      !isCategory &&
-                      option.type !== "skill" &&
-                      option.type !== "agent" && (
+                      <OptionIcon className="h-3 w-3 text-muted-foreground shrink-0" />
+                      <span className="flex items-center gap-1 w-full min-w-0">
                         <span
-                          className="text-muted-foreground flex-1 min-w-0 ml-2 font-mono overflow-hidden text-[10px]"
-                          style={{
-                            direction: "rtl",
-                            textAlign: "left",
-                            whiteSpace: "nowrap",
-                          }}
+                          className={cn(
+                            "shrink-0 whitespace-nowrap",
+                            isCategory && "font-medium",
+                          )}
                         >
-                          <span style={{ direction: "ltr" }}>
-                            {option.truncatedPath}
-                          </span>
+                          {option.label}
                         </span>
+                        {/* Diff stats for changed files */}
+                        {(option.additions || option.deletions) && (
+                          <span className="shrink-0 flex items-center gap-1 text-[10px] font-mono">
+                            {option.additions ? (
+                              <span className="text-green-500">
+                                +{option.additions}
+                              </span>
+                            ) : null}
+                            {option.deletions ? (
+                              <span className="text-red-500">
+                                -{option.deletions}
+                              </span>
+                            ) : null}
+                          </span>
+                        )}
+                        {/* Show truncated path for files only, not for skills/agents (they show in tooltip) */}
+                        {option.truncatedPath &&
+                          !isCategory &&
+                          option.type !== "skill" &&
+                          option.type !== "agent" && (
+                            <span
+                              className="text-muted-foreground flex-1 min-w-0 ml-2 font-mono overflow-hidden text-[10px]"
+                              style={{
+                                direction: "rtl",
+                                textAlign: "left",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              <span style={{ direction: "ltr" }}>
+                                {option.truncatedPath}
+                              </span>
+                            </span>
+                          )}
+                      </span>
+                      {/* ChevronRight for category items (navigate to subpage) */}
+                      {isCategory && (
+                        <ChevronRight className="ml-auto h-3.5 w-3.5 text-muted-foreground shrink-0" />
                       )}
-                  </span>
-                  {/* ChevronRight for category items (navigate to subpage) */}
-                  {isCategory && (
-                    <ChevronRight className="ml-auto h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  )}
-                </div>
-              );
+                    </div>
+                  );
 
-              if (showTooltip) {
-                return (
-                  <Tooltip key={option.id} open={isSelected}>
-                    <TooltipTrigger asChild>{itemContent}</TooltipTrigger>
-                    <TooltipContent
-                      side="left"
-                      align="start"
-                      sideOffset={8}
-                      collisionPadding={16}
-                      avoidCollisions
-                      className="overflow-hidden"
+                  const rowContent = showTooltip ? (
+                    <Tooltip open={isSelected}>
+                      <TooltipTrigger asChild>{itemContent}</TooltipTrigger>
+                      <TooltipContent
+                        side="left"
+                        align="start"
+                        sideOffset={8}
+                        collisionPadding={16}
+                        avoidCollisions
+                        className="overflow-hidden"
+                      >
+                        <MentionTooltipContent option={option} />
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    itemContent
+                  );
+
+                  return (
+                    <div
+                      key={option.id}
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: "100%",
+                        height: `${virtualRow.size}px`,
+                        transform: `translateY(${virtualRow.start}px)`,
+                      }}
                     >
-                      <MentionTooltipContent option={option} />
-                    </TooltipContent>
-                  </Tooltip>
-                );
-              }
-
-              return <div key={option.id}>{itemContent}</div>;
-            })}
+                      {rowContent}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </>
         )}
       </div>

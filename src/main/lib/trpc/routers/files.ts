@@ -6,56 +6,14 @@ import {
   type DirectoryChangeEvent,
   fileWatcher,
 } from "../../watcher/file-watcher";
+import { fileIndexManager } from "../../files/file-index";
+import {
+  ALLOWED_LOCK_FILES,
+  IGNORED_DIRS,
+  IGNORED_EXTENSIONS,
+  IGNORED_FILES,
+} from "../../files/scan-ignore-lists";
 import { publicProcedure, router } from "../index";
-
-// Directories to ignore when scanning
-const IGNORED_DIRS = new Set([
-  ".git",
-  "node_modules",
-  "dist",
-  "build",
-  "release",
-  ".next",
-  ".nuxt",
-  ".output",
-  "coverage",
-  "__pycache__",
-  ".venv",
-  "venv",
-  ".cache",
-  ".turbo",
-  ".vercel",
-  ".netlify",
-  "out",
-  ".svelte-kit",
-  ".astro",
-]);
-
-// Files to ignore
-const IGNORED_FILES = new Set([".DS_Store", "Thumbs.db", ".gitkeep"]);
-
-// File extensions to ignore
-const IGNORED_EXTENSIONS = new Set([
-  ".log",
-  ".lock", // We'll handle package-lock.json separately
-  ".pyc",
-  ".pyo",
-  ".class",
-  ".o",
-  ".obj",
-  ".exe",
-  ".dll",
-  ".so",
-  ".dylib",
-]);
-
-// Lock files to keep (not ignore)
-const ALLOWED_LOCK_FILES = new Set([
-  "package-lock.json",
-  "pnpm-lock.yaml",
-  "yarn.lock",
-  "bun.lockb",
-]);
 
 // Entry type for files and folders
 interface FileEntry {
@@ -63,164 +21,124 @@ interface FileEntry {
   type: "file" | "folder";
 }
 
-// Cache for file and folder listings
-const fileListCache = new Map<
+// Fallback: shallow scan cache for when FTS5 index is still building
+const shallowCache = new Map<
   string,
   { entries: FileEntry[]; timestamp: number }
 >();
-const CACHE_TTL = 5000; // 5 seconds
+const SHALLOW_CACHE_TTL = 30000; // 30 seconds
 
 /**
- * Recursively scan a directory and return all file and folder paths
+ * Quick shallow scan (depth 2) for fallback while FTS5 index builds.
  */
-async function scanDirectory(
+async function shallowScan(
   rootPath: string,
   currentPath: string = rootPath,
   depth = 0,
-  maxDepth = 15,
 ): Promise<FileEntry[]> {
-  if (depth > maxDepth) return [];
+  if (depth > 2) return [];
 
   const entries: FileEntry[] = [];
-
   try {
     const dirEntries = await readdir(currentPath, { withFileTypes: true });
-
     for (const entry of dirEntries) {
       const fullPath = join(currentPath, entry.name);
       const relativePath = relative(rootPath, fullPath);
 
       if (entry.isDirectory()) {
-        // Skip ignored directories
         if (IGNORED_DIRS.has(entry.name)) continue;
-        // Skip hidden directories (except .github, .vscode, etc.)
         if (
           entry.name.startsWith(".") &&
           !entry.name.startsWith(".github") &&
           !entry.name.startsWith(".vscode")
         )
           continue;
-
-        // Add the folder itself to results
         entries.push({ path: relativePath, type: "folder" });
-
-        // Recurse into subdirectory
-        const subEntries = await scanDirectory(
-          rootPath,
-          fullPath,
-          depth + 1,
-          maxDepth,
-        );
-        entries.push(...subEntries);
+        const sub = await shallowScan(rootPath, fullPath, depth + 1);
+        entries.push(...sub);
       } else if (entry.isFile()) {
-        // Skip ignored files
         if (IGNORED_FILES.has(entry.name)) continue;
-
-        // Check extension
         const ext = entry.name.includes(".")
           ? `.${entry.name.split(".").pop()?.toLowerCase()}`
           : "";
-        if (IGNORED_EXTENSIONS.has(ext)) {
-          // Allow specific lock files
-          if (!ALLOWED_LOCK_FILES.has(entry.name)) continue;
-        }
-
+        if (IGNORED_EXTENSIONS.has(ext) && !ALLOWED_LOCK_FILES.has(entry.name))
+          continue;
         entries.push({ path: relativePath, type: "file" });
       }
     }
-  } catch (error) {
-    // Silently skip directories we can't read
-    console.warn(`[files] Could not read directory: ${currentPath}`, error);
+  } catch {
+    // skip unreadable dirs
   }
-
   return entries;
 }
 
 /**
- * Get cached entry list or scan directory
+ * Fallback search using shallow scan when FTS5 index isn't ready yet.
  */
-async function getEntryList(projectPath: string): Promise<FileEntry[]> {
-  const cached = fileListCache.get(projectPath);
-  const now = Date.now();
-
-  if (cached && now - cached.timestamp < CACHE_TTL) {
-    return cached.entries;
-  }
-
-  const entries = await scanDirectory(projectPath);
-  fileListCache.set(projectPath, { entries, timestamp: now });
-
-  return entries;
-}
-
-/**
- * Filter and sort entries (files and folders) by query
- */
-function filterEntries(
-  entries: FileEntry[],
+async function fallbackSearch(
+  projectPath: string,
   query: string,
   limit: number,
-): Array<{
-  id: string;
-  label: string;
-  path: string;
-  repository: string;
-  type: "file" | "folder";
-}> {
-  const queryLower = query.toLowerCase();
+): Promise<
+  Array<{
+    id: string;
+    label: string;
+    path: string;
+    repository: string;
+    type: "file" | "folder";
+  }>
+> {
+  const cached = shallowCache.get(projectPath);
+  const now = Date.now();
 
-  // Filter entries that match the query
+  let entries: FileEntry[];
+  if (cached && now - cached.timestamp < SHALLOW_CACHE_TTL) {
+    entries = cached.entries;
+  } else {
+    entries = await shallowScan(projectPath);
+    shallowCache.set(projectPath, { entries, timestamp: now });
+  }
+
+  const queryLower = query.toLowerCase();
   let filtered = entries;
   if (query) {
+    const words = queryLower.split(/\s+/).filter(Boolean);
     filtered = entries.filter((entry) => {
-      const name = basename(entry.path).toLowerCase();
       const pathLower = entry.path.toLowerCase();
-      return name.includes(queryLower) || pathLower.includes(queryLower);
+      return words.every((w) => pathLower.includes(w));
     });
   }
 
-  // Sort by relevance (exact match > starts with > shorter match > contains > alphabetical)
-  // Files and folders are treated equally
-  filtered.sort((a, b) => {
-    const aName = basename(a.path).toLowerCase();
-    const bName = basename(b.path).toLowerCase();
+  if (query) {
+    filtered.sort((a, b) => {
+      const aName = basename(a.path).toLowerCase();
+      const bName = basename(b.path).toLowerCase();
 
-    if (query) {
       // Priority 1: Exact name match
       const aExact = aName === queryLower;
       const bExact = bName === queryLower;
-      if (aExact && !bExact) return -1;
-      if (!aExact && bExact) return 1;
+      if (aExact !== bExact) return aExact ? -1 : 1;
 
       // Priority 2: Name starts with query
       const aStarts = aName.startsWith(queryLower);
       const bStarts = bName.startsWith(queryLower);
-      if (aStarts && !bStarts) return -1;
-      if (!aStarts && bStarts) return 1;
+      if (aStarts !== bStarts) return aStarts ? -1 : 1;
 
-      // Priority 3: If both start with query, shorter name = better match
-      if (aStarts && bStarts) {
-        if (aName.length !== bName.length) {
-          return aName.length - bName.length;
-        }
+      // Priority 3: Shorter name wins among prefix matches
+      if (aStarts && bStarts && aName.length !== bName.length) {
+        return aName.length - bName.length;
       }
 
-      // Priority 4: Name contains query (but doesn't start with it)
+      // Priority 4: Name contains query vs path-only match
       const aContains = aName.includes(queryLower);
       const bContains = bName.includes(queryLower);
-      if (aContains && !bContains) return -1;
-      if (!aContains && bContains) return 1;
-    }
+      if (aContains !== bContains) return aContains ? -1 : 1;
 
-    // Alphabetical by name
-    return aName.localeCompare(bName);
-  });
+      return aName.localeCompare(bName);
+    });
+  }
 
-  // Limit results
-  const limited = filtered.slice(0, Math.min(limit, 200));
-
-  // Map to expected format with type
-  return limited.map((entry) => ({
+  return filtered.slice(0, limit).map((entry) => ({
     id: `${entry.type}:local:${entry.path}`,
     label: basename(entry.path),
     path: entry.path,
@@ -256,26 +174,42 @@ export const filesRouter = router({
           return [];
         }
 
-        // Get entry list (cached or fresh scan)
-        const entries = await getEntryList(projectPath);
+        // Get or create the FTS5 index (triggers background build on first call)
+        const index = await fileIndexManager.getIndex(projectPath);
 
-        // Debug: log folder count
-        const folderCount = entries.filter((e) => e.type === "folder").length;
-        const fileCount = entries.filter((e) => e.type === "file").length;
-        console.log(
-          `[files] Scanned ${projectPath}: ${folderCount} folders, ${fileCount} files`,
-        );
+        // If index is ready, use FTS5 for fast search
+        if (index.state === "ready") {
+          const results = index.search(query, limit);
+          return results;
+        }
 
-        // Filter and sort by query
-        const results = filterEntries(entries, query, limit);
-        console.log(
-          `[files] Query "${query}": returning ${results.length} results, folders: ${results.filter((r) => r.type === "folder").length}`,
-        );
-        return results;
+        // Index still building — use shallow scan fallback
+        return await fallbackSearch(projectPath, query, limit);
       } catch (error) {
         console.error("[files] Error searching files:", error);
         return [];
       }
+    }),
+
+  /**
+   * Eagerly warm the file index for a project so it's ready before first search.
+   */
+  warmIndex: publicProcedure
+    .input(z.object({ projectPath: z.string() }))
+    .mutation(async ({ input }) => {
+      if (!input.projectPath) return;
+      await fileIndexManager.getIndex(input.projectPath);
+    }),
+
+  /**
+   * Get the index state for a project (idle, building, ready)
+   */
+  indexStatus: publicProcedure
+    .input(z.object({ projectPath: z.string() }))
+    .query(({ input }) => {
+      const { projectPath } = input;
+      if (!projectPath) return { state: "idle" as const };
+      return { state: fileIndexManager.getState(projectPath) };
     }),
 
   /**
@@ -284,7 +218,9 @@ export const filesRouter = router({
   clearCache: publicProcedure
     .input(z.object({ projectPath: z.string() }))
     .mutation(({ input }) => {
-      fileListCache.delete(input.projectPath);
+      shallowCache.delete(input.projectPath);
+      // Close and rebuild the FTS5 index
+      fileIndexManager.close(input.projectPath);
       return { success: true };
     }),
 

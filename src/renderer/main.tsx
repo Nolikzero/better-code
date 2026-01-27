@@ -1,6 +1,8 @@
-// scan({
-//   enabled: import.meta.env.DEV,
-// });
+import { scan } from "react-scan";
+
+scan({
+  enabled: import.meta.env.DEV,
+});
 
 import ReactDOM from "react-dom/client";
 import { App } from "./App";

@@ -325,6 +325,17 @@ function ChatViewInner({
   // tRPC utils for cache invalidation
   const utils = api.useUtils();
 
+  // Eagerly warm the file index so @-mentions are instant
+  const warmIndex = trpc.files.warmIndex.useMutation();
+  const warmedPaths = useRef(new Set<string>());
+  useEffect(() => {
+    if (projectPath && !warmedPaths.current.has(projectPath)) {
+      warmedPaths.current.add(projectPath);
+      warmIndex.mutate({ projectPath });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectPath]);
+
   // Branch switch confirmation hook for sending messages
   const branchSwitchForMessage = useBranchSwitchConfirmation({
     projectPath: originalProjectPath,

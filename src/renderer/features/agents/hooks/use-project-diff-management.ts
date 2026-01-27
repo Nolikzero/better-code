@@ -3,16 +3,13 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CommitInfo } from "../../../../shared/changes-types";
-import type {
-  DiffStatsUI,
-  ParsedDiffFile,
-} from "../../../../shared/utils";
+import type { DiffStatsUI, ParsedDiffFile } from "../../../../shared/utils";
 import { trpc, trpcClient } from "../../../lib/trpc";
 import { projectDiffDataAtom, refreshDiffTriggerAtom } from "../atoms";
 import {
+  buildPrefetchList,
   EMPTY_DIFF_STATS,
   LOADING_DIFF_STATS,
-  buildPrefetchList,
   parseDiffAndStats,
   prefetchFileContents,
 } from "./use-diff-fetch-core";
@@ -53,7 +50,8 @@ export function useProjectDiffManagement({
   const isInitialMountRef = useRef(true);
 
   // Diff stats state
-  const [diffStats, setDiffStats] = useState<ProjectDiffStats>(LOADING_DIFF_STATS);
+  const [diffStats, setDiffStats] =
+    useState<ProjectDiffStats>(LOADING_DIFF_STATS);
 
   // Commit history state
   const [commits, setCommits] = useState<CommitInfo[]>([]);
@@ -91,7 +89,12 @@ export function useProjectDiffManagement({
     {
       enabled: !!projectPath && enabled,
       onData: (data) => {
-        console.log("[project-diff] Git watcher event received:", data, "enabled:", enabledRef.current);
+        console.log(
+          "[project-diff] Git watcher event received:",
+          data,
+          "enabled:",
+          enabledRef.current,
+        );
         // Reset throttle so git watcher events always trigger an immediate fetch
         lastFetchTimeRef.current = 0;
         fetchDiffStatsRef.current?.();
@@ -104,7 +107,13 @@ export function useProjectDiffManagement({
 
   // Main fetch function
   const fetchDiffStats = useCallback(async () => {
-    console.log("[project-diff] fetchDiffStats called", { projectId, projectPath, enabled, isFetching: isFetchingDiffRef.current, lastFetch: lastFetchTimeRef.current });
+    console.log("[project-diff] fetchDiffStats called", {
+      projectId,
+      projectPath,
+      enabled,
+      isFetching: isFetchingDiffRef.current,
+      lastFetch: lastFetchTimeRef.current,
+    });
     if (!projectId || !projectPath || !enabled) {
       setDiffStats(EMPTY_DIFF_STATS);
       setDiffContent(null);
@@ -148,7 +157,9 @@ export function useProjectDiffManagement({
 
       // Abort if disabled while fetch was in flight
       if (!enabledRef.current) {
-        console.log("[project-diff] Aborting fetch - hook disabled during flight");
+        console.log(
+          "[project-diff] Aborting fetch - hook disabled during flight",
+        );
         return;
       }
 
@@ -187,7 +198,10 @@ export function useProjectDiffManagement({
               updateAtom(contents);
             })
             .catch((err) => {
-              console.warn("[project-diff] Failed to batch prefetch files:", err);
+              console.warn(
+                "[project-diff] Failed to batch prefetch files:",
+                err,
+              );
               updateAtom({});
             });
         } else {

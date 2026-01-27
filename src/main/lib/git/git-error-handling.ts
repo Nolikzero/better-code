@@ -15,7 +15,9 @@ export interface ExecFileException extends Error {
   stderr?: string;
 }
 
-export function isExecFileException(error: unknown): error is ExecFileException {
+export function isExecFileException(
+  error: unknown,
+): error is ExecFileException {
   return (
     error instanceof Error &&
     ("code" in error || "signal" in error || "killed" in error)

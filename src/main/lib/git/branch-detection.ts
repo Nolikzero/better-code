@@ -7,8 +7,8 @@ import simpleGit from "simple-git";
 import { DEFAULT_BRANCH_CANDIDATES } from "./constants";
 import {
   type BranchExistsResult,
-  GIT_EXIT_CODES,
   categorizeGitError,
+  GIT_EXIT_CODES,
   isExecFileException,
 } from "./git-error-handling";
 import { getGitEnv } from "./shell-env-utils";
@@ -29,7 +29,9 @@ async function hasOriginRemote(mainRepoPath: string): Promise<boolean> {
  * Gets the current branch name (HEAD)
  * @returns The current branch name, or null if in detached HEAD state
  */
-export async function getCurrentBranch(repoPath: string): Promise<string | null> {
+export async function getCurrentBranch(
+  repoPath: string,
+): Promise<string | null> {
   const git = simpleGit(repoPath);
   try {
     const branch = await git.revparse(["--abbrev-ref", "HEAD"]);
@@ -162,13 +164,17 @@ export async function checkNeedsRebase(
   return Number.parseInt(behindCount.trim(), 10) > 0;
 }
 
-export async function hasUncommittedChanges(worktreePath: string): Promise<boolean> {
+export async function hasUncommittedChanges(
+  worktreePath: string,
+): Promise<boolean> {
   const git = simpleGit(worktreePath);
   const status = await git.status();
   return !status.isClean();
 }
 
-export async function hasUnpushedCommits(worktreePath: string): Promise<boolean> {
+export async function hasUnpushedCommits(
+  worktreePath: string,
+): Promise<boolean> {
   const git = simpleGit(worktreePath);
   try {
     const aheadCount = await git.raw([
@@ -193,7 +199,7 @@ export async function hasUnpushedCommits(worktreePath: string): Promise<boolean>
   }
 }
 
-export { type BranchExistsResult } from "./git-error-handling";
+export type { BranchExistsResult } from "./git-error-handling";
 
 export async function branchExistsOnRemote(
   worktreePath: string,

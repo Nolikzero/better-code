@@ -50,13 +50,20 @@ export function MainContentTabs() {
   const setFilePath = useSetAtom(centerFilePathAtom);
 
   // Use centralized effective diff data atom
-  const { diffData, showMultiRepo, multiRepoDiffData } = useAtomValue(effectiveDiffDataAtom);
+  const { diffData, showMultiRepo, multiRepoDiffData } = useAtomValue(
+    effectiveDiffDataAtom,
+  );
 
   const multiRepoFileCount = showMultiRepo
-    ? multiRepoDiffData!.repos.reduce((sum, r) => sum + r.diffStats.fileCount, 0)
+    ? multiRepoDiffData!.repos.reduce(
+        (sum, r) => sum + r.diffStats.fileCount,
+        0,
+      )
     : 0;
-  const hasChanges = (diffData?.diffStats?.hasChanges ?? false) || showMultiRepo;
-  const changesCount = (diffData?.diffStats?.fileCount ?? 0) + multiRepoFileCount;
+  const hasChanges =
+    (diffData?.diffStats?.hasChanges ?? false) || showMultiRepo;
+  const changesCount =
+    (diffData?.diffStats?.fileCount ?? 0) + multiRepoFileCount;
 
   // Track viewing mode to avoid resetting tab when viewing commit/full diffs
   const viewingMode = useAtomValue(diffViewingModeAtom);

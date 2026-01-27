@@ -15,7 +15,11 @@ const diffCache = new TtlCache<DiffCacheEntry>(DIFF_CACHE_TTL);
 
 function makeCacheKey(
   worktreePath: string,
-  options?: { uncommittedOnly?: boolean; fullDiff?: boolean; skipUntracked?: boolean },
+  options?: {
+    uncommittedOnly?: boolean;
+    fullDiff?: boolean;
+    skipUntracked?: boolean;
+  },
 ): string {
   const flags = [
     options?.uncommittedOnly ? "u" : "",
@@ -27,14 +31,20 @@ function makeCacheKey(
 
 export function getDiffCache(
   worktreePath: string,
-  options?: { uncommittedOnly?: boolean; fullDiff?: boolean; skipUntracked?: boolean },
+  options?: {
+    uncommittedOnly?: boolean;
+    fullDiff?: boolean;
+    skipUntracked?: boolean;
+  },
 ): DiffCacheEntry | null {
   return diffCache.get(makeCacheKey(worktreePath, options));
 }
 
 export function setDiffCache(
   worktreePath: string,
-  options: { uncommittedOnly?: boolean; fullDiff?: boolean; skipUntracked?: boolean } | undefined,
+  options:
+    | { uncommittedOnly?: boolean; fullDiff?: boolean; skipUntracked?: boolean }
+    | undefined,
   diff: string,
   truncated?: boolean,
 ): void {

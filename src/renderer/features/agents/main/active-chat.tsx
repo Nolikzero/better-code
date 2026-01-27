@@ -36,8 +36,8 @@ import { RalphProgressBadge, RalphSetupDialog } from "../../ralph";
 // Sub-chats sidebar removed - sub-chats now shown inline in main sidebar tree view
 // import { AgentsSubChatsSidebar } from "../../sidebar/agents-subchats-sidebar";
 import {
-  useDesktopNotifications,
   playCompletionSound,
+  useDesktopNotifications,
 } from "../../sidebar/hooks/use-desktop-notifications";
 import { terminalSidebarOpenAtom } from "../../terminal/atoms";
 import { TerminalSidebar } from "../../terminal/terminal-sidebar";

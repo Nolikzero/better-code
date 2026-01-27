@@ -1,9 +1,9 @@
-import Database from "better-sqlite3";
 import { createHash } from "node:crypto";
+import { existsSync, mkdirSync } from "node:fs";
 import { readdir } from "node:fs/promises";
 import { basename, dirname, join, normalize, relative } from "node:path";
+import Database from "better-sqlite3";
 import { app } from "electron";
-import { existsSync, mkdirSync } from "node:fs";
 import simpleGit from "simple-git";
 import {
   ALLOWED_LOCK_FILES,
@@ -104,9 +104,7 @@ class ProjectFileIndex {
     this.insertStmt = this.db.prepare(
       "INSERT INTO file_index (path, filename, type) VALUES (?, ?, ?)",
     );
-    this.deleteStmt = this.db.prepare(
-      "DELETE FROM file_index WHERE path = ?",
-    );
+    this.deleteStmt = this.db.prepare("DELETE FROM file_index WHERE path = ?");
     this.searchStmt = this.db.prepare(`
       SELECT path, filename, type, rank
       FROM file_index
@@ -126,9 +124,7 @@ class ProjectFileIndex {
       WHERE path LIKE ? OR filename LIKE ?
       LIMIT ?
     `);
-    this.allPathsStmt = this.db.prepare(
-      "SELECT path, type FROM file_index",
-    );
+    this.allPathsStmt = this.db.prepare("SELECT path, type FROM file_index");
   }
 
   private getDbPath(): string {
@@ -153,9 +149,7 @@ class ProjectFileIndex {
     this._state = "building";
 
     // Check if index already has data from a previous session (fast existence check)
-    const hasData = this.db
-      .prepare("SELECT 1 FROM file_index LIMIT 1")
-      .get();
+    const hasData = this.db.prepare("SELECT 1 FROM file_index LIMIT 1").get();
 
     if (hasData) {
       console.log(
@@ -438,7 +432,11 @@ class ProjectFileIndex {
 
         if (hasShortWord) {
           const pattern = `%${query}%`;
-          rows = this.likeSearchStmt.all(pattern, pattern, limit) as typeof rows;
+          rows = this.likeSearchStmt.all(
+            pattern,
+            pattern,
+            limit,
+          ) as typeof rows;
         } else {
           const ftsQuery = this.buildFtsQuery(query);
           rows = this.searchStmt.all(ftsQuery, limit) as typeof rows;

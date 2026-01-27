@@ -109,12 +109,16 @@ export function AgentsSidebar({
   // (single instance per hook to avoid conflicting atom writes)
 
   // Use centralized effective diff data for consistent count and view
-  const { diffData: effectiveDiffData, showMultiRepo, multiRepoDiffData } =
-    useAtomValue(effectiveDiffDataAtom);
-  const multiRepoChangesCount = multiRepoDiffData?.repos.reduce(
-    (sum, repo) => sum + (repo.diffStats?.fileCount ?? 0),
-    0,
-  ) ?? 0;
+  const {
+    diffData: effectiveDiffData,
+    showMultiRepo,
+    multiRepoDiffData,
+  } = useAtomValue(effectiveDiffDataAtom);
+  const multiRepoChangesCount =
+    multiRepoDiffData?.repos.reduce(
+      (sum, repo) => sum + (repo.diffStats?.fileCount ?? 0),
+      0,
+    ) ?? 0;
   const changesCount = showMultiRepo
     ? multiRepoChangesCount
     : (effectiveDiffData?.diffStats?.fileCount ?? 0);

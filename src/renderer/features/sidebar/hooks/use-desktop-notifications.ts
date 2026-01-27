@@ -1,14 +1,13 @@
 "use client";
 
-import { useAtom } from "jotai";
-import { atom } from "jotai";
+import { atom, useAtom } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
-import { isDesktopApp } from "../../../lib/utils/platform";
 import {
   desktopNotificationsEnabledAtom,
   soundNotificationsEnabledAtom,
 } from "../../../lib/atoms";
 import { appStore } from "../../../lib/jotai-store";
+import { isDesktopApp } from "../../../lib/utils/platform";
 
 // Track pending notifications count for badge (ephemeral, resets on app launch)
 const pendingNotificationsAtom = atom(0);

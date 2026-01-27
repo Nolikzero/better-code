@@ -5,9 +5,9 @@ import { useCallback, useEffect, useRef } from "react";
 import type { DiffStatsUI } from "../../../../shared/utils";
 import { trpc, trpcClient } from "../../../lib/trpc";
 import {
+  fetchSingleRepoDiffAtom,
   type MultiRepoDiffData,
   type MultiRepoDiffEntry,
-  fetchSingleRepoDiffAtom,
   multiRepoDiffDataAtom,
   refreshDiffTriggerAtom,
 } from "../atoms";
@@ -26,7 +26,9 @@ export function useMultiRepoDiffManagement({
   projectPath,
   enabled = true,
 }: UseMultiRepoDiffManagementOptions) {
-  const [multiRepoDiffData, setMultiRepoDiffData] = useAtom(multiRepoDiffDataAtom);
+  const [multiRepoDiffData, setMultiRepoDiffData] = useAtom(
+    multiRepoDiffDataAtom,
+  );
   const setFetchSingleRepoDiff = useSetAtom(fetchSingleRepoDiffAtom);
   const refreshDiffTrigger = useAtomValue(refreshDiffTriggerAtom);
   const isInitialMountRef = useRef(true);
@@ -41,7 +43,9 @@ export function useMultiRepoDiffManagement({
   enabledRef.current = enabled;
   const projectIdRef = useRef(projectId);
   projectIdRef.current = projectId;
-  const fetchSingleRepoDiffRef = useRef<((relativePath: string) => Promise<void>) | null>(null);
+  const fetchSingleRepoDiffRef = useRef<
+    ((relativePath: string) => Promise<void>) | null
+  >(null);
 
   // Detect repos query
   const { data: repoDetection } = trpc.projects.detectRepos.useQuery(
@@ -154,7 +158,8 @@ export function useMultiRepoDiffManagement({
       // Compute expanded repos before the setter to avoid reading a
       // variable mutated inside an async Jotai setter callback.
       const prevData = multiRepoDiffDataRef.current;
-      const prevRepos = prevData?.projectId === projectId ? prevData?.repos : [];
+      const prevRepos =
+        prevData?.projectId === projectId ? prevData?.repos : [];
       const prevRepoMap = new Map(
         prevRepos?.map((r) => [r.relativePath, r]) ?? [],
       );
@@ -167,9 +172,7 @@ export function useMultiRepoDiffManagement({
         // Only merge with previous data from the same project to avoid
         // stale repos bleeding across project switches
         const pRepos = prev?.projectId === projectId ? prev?.repos : [];
-        const pRepoMap = new Map(
-          pRepos?.map((r) => [r.relativePath, r]) ?? [],
-        );
+        const pRepoMap = new Map(pRepos?.map((r) => [r.relativePath, r]) ?? []);
 
         const merged = entries.map((entry) => {
           const existing = pRepoMap.get(entry.relativePath);
@@ -201,7 +204,8 @@ export function useMultiRepoDiffManagement({
         pendingRefetchRef.current = false;
         const expectedProjectId = projectId;
         setTimeout(() => {
-          if (!enabledRef.current || projectIdRef.current !== expectedProjectId) return;
+          if (!enabledRef.current || projectIdRef.current !== expectedProjectId)
+            return;
           lastFetchTimeRef.current = 0;
           fetchMultiRepoStats();
         }, 100);

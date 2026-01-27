@@ -3,10 +3,7 @@
  * Extracts the common parse → stats → prefetch pipeline
  * used by useDiffManagement, useProjectDiffManagement, etc.
  */
-import type {
-  DiffStatsUI,
-  ParsedDiffFile,
-} from "../../../../shared/utils";
+import type { DiffStatsUI, ParsedDiffFile } from "../../../../shared/utils";
 import { parseUnifiedDiff } from "../../../../shared/utils";
 import { trpcClient } from "../../../lib/trpc";
 

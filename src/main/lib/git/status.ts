@@ -8,16 +8,16 @@ import type {
 import { publicProcedure, router } from "../trpc";
 import { fileWatcher, type GitChangeEvent } from "../watcher/file-watcher";
 import { type BranchChangeEvent, branchWatcher } from "./branch-watcher";
+import { LOCK_FILE_EXCLUDES } from "./constants";
 import { assertRegisteredWorktree, secureFs } from "./security";
+import { getStatusCache, setStatusCache } from "./status-cache";
 import { applyNumstatToFiles } from "./utils/apply-numstat";
 import {
   parseGitLog,
   parseGitStatus,
   parseNameStatus,
 } from "./utils/parse-status";
-import { getStatusCache, setStatusCache } from "./status-cache";
 import { getDefaultBranch, getWorktreeDiff } from "./worktree";
-import { LOCK_FILE_EXCLUDES } from "./constants";
 
 export const createStatusRouter = () => {
   return router({

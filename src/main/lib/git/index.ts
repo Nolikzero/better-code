@@ -20,6 +20,8 @@ export { branchWatcher } from "./branch-watcher";
 export * from "./github";
 // Re-export GitLab utilities
 export * from "./gitlab";
+// Re-export multi-repo utilities
+export * from "./multi-repo";
 // Re-export provider utilities (excluding CheckItem to avoid conflict with github/types)
 export {
   fetchGitHostStatus,
@@ -27,8 +29,6 @@ export {
 } from "./providers";
 // Re-export worktree utilities
 export * from "./worktree";
-// Re-export multi-repo utilities
-export * from "./multi-repo";
 // Re-export types
 
 /**

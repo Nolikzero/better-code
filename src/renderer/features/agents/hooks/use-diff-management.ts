@@ -3,16 +3,13 @@
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CommitInfo } from "../../../../shared/changes-types";
-import type {
-  DiffStatsUI,
-  ParsedDiffFile,
-} from "../../../../shared/utils";
+import type { DiffStatsUI, ParsedDiffFile } from "../../../../shared/utils";
 import { trpcClient } from "../../../lib/trpc";
 import { agentsDiffSidebarWidthAtom, refreshDiffTriggerAtom } from "../atoms";
 import {
+  buildPrefetchList,
   EMPTY_DIFF_STATS,
   LOADING_DIFF_STATS,
-  buildPrefetchList,
   parseDiffAndStats,
   prefetchFileContents,
 } from "./use-diff-fetch-core";

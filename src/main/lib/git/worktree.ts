@@ -7,22 +7,10 @@
  * - diff-generation.ts — getWorktreeDiff, getWorktreeNumstat
  */
 
-// Error handling
-export {
-  type BranchExistsResult,
-  type ExecFileException,
-  GIT_ERROR_PATTERNS,
-  GIT_EXIT_CODES,
-  categorizeGitError,
-  isEnoent,
-  isExecFileException,
-  sanitizeGitError,
-} from "./git-error-handling";
-
 // Branch detection & operations
 export {
-  type CheckoutSafetyResult,
   branchExistsOnRemote,
+  type CheckoutSafetyResult,
   checkBranchCheckoutSafety,
   checkNeedsRebase,
   checkoutBranch,
@@ -37,10 +25,21 @@ export {
   refreshDefaultBranch,
   safeCheckoutBranch,
 } from "./branch-detection";
-
+// Diff generation
+export { getWorktreeDiff, getWorktreeNumstat } from "./diff-generation";
+// Error handling
+export {
+  type BranchExistsResult,
+  categorizeGitError,
+  type ExecFileException,
+  GIT_ERROR_PATTERNS,
+  GIT_EXIT_CODES,
+  isEnoent,
+  isExecFileException,
+  sanitizeGitError,
+} from "./git-error-handling";
 // Worktree lifecycle
 export {
-  type WorktreeResult,
   commitWorktreeChanges,
   createWorktreeForChat,
   getGitRoot,
@@ -48,8 +47,6 @@ export {
   mergeWorktreeToMain,
   pushWorktreeBranch,
   removeWorktree,
+  type WorktreeResult,
   worktreeExists,
 } from "./worktree-lifecycle";
-
-// Diff generation
-export { getWorktreeDiff, getWorktreeNumstat } from "./diff-generation";

@@ -46,8 +46,8 @@ import {
   fullDiffDataAtom,
   mainContentActiveTabAtom,
   multiRepoActiveWorktreePathAtom,
-  prActionsAtom,
   type ProjectDiffData,
+  prActionsAtom,
   selectedAgentChatIdAtom,
 } from "../atoms";
 import { useCommitDiff } from "../hooks/use-commit-diff";
@@ -67,7 +67,8 @@ import { PrStatusBar } from "./pr-status-bar";
 export function CenterDiffView() {
   // Determine if we're showing chat-level or project-level diffs
   const selectedChatId = useAtomValue(selectedAgentChatIdAtom);
-  const { isProjectLevel, useProjectFallback, diffData, multiRepoDiffData } = useAtomValue(effectiveDiffDataAtom);
+  const { isProjectLevel, useProjectFallback, diffData, multiRepoDiffData } =
+    useAtomValue(effectiveDiffDataAtom);
   const fallback = isProjectLevel || useProjectFallback;
   const chatPrActions = useAtomValue(prActionsAtom);
 
@@ -77,7 +78,8 @@ export function CenterDiffView() {
   const fullDiffData = useAtomValue(fullDiffDataAtom);
 
   // Only show PR actions for chat-level diffs in uncommitted mode
-  const prActions = fallback || viewingMode.type !== "uncommitted" ? null : chatPrActions;
+  const prActions =
+    fallback || viewingMode.type !== "uncommitted" ? null : chatPrActions;
   const setActiveTab = useSetAtom(mainContentActiveTabAtom);
   const [centerDiffSelectedFile, setCenterDiffSelectedFile] = useAtom(
     centerDiffSelectedFileAtom,
@@ -93,7 +95,9 @@ export function CenterDiffView() {
   });
 
   // Multi-repo overrides
-  const multiRepoActiveWorktreePath = useAtomValue(multiRepoActiveWorktreePathAtom);
+  const multiRepoActiveWorktreePath = useAtomValue(
+    multiRepoActiveWorktreePathAtom,
+  );
 
   // Extract chatId and worktreePath early for hooks
   const chatId = fallback
@@ -103,11 +107,16 @@ export function CenterDiffView() {
     ? ((diffData as ProjectDiffData | null)?.projectPath ?? null)
     : ((diffData as ActiveChatDiffData | null)?.worktreePath ?? null);
   // When a multi-repo file was clicked, use that repo's path instead
-  const worktreePath = (fallback && multiRepoActiveWorktreePath)
-    ? multiRepoActiveWorktreePath
-    : baseWorktreePath;
-  const sandboxId = fallback ? undefined : (diffData as ActiveChatDiffData | null)?.sandboxId;
-  const repository = fallback ? undefined : (diffData as ActiveChatDiffData | null)?.repository;
+  const worktreePath =
+    fallback && multiRepoActiveWorktreePath
+      ? multiRepoActiveWorktreePath
+      : baseWorktreePath;
+  const sandboxId = fallback
+    ? undefined
+    : (diffData as ActiveChatDiffData | null)?.sandboxId;
+  const repository = fallback
+    ? undefined
+    : (diffData as ActiveChatDiffData | null)?.repository;
 
   // Invoke diff hooks based on viewing mode
   useCommitDiff({
@@ -132,8 +141,13 @@ export function CenterDiffView() {
 
   // Find active multi-repo entry when applicable
   const activeMultiRepoEntry = useMemo(() => {
-    if (!fallback || !multiRepoActiveWorktreePath || !multiRepoDiffData) return null;
-    return multiRepoDiffData.repos.find((r) => r.path === multiRepoActiveWorktreePath) ?? null;
+    if (!fallback || !multiRepoActiveWorktreePath || !multiRepoDiffData)
+      return null;
+    return (
+      multiRepoDiffData.repos.find(
+        (r) => r.path === multiRepoActiveWorktreePath,
+      ) ?? null
+    );
   }, [fallback, multiRepoActiveWorktreePath, multiRepoDiffData]);
 
   // Compute effective data based on viewing mode
@@ -170,7 +184,13 @@ export function CenterDiffView() {
         };
       }
     }
-  }, [viewingMode, diffData, commitDiffData, fullDiffData, activeMultiRepoEntry]);
+  }, [
+    viewingMode,
+    diffData,
+    commitDiffData,
+    fullDiffData,
+    activeMultiRepoEntry,
+  ]);
 
   // Set focused file when center diff view opens with a selected file
   // Also re-triggers when viewingMode changes (e.g. switching commits)

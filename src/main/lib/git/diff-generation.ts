@@ -3,7 +3,7 @@
  */
 import simpleGit from "simple-git";
 import { getDefaultBranch } from "./branch-detection";
-import { LOCK_FILE_EXCLUDES, isLockFile } from "./constants";
+import { isLockFile, LOCK_FILE_EXCLUDES } from "./constants";
 import { getDiffCache, setDiffCache } from "./diff-cache";
 
 const MAX_DIFF_BYTES = 512 * 1024; // 512KB default cap
@@ -35,9 +35,7 @@ async function diffWithUntrackedFiles(
  * Get lightweight diff statistics using `git diff HEAD --numstat`.
  * Returns file count, total additions, and total deletions without the full diff content.
  */
-export async function getWorktreeNumstat(
-  worktreePath: string,
-): Promise<{
+export async function getWorktreeNumstat(worktreePath: string): Promise<{
   success: boolean;
   fileCount?: number;
   additions?: number;
@@ -66,8 +64,8 @@ export async function getWorktreeNumstat(
       // Binary files show "-" for additions/deletions
       const add = parseInt(parts[0]!, 10);
       const del = parseInt(parts[1]!, 10);
-      if (!isNaN(add)) additions += add;
-      if (!isNaN(del)) deletions += del;
+      if (!Number.isNaN(add)) additions += add;
+      if (!Number.isNaN(del)) deletions += del;
     }
 
     return { success: true, fileCount, additions, deletions };
@@ -112,9 +110,7 @@ export async function getWorktreeDiff(
     const git = simpleGit(worktreePath);
 
     const maxBytes = options?.maxDiffBytes ?? MAX_DIFF_BYTES;
-    const capDiff = (
-      diff: string,
-    ): { diff: string; truncated?: boolean } => {
+    const capDiff = (diff: string): { diff: string; truncated?: boolean } => {
       if (maxBytes > 0 && diff.length > maxBytes) {
         return { diff: diff.slice(0, maxBytes), truncated: true };
       }
@@ -148,15 +144,14 @@ export async function getWorktreeDiff(
       const targetBranch = baseBranch || (await getDefaultBranch(worktreePath));
 
       if (!status.isClean()) {
-        const untrackedFiles = status.not_added.filter(
-          (f) => !isLockFile(f),
-        );
+        const untrackedFiles = status.not_added.filter((f) => !isLockFile(f));
         try {
-          const diff = await diffWithUntrackedFiles(
-            git,
-            untrackedFiles,
-            [`origin/${targetBranch}`, "--no-color", "--", ...lockFileExcludes],
-          );
+          const diff = await diffWithUntrackedFiles(git, untrackedFiles, [
+            `origin/${targetBranch}`,
+            "--no-color",
+            "--",
+            ...lockFileExcludes,
+          ]);
           const capped = capDiff(diff);
           setDiffCache(worktreePath, options, capped.diff, capped.truncated);
           return { success: true, ...capped };
@@ -185,14 +180,13 @@ export async function getWorktreeDiff(
 
     // Has uncommitted changes - diff against HEAD
     if (!status.isClean()) {
-      const untrackedFiles = status.not_added.filter(
-        (f) => !isLockFile(f),
-      );
-      const diff = await diffWithUntrackedFiles(
-        git,
-        untrackedFiles,
-        ["HEAD", "--no-color", "--", ...lockFileExcludes],
-      );
+      const untrackedFiles = status.not_added.filter((f) => !isLockFile(f));
+      const diff = await diffWithUntrackedFiles(git, untrackedFiles, [
+        "HEAD",
+        "--no-color",
+        "--",
+        ...lockFileExcludes,
+      ]);
       const capped = capDiff(diff);
       setDiffCache(worktreePath, options, capped.diff, capped.truncated);
       return { success: true, ...capped };

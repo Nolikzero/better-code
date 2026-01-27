@@ -1,7 +1,14 @@
 "use client";
 
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { ChevronsDownUp, ChevronsUpDown, ChevronDown, ChevronRight, FolderGit2, GitBranch } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  ChevronsDownUp,
+  ChevronsUpDown,
+  FolderGit2,
+  GitBranch,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   type ActiveChatDiffData,
@@ -12,11 +19,11 @@ import {
   effectiveDiffDataAtom,
   expandedCommitHashesAtom,
   fetchSingleRepoDiffAtom,
-  mainContentActiveTabAtom,
   type MultiRepoDiffEntry,
+  mainContentActiveTabAtom,
   multiRepoActiveWorktreePathAtom,
-  prActionsAtom,
   type ProjectDiffData,
+  prActionsAtom,
   refreshDiffTriggerAtom,
   toggleCommitExpandedAtom,
 } from "../../agents/atoms";
@@ -46,7 +53,9 @@ function MultiRepoChangesView() {
   const { multiRepoDiffData } = useAtomValue(effectiveDiffDataAtom);
   const [collapsedRepos, setCollapsedRepos] = useAtom(collapsedSubReposAtom);
   const setRefreshTrigger = useSetAtom(refreshDiffTriggerAtom);
-  const setMultiRepoActiveWorktreePath = useSetAtom(multiRepoActiveWorktreePathAtom);
+  const setMultiRepoActiveWorktreePath = useSetAtom(
+    multiRepoActiveWorktreePathAtom,
+  );
   const fetchSingleRepoDiff = useAtomValue(fetchSingleRepoDiffAtom);
 
   const handleRefresh = useCallback(() => {
@@ -58,7 +67,7 @@ function MultiRepoChangesView() {
       const wasCollapsed = collapsedRepos[relativePath] !== false;
       setCollapsedRepos((prev) => ({
         ...prev,
-        [relativePath]: !wasCollapsed ? true : false,
+        [relativePath]: !wasCollapsed,
       }));
       // Lazy load: fetch full diff when expanding and data not yet loaded
       if (wasCollapsed && !repo.parsedFileDiffs && fetchSingleRepoDiff) {
@@ -69,14 +78,16 @@ function MultiRepoChangesView() {
   );
 
   const allCollapsed = multiRepoDiffData
-    ? multiRepoDiffData.repos.every((r) => collapsedRepos[r.relativePath] !== false)
+    ? multiRepoDiffData.repos.every(
+        (r) => collapsedRepos[r.relativePath] !== false,
+      )
     : true;
 
   const handleToggleAll = useCallback(() => {
     if (!multiRepoDiffData) return;
     const newState: Record<string, boolean> = {};
     for (const repo of multiRepoDiffData.repos) {
-      newState[repo.relativePath] = allCollapsed ? false : true;
+      newState[repo.relativePath] = !allCollapsed;
     }
     setCollapsedRepos((prev) => ({ ...prev, ...newState }));
   }, [allCollapsed, multiRepoDiffData, setCollapsedRepos]);
@@ -204,7 +215,9 @@ function MultiRepoSection({
             />
           ) : (
             <div className="flex items-center justify-center py-3">
-              <span className="text-xs text-muted-foreground">Loading files...</span>
+              <span className="text-xs text-muted-foreground">
+                Loading files...
+              </span>
             </div>
           )}
         </div>
@@ -217,7 +230,9 @@ function MultiRepoSection({
  * Single-repo changes view (original behavior).
  */
 function SingleRepoChangesView() {
-  const { isProjectLevel, useProjectFallback, diffData } = useAtomValue(effectiveDiffDataAtom);
+  const { isProjectLevel, useProjectFallback, diffData } = useAtomValue(
+    effectiveDiffDataAtom,
+  );
   const fallback = isProjectLevel || useProjectFallback;
 
   const chatPrActions = useAtomValue(prActionsAtom);
@@ -344,7 +359,9 @@ function SingleRepoChangesView() {
                   }
                 }}
                 className="text-muted-foreground hover:text-foreground transition-colors"
-                title={expandedHashesSet.size > 0 ? "Collapse all" : "Expand all"}
+                title={
+                  expandedHashesSet.size > 0 ? "Collapse all" : "Expand all"
+                }
               >
                 {expandedHashesSet.size > 0 ? (
                   <ChevronsDownUp className="h-3.5 w-3.5" />

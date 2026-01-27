@@ -114,8 +114,18 @@ export function parseUnifiedDiff(diffText: string): ParsedDiffFile[] {
         if (binaryMatch) {
           const rawOld = binaryMatch[1]!.trim();
           const rawNew = binaryMatch[2]!.trim();
-          if (!oldPath) oldPath = rawOld.startsWith("a/") ? rawOld.slice(2) : rawOld === "/dev/null" ? "" : rawOld;
-          if (!newPath) newPath = rawNew.startsWith("b/") ? rawNew.slice(2) : rawNew === "/dev/null" ? "" : rawNew;
+          if (!oldPath)
+            oldPath = rawOld.startsWith("a/")
+              ? rawOld.slice(2)
+              : rawOld === "/dev/null"
+                ? ""
+                : rawOld;
+          if (!newPath)
+            newPath = rawNew.startsWith("b/")
+              ? rawNew.slice(2)
+              : rawNew === "/dev/null"
+                ? ""
+                : rawNew;
         }
       }
 
@@ -130,14 +140,16 @@ export function parseUnifiedDiff(diffText: string): ParsedDiffFile[] {
 
       if (line.startsWith("--- ")) {
         const raw = line.slice(4).trim();
-        oldPath = raw === "/dev/null" ? "" : raw.startsWith("a/") ? raw.slice(2) : raw;
+        oldPath =
+          raw === "/dev/null" ? "" : raw.startsWith("a/") ? raw.slice(2) : raw;
         insideHunk = false;
         continue;
       }
 
       if (line.startsWith("+++ ")) {
         const raw = line.slice(4).trim();
-        newPath = raw === "/dev/null" ? "" : raw.startsWith("b/") ? raw.slice(2) : raw;
+        newPath =
+          raw === "/dev/null" ? "" : raw.startsWith("b/") ? raw.slice(2) : raw;
         insideHunk = false;
         continue;
       }

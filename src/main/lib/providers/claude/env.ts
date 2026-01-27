@@ -10,7 +10,11 @@ import {
   getProcessEnvAsRecord,
   isWindows,
 } from "../../platform";
-import { clearCachedBinary, getCachedBinary, setCachedBinary } from "../binary-cache";
+import {
+  clearCachedBinary,
+  getCachedBinary,
+  setCachedBinary,
+} from "../binary-cache";
 
 // Cache the shell environment
 let cachedShellEnv: Record<string, string> | null = null;

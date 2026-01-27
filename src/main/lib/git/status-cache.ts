@@ -9,9 +9,7 @@ export const STATUS_CACHE_TTL = 1000; // 1 second
 
 const statusCache = new TtlCache<GitChangesStatus>(STATUS_CACHE_TTL);
 
-export function getStatusCache(
-  worktreePath: string,
-): GitChangesStatus | null {
+export function getStatusCache(worktreePath: string): GitChangesStatus | null {
   return statusCache.get(worktreePath);
 }
 

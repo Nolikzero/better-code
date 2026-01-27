@@ -349,7 +349,8 @@ export const AgentsFileMention = memo(function AgentsFileMention({
   const hasTools = allToolOptions.length > 0;
   // Only skip to files-only view after categories have loaded, so dropdown opens instantly with categories
   const categoriesLoaded = !isLoadingSkills && !isLoadingAgents;
-  const hasOnlyFiles = categoriesLoaded && !hasSkills && !hasAgents && !hasTools;
+  const hasOnlyFiles =
+    categoriesLoaded && !hasSkills && !hasAgents && !hasTools;
 
   // Determine if we're in a subpage view (or showing files directly when no skills/agents/tools)
   const isInSubpage =
@@ -733,9 +734,7 @@ export const AgentsFileMention = memo(function AgentsFileMention({
                         setSelectedIndex(index);
                       }}
                       onMouseLeave={() => {
-                        setHoverIndex((prev) =>
-                          prev === index ? null : prev,
-                        );
+                        setHoverIndex((prev) => (prev === index ? null : prev));
                       }}
                       className={cn(
                         "group inline-flex w-[calc(100%-8px)] mx-1 items-center whitespace-nowrap outline-hidden",

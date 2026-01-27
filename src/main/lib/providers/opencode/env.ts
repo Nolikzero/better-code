@@ -10,7 +10,11 @@ import {
   getProcessEnvAsRecord,
   isWindows,
 } from "../../platform";
-import { clearCachedBinary, getCachedBinary, setCachedBinary } from "../binary-cache";
+import {
+  clearCachedBinary,
+  getCachedBinary,
+  setCachedBinary,
+} from "../binary-cache";
 import type { OpenCodeBinaryResult } from "./types";
 
 // Cache for resolved binary path

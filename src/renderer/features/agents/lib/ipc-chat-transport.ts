@@ -279,9 +279,8 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
                 const subChatName =
                   useAgentSubChatStore
                     .getState()
-                    .allSubChats.find(
-                      (sc) => sc.id === this.config.subChatId,
-                    )?.name || "Chat";
+                    .allSubChats.find((sc) => sc.id === this.config.subChatId)
+                    ?.name || "Chat";
                 showQuestionNotification(
                   subChatName,
                   this.config.chatId,
@@ -418,9 +417,8 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
                 const ralphSubChatName =
                   useAgentSubChatStore
                     .getState()
-                    .allSubChats.find(
-                      (sc) => sc.id === this.config.subChatId,
-                    )?.name || "Chat";
+                    .allSubChats.find((sc) => sc.id === this.config.subChatId)
+                    ?.name || "Chat";
                 showRalphCompleteNotification(
                   ralphSubChatName,
                   this.config.chatId,

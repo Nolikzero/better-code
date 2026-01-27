@@ -107,7 +107,9 @@ export function AgentsContent() {
   });
 
   // Use centralized effective diff data atom for tab fallback logic
-  const { diffData: effectiveDiffData, showMultiRepo } = useAtomValue(effectiveDiffDataAtom);
+  const { diffData: effectiveDiffData, showMultiRepo } = useAtomValue(
+    effectiveDiffDataAtom,
+  );
   const hasChanges =
     (effectiveDiffData?.diffStats?.hasChanges ?? false) ||
     (effectiveDiffData?.commits?.length ?? 0) > 0 ||

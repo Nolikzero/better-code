@@ -17,8 +17,8 @@ import {
   setupFocusUpdateCheck,
 } from "./lib/auto-updater";
 import { closeDatabase, initDatabase } from "./lib/db";
-import { fileIndexManager } from "./lib/files/file-index";
 import { initDockMenu } from "./lib/dock-menu";
+import { fileIndexManager } from "./lib/files/file-index";
 import { branchWatcher } from "./lib/git/branch-watcher";
 import { shutdownProviders } from "./lib/providers/init";
 import { terminalManager } from "./lib/terminal/manager";

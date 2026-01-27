@@ -88,8 +88,8 @@ export function AgentsPreferencesTab() {
                 Desktop Notifications
               </span>
               <span className="text-xs text-muted-foreground">
-                Show native notifications when agent completes work while
-                you're away
+                Show native notifications when agent completes work while you're
+                away
               </span>
             </div>
             <Switch

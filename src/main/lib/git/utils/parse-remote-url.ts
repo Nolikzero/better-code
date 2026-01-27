@@ -19,15 +19,13 @@ const HOST_TO_PROVIDER: Record<string, GitProvider> = {
   "bitbucket.org": "bitbucket",
 };
 
-const KNOWN_HOSTS = Object.keys(HOST_TO_PROVIDER).join("|").replace(/\./g, "\\.");
+const KNOWN_HOSTS = Object.keys(HOST_TO_PROVIDER)
+  .join("|")
+  .replace(/\./g, "\\.");
 
-const HTTPS_RE = new RegExp(
-  `https?://(${KNOWN_HOSTS})/([^/]+)/([^/]+)`,
-);
+const HTTPS_RE = new RegExp(`https?://(${KNOWN_HOSTS})/([^/]+)/([^/]+)`);
 
-const SSH_RE = new RegExp(
-  `git@(${KNOWN_HOSTS}):([^/]+)/(.+)`,
-);
+const SSH_RE = new RegExp(`git@(${KNOWN_HOSTS}):([^/]+)/(.+)`);
 
 export function parseGitRemoteUrl(url: string): ParsedRemoteUrl {
   let normalized = url.trim();

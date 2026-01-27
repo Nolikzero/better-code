@@ -5,9 +5,9 @@ import { useCallback, useEffect, useRef } from "react";
 import { trpcClient } from "../../../lib/trpc";
 import { commitDiffDataAtom, refreshDiffTriggerAtom } from "../atoms";
 import {
+  buildPrefetchList,
   EMPTY_DIFF_STATS,
   LOADING_DIFF_STATS,
-  buildPrefetchList,
   parseDiffAndStats,
   prefetchFileContents,
 } from "./use-diff-fetch-core";

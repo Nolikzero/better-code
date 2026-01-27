@@ -2,7 +2,12 @@
 
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { ChevronsDownUp, ChevronRight, FolderOpen, MessageSquarePlus } from "lucide-react";
+import {
+  ChevronRight,
+  ChevronsDownUp,
+  FolderOpen,
+  MessageSquarePlus,
+} from "lucide-react";
 import {
   memo,
   startTransition,
@@ -280,7 +285,11 @@ export function ProjectFileTree() {
   const flattenedStructure = useMemo(() => {
     if (!rootEntries) return [];
 
-    const result: { entry: FileTreeEntry; depth: number; isExpanded: boolean }[] = [];
+    const result: {
+      entry: FileTreeEntry;
+      depth: number;
+      isExpanded: boolean;
+    }[] = [];
     const MAX_DEPTH = 50;
 
     const addEntries = (
@@ -588,7 +597,10 @@ export function ProjectFileTree() {
               setDirectoryCache((prev) => ({ ...prev, ...newCache }));
             }
           } catch (error) {
-            console.error("Failed to batch-load directories for reveal:", error);
+            console.error(
+              "Failed to batch-load directories for reveal:",
+              error,
+            );
           }
 
           setLoadingFolders((prev) => {
@@ -671,58 +683,60 @@ export function ProjectFileTree() {
           </button>
         )}
       </div>
-    <ContextMenu>
-      <ContextMenuTrigger asChild>
-        <div
-          ref={parentRef}
-          className="flex-1 overflow-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
-          onContextMenu={handleTreeContextMenu}
-        >
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
           <div
-            style={{
-              height: `${virtualizer.getTotalSize()}px`,
-              width: "100%",
-              position: "relative",
-            }}
+            ref={parentRef}
+            className="flex-1 overflow-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
+            onContextMenu={handleTreeContextMenu}
           >
-            {virtualizer.getVirtualItems().map((virtualItem) => {
-              const node = flattenedTree[virtualItem.index];
-              if (!node) return null;
+            <div
+              style={{
+                height: `${virtualizer.getTotalSize()}px`,
+                width: "100%",
+                position: "relative",
+              }}
+            >
+              {virtualizer.getVirtualItems().map((virtualItem) => {
+                const node = flattenedTree[virtualItem.index];
+                if (!node) return null;
 
-              return (
-                <TreeItemRow
-                  key={node.entry.path}
-                  node={node}
-                  virtualStart={virtualItem.start}
-                  virtualSize={virtualItem.size}
-                  isActive={centerFilePath === node.entry.path}
-                  isHighlighted={highlightedFilePath === node.entry.path}
-                  onToggleFolder={handleToggleFolder}
-                  onFileClick={handleFileClick}
-                  onDragStart={handleDragStart}
-                />
-              );
-            })}
+                return (
+                  <TreeItemRow
+                    key={node.entry.path}
+                    node={node}
+                    virtualStart={virtualItem.start}
+                    virtualSize={virtualItem.size}
+                    isActive={centerFilePath === node.entry.path}
+                    isHighlighted={highlightedFilePath === node.entry.path}
+                    onToggleFolder={handleToggleFolder}
+                    onFileClick={handleFileClick}
+                    onDragStart={handleDragStart}
+                  />
+                );
+              })}
+            </div>
           </div>
-        </div>
-      </ContextMenuTrigger>
-      <ContextMenuContent className="w-48">
-        <ContextMenuItem
-          onClick={() => contextMenuEntry && handleAddToChat(contextMenuEntry)}
-        >
-          <MessageSquarePlus className="mr-2 h-4 w-4" />
-          Add to Chat
-        </ContextMenuItem>
-        {browsePath && contextMenuEntry && (
-          <>
-            <ContextMenuSeparator />
-            <OpenInContextMenu
-              path={`${browsePath.replace(/\/+$/, "")}/${contextMenuEntry.path.replace(/^\/+/, "")}`}
-            />
-          </>
-        )}
-      </ContextMenuContent>
-    </ContextMenu>
+        </ContextMenuTrigger>
+        <ContextMenuContent className="w-48">
+          <ContextMenuItem
+            onClick={() =>
+              contextMenuEntry && handleAddToChat(contextMenuEntry)
+            }
+          >
+            <MessageSquarePlus className="mr-2 h-4 w-4" />
+            Add to Chat
+          </ContextMenuItem>
+          {browsePath && contextMenuEntry && (
+            <>
+              <ContextMenuSeparator />
+              <OpenInContextMenu
+                path={`${browsePath.replace(/\/+$/, "")}/${contextMenuEntry.path.replace(/^\/+/, "")}`}
+              />
+            </>
+          )}
+        </ContextMenuContent>
+      </ContextMenu>
     </div>
   );
 }

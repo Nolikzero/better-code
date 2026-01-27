@@ -3,7 +3,12 @@ import { BrowserWindow, dialog } from "electron";
 import { basename } from "path";
 import { z } from "zod";
 import { chats, getDatabase, projects } from "../../db";
-import { getGitRemoteInfo, getWorktreeDiff, getWorktreeNumstat, removeWorktree } from "../../git";
+import {
+  getGitRemoteInfo,
+  getWorktreeDiff,
+  getWorktreeNumstat,
+  removeWorktree,
+} from "../../git";
 import { detectSubRepos } from "../../git/multi-repo";
 import { assertRegisteredWorktree } from "../../git/security/path-validation";
 import { publicProcedure, router } from "../index";
@@ -87,7 +92,10 @@ export const projectsRouter = router({
     .input(z.object({ id: z.string() }))
     .query(({ input }) => {
       const db = getDatabase();
-      return db.select().from(projects).where(eq(projects.id, input.id)).get() ?? null;
+      return (
+        db.select().from(projects).where(eq(projects.id, input.id)).get() ??
+        null
+      );
     }),
 
   /**
@@ -463,7 +471,10 @@ export const projectsRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      const repoPaths = await resolveMultiRepos(input.projectId, input.knownRepos);
+      const repoPaths = await resolveMultiRepos(
+        input.projectId,
+        input.knownRepos,
+      );
       if (repoPaths.length === 0) return { repos: [] };
 
       const results = await Promise.all(
@@ -499,7 +510,11 @@ export const projectsRouter = router({
         uncommittedOnly: true,
       });
       return buildDiffResponse(
-        { name: input.repoName, path: input.repoPath, relativePath: input.relativePath },
+        {
+          name: input.repoName,
+          path: input.repoPath,
+          relativePath: input.relativePath,
+        },
         result,
       );
     }),
@@ -524,7 +539,10 @@ export const projectsRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      const repoPaths = await resolveMultiRepos(input.projectId, input.knownRepos);
+      const repoPaths = await resolveMultiRepos(
+        input.projectId,
+        input.knownRepos,
+      );
       if (repoPaths.length === 0) return { repos: [] };
 
       const results = await Promise.all(
@@ -534,9 +552,9 @@ export const projectsRouter = router({
             name: repo.name,
             path: repo.path,
             relativePath: repo.relativePath,
-            fileCount: result.success ? result.fileCount ?? 0 : 0,
-            additions: result.success ? result.additions ?? 0 : 0,
-            deletions: result.success ? result.deletions ?? 0 : 0,
+            fileCount: result.success ? (result.fileCount ?? 0) : 0,
+            additions: result.success ? (result.additions ?? 0) : 0,
+            deletions: result.success ? (result.deletions ?? 0) : 0,
             error: result.success ? undefined : result.error,
           };
         }),

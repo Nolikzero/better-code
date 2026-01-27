@@ -2,10 +2,6 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import { basename, join, relative } from "node:path";
 import { observable } from "@trpc/server/observable";
 import { z } from "zod";
-import {
-  type DirectoryChangeEvent,
-  fileWatcher,
-} from "../../watcher/file-watcher";
 import { fileIndexManager } from "../../files/file-index";
 import {
   ALLOWED_LOCK_FILES,
@@ -17,6 +13,10 @@ import {
   assertRegisteredWorktree,
   validateRelativePath,
 } from "../../git/security/path-validation";
+import {
+  type DirectoryChangeEvent,
+  fileWatcher,
+} from "../../watcher/file-watcher";
 import { publicProcedure, router } from "../index";
 
 // Entry type for files and folders
@@ -35,7 +35,10 @@ interface DirectoryEntry {
 
 // LRU cache for directory listings
 class DirectoryLRUCache {
-  private cache = new Map<string, { entries: DirectoryEntry[]; timestamp: number }>();
+  private cache = new Map<
+    string,
+    { entries: DirectoryEntry[]; timestamp: number }
+  >();
   private maxEntries: number;
   private ttlMs: number;
 
@@ -44,11 +47,19 @@ class DirectoryLRUCache {
     this.ttlMs = ttlMs;
   }
 
-  private makeKey(projectPath: string, relativePath: string, showHidden: boolean): string {
+  private makeKey(
+    projectPath: string,
+    relativePath: string,
+    showHidden: boolean,
+  ): string {
     return `${projectPath}\0${relativePath}\0${showHidden}`;
   }
 
-  get(projectPath: string, relativePath: string, showHidden: boolean): DirectoryEntry[] | null {
+  get(
+    projectPath: string,
+    relativePath: string,
+    showHidden: boolean,
+  ): DirectoryEntry[] | null {
     const key = this.makeKey(projectPath, relativePath, showHidden);
     const entry = this.cache.get(key);
     if (!entry) return null;
@@ -62,7 +73,12 @@ class DirectoryLRUCache {
     return entry.entries;
   }
 
-  set(projectPath: string, relativePath: string, showHidden: boolean, entries: DirectoryEntry[]): void {
+  set(
+    projectPath: string,
+    relativePath: string,
+    showHidden: boolean,
+    entries: DirectoryEntry[],
+  ): void {
     const key = this.makeKey(projectPath, relativePath, showHidden);
     this.cache.delete(key); // Remove if exists (for LRU ordering)
     this.cache.set(key, { entries, timestamp: Date.now() });
@@ -275,7 +291,12 @@ async function listDirectoryImpl(
             continue;
           }
         }
-        entries.push({ name: entry.name, path: entryRelPath, type: "folder", isHidden });
+        entries.push({
+          name: entry.name,
+          path: entryRelPath,
+          type: "folder",
+          isHidden,
+        });
       } else if (entry.isFile()) {
         if (IGNORED_FILES.has(entry.name)) continue;
         if (isHidden && !showHidden) continue;
@@ -285,7 +306,12 @@ async function listDirectoryImpl(
         if (IGNORED_EXTENSIONS.has(ext)) {
           if (!ALLOWED_LOCK_FILES.has(entry.name)) continue;
         }
-        entries.push({ name: entry.name, path: entryRelPath, type: "file", isHidden });
+        entries.push({
+          name: entry.name,
+          path: entryRelPath,
+          type: "file",
+          isHidden,
+        });
       }
     }
 
@@ -392,7 +418,11 @@ export const filesRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      return listDirectoryImpl(input.projectPath, input.relativePath, input.showHidden);
+      return listDirectoryImpl(
+        input.projectPath,
+        input.relativePath,
+        input.showHidden,
+      );
     }),
 
   /**
@@ -411,7 +441,11 @@ export const filesRouter = router({
       const results: Record<string, DirectoryEntry[]> = {};
       await Promise.all(
         relativePaths.map(async (relPath) => {
-          results[relPath] = await listDirectoryImpl(projectPath, relPath, showHidden);
+          results[relPath] = await listDirectoryImpl(
+            projectPath,
+            relPath,
+            showHidden,
+          );
         }),
       );
       return results;

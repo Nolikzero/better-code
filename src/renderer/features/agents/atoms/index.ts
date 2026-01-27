@@ -936,9 +936,10 @@ export function getEffectiveDiffData(
 ): EffectiveDiffInfo {
   const isProjectLevel = !selectedChatId;
 
-  const chatHasDedicatedWorktree = !!chatDiff?.worktreePath
-    && !!selectedProject?.path
-    && chatDiff.worktreePath !== selectedProject.path;
+  const chatHasDedicatedWorktree =
+    !!chatDiff?.worktreePath &&
+    !!selectedProject?.path &&
+    chatDiff.worktreePath !== selectedProject.path;
   const useProjectFallback = !!selectedChatId && !chatHasDedicatedWorktree;
 
   let resolvedProjectDiff = projectDiff;
@@ -957,10 +958,12 @@ export function getEffectiveDiffData(
   return {
     isProjectLevel,
     useProjectFallback,
-    diffData: (isProjectLevel || useProjectFallback) ? resolvedProjectDiff : chatDiff,
-    showMultiRepo: (isProjectLevel || useProjectFallback)
-      && !!multiRepoDiff?.isMultiRepo
-      && multiRepoDiff.repos.length > 0,
+    diffData:
+      isProjectLevel || useProjectFallback ? resolvedProjectDiff : chatDiff,
+    showMultiRepo:
+      (isProjectLevel || useProjectFallback) &&
+      !!multiRepoDiff?.isMultiRepo &&
+      multiRepoDiff.repos.length > 0,
     multiRepoDiffData: multiRepoDiff,
   };
 }
@@ -1186,16 +1189,11 @@ const expandedFoldersSetsAtom = atom((get) => {
 export const expandedFoldersAtomFamily = atomFamily((projectPath: string) =>
   atom(
     (get) => get(expandedFoldersSetsAtom)[projectPath] ?? new Set<string>(),
-    (
-      get,
-      set,
-      update: Set<string> | ((prev: Set<string>) => Set<string>),
-    ) => {
+    (get, set, update: Set<string> | ((prev: Set<string>) => Set<string>)) => {
       const current = get(expandedFoldersAtom);
       const prevSet =
         get(expandedFoldersSetsAtom)[projectPath] ?? new Set<string>();
-      const newSet =
-        typeof update === "function" ? update(prevSet) : update;
+      const newSet = typeof update === "function" ? update(prevSet) : update;
       set(expandedFoldersAtom, {
         ...current,
         [projectPath]: [...newSet],

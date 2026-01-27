@@ -25,7 +25,6 @@ import {
   defaultProviderIdAtom,
   lastSelectedModelByProviderAtom,
   type ProviderId,
-  soundNotificationsEnabledAtom,
   subChatProviderOverridesAtom,
 } from "../../../lib/atoms";
 import { appStore } from "../../../lib/jotai-store";
@@ -36,7 +35,10 @@ import { isDesktopApp } from "../../../lib/utils/platform";
 import { RalphProgressBadge, RalphSetupDialog } from "../../ralph";
 // Sub-chats sidebar removed - sub-chats now shown inline in main sidebar tree view
 // import { AgentsSubChatsSidebar } from "../../sidebar/agents-subchats-sidebar";
-import { useDesktopNotifications } from "../../sidebar/hooks/use-desktop-notifications";
+import {
+  useDesktopNotifications,
+  playCompletionSound,
+} from "../../sidebar/hooks/use-desktop-notifications";
 import { terminalSidebarOpenAtom } from "../../terminal/atoms";
 import { TerminalSidebar } from "../../terminal/terminal-sidebar";
 import {
@@ -2384,20 +2386,8 @@ export function ChatView({
               return next;
             });
 
-            // Play completion sound only if NOT manually aborted and sound is enabled
             if (!wasManuallyAborted) {
-              const isSoundEnabled = appStore.get(
-                soundNotificationsEnabledAtom,
-              );
-              if (isSoundEnabled) {
-                try {
-                  const audio = new Audio("./sound.mp3");
-                  audio.volume = 1.0;
-                  audio.play().catch(() => {});
-                } catch {
-                  // Ignore audio errors
-                }
-              }
+              playCompletionSound();
 
               // Show native notification (desktop app, when window not focused)
               // Check if this was a plan completion (ExitPlanMode in last message)
@@ -2586,20 +2576,8 @@ export function ChatView({
               return next;
             });
 
-            // Play completion sound only if NOT manually aborted and sound is enabled
             if (!wasManuallyAborted) {
-              const isSoundEnabled = appStore.get(
-                soundNotificationsEnabledAtom,
-              );
-              if (isSoundEnabled) {
-                try {
-                  const audio = new Audio("./sound.mp3");
-                  audio.volume = 1.0;
-                  audio.play().catch(() => {});
-                } catch {
-                  // Ignore audio errors
-                }
-              }
+              playCompletionSound();
 
               // Show native notification (desktop app, when window not focused)
               // Check if this was a plan completion (ExitPlanMode in last message)

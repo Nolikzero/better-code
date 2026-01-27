@@ -20,7 +20,10 @@ import {
 import { appStore } from "../../../lib/jotai-store";
 import { trpcClient } from "../../../lib/trpc";
 import {
+  playCompletionSound,
   showErrorNotification,
+  showQuestionNotification,
+  showRalphCompleteNotification,
   showTimeoutNotification,
 } from "../../sidebar/hooks/use-desktop-notifications";
 import {
@@ -272,6 +275,18 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
                   toolUseId: chunk.toolUseId,
                   questions: chunk.questions,
                 });
+                // Immediate desktop notification so user knows input is needed
+                const subChatName =
+                  useAgentSubChatStore
+                    .getState()
+                    .allSubChats.find(
+                      (sc) => sc.id === this.config.subChatId,
+                    )?.name || "Chat";
+                showQuestionNotification(
+                  subChatName,
+                  this.config.chatId,
+                  this.config.subChatId,
+                );
               }
 
               // Handle AskUserQuestion timeout - clear pending question immediately
@@ -398,6 +413,20 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
                     "All PRD stories have been implemented. Switching to Agent mode.",
                   duration: 5000,
                 });
+
+                // Desktop notification + sound for Ralph completion
+                const ralphSubChatName =
+                  useAgentSubChatStore
+                    .getState()
+                    .allSubChats.find(
+                      (sc) => sc.id === this.config.subChatId,
+                    )?.name || "Chat";
+                showRalphCompleteNotification(
+                  ralphSubChatName,
+                  this.config.chatId,
+                  this.config.subChatId,
+                );
+                playCompletionSound();
 
                 // Invalidate ralph query cache to update badge UI
                 invalidateRalphQueries();

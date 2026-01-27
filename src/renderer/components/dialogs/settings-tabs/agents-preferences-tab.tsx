@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import {
   type CtrlTabTarget,
   ctrlTabTargetAtom,
+  desktopNotificationsEnabledAtom,
   extendedThinkingEnabledAtom,
   soundNotificationsEnabledAtom,
 } from "../../../lib/atoms";
@@ -39,6 +40,9 @@ export function AgentsPreferencesTab() {
   const [soundEnabled, setSoundEnabled] = useAtom(
     soundNotificationsEnabledAtom,
   );
+  const [desktopNotificationsEnabled, setDesktopNotificationsEnabled] = useAtom(
+    desktopNotificationsEnabledAtom,
+  );
   const [ctrlTabTarget, setCtrlTabTarget] = useAtom(ctrlTabTargetAtom);
   const isNarrowScreen = useIsNarrowScreen();
 
@@ -74,6 +78,23 @@ export function AgentsPreferencesTab() {
             <Switch
               checked={thinkingEnabled}
               onCheckedChange={setThinkingEnabled}
+            />
+          </div>
+
+          {/* Desktop Notifications Toggle */}
+          <div className="flex items-start justify-between">
+            <div className="flex flex-col space-y-1">
+              <span className="text-sm font-medium text-foreground">
+                Desktop Notifications
+              </span>
+              <span className="text-xs text-muted-foreground">
+                Show native notifications when agent completes work while
+                you're away
+              </span>
+            </div>
+            <Switch
+              checked={desktopNotificationsEnabled}
+              onCheckedChange={setDesktopNotificationsEnabled}
             />
           </div>
 

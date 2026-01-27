@@ -1,15 +1,17 @@
 "use client";
 
 import { useAtom } from "jotai";
-import { atomWithStorage } from "jotai/utils";
+import { atom } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 import { isDesktopApp } from "../../../lib/utils/platform";
+import {
+  desktopNotificationsEnabledAtom,
+  soundNotificationsEnabledAtom,
+} from "../../../lib/atoms";
+import { appStore } from "../../../lib/jotai-store";
 
-// Track pending notifications count for badge
-const pendingNotificationsAtom = atomWithStorage<number>(
-  "desktop-pending-notifications",
-  0,
-);
+// Track pending notifications count for badge (ephemeral, resets on app launch)
+const pendingNotificationsAtom = atom(0);
 
 // Track window focus state
 let isWindowFocused = true;
@@ -83,27 +85,22 @@ export function useDesktopNotifications() {
     (agentName: string, chatId?: string, subChatId?: string) => {
       if (!isDesktopApp() || typeof window === "undefined") return;
 
-      // Only notify if window is not focused
       if (!isWindowFocused) {
-        // Increment badge count
         setPendingCount((prev) => prev + 1);
 
-        // Show native notification
-        window.desktopApi?.showNotification({
-          title: "Agent finished",
-          body: `${agentName} completed the task`,
-          chatId,
-          subChatId,
-        });
+        if (isDesktopNotificationsEnabled()) {
+          window.desktopApi?.showNotification({
+            title: "Agent finished",
+            body: `${agentName} completed the task`,
+            chatId,
+            subChatId,
+          });
+        }
       }
     },
     [setPendingCount],
   );
 
-  /**
-   * Show a notification for plan completion
-   * Only shows if window is not focused (in desktop app)
-   */
   const notifyPlanComplete = useCallback(
     (chatName: string, chatId?: string, subChatId?: string) => {
       if (!isDesktopApp() || typeof window === "undefined") return;
@@ -111,25 +108,23 @@ export function useDesktopNotifications() {
       if (!isWindowFocused) {
         setPendingCount((prev) => prev + 1);
 
-        window.desktopApi?.showNotification({
-          title: "Plan ready",
-          body: `${chatName} - Review the proposed changes`,
-          chatId,
-          subChatId,
-        });
+        if (isDesktopNotificationsEnabled()) {
+          window.desktopApi?.showNotification({
+            title: "Plan ready",
+            body: `${chatName} - Review the proposed changes`,
+            chatId,
+            subChatId,
+          });
+        }
       }
     },
     [setPendingCount],
   );
 
-  /**
-   * Show a notification for errors (auth, rate limit, etc.)
-   * Only shows if window is not focused (in desktop app)
-   */
   const notifyError = useCallback((title: string, body: string) => {
     if (!isDesktopApp() || typeof window === "undefined") return;
 
-    if (!isWindowFocused) {
+    if (!isWindowFocused && isDesktopNotificationsEnabled()) {
       window.desktopApi?.showNotification({
         title,
         body,
@@ -137,10 +132,6 @@ export function useDesktopNotifications() {
     }
   }, []);
 
-  /**
-   * Show a notification when input is needed but timed out
-   * Only shows if window is not focused (in desktop app)
-   */
   const notifyTimeout = useCallback(
     (chatName: string, chatId?: string, subChatId?: string) => {
       if (!isDesktopApp() || typeof window === "undefined") return;
@@ -148,12 +139,14 @@ export function useDesktopNotifications() {
       if (!isWindowFocused) {
         setPendingCount((prev) => prev + 1);
 
-        window.desktopApi?.showNotification({
-          title: "Input needed",
-          body: `${chatName} is waiting for your response`,
-          chatId,
-          subChatId,
-        });
+        if (isDesktopNotificationsEnabled()) {
+          window.desktopApi?.showNotification({
+            title: "Input needed",
+            body: `${chatName} is waiting for your response`,
+            chatId,
+            subChatId,
+          });
+        }
       }
     },
     [setPendingCount],
@@ -180,25 +173,8 @@ export function useDesktopNotifications() {
   };
 }
 
-/**
- * Standalone function to show notification (for use outside React components)
- */
-function _showAgentNotification(
-  agentName: string,
-  chatId?: string,
-  subChatId?: string,
-) {
-  if (!isDesktopApp() || typeof window === "undefined") return;
-
-  // Only notify if window is not focused
-  if (!document.hasFocus()) {
-    window.desktopApi?.showNotification({
-      title: "Agent finished",
-      body: `${agentName} completed the task`,
-      chatId,
-      subChatId,
-    });
-  }
+function isDesktopNotificationsEnabled(): boolean {
+  return appStore.get(desktopNotificationsEnabledAtom) !== false;
 }
 
 /**
@@ -207,11 +183,50 @@ function _showAgentNotification(
 export function showErrorNotification(title: string, body: string) {
   if (!isDesktopApp() || typeof window === "undefined") return;
 
-  // Only notify if window is not focused
-  if (!document.hasFocus()) {
+  if (!document.hasFocus() && isDesktopNotificationsEnabled()) {
     window.desktopApi?.showNotification({
       title,
       body,
+    });
+  }
+}
+
+/**
+ * Standalone function to show question notification immediately (for use outside React components)
+ */
+export function showQuestionNotification(
+  chatName: string,
+  chatId?: string,
+  subChatId?: string,
+) {
+  if (!isDesktopApp() || typeof window === "undefined") return;
+
+  if (!document.hasFocus() && isDesktopNotificationsEnabled()) {
+    window.desktopApi?.showNotification({
+      title: "Question from agent",
+      body: `${chatName} needs your input`,
+      chatId,
+      subChatId,
+    });
+  }
+}
+
+/**
+ * Standalone function to show Ralph completion notification (for use outside React components)
+ */
+export function showRalphCompleteNotification(
+  chatName: string,
+  chatId?: string,
+  subChatId?: string,
+) {
+  if (!isDesktopApp() || typeof window === "undefined") return;
+
+  if (!document.hasFocus() && isDesktopNotificationsEnabled()) {
+    window.desktopApi?.showNotification({
+      title: "Ralph finished",
+      body: `${chatName} - All stories complete`,
+      chatId,
+      subChatId,
     });
   }
 }
@@ -226,13 +241,27 @@ export function showTimeoutNotification(
 ) {
   if (!isDesktopApp() || typeof window === "undefined") return;
 
-  // Only notify if window is not focused
-  if (!document.hasFocus()) {
+  if (!document.hasFocus() && isDesktopNotificationsEnabled()) {
     window.desktopApi?.showNotification({
       title: "Input needed",
       body: `${chatName} is waiting for your response`,
       chatId,
       subChatId,
     });
+  }
+}
+
+/**
+ * Play completion sound if sound notifications are enabled (for use outside React components)
+ */
+export function playCompletionSound() {
+  const isSoundEnabled = appStore.get(soundNotificationsEnabledAtom);
+  if (!isSoundEnabled) return;
+  try {
+    const audio = new Audio("./sound.mp3");
+    audio.volume = 1.0;
+    audio.play().catch(() => {});
+  } catch {
+    // Ignore audio errors
   }
 }

@@ -105,6 +105,7 @@ export {
 export {
   type CtrlTabTarget,
   ctrlTabTargetAtom,
+  desktopNotificationsEnabledAtom,
   extendedThinkingEnabledAtom,
   fullThemeDataAtom,
   selectedFullThemeIdAtom,

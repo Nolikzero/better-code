@@ -27,6 +27,18 @@ export const soundNotificationsEnabledAtom = atomWithStorage<boolean>(
 );
 
 // ============================================
+// PREFERENCES - DESKTOP NOTIFICATIONS
+// ============================================
+
+// When enabled, show native desktop notifications when the window is not focused
+export const desktopNotificationsEnabledAtom = atomWithStorage<boolean>(
+  "preferences:desktop-notifications-enabled",
+  true,
+  undefined,
+  { getOnInit: true },
+);
+
+// ============================================
 // PREFERENCES - CTRL+TAB TARGET
 // ============================================
 

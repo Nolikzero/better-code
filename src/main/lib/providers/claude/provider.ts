@@ -67,6 +67,7 @@ export class ClaudeProvider implements AIProvider {
     name: "Claude Code",
     description: "Anthropic's Claude AI with coding capabilities",
     models: [
+      { id: "opus46", name: "claude-opus-4-6", displayName: "Opus 4.6" },
       { id: "opus", name: "claude-opus-4-5-20251101", displayName: "Opus 4.5" },
       {
         id: "sonnet",

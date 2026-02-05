@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.14]
+
+### Added
+
+- Claude Opus 4.6 model support with enhanced coding capabilities
+
 ## [0.0.13]
 
 ### Added

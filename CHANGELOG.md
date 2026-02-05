@@ -5,6 +5,7 @@
 ### Added
 
 - Claude Opus 4.6 model support with enhanced coding capabilities
+- GPT-5.3-Codex model support for improved code generation
 
 ## [0.0.13]
 

@@ -18,6 +18,11 @@ export const PROVIDER_MODELS: Record<
   ],
   codex: [
     {
+      id: "gpt-5.3-codex",
+      name: "gpt-5.3-codex",
+      displayName: "GPT-5.3 Codex",
+    },
+    {
       id: "gpt-5.2-codex",
       name: "gpt-5.2-codex",
       displayName: "GPT-5.2 Codex",

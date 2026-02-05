@@ -88,7 +88,7 @@ export const lastSelectedModelByProviderAtom = atomWithStorage<
   "agents:lastSelectedModelByProvider",
   {
     claude: "sonnet",
-    codex: "gpt-5.2-codex",
+    codex: "gpt-5.3-codex",
     opencode: "", // Dynamic - will be set when user selects a model
   },
   undefined,

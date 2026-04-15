@@ -21,6 +21,34 @@ export interface ProviderInfo {
   models: ProviderModel[];
 }
 
+function isProviderInfo(value: unknown): value is ProviderInfo {
+  if (!value || typeof value !== "object") return false;
+
+  const candidate = value as Partial<ProviderInfo>;
+  return (
+    typeof candidate.id === "string" &&
+    typeof candidate.name === "string" &&
+    typeof candidate.description === "string" &&
+    typeof candidate.available === "boolean" &&
+    Array.isArray(candidate.models)
+  );
+}
+
+export function normalizeProvidersList(value: unknown): ProviderInfo[] {
+  if (Array.isArray(value)) {
+    return value.filter(isProviderInfo);
+  }
+
+  if (value && typeof value === "object" && "json" in value) {
+    const jsonValue = (value as { json?: unknown }).json;
+    if (Array.isArray(jsonValue)) {
+      return jsonValue.filter(isProviderInfo);
+    }
+  }
+
+  return [];
+}
+
 /**
  * Hook to fetch all providers and their models via tRPC.
  * Centralizes provider/model logic - supports dynamic models (e.g., OpenCode).
@@ -42,41 +70,44 @@ export function useProviders() {
     refetchOnWindowFocus: false,
   });
 
+  const providerList = useMemo(
+    () => normalizeProvidersList(providers),
+    [providers],
+  );
+
   // Helper to get models for a specific provider
   const getModels = useMemo(() => {
     return (providerId: ProviderId): ProviderModel[] => {
-      if (!providers) return [];
-      const provider = providers.find((p) => p.id === providerId);
+      const provider = providerList.find((p) => p.id === providerId);
       return provider?.models ?? [];
     };
-  }, [providers]);
+  }, [providerList]);
 
   // Helper to get provider info
   const getProvider = useMemo(() => {
     return (providerId: ProviderId): ProviderInfo | undefined => {
-      return providers?.find((p) => p.id === providerId);
+      return providerList.find((p) => p.id === providerId);
     };
-  }, [providers]);
+  }, [providerList]);
 
   // List of available provider IDs (for dropdowns)
   const availableProviderIds = useMemo(() => {
-    if (!providers) return [] as ProviderId[];
-    return providers.map((p) => p.id);
-  }, [providers]);
+    return providerList.map((p) => p.id);
+  }, [providerList]);
 
   // Check if a provider is ready (available + authenticated)
   const isProviderReady = useMemo(() => {
     return (providerId: ProviderId): boolean => {
-      const provider = providers?.find((p) => p.id === providerId);
+      const provider = providerList.find((p) => p.id === providerId);
       return (
         provider?.available === true &&
         provider?.authStatus?.authenticated === true
       );
     };
-  }, [providers]);
+  }, [providerList]);
 
   return {
-    providers: providers ?? [],
+    providers: providerList,
     getModels,
     getProvider,
     availableProviderIds,

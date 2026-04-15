@@ -20,6 +20,7 @@ import {
   type ProviderId,
 } from "../../lib/atoms";
 import { trpc } from "../../lib/trpc";
+import { normalizeProvidersList } from "../agents/hooks/use-providers";
 import { cn } from "../../lib/utils";
 import { getProviderIcon } from "../agents/ui/provider-icons";
 
@@ -210,8 +211,9 @@ export function OnboardingPage() {
     refetch,
     isRefetching,
   } = trpc.providers.list.useQuery();
+  const providerList = normalizeProvidersList(providers);
 
-  const selectedProviderData = providers?.find(
+  const selectedProviderData = providerList.find(
     (p) => p.id === selectedProvider,
   );
 

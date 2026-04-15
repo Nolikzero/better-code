@@ -2,7 +2,7 @@
 
 **UI for parallel work with AI agents** -- a local-first Electron desktop app for AI-powered code assistance with multi-provider support.
 
-[![Version](https://img.shields.io/badge/version-0.0.6-blue)]()
+[![Version](https://img.shields.io/badge/version-0.0.15-blue)]()
 [![macOS](https://img.shields.io/badge/macOS-supported-brightgreen)]()
 [![Linux](https://img.shields.io/badge/Linux-supported-brightgreen)]()
 [![Windows](https://img.shields.io/badge/Windows-experimental-yellow)]()

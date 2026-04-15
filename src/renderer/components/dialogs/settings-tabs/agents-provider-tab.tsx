@@ -27,6 +27,7 @@ import {
   SelectTrigger,
 } from "../../ui/select";
 import { Switch } from "../../ui/switch";
+import { normalizeProvidersList } from "../../../features/agents/hooks/use-providers";
 
 // Hook to detect narrow screen
 function useIsNarrowScreen(): boolean {
@@ -96,6 +97,7 @@ export function AgentsProviderTab() {
 
   // Fetch provider status from backend
   const { data: providers, isLoading } = trpc.providers.list.useQuery();
+  const providerList = normalizeProvidersList(providers);
 
   const allProviderIds = Object.keys(PROVIDER_INFO) as ProviderId[];
   const selectableProviders = enabledProviders.length
@@ -235,7 +237,7 @@ export function AgentsProviderTab() {
             </div>
           ) : (
             <div className="space-y-3">
-              {providers?.map((provider) => (
+              {providerList.map((provider) => (
                 <div
                   key={provider.id}
                   className="flex items-center justify-between py-2 border-b border-border last:border-0"

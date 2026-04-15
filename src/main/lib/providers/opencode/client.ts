@@ -8,6 +8,7 @@ import { getServerInstance } from "./server";
 
 // Cache configuration
 const MODELS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const PROVIDER_LIST_TIMEOUT_MS = 4000;
 
 // Models cache
 interface ModelsCache {
@@ -86,6 +87,25 @@ export async function checkHealth(): Promise<{
   }
 }
 
+async function listProvidersFromServer() {
+  const health = await checkHealth();
+  if (!health?.healthy) {
+    throw new Error("OpenCode server is unavailable");
+  }
+
+  const client = getClient();
+  const response = await client.provider.list({
+    signal: AbortSignal.timeout(PROVIDER_LIST_TIMEOUT_MS),
+    throwOnError: true,
+  });
+
+  if (!response.data) {
+    throw new Error("No provider data returned");
+  }
+
+  return response.data;
+}
+
 /**
  * Fetch available providers and models from running server
  * Returns cached data if within TTL
@@ -108,16 +128,8 @@ export async function fetchProviders(forceRefresh = false): Promise<{
     };
   }
 
-  const client = getClient();
-
   try {
-    // Fetch providers from API
-    const response = await client.provider.list();
-    const providersData = response.data;
-
-    if (!providersData) {
-      throw new Error("No provider data returned");
-    }
+    const providersData = await listProvidersFromServer();
 
     // Build flattened models list
     const models: ProviderModel[] = [];
@@ -374,16 +386,8 @@ export async function fetchProvidersWithDetails(
 ): Promise<{
   providers: OpenCodeProviderWithModels[];
 }> {
-  const client = getClient();
-
   try {
-    // Fetch providers from API
-    const response = await client.provider.list();
-    const providersData = response.data;
-
-    if (!providersData) {
-      throw new Error("No provider data returned");
-    }
+    const providersData = await listProvidersFromServer();
 
     const connectedSet = new Set(providersData.connected || []);
     const providers: OpenCodeProviderWithModels[] = [];

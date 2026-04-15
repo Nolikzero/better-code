@@ -203,7 +203,7 @@ export const OpenCodeModelSelector = memo(function OpenCodeModelSelector({
   return (
     <ModelSelector open={open} onOpenChange={setOpen}>
       <ModelSelectorTrigger
-        disabled={disabled || isLoading}
+        disabled={disabled}
         className="flex items-center gap-1.5 px-2 py-1 text-sm text-muted-foreground hover:text-foreground transition-[background-color,color] duration-150 ease-out rounded-md hover:bg-muted/50 outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {getProviderIcon("opencode", "h-3.5 w-3.5")}
@@ -225,7 +225,9 @@ export const OpenCodeModelSelector = memo(function OpenCodeModelSelector({
           {isLoading ? (
             <ModelSelectorEmpty>Loading providers...</ModelSelectorEmpty>
           ) : !providersData?.providers?.length ? (
-            <ModelSelectorEmpty>No providers available</ModelSelectorEmpty>
+            <ModelSelectorEmpty>
+              OpenCode is unavailable or has no configured providers
+            </ModelSelectorEmpty>
           ) : flatItems.length === 0 ? (
             <ModelSelectorEmpty>No models found</ModelSelectorEmpty>
           ) : (

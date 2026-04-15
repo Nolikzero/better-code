@@ -27,6 +27,7 @@ import {
   type ProviderId,
 } from "../../lib/atoms";
 import { trpc } from "../../lib/trpc";
+import { normalizeProvidersList } from "../agents/hooks/use-providers";
 import { cn } from "../../lib/utils";
 import { selectedProjectAtom } from "../agents/atoms";
 import { getProviderIcon } from "../agents/ui/provider-icons";
@@ -492,6 +493,7 @@ function ProviderStep({
     refetch,
     isRefetching,
   } = trpc.providers.list.useQuery();
+  const providerList = normalizeProvidersList(providers);
 
   const utils = trpc.useUtils();
   const setEnabledProvidersMutation = trpc.providers.setEnabled.useMutation({
@@ -500,7 +502,9 @@ function ProviderStep({
     },
   });
 
-  const selectedProviderData = providers?.find((p) => p.id === activeProvider);
+  const selectedProviderData = providerList.find(
+    (p) => p.id === activeProvider,
+  );
 
   const toggleProvider = (providerId: ProviderId) => {
     setSelectedProviders((prev) => {
@@ -517,7 +521,7 @@ function ProviderStep({
 
   const providerIds = Object.keys(PROVIDER_INFO) as ProviderId[];
   const providerStatusById = new Map(
-    (providers || []).map((provider) => [provider.id, provider]),
+    providerList.map((provider) => [provider.id, provider]),
   );
 
   const lastEnabledSignature = useRef<string>("");

@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.15]
+
+### Changed
+
+- Updated Claude, Codex, OpenCode, and AI SDK dependencies to latest versions
+- Added OpenCode provider-list timeouts and clearer unavailable-state handling
+- Fixed renderer startup crash caused by non-array provider payloads in dev
+
 ## [0.0.14]
 
 ### Added

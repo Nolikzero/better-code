@@ -17,6 +17,7 @@ import {
   TooltipTrigger,
 } from "../../../components/ui/tooltip";
 import { type MCPServerStatus, sessionInfoAtom } from "../../../lib/atoms";
+import { getProviderMcpHelp } from "../../../lib/provider-mcp";
 import { trpc } from "../../../lib/trpc";
 import { cn } from "../../../lib/utils";
 
@@ -32,17 +33,19 @@ interface McpServersIndicatorProps {
  * Clicking it opens a popover with:
  * - List of MCP servers with status (connected/failed/pending)
  * - Expandable servers showing their tools
- * - Link to configure in ~/.claude.json
+ * - Provider-specific configuration guidance
  */
 export const McpServersIndicator = memo(function McpServersIndicator({
   projectPath,
   providerId = "claude",
 }: McpServersIndicatorProps) {
   const [sessionInfo, setSessionInfo] = useAtom(sessionInfoAtom);
+  const queryProjectPath = projectPath ?? "";
+  const mcpHelp = getProviderMcpHelp(providerId);
 
   // Fetch MCP config on mount if we have projectPath and no session info yet
   const { data: mcpConfig } = trpc.chat.getMcpConfig.useQuery(
-    { projectPath: projectPath!, providerId },
+    { projectPath: queryProjectPath, providerId },
     {
       enabled: !!projectPath && !sessionInfo?.mcpServers?.length,
       staleTime: 5 * 60 * 1000, // 5 minutes
@@ -127,35 +130,35 @@ export const McpServersIndicator = memo(function McpServersIndicator({
         return (
           <span
             className="w-2 h-2 rounded-full bg-green-500"
-            aria-label="Connected"
+            aria-label="已连接"
           />
         );
       case "failed":
         return (
           <span
             className="w-2 h-2 rounded-full bg-red-500"
-            aria-label="Connection failed"
+            aria-label="连接失败"
           />
         );
       case "needs-auth":
         return (
           <span
             className="w-2 h-2 rounded-full bg-yellow-500"
-            aria-label="Needs authentication"
+            aria-label="需要身份验证"
           />
         );
       case "pending":
         return (
           <Loader2
             className="w-3 h-3 text-muted-foreground animate-spin"
-            aria-label="Connecting"
+            aria-label="正在连接"
           />
         );
       default:
         return (
           <span
             className="w-2 h-2 rounded-full bg-muted-foreground/50"
-            aria-label="Unknown status"
+            aria-label="未知状态"
           />
         );
     }
@@ -164,13 +167,13 @@ export const McpServersIndicator = memo(function McpServersIndicator({
   const getStatusText = (status: MCPServerStatus) => {
     switch (status) {
       case "connected":
-        return "Connected";
+        return "已连接";
       case "failed":
-        return "Connection failed";
+        return "连接失败";
       case "needs-auth":
-        return "Needs authentication";
+        return "需要认证";
       case "pending":
-        return "Connecting...";
+        return "正在连接…";
       default:
         return status;
     }
@@ -223,7 +226,7 @@ export const McpServersIndicator = memo(function McpServersIndicator({
               variant="ghost"
               size="sm"
               className="h-6 px-2 gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors rounded-md"
-              aria-label="MCP Servers"
+              aria-label="MCP 服务器"
               aria-haspopup="dialog"
               aria-expanded={isOpen}
             >
@@ -232,9 +235,7 @@ export const McpServersIndicator = memo(function McpServersIndicator({
             </Button>
           </PopoverTrigger>
         </TooltipTrigger>
-        <TooltipContent>
-          {connectedCount} MCP server{connectedCount !== 1 ? "s" : ""} connected
-        </TooltipContent>
+        <TooltipContent>已连接 {connectedCount} 个 MCP 服务器</TooltipContent>
       </Tooltip>
 
       <PopoverContent
@@ -243,14 +244,14 @@ export const McpServersIndicator = memo(function McpServersIndicator({
         onOpenAutoFocus={(e) => e.preventDefault()}
         onKeyDown={handleKeyDown}
         role="dialog"
-        aria-label="MCP Servers"
+        aria-label="MCP 服务器"
       >
         <div className="px-3 py-2 border-b">
           <h4 className="font-medium text-sm" id="mcp-servers-title">
-            MCP Servers
+            MCP 服务器
           </h4>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Model Context Protocol servers
+            模型上下文协议服务器
           </p>
         </div>
 
@@ -311,7 +312,7 @@ export const McpServersIndicator = memo(function McpServersIndicator({
                   {/* Tool count badge */}
                   {hasTools && (
                     <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">
-                      {tools.length} tool{tools.length !== 1 ? "s" : ""}
+                      {tools.length} 个工具
                     </span>
                   )}
                 </button>
@@ -332,7 +333,7 @@ export const McpServersIndicator = memo(function McpServersIndicator({
                     id={`tools-${server.name}`}
                     className="pl-8 pr-3 py-1 space-y-0.5"
                     role="list"
-                    aria-label={`Tools for ${server.name}`}
+                    aria-label={`${server.name} 的工具`}
                   >
                     {tools.map((tool: string) => (
                       <div
@@ -356,7 +357,7 @@ export const McpServersIndicator = memo(function McpServersIndicator({
           <>
             <div className="border-t px-3 py-2">
               <h4 className="font-medium text-sm" id="plugins-title">
-                Plugins
+                插件
               </h4>
             </div>
             <div className="pb-1" role="list" aria-labelledby="plugins-title">
@@ -368,7 +369,7 @@ export const McpServersIndicator = memo(function McpServersIndicator({
                 >
                   <span
                     className="w-2 h-2 rounded-full bg-green-500"
-                    aria-label="Active"
+                    aria-label="启用"
                   />
                   <span className="truncate">{plugin.name}</span>
                 </div>
@@ -379,22 +380,10 @@ export const McpServersIndicator = memo(function McpServersIndicator({
 
         {/* Footer with config hint */}
         <div className="border-t px-3 py-2 text-xs text-muted-foreground">
-          {providerId === "codex" ? (
-            <>
-              Configure in{" "}
-              <code className="bg-muted px-1 py-0.5 rounded">
-                ~/.codex/config.toml
-              </code>
-            </>
-          ) : (
-            <>
-              Configure in{" "}
-              <code className="bg-muted px-1 py-0.5 rounded">
-                ~/.claude.json
-              </code>{" "}
-              or <code className="bg-muted px-1 py-0.5 rounded">.mcp.json</code>
-            </>
-          )}
+          请通过以下方式配置：{" "}
+          <code className="bg-muted px-1 py-0.5 rounded">
+            {mcpHelp.location}
+          </code>
         </div>
       </PopoverContent>
     </Popover>

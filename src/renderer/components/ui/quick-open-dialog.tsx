@@ -281,7 +281,7 @@ export function QuickOpenDialog() {
         <Command shouldFilter={false} className="rounded-lg">
           <CommandInput
             ref={inputRef}
-            placeholder="Go to file..."
+            placeholder="转到文件…"
             value={query}
             onValueChange={setQuery}
             className="h-11"
@@ -297,16 +297,16 @@ export function QuickOpenDialog() {
             }}
           >
             {!isLoading && filteredFiles.length === 0 && query && (
-              <CommandEmpty>No files found</CommandEmpty>
+              <CommandEmpty>未找到文件</CommandEmpty>
             )}
             {!isLoading && filteredFiles.length === 0 && !query && (
               <CommandEmpty className="py-4 text-muted-foreground">
-                Type to search files
+                输入内容以搜索文件
               </CommandEmpty>
             )}
             {isLoading && (
               <CommandEmpty className="py-4 text-muted-foreground">
-                Searching...
+                正在搜索…
               </CommandEmpty>
             )}
             <div

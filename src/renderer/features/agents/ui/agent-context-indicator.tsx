@@ -154,7 +154,7 @@ export const AgentContextIndicator = memo(function AgentContextIndicator({
         <p className="text-xs">
           {isEmpty ? (
             <span className="text-muted-foreground">
-              Context: 0 / {formatTokens(contextWindow)}
+              上下文：0 / {formatTokens(contextWindow)}
             </span>
           ) : (
             <>
@@ -164,7 +164,7 @@ export const AgentContextIndicator = memo(function AgentContextIndicator({
               <span className="text-muted-foreground mx-1">·</span>
               <span className="text-muted-foreground">
                 {formatTokens(sessionTotals.totalTokens)} /{" "}
-                {formatTokens(contextWindow)} context
+                {formatTokens(contextWindow)} 上下文
               </span>
             </>
           )}

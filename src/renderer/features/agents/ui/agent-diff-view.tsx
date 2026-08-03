@@ -86,6 +86,8 @@ import { cn } from "../../../lib/utils";
 
 // Map our custom theme IDs to @pierre/diffs themes
 const THEME_TO_PIERRE_MAP: Record<string, string> = {
+  dracula: "github-dark",
+  alucard: "github",
   "default-dark": "github-dark",
   "default-light": "github",
   "claude-dark": "github-dark",
@@ -137,10 +139,7 @@ class DiffErrorBoundary extends Component<
       return (
         <div className="flex items-center gap-2 p-4 text-sm text-yellow-600 dark:text-yellow-500 bg-yellow-50 dark:bg-yellow-950/30 rounded-md">
           <AlertTriangle className="h-4 w-4 shrink-0" />
-          <span>
-            Failed to render diff for this file. The diff format may be
-            corrupted or truncated.
-          </span>
+          <span>无法渲染此文件的差异，差异格式可能已损坏或被截断。</span>
         </div>
       );
     }
@@ -260,7 +259,7 @@ const FileDiffCard = memo(function FileDiffCard({
                 ? "border-primary bg-primary"
                 : "border-border/50 hover:border-primary/50",
             )}
-            aria-label={isSelected ? "Deselect file" : "Select file"}
+            aria-label={isSelected ? "取消选择文件" : "选择文件"}
           >
             {isSelected && (
               <Check className="w-3 h-3 text-primary-foreground" />
@@ -317,12 +316,12 @@ const FileDiffCard = memo(function FileDiffCard({
               )}
               {isNewFile && (
                 <span className="shrink-0 text-[11px] text-emerald-600 dark:text-emerald-400">
-                  (new)
+                  （新增）
                 </span>
               )}
               {isDeletedFile && (
                 <span className="shrink-0 text-[11px] text-red-600 dark:text-red-400">
-                  (deleted)
+                  （已删除）
                 </span>
               )}
             </div>
@@ -379,7 +378,7 @@ const FileDiffCard = memo(function FileDiffCard({
                 </button>
               </TooltipTrigger>
               <TooltipContent side="left">
-                {isFullExpanded ? "Show changes only" : "Show full file"}
+                {isFullExpanded ? "仅显示更改" : "显示完整文件"}
               </TooltipContent>
             </Tooltip>
           )}
@@ -400,15 +399,12 @@ const FileDiffCard = memo(function FileDiffCard({
         <div>
           {file.isBinary ? (
             <div className="px-3 py-2 text-xs text-muted-foreground">
-              Binary file diff can't be rendered.
+              无法渲染二进制文件差异。
             </div>
           ) : !file.isValid ? (
             <div className="flex items-center gap-2 px-3 py-2 text-xs text-yellow-600 dark:text-yellow-500 bg-yellow-50 dark:bg-yellow-950/30">
               <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-              <span>
-                Diff format appears truncated or corrupted. Unable to render
-                this file's changes.
-              </span>
+              <span>差异格式似乎已被截断或损坏，无法渲染此文件的更改。</span>
             </div>
           ) : (
             <div className="agent-diff-wrapper">
@@ -748,7 +744,7 @@ export const AgentDiffView = forwardRef<AgentDiffViewRef, AgentDiffViewProps>(
             setDiff(diffContent.trim() ? diffContent : "");
           } catch (error) {
             setDiffError(
-              error instanceof Error ? error.message : "Failed to fetch diff",
+              error instanceof Error ? error.message : "获取差异失败",
             );
           } finally {
             setIsLoadingDiff(false);
@@ -758,7 +754,7 @@ export const AgentDiffView = forwardRef<AgentDiffViewRef, AgentDiffViewProps>(
 
         // Web: use sandbox API
         if (!sandboxId) {
-          setDiffError("Sandbox ID is required");
+          setDiffError("缺少沙箱 ID");
           setIsLoadingDiff(false);
           return;
         }
@@ -768,7 +764,7 @@ export const AgentDiffView = forwardRef<AgentDiffViewRef, AgentDiffViewProps>(
 
           const response = await fetch(`/api/agents/sandbox/${sandboxId}/diff`);
           if (!response.ok) {
-            throw new Error(`Failed to fetch diff: ${response.statusText}`);
+            throw new Error(`获取差异失败：${response.statusText}`);
           }
 
           const data = await response.json();
@@ -780,9 +776,7 @@ export const AgentDiffView = forwardRef<AgentDiffViewRef, AgentDiffViewProps>(
             setDiff("");
           }
         } catch (error) {
-          setDiffError(
-            error instanceof Error ? error.message : "Failed to fetch diff",
-          );
+          setDiffError(error instanceof Error ? error.message : "获取差异失败");
         } finally {
           setIsLoadingDiff(false);
         }
@@ -807,7 +801,7 @@ export const AgentDiffView = forwardRef<AgentDiffViewRef, AgentDiffViewProps>(
         else if (sandboxId) {
           const response = await fetch(`/api/agents/sandbox/${sandboxId}/diff`);
           if (!response.ok) {
-            throw new Error(`Failed to fetch diff: ${response.statusText}`);
+            throw new Error(`获取差异失败：${response.statusText}`);
           }
           const data = await response.json();
           diffContent = data.diff || "";
@@ -819,9 +813,7 @@ export const AgentDiffView = forwardRef<AgentDiffViewRef, AgentDiffViewProps>(
           setDiff("");
         }
       } catch (error) {
-        setDiffError(
-          error instanceof Error ? error.message : "Failed to fetch diff",
-        );
+        setDiffError(error instanceof Error ? error.message : "获取差异失败");
       } finally {
         setIsLoadingDiff(false);
       }
@@ -1065,7 +1057,7 @@ export const AgentDiffView = forwardRef<AgentDiffViewRef, AgentDiffViewProps>(
                     setTimeout(() => reject(new Error("Timeout")), 5000),
                   ),
                 ]);
-                if (!response.ok) throw new Error("Failed to fetch file");
+                if (!response.ok) throw new Error("获取文件失败");
                 const data = await response.json();
                 return { key, content: data.content };
               }),
@@ -1256,16 +1248,14 @@ export const AgentDiffView = forwardRef<AgentDiffViewRef, AgentDiffViewProps>(
                 className="h-7 w-7 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] shrink-0 rounded-md"
               >
                 <IconChatBubble className="h-4 w-4" />
-                <span className="sr-only">Back to chat</span>
+                <span className="sr-only">返回对话</span>
               </Button>
 
               {/* Stats - centered */}
               <div className="flex-1 flex items-center justify-center gap-2 text-xs text-muted-foreground">
                 {!isLoadingDiff && fileDiffs.length > 0 && (
                   <>
-                    <span className="font-mono">
-                      {fileDiffs.length} file{fileDiffs.length !== 1 ? "s" : ""}
-                    </span>
+                    <span className="font-mono">{fileDiffs.length} 个文件</span>
                     {(totalAdditions > 0 || totalDeletions > 0) && (
                       <>
                         <span className="text-emerald-600 dark:text-emerald-400">
@@ -1292,14 +1282,14 @@ export const AgentDiffView = forwardRef<AgentDiffViewRef, AgentDiffViewProps>(
                 <button
                   onClick={() => setDiffMode(DiffModeEnum.Split)}
                   className="relative z-[2] px-1.5 flex items-center justify-center transition-colors duration-200 rounded text-muted-foreground"
-                  title="Split view"
+                  title="拆分视图"
                 >
                   <Columns2 className="h-3.5 w-3.5" />
                 </button>
                 <button
                   onClick={() => setDiffMode(DiffModeEnum.Unified)}
                   className="relative z-[2] px-1.5 flex items-center justify-center transition-colors duration-200 rounded text-muted-foreground"
-                  title="Unified view"
+                  title="统一视图"
                 >
                   <Rows2 className="h-3.5 w-3.5" />
                 </button>
@@ -1327,8 +1317,8 @@ export const AgentDiffView = forwardRef<AgentDiffViewRef, AgentDiffViewProps>(
               {filteredDiffFiles && filteredDiffFiles.length > 0 && (
                 <div className="flex items-center justify-between gap-2 px-2 py-1.5 mb-2 rounded-md  border border-primary/20">
                   <span className="text-xs text-primary">
-                    Showing {fileDiffs.length} of {allFileDiffs.length} files
-                    from this chat
+                    正在显示此对话中的 {fileDiffs.length}/{allFileDiffs.length}{" "}
+                    个文件
                   </span>
                   <Button
                     variant="ghost"
@@ -1336,7 +1326,7 @@ export const AgentDiffView = forwardRef<AgentDiffViewRef, AgentDiffViewProps>(
                     onClick={() => setFilteredDiffFiles(null)}
                     className="h-5 px-2 text-xs text-primary hover:text-primary"
                   >
-                    Show all
+                    显示全部
                   </Button>
                 </div>
               )}
@@ -1350,7 +1340,7 @@ export const AgentDiffView = forwardRef<AgentDiffViewRef, AgentDiffViewProps>(
                 <div className="flex flex-col items-center justify-center h-full text-center px-4">
                   <p className="text-sm text-red-500 mb-2">{diffError}</p>
                   <Button variant="outline" size="sm" onClick={handleRefresh}>
-                    Try again
+                    重试
                   </Button>
                 </div>
               ) : fileDiffs.length > 0 ? (
@@ -1431,11 +1421,9 @@ export const AgentDiffView = forwardRef<AgentDiffViewRef, AgentDiffViewProps>(
                       )}
                     />
                   </div>
-                  <p className="text-sm font-medium mb-1">
-                    No changes detected
-                  </p>
+                  <p className="text-sm font-medium mb-1">未检测到更改</p>
                   <p className="text-xs text-muted-foreground">
-                    Make some changes to see the diff
+                    进行一些更改后即可查看差异
                   </p>
                 </div>
               )}
@@ -1448,7 +1436,7 @@ export const AgentDiffView = forwardRef<AgentDiffViewRef, AgentDiffViewProps>(
               className="gap-2"
             >
               <MessageSquarePlus className="size-4" />
-              <span>Add to Chat</span>
+              <span>添加到对话</span>
               <ContextMenuShortcut>
                 {isMacOS() ? "Cmd" : "Ctrl"}+Shift+A
               </ContextMenuShortcut>

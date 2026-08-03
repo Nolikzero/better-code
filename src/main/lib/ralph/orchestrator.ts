@@ -245,7 +245,7 @@ ${instructions} Remember to output \`<story-complete>${nextStory.id}</story-comp
     console.log("[ralph] Generating PRD from plan...");
     this.emit({
       type: "ralph-prd-generating",
-      message: "Generating structured PRD from plan...",
+      message: "正在根据规划生成结构化 PRD…",
     } as UIMessageChunk);
 
     try {
@@ -284,7 +284,7 @@ ${instructions} Remember to output \`<story-complete>${nextStory.id}</story-comp
       console.error("[ralph] Failed to generate PRD:", e);
       this.emit({
         type: "error",
-        errorText: `Failed to generate PRD: ${e instanceof Error ? e.message : String(e)}`,
+        errorText: `生成 PRD 失败：${e instanceof Error ? e.message : String(e)}`,
       } as UIMessageChunk);
     }
   }

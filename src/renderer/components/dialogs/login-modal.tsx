@@ -57,7 +57,7 @@ export function LoginModal() {
         {/* Close button */}
         <AlertDialogCancel className="absolute right-4 top-4 h-6 w-6 p-0 border-0 bg-transparent hover:bg-muted rounded-xs opacity-70 hover:opacity-100">
           <X className="h-4 w-4" />
-          <span className="sr-only">Close</span>
+          <span className="sr-only">关闭</span>
         </AlertDialogCancel>
 
         <div className="space-y-6">
@@ -75,7 +75,7 @@ export function LoginModal() {
             </div>
             <div className="space-y-1">
               <h1 className="text-base font-semibold tracking-tight">
-                Authentication Required
+                需要身份验证
               </h1>
               <p className="text-sm text-muted-foreground">
                 {providerConfig.description}
@@ -86,7 +86,7 @@ export function LoginModal() {
           {/* Instructions */}
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Run the following command in your terminal:
+              请在终端中运行以下命令：
             </p>
             <button
               onClick={handleCopyCommand}
@@ -101,8 +101,7 @@ export function LoginModal() {
               )}
             </button>
             <p className="text-xs text-muted-foreground text-center">
-              After authenticating, close this dialog and try your message
-              again.
+              完成身份验证后，请关闭此对话框并重新发送消息。
             </p>
           </div>
         </div>

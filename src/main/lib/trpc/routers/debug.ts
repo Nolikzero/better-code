@@ -70,13 +70,4 @@ export const debugRouter = router({
     console.log("[Debug] Opened userData folder:", userDataPath);
     return { success: true };
   }),
-
-  /**
-   * Logout - clears auth credentials
-   * Note: For Claude Code CLI auth, users should run `claude logout` in terminal
-   */
-  logout: publicProcedure.mutation(() => {
-    console.log("[Debug] Logout requested");
-    return { success: true };
-  }),
 });

@@ -13,7 +13,7 @@ import type { VSCodeFullTheme } from "../atoms";
  */
 export const CURSOR_DARK: VSCodeFullTheme = {
   id: "cursor-dark",
-  name: "Cursor Dark",
+  name: "Cursor 深色",
   type: "dark",
   source: "builtin",
   colors: {
@@ -594,7 +594,7 @@ export const CURSOR_DARK: VSCodeFullTheme = {
  */
 export const CURSOR_LIGHT: VSCodeFullTheme = {
   id: "cursor-light",
-  name: "Cursor Light",
+  name: "Cursor 浅色",
   type: "light",
   source: "builtin",
   colors: {
@@ -1002,7 +1002,7 @@ export const CURSOR_LIGHT: VSCodeFullTheme = {
  */
 export const CURSOR_MIDNIGHT: VSCodeFullTheme = {
   id: "cursor-midnight",
-  name: "Cursor Midnight",
+  name: "Cursor 午夜",
   type: "dark",
   source: "builtin",
   colors: {

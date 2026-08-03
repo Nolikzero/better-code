@@ -60,7 +60,7 @@ export const WorkspaceContextBadge = memo(function WorkspaceContextBadge({
             "h-6 px-2 gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors rounded-md",
             className,
           )}
-          aria-label={`Git branch: ${branch}`}
+          aria-label={`Git 分支：${branch}`}
         >
           <GitBranch className="h-3.5 w-3.5" aria-hidden="true" />
           <span>{displayBranch}</span>
@@ -74,7 +74,7 @@ export const WorkspaceContextBadge = memo(function WorkspaceContextBadge({
           </div>
           {baseBranch && baseBranch !== branch && (
             <div className="text-xs text-muted-foreground">
-              Base: {baseBranch}
+              基准： {baseBranch}
             </div>
           )}
           {displayWorktreePath && (

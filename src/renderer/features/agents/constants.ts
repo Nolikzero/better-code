@@ -4,22 +4,33 @@
 
 type DevicePreset = {
   name: string;
+  label: string;
   width: number;
   height: number;
 };
 
 export const DEVICE_PRESETS: DevicePreset[] = [
-  { name: "Custom", width: 397, height: 852 },
-  { name: "iPhone 16", width: 393, height: 852 },
-  { name: "iPhone 16 Pro", width: 393, height: 852 },
-  { name: "iPhone 16 Pro Max", width: 430, height: 932 },
-  { name: "iPhone 16 Plus", width: 430, height: 932 },
-  { name: "iPhone SE", width: 375, height: 667 },
-  { name: "iPad Mini", width: 744, height: 1133 },
-  { name: "iPad Air", width: 820, height: 1180 },
-  { name: "iPad Pro", width: 1024, height: 1366 },
-  { name: "Android Compact", width: 360, height: 640 },
-  { name: "Android Medium", width: 412, height: 915 },
+  { name: "Custom", label: "自定义", width: 397, height: 852 },
+  { name: "iPhone 16", label: "iPhone 16", width: 393, height: 852 },
+  { name: "iPhone 16 Pro", label: "iPhone 16 Pro", width: 393, height: 852 },
+  {
+    name: "iPhone 16 Pro Max",
+    label: "iPhone 16 Pro Max",
+    width: 430,
+    height: 932,
+  },
+  { name: "iPhone 16 Plus", label: "iPhone 16 Plus", width: 430, height: 932 },
+  { name: "iPhone SE", label: "iPhone SE", width: 375, height: 667 },
+  { name: "iPad Mini", label: "iPad Mini", width: 744, height: 1133 },
+  { name: "iPad Air", label: "iPad Air", width: 820, height: 1180 },
+  { name: "iPad Pro", label: "iPad Pro", width: 1024, height: 1366 },
+  { name: "Android Compact", label: "Android 紧凑型", width: 360, height: 640 },
+  {
+    name: "Android Medium",
+    label: "Android 中等尺寸",
+    width: 412,
+    height: 915,
+  },
 ] as const;
 
 // Scale presets for preview

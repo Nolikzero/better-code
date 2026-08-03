@@ -48,7 +48,7 @@ class ProviderRegistry {
    */
   setDefault(id: ProviderId): void {
     if (!this.providers.has(id)) {
-      throw new Error(`Provider ${id} not registered`);
+      throw new Error(`提供商 ${id} 尚未注册`);
     }
     this.defaultProviderId = id;
   }
@@ -62,7 +62,7 @@ class ProviderRegistry {
       // Fall back to first available provider
       const first = this.providers.values().next().value;
       if (!first) {
-        throw new Error("No providers registered");
+        throw new Error("未注册任何提供商");
       }
       return first;
     }

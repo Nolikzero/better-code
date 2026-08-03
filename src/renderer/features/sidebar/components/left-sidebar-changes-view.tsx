@@ -100,12 +100,12 @@ function MultiRepoChangesView() {
     <div className="flex flex-col min-h-0 flex-1 overflow-y-auto">
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/30">
         <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-          Repositories ({multiRepoDiffData.repos.length})
+          仓库（{multiRepoDiffData.repos.length})
         </span>
         <button
           onClick={handleToggleAll}
           className="text-muted-foreground hover:text-foreground transition-colors"
-          title={allCollapsed ? "Expand all" : "Collapse all"}
+          title={allCollapsed ? "全部展开" : "全部折叠"}
         >
           {allCollapsed ? (
             <ChevronsUpDown className="h-3.5 w-3.5" />
@@ -178,7 +178,7 @@ function MultiRepoSection({
           {name}
         </span>
         <span className="text-[10px] text-muted-foreground ml-auto shrink-0">
-          {diffStats.fileCount} {diffStats.fileCount === 1 ? "file" : "files"}
+          {diffStats.fileCount} 个文件
         </span>
         <span className="text-[10px] shrink-0">
           {diffStats.additions > 0 && (
@@ -216,7 +216,7 @@ function MultiRepoSection({
           ) : (
             <div className="flex items-center justify-center py-3">
               <span className="text-xs text-muted-foreground">
-                Loading files...
+                正在加载文件…
               </span>
             </div>
           )}
@@ -339,7 +339,7 @@ function SingleRepoChangesView() {
         <div className="flex flex-col min-h-0 flex-1 overflow-y-auto">
           <div className="flex items-center justify-between px-3 py-1.5 border-t border-border/30">
             <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-              Commits ({commits.length})
+              提交（{commits.length}）
             </span>
             <div className="flex items-center gap-1.5">
               <button
@@ -359,9 +359,7 @@ function SingleRepoChangesView() {
                   }
                 }}
                 className="text-muted-foreground hover:text-foreground transition-colors"
-                title={
-                  expandedHashesSet.size > 0 ? "Collapse all" : "Expand all"
-                }
+                title={expandedHashesSet.size > 0 ? "全部折叠" : "全部展开"}
               >
                 {expandedHashesSet.size > 0 ? (
                   <ChevronsDownUp className="h-3.5 w-3.5" />
@@ -373,7 +371,7 @@ function SingleRepoChangesView() {
                 onClick={handleViewAllChanges}
                 className="text-[11px] text-primary/80 hover:text-primary transition-colors"
               >
-                View all
+                查看全部
               </button>
             </div>
           </div>
@@ -400,9 +398,9 @@ function EmptyState() {
       <div className="mb-3 rounded-full bg-background/10 p-3">
         <GitBranch className="h-5 w-5 text-muted-foreground" />
       </div>
-      <p className="text-sm font-medium text-foreground">No changes</p>
+      <p className="text-sm font-medium text-foreground">暂无更改</p>
       <p className="mt-1 text-xs text-muted-foreground">
-        Modified files will appear here
+        修改的文件会显示在这里
       </p>
     </div>
   );

@@ -1,5 +1,11 @@
 // Provider identification
-export type ProviderId = "claude" | "codex" | "opencode";
+export type ProviderId = string;
+
+export const API_PROVIDER_PROTOCOLS = [
+  "openai-compatible",
+  "anthropic-compatible",
+] as const;
+export type ApiProviderProtocol = (typeof API_PROVIDER_PROTOCOLS)[number];
 
 // Agent mode - determines how the AI operates
 export type AgentMode = "plan" | "agent" | "ralph";
@@ -35,13 +41,26 @@ export interface ProviderModel {
 
 // Provider configuration
 export interface ProviderConfig {
-  id: ProviderId;
-  name: string;
-  description: string;
-  models: ProviderModel[];
-  authType: "oauth" | "api-key" | "both";
-  binaryName?: string;
+  readonly id: ProviderId;
+  readonly name: string;
+  readonly description: string;
+  readonly models: ProviderModel[];
+  readonly authType: "oauth" | "api-key" | "both";
+  readonly binaryName?: string;
 }
+
+export type ApiProviderSettings = {
+  readonly id: ProviderId;
+  readonly name: string;
+  readonly protocol: ApiProviderProtocol;
+  readonly baseUrl: string;
+  readonly models: ProviderModel[];
+  readonly contextWindow: number;
+  readonly enabled: boolean;
+  readonly hasApiKey: boolean;
+  readonly createdAt: Date | null;
+  readonly updatedAt: Date | null;
+};
 
 // Image attachment for multimodal input
 export interface ImageAttachment {

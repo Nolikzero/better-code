@@ -465,7 +465,7 @@ export const filesRouter = router({
       const { projectPath, relativePath } = input;
 
       if (!projectPath || !relativePath) {
-        return { content: "", error: "Invalid path" };
+        return { content: "", error: "路径无效" };
       }
 
       // Validate that projectPath is a registered project/worktree
@@ -479,12 +479,12 @@ export const filesRouter = router({
       try {
         const fileStat = await stat(filePath);
         if (!fileStat.isFile()) {
-          return { content: "", error: "Not a file" };
+          return { content: "", error: "目标不是文件" };
         }
 
         // Check if file is too large (> 1MB)
         if (fileStat.size > 1024 * 1024) {
-          return { content: "", error: "File too large to display" };
+          return { content: "", error: "文件过大，无法显示" };
         }
 
         // Check if file is binary by reading first few bytes
@@ -496,14 +496,14 @@ export const filesRouter = router({
         );
 
         if (isBinary) {
-          return { content: "", error: "Binary file - cannot display" };
+          return { content: "", error: "二进制文件，无法显示" };
         }
 
         const content = buffer.toString("utf-8");
         return { content, error: null };
       } catch (error) {
         console.error("[files] Error reading file:", error);
-        return { content: "", error: "Failed to read file" };
+        return { content: "", error: "读取文件失败" };
       }
     }),
 

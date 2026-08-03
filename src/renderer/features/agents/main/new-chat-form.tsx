@@ -49,6 +49,10 @@ const selectedTeamIdAtom = atom<string | null>(null);
 const agentsSettingsDialogOpenAtom = atom(false);
 const agentsSettingsDialogActiveTabAtom = atom<string | null>(null);
 
+import {
+  type BuiltinAgentId,
+  resolveBuiltinAgent,
+} from "@shared/builtin-agents";
 import { formatTimeAgo } from "@shared/utils";
 // Desktop uses real tRPC
 import { toast } from "sonner";
@@ -61,7 +65,9 @@ import {
   COMMAND_PROMPTS,
   type SlashCommandOption,
 } from "../commands";
+import { goalCommandHelp, parseGoalCommand } from "../commands/goal-command";
 import { AgentSendButton } from "../components/agent-send-button";
+import { BuiltinAgentSelectorDropdown } from "../components/builtin-agent-selector-dropdown";
 import {
   ChatInputActions,
   ChatInputAttachments,
@@ -71,9 +77,7 @@ import {
 import { CreateBranchDialog } from "../components/create-branch-dialog";
 import { ModeToggleDropdown } from "../components/mode-toggle-dropdown";
 import { ModelSelectorDropdown } from "../components/model-selector-dropdown";
-import { OpenCodeModelSelector } from "../components/opencode-model-selector";
 import { ProviderSelectorDropdown } from "../components/provider-selector-dropdown";
-import { WebSearchModeSelector } from "../components/web-search-mode-selector";
 import { useAgentsFileUpload } from "../hooks/use-agents-file-upload";
 import { useFocusInputOnEnter } from "../hooks/use-focus-input-on-enter";
 import { useMentionDropdown } from "../hooks/use-mention-dropdown";
@@ -93,7 +97,6 @@ import {
 } from "../mentions";
 import { useAgentSubChatStore } from "../stores/sub-chat-store";
 import { AgentsHeaderControls } from "../ui/agents-header-controls";
-import { PROVIDERS } from "../ui/provider-icons";
 import { handlePasteEvent } from "../utils/paste-text";
 
 interface NewChatFormProps {
@@ -155,30 +158,38 @@ export function NewChatForm({
   }, [selectedProject, projectsList, validatedProject, setSelectedProject]);
   // Provider & model selection (from global atoms + tRPC)
   const [defaultProvider, setDefaultProvider] = useAtom(defaultProviderIdAtom);
-  const enabledProviders = useAtomValue(enabledProviderIdsAtom);
+  const enabledProviderIds = useAtomValue(enabledProviderIdsAtom);
   const [modelByProvider, setModelByProvider] = useAtom(
     lastSelectedModelByProviderAtom,
   );
   const { providers, getModels } = useProviders();
-
-  const fallbackProviderId =
-    enabledProviders[0] || PROVIDERS[0]?.id || "claude";
-  const effectiveDefaultProvider = enabledProviders.includes(defaultProvider)
+  const configuredProviderIds = providers
+    .filter(
+      (provider) =>
+        provider.enabled && enabledProviderIds.includes(provider.id),
+    )
+    .map((provider) => provider.id);
+  const effectiveDefaultProvider = configuredProviderIds.includes(
+    defaultProvider,
+  )
     ? defaultProvider
-    : fallbackProviderId;
-
-  // Derive current provider and model from tRPC data
-  const _currentProvider =
-    providers.find((p) => p.id === effectiveDefaultProvider) ||
-    PROVIDERS.find((p) => p.id === effectiveDefaultProvider) ||
-    PROVIDERS[0];
-  const providerModels = getModels(effectiveDefaultProvider);
-  const currentModelId =
-    modelByProvider[effectiveDefaultProvider] || providerModels[0]?.id;
-  const _currentModel =
-    providerModels.find((m) => m.id === currentModelId) || providerModels[0];
+    : configuredProviderIds[0] || "";
+  const providerModels = effectiveDefaultProvider
+    ? getModels(effectiveDefaultProvider)
+    : [];
+  const persistedModelId = effectiveDefaultProvider
+    ? modelByProvider[effectiveDefaultProvider]
+    : undefined;
+  const currentModelId = providerModels.some(
+    (model) => model.id === persistedModelId,
+  )
+    ? persistedModelId!
+    : providerModels[0]?.id || "";
 
   const [agentMode, setAgentMode] = useAtom(agentModeAtom);
+  const [builtinAgentId, setBuiltinAgentId] = useState<BuiltinAgentId | null>(
+    null,
+  );
 
   const [workMode, setWorkMode] = useAtom(lastSelectedWorkModeAtom);
   const debugMode = useAtomValue(agentsDebugModeAtom);
@@ -391,7 +402,7 @@ export function NewChatForm({
   );
 
   // Check if workspace already exists for selected branch (local mode only)
-  // This enables the "continuing in existing workspace" indicator
+  // This enables the "继续使用现有工作区" indicator
   const existingWorkspaceQuery = trpc.chats.findByProjectAndBranch.useQuery(
     {
       projectId: validatedProject?.id ?? "",
@@ -538,7 +549,7 @@ export function NewChatForm({
     hasSetLocalBranchRef.current = false;
   }, [workMode, validatedProject?.id]);
 
-  // Auto-focus input when NewChatForm is shown (when clicking "New Chat")
+  // Auto-focus input when NewChatForm is shown (when clicking "新建对话")
   // Skip on mobile to prevent keyboard from opening automatically
   useEffect(() => {
     if (isMobileFullscreen) return; // Don't autofocus on mobile
@@ -700,11 +711,12 @@ export function NewChatForm({
         const subChatMeta =
           data.subChats?.map((sc) => ({
             id: sc.id,
-            name: sc.name || "New Chat",
+            name: sc.name || "新建对话",
             created_at: sc.createdAt?.toISOString() || new Date().toISOString(),
             mode: (sc.mode as "plan" | "agent" | "ralph") || "agent",
             providerId: sc.providerId as ProviderId | undefined,
             modelId: sc.modelId || undefined,
+            agentId: resolveBuiltinAgent(sc.agentId)?.id ?? null,
           })) || [];
         store.setAllSubChats(subChatMeta);
         store.addToOpenSubChats(newSubChatId);
@@ -738,7 +750,7 @@ export function NewChatForm({
   const openFolder = trpc.projects.openFolder.useMutation({
     onSuccess: (project) => {
       if (project) {
-        // Optimistically update the projects list cache to prevent "Select repo" flash
+        // Optimistically update the projects list cache to prevent "选择仓库" flash
         // This ensures validatedProject can find the new project immediately
         utils.projects.list.setData(undefined, (oldData) => {
           if (!oldData) return [project];
@@ -783,6 +795,13 @@ export function NewChatForm({
       return;
     }
 
+    if (parseGoalCommand(message)) {
+      toast.message("请先创建对话，再使用 /goal 管理该对话的目标", {
+        description: goalCommandHelp,
+      });
+      return;
+    }
+
     // Add to prompt history before sending
     if (historyKey) {
       addToHistory(message.trim());
@@ -821,7 +840,7 @@ export function NewChatForm({
     // Create chat with selected project, branch, and initial message
     console.log(
       "[new-chat-form] Creating chat with providerId:",
-      defaultProvider,
+      effectiveDefaultProvider,
     );
     createChatMutation.mutate({
       projectId: selectedProject.id,
@@ -839,8 +858,9 @@ export function NewChatForm({
           : undefined,
       useWorktree: !isMultiRepo && workMode === "worktree",
       mode: agentMode,
-      providerId: defaultProvider,
+      providerId: effectiveDefaultProvider,
       modelId: currentModelId || undefined,
+      agentId: builtinAgentId,
       initialAddedDirs:
         pendingAddedDirs.length > 0 ? pendingAddedDirs : undefined,
     });
@@ -853,8 +873,9 @@ export function NewChatForm({
     workMode,
     images,
     agentMode,
-    defaultProvider,
+    effectiveDefaultProvider,
     currentModelId,
+    builtinAgentId,
     historyKey,
     addToHistory,
     setNavState,
@@ -996,15 +1017,20 @@ export function NewChatForm({
               setAgentMode("ralph");
             }
             break;
+          case "goal":
+            toast.message("目标命令在创建对话后可用", {
+              description: goalCommandHelp,
+            });
+            break;
           case "add-dir":
             // Open native folder picker to add directories
             (async () => {
               if (!isDesktopApp()) {
-                toast.error("Folder picker only available in desktop app");
+                toast.error("文件夹选择器仅在桌面应用中可用");
                 return;
               }
               const result = await window.desktopApi.dialog.showOpenDialog({
-                title: "Select Additional Directory",
+                title: "选择其他目录",
                 properties: ["openDirectory", "multiSelections"],
               });
               if (!result.canceled && result.filePaths.length > 0) {
@@ -1012,7 +1038,7 @@ export function NewChatForm({
                   ...new Set([...prev, ...result.filePaths]),
                 ]);
                 toast.success(
-                  `Added ${result.filePaths.length} director${result.filePaths.length > 1 ? "ies" : "y"} to context`,
+                  `已将 ${result.filePaths.length} 个目录添加到上下文`,
                 );
               }
             })();
@@ -1082,7 +1108,7 @@ export function NewChatForm({
                 size="icon"
                 onClick={onBackToChats}
                 className="h-7 w-7 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] shrink-0 rounded-md"
-                aria-label="All projects"
+                aria-label="所有项目"
               >
                 <AlignJustify className="h-4 w-4" />
               </Button>
@@ -1116,7 +1142,7 @@ export function NewChatForm({
                   />
                 </div>
                 <h1 className="text-2xl md:text-4xl font-medium tracking-tight">
-                  What would you like to do?
+                  你想做什么？
                 </h1>
               </div>
             )}
@@ -1130,7 +1156,7 @@ export function NewChatForm({
                   disabled={openFolder.isPending}
                   className="h-8 px-3 bg-primary text-primary-foreground rounded-lg text-sm font-medium transition-[background-color,transform] duration-150 hover:bg-primary/90 active:scale-[0.97] shadow-[0_0_0_0.5px_rgb(23,23,23),inset_0_0_0_1px_rgba(255,255,255,0.14)] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {openFolder.isPending ? "Opening..." : "Select repo"}
+                  {openFolder.isPending ? "正在打开…" : "选择仓库"}
                 </button>
               </div>
             ) : (
@@ -1192,42 +1218,32 @@ export function NewChatForm({
                           mode={agentMode}
                           onModeChange={setAgentMode}
                         />
+                        <BuiltinAgentSelectorDropdown
+                          agentId={builtinAgentId}
+                          onAgentChange={setBuiltinAgentId}
+                          disabled={createChatMutation.isPending}
+                        />
 
                         {/* Provider selector */}
                         <ProviderSelectorDropdown
-                          providerId={defaultProvider}
+                          providerId={effectiveDefaultProvider}
                           onProviderChange={setDefaultProvider}
                         />
 
-                        {/* Model selector */}
-                        {defaultProvider === "opencode" ? (
-                          <OpenCodeModelSelector
-                            currentModelId={currentModelId}
-                            onModelChange={(modelId) => {
-                              setModelByProvider({
-                                ...modelByProvider,
-                                opencode: modelId,
-                              });
-                            }}
-                          />
-                        ) : (
-                          <ModelSelectorDropdown
-                            providerId={defaultProvider}
-                            models={providerModels}
-                            currentModelId={currentModelId}
-                            onModelChange={(modelId) => {
-                              setModelByProvider({
-                                ...modelByProvider,
-                                [defaultProvider]: modelId,
-                              });
-                            }}
-                          />
-                        )}
-
-                        {/* Web search mode selector (Codex only) */}
-                        {defaultProvider === "codex" && (
-                          <WebSearchModeSelector />
-                        )}
+                        {effectiveDefaultProvider &&
+                          providerModels.length > 0 && (
+                            <ModelSelectorDropdown
+                              providerId={effectiveDefaultProvider}
+                              models={providerModels}
+                              currentModelId={currentModelId}
+                              onModelChange={(modelId) => {
+                                setModelByProvider({
+                                  ...modelByProvider,
+                                  [effectiveDefaultProvider]: modelId,
+                                });
+                              }}
+                            />
+                          )}
                       </>
                     }
                     acceptedFileTypes="image/jpeg,image/png"
@@ -1294,7 +1310,7 @@ export function NewChatForm({
                           <SearchIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
                           <input
                             type="text"
-                            placeholder="Search branches..."
+                            placeholder="搜索分支…"
                             value={branchSearch}
                             onChange={(e) => setBranchSearch(e.target.value)}
                             className="flex-1 bg-transparent text-sm outline-hidden placeholder:text-muted-foreground"
@@ -1311,14 +1327,14 @@ export function NewChatForm({
                             }}
                           >
                             <Plus className="h-3 w-3" />
-                            Create
+                            创建
                           </Button>
                         </div>
 
                         {/* Virtualized branch list */}
                         {filteredBranches.length === 0 ? (
                           <div className="py-6 text-center text-sm text-muted-foreground">
-                            No branches found.
+                            未找到分支。
                           </div>
                         ) : (
                           <div
@@ -1357,8 +1373,8 @@ export function NewChatForm({
                                       className={cn(
                                         "flex items-center gap-1.5 w-[calc(100%-8px)] mx-1 px-1.5 text-sm text-left absolute left-0 top-0 rounded-md cursor-default select-none outline-hidden transition-colors",
                                         isSelected
-                                          ? "dark:bg-neutral-800 text-foreground"
-                                          : "dark:hover:bg-neutral-800 hover:text-foreground",
+                                          ? "bg-accent text-accent-foreground"
+                                          : "hover:bg-accent hover:text-accent-foreground",
                                       )}
                                       style={{
                                         height: `${virtualItem.size}px`,
@@ -1378,13 +1394,13 @@ export function NewChatForm({
                                       )}
                                       {branch.isDefault && (
                                         <span className="text-[10px] text-muted-foreground/70 bg-muted px-1.5 py-0.5 rounded shrink-0">
-                                          default
+                                          默认
                                         </span>
                                       )}
                                       {workMode === "local" &&
                                         branch.isCurrent && (
                                           <span className="text-[10px] text-emerald-500/80 bg-emerald-500/10 px-1.5 py-0.5 rounded shrink-0">
-                                            current
+                                            当前
                                           </span>
                                         )}
                                       {isSelected && (
@@ -1419,7 +1435,7 @@ export function NewChatForm({
                   {/* Existing workspace indicator - shown in local mode when workspace exists */}
                   {workMode === "local" && existingWorkspaceQuery.data && (
                     <span className="text-xs text-muted-foreground/70 ml-1">
-                      continuing in existing workspace
+                      继续使用现有工作区
                     </span>
                   )}
                 </div>
@@ -1428,7 +1444,7 @@ export function NewChatForm({
                 {recentChats && recentChats.length > 0 && (
                   <div className="mt-6 space-y-2">
                     <h3 className="text-xs font-medium text-muted-foreground px-1">
-                      Recent
+                      最近
                     </h3>
                     <div className="space-y-1">
                       {recentChats.slice(0, 5).map((chat) => (

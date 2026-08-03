@@ -47,10 +47,10 @@ export const RalphPrdStatusCard = memo(function RalphPrdStatusCard({
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-muted-foreground">
-              Preparing PRD
+              正在准备 PRD
             </p>
             <p className="text-xs text-muted-foreground/70 truncate">
-              {input.message || "Setting up product requirements generation..."}
+              {input.message || "正在准备生成产品需求…"}
             </p>
           </div>
         </div>
@@ -66,9 +66,9 @@ export const RalphPrdStatusCard = memo(function RalphPrdStatusCard({
             <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium">Generating PRD</p>
+            <p className="text-sm font-medium">正在生成 PRD</p>
             <p className="text-xs text-muted-foreground truncate">
-              {input.message || "Creating product requirements from plan..."}
+              {input.message || "正在根据计划生成产品需求…"}
             </p>
           </div>
         </div>
@@ -90,7 +90,7 @@ export const RalphPrdStatusCard = memo(function RalphPrdStatusCard({
           <Check className="h-3.5 w-3.5 text-primary-foreground" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium">PRD Generated</p>
+          <p className="text-sm font-medium">PRD 已生成</p>
         </div>
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <GitBranch className="h-3 w-3" />
@@ -111,7 +111,7 @@ export const RalphPrdStatusCard = memo(function RalphPrdStatusCard({
             <RalphIcon className="h-3 w-3 text-muted-foreground" />
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
               {prd.stories.length}{" "}
-              {prd.stories.length === 1 ? "Story" : "Stories"}
+              {prd.stories.length === 1 ? "个故事" : "个故事"}
             </span>
           </div>
           <div className="space-y-1">
@@ -139,7 +139,7 @@ export const RalphPrdStatusCard = memo(function RalphPrdStatusCard({
                   </span>
                   {story.type === "research" && (
                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium uppercase tracking-wide">
-                      Research
+                      研究
                     </span>
                   )}
                 </div>

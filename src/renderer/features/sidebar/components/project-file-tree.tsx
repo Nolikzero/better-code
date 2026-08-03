@@ -646,7 +646,7 @@ export function ProjectFileTree() {
   if (!selectedProject) {
     return (
       <div className="flex-1 flex items-center justify-center p-4 text-muted-foreground text-sm text-center">
-        Select a project to browse files
+        选择项目以浏览文件
       </div>
     );
   }
@@ -654,7 +654,7 @@ export function ProjectFileTree() {
   if (isLoadingRoot) {
     return (
       <div className="flex-1 flex items-center justify-center p-4 text-muted-foreground text-sm">
-        Loading...
+        正在加载…
       </div>
     );
   }
@@ -662,7 +662,7 @@ export function ProjectFileTree() {
   if (!rootEntries || rootEntries.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center p-4 text-muted-foreground text-sm text-center">
-        No files found
+        未找到文件
       </div>
     );
   }
@@ -671,13 +671,13 @@ export function ProjectFileTree() {
     <div className="flex flex-col flex-1 min-h-0">
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/30">
         <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-          Project tree
+          项目树
         </span>
         {hasExpandedFolders && (
           <button
             onClick={handleCollapseAll}
             className="text-muted-foreground hover:text-foreground transition-colors"
-            title="Collapse all"
+            title="全部折叠"
           >
             <ChevronsDownUp className="h-3.5 w-3.5" />
           </button>
@@ -725,7 +725,7 @@ export function ProjectFileTree() {
             }
           >
             <MessageSquarePlus className="mr-2 h-4 w-4" />
-            Add to Chat
+            添加到对话
           </ContextMenuItem>
           {browsePath && contextMenuEntry && (
             <>

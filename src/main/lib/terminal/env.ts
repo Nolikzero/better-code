@@ -317,7 +317,7 @@ export function buildTerminalEnv(params: {
     ...baseEnv,
     SHELL: shell,
     TERM: "xterm-256color",
-    TERM_PROGRAM: "BetterCode",
+    TERM_PROGRAM: "SamBetterCode",
     TERM_PROGRAM_VERSION: process.env.npm_package_version || "1.0.0",
     COLORTERM: "truecolor",
     LANG: locale,

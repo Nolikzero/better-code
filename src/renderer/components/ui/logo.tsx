@@ -17,7 +17,7 @@ export function Logo({
       fill={fill}
       xmlns="http://www.w3.org/2000/svg"
       className={cn("w-full h-full", className)}
-      aria-label="BetterCode logo"
+      aria-label="SamBetterCode 标志"
       {...props}
     >
       <path

@@ -47,19 +47,14 @@ export function AgentsSkillsTab() {
       {/* Header - hidden on narrow screens */}
       {!isNarrowScreen && (
         <div className="flex flex-col space-y-1.5 text-center sm:text-left">
-          <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold text-foreground">Skills</h3>
-            <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-muted text-muted-foreground">
-              Beta
-            </span>
-          </div>
+          <h3 className="text-sm font-semibold text-foreground">技能</h3>
           <a
             href="https://code.claude.com/docs/en/skills"
             target="_blank"
             rel="noopener noreferrer"
             className="text-xs text-muted-foreground hover:text-foreground underline transition-colors"
           >
-            Documentation
+            文档
           </a>
         </div>
       )}
@@ -68,20 +63,18 @@ export function AgentsSkillsTab() {
       <div className="space-y-4">
         {isLoading ? (
           <div className="bg-background rounded-lg border border-border p-4 text-sm text-muted-foreground text-center">
-            Loading skills...
+            正在加载技能…
           </div>
         ) : skills.length === 0 ? (
           <div className="bg-background rounded-lg border border-border p-6 text-center">
             <SkillIcon className="h-8 w-8 text-muted-foreground/50 mx-auto mb-3" />
-            <p className="text-sm text-muted-foreground mb-2">
-              No skills found
-            </p>
+            <p className="text-sm text-muted-foreground mb-2">未找到技能</p>
             <p className="text-xs text-muted-foreground">
-              Add skills to{" "}
+              将技能添加到{" "}
               <code className="px-1 py-0.5 bg-muted rounded">
                 ~/.claude/skills/
               </code>{" "}
-              or{" "}
+              或{" "}
               <code className="px-1 py-0.5 bg-muted rounded">
                 .claude/skills/
               </code>
@@ -140,25 +133,25 @@ export function AgentsSkillsTab() {
       <div className="pt-4 border-t border-border space-y-3">
         <div>
           <h4 className="text-xs font-medium text-foreground mb-1.5">
-            How to use Skills
+            如何使用技能
           </h4>
           <p className="text-xs text-muted-foreground">
-            Mention a skill in chat with{" "}
-            <code className="px-1 py-0.5 bg-muted rounded">@skill-name</code> or
-            ask Claude to use it directly.
+            在对话中通过{" "}
+            <code className="px-1 py-0.5 bg-muted rounded">@skill-name</code>{" "}
+            提及技能，或直接要求智能体使用它。
           </p>
         </div>
         <div>
           <h4 className="text-xs font-medium text-foreground mb-1.5">
-            Creating Skills
+            创建技能
           </h4>
           <p className="text-xs text-muted-foreground">
-            Create a folder with a{" "}
-            <code className="px-1 py-0.5 bg-muted rounded">SKILL.md</code> file
-            in{" "}
             <code className="px-1 py-0.5 bg-muted rounded">
               ~/.claude/skills/your-skill/
-            </code>
+            </code>{" "}
+            中创建目录，并在其中添加{" "}
+            <code className="px-1 py-0.5 bg-muted rounded">SKILL.md</code>{" "}
+            文件。
           </p>
         </div>
       </div>
@@ -222,7 +215,7 @@ function SkillRow({
               <div className="pt-3 space-y-2">
                 <div>
                   <span className="text-xs font-medium text-foreground">
-                    Path
+                    路径
                   </span>
                   <button
                     onClick={(e) => {
@@ -236,14 +229,14 @@ function SkillRow({
                 </div>
                 <div>
                   <span className="text-xs font-medium text-foreground">
-                    Usage
+                    用法
                   </span>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Type{" "}
+                    类型{" "}
                     <code className="px-1 py-0.5 bg-muted rounded">
                       @{skill.name}
                     </code>{" "}
-                    in chat or ask Claude to use the {skill.name} skill.
+                    在对话中调用，或要求 Claude 使用 {skill.name} 技能。
                   </p>
                 </div>
               </div>

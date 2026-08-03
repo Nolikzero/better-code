@@ -70,7 +70,7 @@ export const UserMessage = memo(function UserMessage({
   const ralphPromptData = useMemo(() => {
     if (textContent?.startsWith(RALPH_PLANNING_PREFIX)) {
       const featureMatch = textContent.match(/Feature to implement:\n(.+)$/s);
-      const originalMessage = featureMatch?.[1]?.trim() || "Feature request";
+      const originalMessage = featureMatch?.[1]?.trim() || "功能请求";
       return {
         originalMessage,
         fullPrompt: textContent,
@@ -79,7 +79,7 @@ export const UserMessage = memo(function UserMessage({
     }
     if (textContent?.startsWith(RALPH_EXECUTION_PREFIX)) {
       const userMsgMatch = textContent.match(/User message: (.+)$/s);
-      const originalMessage = userMsgMatch?.[1]?.trim() || "Continue...";
+      const originalMessage = userMsgMatch?.[1]?.trim() || "继续…";
       return {
         originalMessage,
         fullPrompt: textContent,
@@ -158,12 +158,12 @@ export const UserMessage = memo(function UserMessage({
           <div className="mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
             <div className="flex items-center gap-2 text-destructive text-sm">
               <span>
-                Failed to set up sandbox
+                沙箱设置失败
                 {sandboxSetupError ? `: ${sandboxSetupError}` : ""}
               </span>
               {onRetrySetup && (
                 <Button variant="ghost" size="sm" onClick={onRetrySetup}>
-                  Retry
+                  重试
                 </Button>
               )}
             </div>

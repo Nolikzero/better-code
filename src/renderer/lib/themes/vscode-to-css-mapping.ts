@@ -128,6 +128,32 @@ const VSCODE_TO_CSS_MAP: Record<string, string[]> = {
     "panel.background",
     "editor.background",
   ],
+
+  // Sidebar semantic tokens must follow runtime-selected themes as well as
+  // the base .light/.dark classes.
+  "--sidebar": ["sideBar.background", "panel.background", "editor.background"],
+  "--sidebar-foreground": ["sideBar.foreground", "foreground"],
+  "--sidebar-primary": [
+    "activityBarBadge.background",
+    "button.background",
+    "focusBorder",
+  ],
+  "--sidebar-primary-foreground": [
+    "activityBarBadge.foreground",
+    "button.foreground",
+  ],
+  "--sidebar-accent": [
+    "list.activeSelectionBackground",
+    "list.hoverBackground",
+    "editor.selectionBackground",
+  ],
+  "--sidebar-accent-foreground": [
+    "list.activeSelectionForeground",
+    "list.hoverForeground",
+    "sideBar.foreground",
+  ],
+  "--sidebar-border": ["sideBar.border", "panel.border", "contrastBorder"],
+  "--sidebar-ring": ["focusBorder", "button.background"],
 };
 
 /**
@@ -220,7 +246,7 @@ function hexToHSL(
     }
   }
 
-  const hsl = `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
+  const hsl = `${(h * 360).toFixed(3)} ${(s * 100).toFixed(3)}% ${(l * 100).toFixed(3)}%`;
 
   // Output with alpha if preserving
   if (outputAlpha !== null) {
@@ -281,6 +307,8 @@ const PRESERVE_ALPHA_VARS = new Set([
   "--accent",
   "--tl-background",
   "--input-background",
+  "--sidebar",
+  "--sidebar-accent",
 ]);
 
 /**

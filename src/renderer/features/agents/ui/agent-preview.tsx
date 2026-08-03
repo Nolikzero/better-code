@@ -342,7 +342,7 @@ export function AgentPreview({
               className="h-7 w-7 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] shrink-0 rounded-md"
             >
               <IconChatBubble className="h-4 w-4" />
-              <span className="sr-only">Back to chat</span>
+              <span className="sr-only">返回对话</span>
             </Button>
 
             {/* Reload button */}
@@ -479,7 +479,7 @@ export function AgentPreview({
                 width="100%"
                 height="100%"
                 style={{ border: "none" }}
-                title="Preview"
+                title="预览"
                 sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
                 allow="clipboard-write"
                 onLoad={() => setIsLoaded(true)}
@@ -496,7 +496,7 @@ export function AgentPreview({
                     viewBox="0 0 400 400"
                     fill="none"
                     xmlns="http://www.w3.org/2000/svg"
-                    aria-label="BetterCode logo"
+                    aria-label="SamBetterCode 标志"
                   >
                     <path
                       fillRule="evenodd"
@@ -569,7 +569,7 @@ export function AgentPreview({
                   }}
                   sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
                   onLoad={() => setIsLoaded(true)}
-                  title="Preview"
+                  title="预览"
                   tabIndex={-1}
                 />
 
@@ -583,7 +583,7 @@ export function AgentPreview({
                         viewBox="0 0 400 400"
                         fill="none"
                         xmlns="http://www.w3.org/2000/svg"
-                        aria-label="BetterCode logo"
+                        aria-label="SamBetterCode 标志"
                       >
                         <path
                           fillRule="evenodd"

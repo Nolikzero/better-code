@@ -357,7 +357,7 @@ export function createOpenCodeTransformer(
       yield {
         type: "tool-output-error",
         toolCallId: requestID,
-        errorText: "Skipped",
+        errorText: "已跳过",
       };
 
       // Emit ask-user-question-result for real-time UI update
@@ -528,7 +528,7 @@ export function createOpenCodeTransformer(
             yield {
               type: "tool-output-error",
               toolCallId: toolId,
-              errorText: state.error || "Tool execution failed",
+              errorText: state.error || "工具执行失败",
             };
           }
         } else if (part.type === "step-start") {
@@ -665,7 +665,7 @@ export function createOpenCodeTransformer(
             const authError = error as ProviderAuthError;
             yield {
               type: "auth-error",
-              errorText: authError.data?.message || "Authentication failed",
+              errorText: authError.data?.message || "身份验证失败",
             };
           } else if (errorName === "APIError") {
             const apiError = error as ApiError;
@@ -681,30 +681,30 @@ export function createOpenCodeTransformer(
             } else {
               yield {
                 type: "error",
-                errorText: apiError.data?.message || "API error",
+                errorText: apiError.data?.message || "API 错误",
               };
             }
           } else if (errorName === "MessageAbortedError") {
             // User cancelled - not really an error
-            yield { type: "error", errorText: "Message aborted" };
+            yield { type: "error", errorText: "消息已中止" };
           } else {
             // UnknownError or other
             const unknownError = error as { data?: { message?: string } };
             yield {
               type: "error",
-              errorText: unknownError.data?.message || "Unknown error",
+              errorText: unknownError.data?.message || "未知错误",
             };
           }
         } else if (error) {
           // Fallback for errors without name property
-          let errorMessage = "OpenCode session failed";
+          let errorMessage = "OpenCode 会话失败";
           const errorAny = error as unknown as Record<string, unknown>;
           if (typeof errorAny.message === "string") {
             errorMessage = errorAny.message;
           }
           yield { type: "error", errorText: errorMessage };
         } else {
-          yield { type: "error", errorText: "OpenCode session failed" };
+          yield { type: "error", errorText: "OpenCode 会话失败" };
         }
 
         yield { type: "finish-step" };
@@ -726,8 +726,8 @@ export function createOpenCodeTransformer(
               question: title,
               header: "Permission",
               options: [
-                { label: "Allow", description: "Grant this permission" },
-                { label: "Deny", description: "Deny this permission" },
+                { label: "允许", description: "授予此权限" },
+                { label: "拒绝", description: "拒绝此权限" },
               ],
               multiSelect: false,
             },

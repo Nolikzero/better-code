@@ -66,10 +66,10 @@ export function SubChatContextMenu({
   return (
     <ContextMenuContent className="w-48">
       <ContextMenuItem onClick={() => onTogglePin(subChat.id)}>
-        {isPinned ? "Unpin chat" : "Pin chat"}
+        {isPinned ? "取消固定对话" : "固定对话"}
       </ContextMenuItem>
       <ContextMenuItem onClick={() => onRename(subChat)}>
-        Rename chat
+        重命名对话
       </ContextMenuItem>
       <ContextMenuSeparator />
 
@@ -80,20 +80,20 @@ export function SubChatContextMenu({
             className="justify-between"
             disabled={isOnlyChat}
           >
-            Close chat
+            关闭对话
             {!isOnlyChat && <Kbd>{closeTabShortcut}</Kbd>}
           </ContextMenuItem>
           <ContextMenuItem
             onClick={() => onCloseOtherTabs?.(subChat.id)}
             disabled={!canCloseOtherTabs}
           >
-            Close other chats
+            关闭其他对话
           </ContextMenuItem>
           <ContextMenuItem
             onClick={() => onCloseTabsToRight?.(subChat.id, visualIndex)}
             disabled={!hasTabsToRight}
           >
-            Close chats to the right
+            关闭右侧对话
           </ContextMenuItem>
         </>
       ) : (
@@ -103,7 +103,7 @@ export function SubChatContextMenu({
             className="justify-between"
             disabled={isOnlyChat}
           >
-            Archive chat
+            归档对话
             {!isOnlyChat && <Kbd>{closeTabShortcut}</Kbd>}
           </ContextMenuItem>
           <ContextMenuItem
@@ -113,13 +113,13 @@ export function SubChatContextMenu({
               currentIndex >= (totalCount || 0) - 1
             }
           >
-            Archive chats below
+            归档以下对话
           </ContextMenuItem>
           <ContextMenuItem
             onClick={() => onArchiveOthers(subChat.id)}
             disabled={isOnlyChat}
           >
-            Archive other chats
+            归档其他对话
           </ContextMenuItem>
         </>
       )}
@@ -131,7 +131,7 @@ export function SubChatContextMenu({
             className="text-destructive focus:text-destructive"
           >
             <Trash2 className="mr-2 h-4 w-4" />
-            Delete chat permanently
+            永久删除对话
           </ContextMenuItem>
         </>
       )}

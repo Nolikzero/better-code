@@ -177,12 +177,6 @@ contextBridge.exposeInMainWorld("desktopApi", {
     return () => ipcRenderer.off("file-changed", handler);
   },
 
-  // Auth stubs (auth is handled by Claude Code CLI)
-  getUser: async () => null,
-  logout: async () => {
-    console.log("[Auth] Logout requested - use 'claude logout' in terminal");
-  },
-
   // Dialog
   dialog: {
     showOpenDialog: (options: {
@@ -279,15 +273,6 @@ export interface DesktopApi {
       subChatId: string;
     }) => void,
   ) => () => void;
-  // Auth stubs (auth is handled by Claude Code CLI)
-  getUser: () => Promise<{
-    id: string;
-    email: string;
-    name: string | null;
-    imageUrl: string | null;
-    username: string | null;
-  } | null>;
-  logout: () => Promise<void>;
   // Dialog
   dialog: {
     showOpenDialog: (options: {

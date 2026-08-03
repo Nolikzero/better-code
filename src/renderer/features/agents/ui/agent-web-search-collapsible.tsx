@@ -66,7 +66,7 @@ export const AgentWebSearchCollapsible = memo(
           <div className="flex-1 min-w-0 flex items-center gap-1">
             <div className="text-xs flex items-center gap-1.5 min-w-0">
               <span className="font-medium whitespace-nowrap shrink-0 text-muted-foreground">
-                {isStreaming ? "Searching web" : "Searched web"}
+                {isStreaming ? "正在搜索网络" : "已搜索网络"}
               </span>
               {/* Query preview when collapsed */}
               <span className="text-muted-foreground/60 truncate">
@@ -75,7 +75,7 @@ export const AgentWebSearchCollapsible = memo(
               {/* Result count */}
               {!isStreaming && hasResults && (
                 <span className="text-muted-foreground/60 whitespace-nowrap shrink-0">
-                  · {resultCount} {resultCount === 1 ? "result" : "results"}
+                  · {resultCount} 个结果
                 </span>
               )}
               {/* Chevron - rotates when expanded, visible on hover when collapsed */}

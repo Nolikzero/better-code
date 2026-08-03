@@ -3,6 +3,7 @@
 // e2b API routes are used instead of useSandboxManager for agents
 // import { clearSubChatSelectionAtom, isSubChatMultiSelectModeAtom, selectedSubChatIdsAtom } from "@/lib/atoms/agent-subchat-selection"
 import { Chat, useChat } from "@ai-sdk/react";
+import { parseChatGoal } from "@shared/chat-goal";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { ChevronDown, ChevronUp, MessageSquare } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -77,7 +78,9 @@ import {
   COMMAND_PROMPTS,
   type SlashCommandOption,
 } from "../commands";
+import { goalCommandHelp, parseGoalCommand } from "../commands/goal-command";
 import { AgentSendButton } from "../components/agent-send-button";
+import { BuiltinAgentSelectorDropdown } from "../components/builtin-agent-selector-dropdown";
 import {
   ChatInputActions,
   ChatInputAttachments,
@@ -92,6 +95,7 @@ import { WebSearchModeSelector } from "../components/web-search-mode-selector";
 import { useAgentModeManagement } from "../hooks/use-agent-mode-management";
 import { useAgentsFileUpload } from "../hooks/use-agents-file-upload";
 import { useBranchSwitchConfirmation } from "../hooks/use-branch-switch-confirmation";
+import { useBuiltinAgentSelection } from "../hooks/use-builtin-agent-selection";
 import { useChangedFilesTracking } from "../hooks/use-changed-files-tracking";
 import { useDevServer } from "../hooks/use-dev-server";
 import { useDiffManagement } from "../hooks/use-diff-management";
@@ -116,16 +120,14 @@ import {
   type FileMentionOption,
 } from "../mentions";
 import { agentChatStore } from "../stores/agent-chat-store";
-import {
-  type SubChatMeta,
-  useAgentSubChatStore,
-} from "../stores/sub-chat-store";
+import { useAgentSubChatStore } from "../stores/sub-chat-store";
 import { AddedDirectoriesBadge } from "../ui/added-directories-badge";
 import { AgentContextIndicator } from "../ui/agent-context-indicator";
 import { AgentPreview } from "../ui/agent-preview";
 import { AgentUserQuestion } from "../ui/agent-user-question";
 import { BranchSwitchDialog } from "../ui/branch-switch-dialog";
 import { ChatTitleEditor } from "../ui/chat-title-editor";
+import { GoalStatusCard } from "../ui/goal-status-card";
 import { LocalPreview } from "../ui/local-preview";
 // DiffSidebar moved to left sidebar - see LeftSidebarChangesView
 import { PLAYBACK_SPEEDS, type PlaybackSpeed } from "../ui/message-controls";
@@ -237,6 +239,7 @@ function ChatViewInner({
   isOverlayMode = false,
   overlayContent,
   viewMode,
+  goal,
 }: {
   chat: Chat<any>;
   subChatId: string;
@@ -260,6 +263,7 @@ function ChatViewInner({
   isOverlayMode?: boolean;
   overlayContent?: React.ReactNode;
   viewMode: "chat" | "split" | "preview";
+  goal?: string | null;
 }) {
   // UNCONTROLLED: just track if editor has content for send button
   const [hasContent, setHasContent] = useState(false);
@@ -326,6 +330,8 @@ function ChatViewInner({
 
   // tRPC utils for cache invalidation
   const utils = api.useUtils();
+  const currentGoal = useMemo(() => parseChatGoal(goal), [goal]);
+  const updateGoalMutation = trpc.chats.updateSubChatGoal.useMutation();
 
   // Eagerly warm the file index so @-mentions are instant
   const warmIndex = trpc.files.warmIndex.useMutation();
@@ -360,9 +366,9 @@ function ChatViewInner({
     },
     onError: (error) => {
       if (error.data?.code === "NOT_FOUND") {
-        toast.error("Send a message first before renaming this chat");
+        toast.error("请先发送一条消息，再重命名此对话");
       } else {
-        toast.error("Failed to rename chat");
+        toast.error("重命名对话失败");
       }
     },
   });
@@ -383,7 +389,7 @@ function ChatViewInner({
         // Revert on error (toast shown by mutation onError)
         useAgentSubChatStore
           .getState()
-          .updateSubChatName(subChatId, subChatName || "New Chat");
+          .updateSubChatName(subChatId, subChatName || "新建对话");
       }
     },
     [subChatId, subChatName, renameSubChatMutation],
@@ -419,6 +425,8 @@ function ChatViewInner({
     subChatId,
     parentChatId,
   });
+  const { builtinAgentId, isBuiltinAgentUpdating, handleBuiltinAgentChange } =
+    useBuiltinAgentSelection({ subChatId });
 
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
   const [_shouldOpenClaudeSubmenu, setShouldOpenClaudeSubmenu] =
@@ -565,6 +573,84 @@ function ChatViewInner({
     utils,
   });
 
+  const handleGoalCommand = useCallback(async (): Promise<boolean> => {
+    const command = parseGoalCommand(editorRef.current?.getValue() ?? "");
+    if (!command) return false;
+
+    if (command.type === "show") {
+      toast.message(
+        currentGoal
+          ? `当前目标：${currentGoal.title}（${
+              currentGoal.status === "active"
+                ? "进行中"
+                : currentGoal.status === "completed"
+                  ? "已完成"
+                  : "受阻"
+            }）`
+          : "当前对话尚未设置目标",
+        { description: goalCommandHelp },
+      );
+      editorRef.current?.clear();
+      return true;
+    }
+
+    if (command.type === "invalid") {
+      toast.error(command.message, { description: goalCommandHelp });
+      return true;
+    }
+
+    try {
+      switch (command.type) {
+        case "set":
+          await updateGoalMutation.mutateAsync({
+            id: subChatId,
+            action: { type: "set", title: command.title },
+          });
+          toast.success("已设置当前目标");
+          break;
+        case "complete":
+          await updateGoalMutation.mutateAsync({
+            id: subChatId,
+            action: command.note
+              ? { type: "complete", note: command.note }
+              : { type: "complete" },
+          });
+          toast.success("目标已标记为完成");
+          break;
+        case "block":
+          await updateGoalMutation.mutateAsync({
+            id: subChatId,
+            action: { type: "block", reason: command.reason },
+          });
+          toast.success("目标已标记为受阻");
+          break;
+        case "clear":
+          await updateGoalMutation.mutateAsync({
+            id: subChatId,
+            action: { type: "clear" },
+          });
+          toast.success("已清除当前目标");
+          break;
+      }
+      editorRef.current?.clear();
+      await utils.agents.getAgentChat.invalidate({ chatId: parentChatId });
+      await utils.chats.listWithSubChats.invalidate();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "更新目标失败";
+      toast.error(message);
+    }
+
+    return true;
+  }, [currentGoal, parentChatId, subChatId, updateGoalMutation, utils]);
+
+  const handleChatSubmit = useCallback(() => {
+    if (isBuiltinAgentUpdating) return;
+
+    void handleGoalCommand().then((handled) => {
+      if (!handled) stableHandleSend();
+    });
+  }, [handleGoalCommand, isBuiltinAgentUpdating, stableHandleSend]);
+
   // Plan approval hook - handles plan detection, keyboard shortcuts, and approval flow
   const { hasUnapprovedPlan, handleApprovePlan } = usePlanApproval({
     subChatId,
@@ -637,8 +723,8 @@ function ChatViewInner({
   // Monitor error state from useChat and show toast when errors occur
   useEffect(() => {
     if (error && status === "error") {
-      toast.error("Something went wrong", {
-        description: error.message || "An unexpected error occurred",
+      toast.error("出了点问题", {
+        description: error.message || "发生了意外错误",
         duration: 8000,
       });
       console.error(`[Chat] Error in sub=${subChatId.slice(-8)}:`, error);
@@ -748,10 +834,8 @@ function ChatViewInner({
             // Restore message to front of queue on failure
             setMessageQueue((prev) => [nextMessage, ...prev]);
             const errorMessage =
-              error instanceof Error
-                ? error.message
-                : "Failed to send queued message";
-            toast.error("Queued message failed to send", {
+              error instanceof Error ? error.message : "队列消息发送失败";
+            toast.error("队列中的消息发送失败", {
               description: errorMessage,
               duration: 5000,
             });
@@ -953,7 +1037,7 @@ function ChatViewInner({
         trpcClient.chats.updatePrInfo
           .mutate({ chatId: parentChatId, prUrl, prNumber })
           .then(() => {
-            toast.success(`PR #${prNumber} created!`, {
+            toast.success(`PR #${prNumber} 已创建！`, {
               position: "top-center",
             });
             // Invalidate the agentChat query to refetch with new PR info
@@ -1169,15 +1253,20 @@ function ChatViewInner({
             // Trigger context compaction
             handleCompact();
             break;
+          case "goal":
+            toast.message("输入完整 /goal 命令后按 Enter 执行", {
+              description: goalCommandHelp,
+            });
+            break;
           case "add-dir":
             // Open native folder picker to add directories
             (async () => {
               if (!isDesktopApp()) {
-                toast.error("Folder picker only available in desktop app");
+                toast.error("文件夹选择器仅在桌面应用中可用");
                 return;
               }
               const result = await window.desktopApi.dialog.showOpenDialog({
-                title: "Select Additional Directory",
+                title: "选择其他目录",
                 properties: ["openDirectory", "multiSelections"],
               });
               if (!result.canceled && result.filePaths.length > 0) {
@@ -1194,7 +1283,7 @@ function ChatViewInner({
                 // Update atom state
                 setAddedDirs(newDirs);
                 toast.success(
-                  `Added ${result.filePaths.length} director${result.filePaths.length > 1 ? "ies" : "y"} to context`,
+                  `已将 ${result.filePaths.length} 个目录添加到上下文`,
                 );
               }
             })();
@@ -1248,16 +1337,21 @@ function ChatViewInner({
   const inputLeftContent = useMemo(
     () => (
       <>
+        <ModeToggleDropdown
+          mode={agentMode}
+          onModeChange={handleAgentModeChange}
+        />
+        <BuiltinAgentSelectorDropdown
+          agentId={builtinAgentId}
+          onAgentChange={handleBuiltinAgentChange}
+          disabled={isStreaming || isBuiltinAgentUpdating}
+        />
         {hasNoMessages && (
           <ProviderSelectorDropdown
             providerId={effectiveProvider}
             onProviderChange={handleProviderChange}
           />
         )}
-        <ModeToggleDropdown
-          mode={agentMode}
-          onModeChange={handleAgentModeChange}
-        />
         {agentMode === "ralph" && subChatId && (
           <RalphProgressBadge subChatId={subChatId} className="ml-1" />
         )}
@@ -1288,6 +1382,10 @@ function ChatViewInner({
       handleProviderChange,
       agentMode,
       handleAgentModeChange,
+      builtinAgentId,
+      handleBuiltinAgentChange,
+      isStreaming,
+      isBuiltinAgentUpdating,
       parentChatId,
       currentModelId,
       handleOpenCodeModelChange,
@@ -1313,7 +1411,7 @@ function ChatViewInner({
           size="sm"
           className="h-7 gap-1.5 rounded-lg"
         >
-          Implement plan
+          实施规划
           <Kbd>⌘↵</Kbd>
         </Button>
       );
@@ -1327,8 +1425,8 @@ function ChatViewInner({
       <AgentSendButton
         isStreaming={isStreaming}
         isSubmitting={false}
-        disabled={!hasContentToSend || isUploading}
-        onClick={stableHandleSend}
+        disabled={!hasContentToSend || isUploading || isBuiltinAgentUpdating}
+        onClick={handleChatSubmit}
         onStop={handleStop}
         isPlanMode={isPlanMode}
         isQueueMode={isQueueMode}
@@ -1343,7 +1441,7 @@ function ChatViewInner({
     isStreaming,
     handleApprovePlan,
     isUploading,
-    stableHandleSend,
+    handleChatSubmit,
     handleStop,
     isPlanMode,
     messageQueue.length,
@@ -1357,7 +1455,7 @@ function ChatViewInner({
         <div className="shrink-0 pb-2 pt-2">
           <ChatTitleEditor
             name={subChatName}
-            placeholder="New Chat"
+            placeholder="新建对话"
             onSave={handleRenameSubChat}
             isMobile={false}
             chatId={subChatId}
@@ -1387,6 +1485,13 @@ function ChatViewInner({
                 <WorktreeInitProgress chatId={parentChatId} />
               </div>
             </div>
+            {currentGoal && (
+              <div className="px-4 pt-4">
+                <div className="w-full max-w-2xl 2xl:max-w-4xl mx-auto">
+                  <GoalStatusCard goal={currentGoal} />
+                </div>
+              </div>
+            )}
             <ChatMessages
               messages={messages}
               status={status}
@@ -1437,7 +1542,7 @@ function ChatViewInner({
             <div className="w-full max-w-2xl mx-auto">
               <div className="h-8 px-3 bg-background flex items-center gap-2 text-sm text-muted-foreground rounded-xs border border-border/50 cursor-text hover:border-foreground/30 transition-colors">
                 <MessageSquare className="w-4 h-4 shrink-0" />
-                <span className="truncate">Send a message...</span>
+                <span className="truncate">发送消息…</span>
                 <ChevronUp className="w-4 h-4 shrink-0 ml-auto" />
               </div>
             </div>
@@ -1500,7 +1605,7 @@ function ChatViewInner({
             <div className="w-full max-w-2xl mx-auto">
               <ChatInputRoot
                 maxHeight={200}
-                onSubmit={stableHandleSend}
+                onSubmit={handleChatSubmit}
                 onFocusChange={setIsInputFocused}
                 contextItems={
                   images.length > 0 ||
@@ -1537,7 +1642,7 @@ function ChatViewInner({
                   }
                   onCloseSlashTrigger={handleCloseSlashTrigger}
                   onContentChange={setHasContent}
-                  onSubmit={stableHandleSend}
+                  onSubmit={handleChatSubmit}
                   onShiftTab={() => {
                     const nextMode: AgentMode = (() => {
                       switch (agentMode) {
@@ -1761,6 +1866,8 @@ export function ChatView({
     stream_id?: string | null;
     providerId?: string | null;
     modelId?: string | null;
+    agentId?: string | null;
+    goal?: string | null;
   }>;
 
   // Get PR status when PR exists (for checking if it's open/merged/closed)
@@ -1794,12 +1901,12 @@ export function ChatView({
   const trpcUtils = trpc.useUtils();
   const mergePrMutation = trpc.chats.mergePr.useMutation({
     onSuccess: () => {
-      toast.success("PR merged successfully!", { position: "top-center" });
+      toast.success("PR 已成功合并！", { position: "top-center" });
       // Invalidate PR status to update button state
       trpcUtils.chats.getPrStatus.invalidate({ chatId });
     },
     onError: (error) => {
-      toast.error(error.message || "Failed to merge PR", {
+      toast.error(error.message || "合并 PR 失败", {
         position: "top-center",
       });
     },
@@ -2193,112 +2300,6 @@ export function ChatView({
     };
   }, [prActionsValue, setPrActions]);
 
-  // Initialize store when chat data loads
-  useEffect(() => {
-    if (!agentChat) return;
-
-    const store = useAgentSubChatStore.getState();
-
-    // Only initialize if chatId changed
-    if (store.chatId !== chatId) {
-      store.setChatId(chatId);
-    }
-
-    // Re-get fresh state after setChatId may have loaded from localStorage
-    const freshState = useAgentSubChatStore.getState();
-
-    // Guard: Check if store has "fresh" data from creation that DB doesn't know about yet.
-    // This prevents the race condition where new-chat-form.tsx sets fresh subchat data,
-    // but this effect runs with stale cached agentSubChats and overwrites it.
-    const storeHasFreshData = freshState.allSubChats.some(
-      (sc) => !agentSubChats.find((dbSc) => dbSc.id === sc.id),
-    );
-    if (storeHasFreshData && freshState.allSubChats.length > 0) {
-      // Store has newer data than DB query - preserve it and just validate open tabs
-      const validOpenIds = freshState.openSubChatIds.filter((id) =>
-        freshState.allSubChats.some((sc) => sc.id === id),
-      );
-      if (validOpenIds.length === 0 && freshState.allSubChats.length > 0) {
-        freshState.addToOpenSubChats(freshState.allSubChats[0].id);
-        freshState.setActiveSubChat(freshState.allSubChats[0].id);
-      } else if (validOpenIds.length > 0) {
-        const currentActive = freshState.activeSubChatId;
-        if (!currentActive || !validOpenIds.includes(currentActive)) {
-          freshState.setActiveSubChat(validOpenIds[0]);
-        }
-      }
-      return;
-    }
-
-    // Get sub-chats from DB (like Canvas - no isPersistedInDb flag)
-    // Build a map of existing local sub-chats to preserve their created_at if DB doesn't have it
-    const existingSubChatsMap = new Map(
-      freshState.allSubChats.map((sc) => [sc.id, sc]),
-    );
-
-    const dbSubChats: SubChatMeta[] = agentSubChats.map((sc) => {
-      const existingLocal = existingSubChatsMap.get(sc.id);
-      const createdAt =
-        typeof sc.created_at === "string"
-          ? sc.created_at
-          : sc.created_at?.toISOString();
-      const updatedAt =
-        typeof sc.updated_at === "string"
-          ? sc.updated_at
-          : sc.updated_at?.toISOString();
-      return {
-        id: sc.id,
-        name: sc.name || "New Chat",
-        // Prefer DB timestamp, fall back to local timestamp, then current time
-        created_at:
-          createdAt ?? existingLocal?.created_at ?? new Date().toISOString(),
-        updated_at: updatedAt ?? existingLocal?.updated_at,
-        mode:
-          (sc.mode as "plan" | "agent" | "ralph" | undefined) ||
-          existingLocal?.mode ||
-          "agent",
-        providerId:
-          (sc.providerId as ProviderId | undefined) ||
-          existingLocal?.providerId,
-        modelId: sc.modelId || existingLocal?.modelId,
-      };
-    });
-    const dbSubChatIds = new Set(dbSubChats.map((sc) => sc.id));
-
-    // Start with DB sub-chats
-    const allSubChats: SubChatMeta[] = [...dbSubChats];
-
-    // For each open tab ID that's NOT in DB, add placeholder (like Canvas)
-    // This prevents losing tabs during race conditions
-    const currentOpenIds = freshState.openSubChatIds;
-    currentOpenIds.forEach((id) => {
-      if (!dbSubChatIds.has(id)) {
-        allSubChats.push({
-          id,
-          name: "New Chat",
-          created_at: new Date().toISOString(),
-        });
-      }
-    });
-
-    freshState.setAllSubChats(allSubChats);
-
-    // All open tabs are now valid (we created placeholders for non-DB ones)
-    const validOpenIds = currentOpenIds;
-
-    if (validOpenIds.length === 0 && allSubChats.length > 0) {
-      // No valid open tabs, open the first sub-chat
-      freshState.addToOpenSubChats(allSubChats[0].id);
-      freshState.setActiveSubChat(allSubChats[0].id);
-    } else if (validOpenIds.length > 0) {
-      // Validate active tab is in open tabs
-      const currentActive = freshState.activeSubChatId;
-      if (!currentActive || !validOpenIds.includes(currentActive)) {
-        freshState.setActiveSubChat(validOpenIds[0]);
-      }
-    }
-  }, [agentChat, chatId]);
-
   // Create or get Chat instance for a sub-chat
   const getOrCreateChat = useCallback(
     (subChatId: string): Chat<any> | null => {
@@ -2400,13 +2401,13 @@ export function ChatView({
                 );
               if (hasExitPlanMode) {
                 notifyPlanComplete(
-                  agentChat?.name || "Chat",
+                  agentChat?.name || "对话",
                   chatId,
                   subChatId,
                 );
               } else {
                 notifyAgentComplete(
-                  agentChat?.name || "Agent",
+                  agentChat?.name || "智能体",
                   chatId,
                   subChatId,
                 );
@@ -2456,6 +2457,9 @@ export function ChatView({
     // Proceed with sub-chat creation
     const store = useAgentSubChatStore.getState();
     const subChatMode = agentMode;
+    const inheritedAgentId =
+      store.allSubChats.find((subChat) => subChat.id === store.activeSubChatId)
+        ?.agentId ?? null;
 
     // Get the current model for this provider
     const modelsByProvider = appStore.get(lastSelectedModelByProviderAtom);
@@ -2464,10 +2468,11 @@ export function ChatView({
     // Create sub-chat in DB first to get the real ID
     const newSubChat = await trpcClient.chats.createSubChat.mutate({
       chatId,
-      name: "New Chat",
+      name: "新建对话",
       mode: subChatMode,
       providerId: effectiveProvider,
       modelId,
+      agentId: inheritedAgentId,
     });
     const newId = newSubChat.id;
 
@@ -2477,11 +2482,12 @@ export function ChatView({
     // Add to allSubChats with placeholder name
     store.addToAllSubChats({
       id: newId,
-      name: "New Chat",
+      name: "新建对话",
       created_at: new Date().toISOString(),
       mode: subChatMode,
       providerId: effectiveProvider,
       modelId,
+      agentId: inheritedAgentId,
     });
 
     // Also add to listWithSubChats query cache for sidebar
@@ -2501,9 +2507,10 @@ export function ChatView({
                     {
                       id: newId,
                       chatId,
-                      name: "New Chat",
+                      name: "新建对话",
                       mode: subChatMode,
                       providerId: effectiveProvider,
+                      agentId: inheritedAgentId,
                       createdAt: new Date(),
                       updatedAt: new Date(),
                       hasPendingPlanApproval: false,
@@ -2589,9 +2596,9 @@ export function ChatView({
                   (p: any) => p.type === "tool-ExitPlanMode",
                 );
               if (hasExitPlanMode) {
-                notifyPlanComplete(agentChat?.name || "Chat", chatId, newId);
+                notifyPlanComplete(agentChat?.name || "对话", chatId, newId);
               } else {
-                notifyAgentComplete(agentChat?.name || "Agent", chatId, newId);
+                notifyAgentComplete(agentChat?.name || "智能体", chatId, newId);
               }
             }
           }
@@ -2633,6 +2640,9 @@ export function ChatView({
     // Create sub-chat after successful branch switch
     const store = useAgentSubChatStore.getState();
     const subChatMode = appStore.get(agentModeAtom);
+    const inheritedAgentId =
+      store.allSubChats.find((subChat) => subChat.id === store.activeSubChatId)
+        ?.agentId ?? null;
 
     // Get provider from current effective provider state
     const currentProvider = effectiveProvider;
@@ -2643,10 +2653,11 @@ export function ChatView({
 
     const newSubChat = await trpcClient.chats.createSubChat.mutate({
       chatId,
-      name: "New Chat",
+      name: "新建对话",
       mode: subChatMode,
       providerId: currentProvider,
       modelId,
+      agentId: inheritedAgentId,
     });
     const newId = newSubChat.id;
 
@@ -2654,11 +2665,12 @@ export function ChatView({
 
     store.addToAllSubChats({
       id: newId,
-      name: "New Chat",
+      name: "新建对话",
       created_at: new Date().toISOString(),
       mode: subChatMode,
       providerId: currentProvider,
       modelId,
+      agentId: inheritedAgentId,
     });
 
     store.addToOpenSubChats(newId);
@@ -2966,6 +2978,10 @@ export function ChatView({
     return getFirstSubChatId(agentSubChats) === activeSubChatId;
   }, [activeSubChatId, agentSubChats]);
 
+  const activeSubChatGoal = agentSubChats.find(
+    (subChat) => subChat.id === activeSubChatId,
+  )?.goal;
+
   // Determine if chat header should be hidden
   const shouldHideChatHeader =
     isPreviewSidebarOpen && isDiffSidebarOpen && !isMobileFullscreen;
@@ -3060,6 +3076,7 @@ export function ChatView({
                 isOverlayMode={isOverlayMode}
                 overlayContent={overlayContent}
                 viewMode={viewMode}
+                goal={activeSubChatGoal}
               />
             ) : (
               <>
@@ -3075,7 +3092,7 @@ export function ChatView({
                         maxHeight={200}
                       >
                         <div className="p-1 text-muted-foreground text-sm">
-                          Plan, @ for context, / for commands
+                          输入规划内容，使用 @ 添加上下文，使用 / 调用命令
                         </div>
                         <PromptInputActions className="w-full">
                           <div className="flex items-center gap-0.5 flex-1 min-w-0">
@@ -3085,7 +3102,7 @@ export function ChatView({
                               className="flex items-center gap-1.5 px-2 py-1 text-sm text-muted-foreground rounded-md cursor-not-allowed"
                             >
                               <AgentIcon className="h-3.5 w-3.5" />
-                              <span>Agent</span>
+                              <span>智能体</span>
                               <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
                             </button>
 
@@ -3189,10 +3206,10 @@ export function ChatView({
                         </svg>
                       </div>
                       <p className="text-sm text-muted-foreground mb-2">
-                        Preview not available
+                        预览不可用
                       </p>
                       <p className="text-xs text-muted-foreground/70 max-w-[200px]">
-                        Set up this repository to enable live preview
+                        设置此仓库以启用实时预览
                       </p>
                     </div>
                   </div>

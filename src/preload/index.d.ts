@@ -71,16 +71,6 @@ interface DesktopApi {
     }) => void,
   ) => () => void;
 
-  // Auth stubs (auth is handled by Claude Code CLI)
-  getUser: () => Promise<{
-    id: string;
-    email: string;
-    name: string | null;
-    imageUrl: string | null;
-    username: string | null;
-  } | null>;
-  logout: () => Promise<void>;
-
   // Dialog
   dialog: {
     showOpenDialog: (options: {

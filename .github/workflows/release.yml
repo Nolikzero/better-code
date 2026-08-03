@@ -49,6 +49,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          bun run prepare:binaries:win
           bun run build
           bunx electron-builder --win --x64 --publish always
 

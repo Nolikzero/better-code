@@ -105,7 +105,7 @@ export function assertRegisteredWorktree(workspacePath: string): void {
   }
 
   throw new PathValidationError(
-    "Workspace path not registered in database",
+    "工作区路径未在数据库中注册",
     "UNREGISTERED_WORKTREE",
   );
 }
@@ -127,7 +127,7 @@ export function getRegisteredChat(
 
   if (!chat) {
     throw new PathValidationError(
-      "Chat not registered in database",
+      "对话未在数据库中注册",
       "UNREGISTERED_WORKTREE",
     );
   }
@@ -160,10 +160,7 @@ export function validateRelativePath(
 
   // Reject absolute paths
   if (isAbsolute(filePath)) {
-    throw new PathValidationError(
-      "Absolute paths are not allowed",
-      "ABSOLUTE_PATH",
-    );
+    throw new PathValidationError("不允许使用绝对路径", "ABSOLUTE_PATH");
   }
 
   const normalized = normalize(filePath);
@@ -171,16 +168,13 @@ export function validateRelativePath(
 
   // Reject ".." as a path segment (allows "..foo" directories)
   if (segments.includes("..")) {
-    throw new PathValidationError(
-      "Path traversal not allowed",
-      "PATH_TRAVERSAL",
-    );
+    throw new PathValidationError("不允许路径穿越", "PATH_TRAVERSAL");
   }
 
   // Reject root path unless explicitly allowed
   if (!allowRoot && (normalized === "" || normalized === ".")) {
     throw new PathValidationError(
-      "Cannot target worktree root",
+      "不能将工作树根目录作为目标",
       "INVALID_TARGET",
     );
   }

@@ -53,8 +53,8 @@ export interface AgentActionDefinition {
 
 const openShortcutsAction: AgentActionDefinition = {
   id: "open-shortcuts",
-  label: "Keyboard shortcuts",
-  description: "Show all keyboard shortcuts",
+  label: "键盘快捷键",
+  description: "显示所有键盘快捷键",
   category: "general",
   handler: async (context) => {
     context.setShortcutsDialogOpen?.(true);
@@ -64,8 +64,8 @@ const openShortcutsAction: AgentActionDefinition = {
 
 const createNewAgentAction: AgentActionDefinition = {
   id: "create-new-agent",
-  label: "New workspace",
-  description: "Create a new workspace",
+  label: "新建工作区",
+  description: "创建新工作区",
   category: "general",
   handler: async (context) => {
     if (context.setSelectedChatId) {
@@ -77,11 +77,11 @@ const createNewAgentAction: AgentActionDefinition = {
 
 const openSettingsAction: AgentActionDefinition = {
   id: "open-settings",
-  label: "Settings",
-  description: "Open settings dialog",
+  label: "设置",
+  description: "打开设置对话框",
   category: "general",
   handler: async (context) => {
-    context.setSettingsActiveTab?.("profile");
+    context.setSettingsActiveTab?.("provider");
     context.setSettingsDialogOpen?.(true);
     return { success: true };
   },
@@ -89,8 +89,8 @@ const openSettingsAction: AgentActionDefinition = {
 
 const toggleSidebarAction: AgentActionDefinition = {
   id: "toggle-sidebar",
-  label: "Toggle sidebar",
-  description: "Show/hide left sidebar",
+  label: "切换侧栏",
+  description: "显示或隐藏左侧边栏",
   category: "view",
   handler: async (context) => {
     context.setSidebarOpen?.((prev) => !prev);
@@ -100,8 +100,8 @@ const toggleSidebarAction: AgentActionDefinition = {
 
 const toggleChatsSidebarAction: AgentActionDefinition = {
   id: "toggle-chats-sidebar",
-  label: "Toggle chats sidebar",
-  description: "Show/hide right chats sidebar",
+  label: "切换对话侧栏",
+  description: "显示或隐藏右侧对话边栏",
   category: "view",
   handler: async (context) => {
     context.setChatsSidebarOpen?.((prev) => !prev);
@@ -141,7 +141,7 @@ export async function executeAgentAction(
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: error instanceof Error ? error.message : "未知错误",
     };
   }
 }

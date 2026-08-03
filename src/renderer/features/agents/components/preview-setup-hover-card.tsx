@@ -62,7 +62,7 @@ export function PreviewSetupHoverCard({
                       ? "/agents-onboarding-dark.webp"
                       : "/agents-onboarding-light.webp"
                   }
-                  alt="Preview setup"
+                  alt="预览设置"
                   className="object-cover w-full h-full"
                   style={{ objectPosition: "top" }}
                 />
@@ -74,10 +74,9 @@ export function PreviewSetupHoverCard({
         {/* Content */}
         <div className="p-4 space-y-3">
           <div className="space-y-1.5">
-            <h4 className="text-sm font-semibold">Preview not available</h4>
+            <h4 className="text-sm font-semibold">预览不可用</h4>
             <p className="text-[13px] text-muted-foreground leading-relaxed">
-              To see live preview of your changes, you need to set up your
-              repository first.
+              要实时预览更改，请先完成仓库设置。
             </p>
           </div>
 
@@ -87,7 +86,7 @@ export function PreviewSetupHoverCard({
             className="w-full flex items-center justify-center gap-2 px-3 py-2 text-[13px] font-medium bg-foreground text-background hover:bg-foreground/90 rounded-md transition-colors"
           >
             <GitHubIcon className="h-3.5 w-3.5" />
-            <span>Set up repository</span>
+            <span>设置仓库</span>
           </button>
         </div>
       </HoverCardContent>

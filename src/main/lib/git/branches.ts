@@ -142,7 +142,7 @@ export const createBranchesRouter = () => {
               const allBranches = Object.keys(branchSummary.branches);
 
               if (allBranches.includes(input.branchName)) {
-                throw new Error(`Branch '${input.branchName}' already exists`);
+                throw new Error(`分支“${input.branchName}”已存在`);
               }
 
               // Determine the start point (prefer remote, fallback to local)

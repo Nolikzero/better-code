@@ -13,10 +13,6 @@ const useRouter = () => ({
   push: (_url: string) => {},
   replace: (_url: string, _opts?: any) => {},
 });
-// Desktop: mock Clerk hooks
-const useUser = () => ({ user: null });
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const useClerk = () => ({ signOut: (_opts?: any) => {} });
 
 import { useShallow } from "zustand/react/shallow";
 import {
@@ -49,6 +45,8 @@ import {
   selectedAgentChatIdAtom,
   selectedProjectAtom,
 } from "../atoms";
+import { AgentsQuickSwitchDialog } from "../components/agents-quick-switch-dialog";
+import { SubChatsQuickSwitchDialog } from "../components/subchats-quick-switch-dialog";
 import { useMultiRepoDiffManagement } from "../hooks/use-multi-repo-diff-management";
 import { useProjectDiffManagement } from "../hooks/use-project-diff-management";
 import { ChatView } from "../main/active-chat";
@@ -62,13 +60,6 @@ import { AgentPreview } from "./agent-preview";
 import { CenterDiffView } from "./center-diff-view";
 import { CenterFileView } from "./center-file-view";
 import { MainContentTabs } from "./main-content-tabs";
-
-// import { useClerk, useUser } from "@clerk/nextjs"
-// import { useCombinedAuth } from "@/lib/hooks/use-combined-auth"
-const useCombinedAuth = () => ({ userId: null }); // Desktop mock
-
-import { AgentsQuickSwitchDialog } from "../components/agents-quick-switch-dialog";
-import { SubChatsQuickSwitchDialog } from "../components/subchats-quick-switch-dialog";
 
 // Desktop mock
 const useIsAdmin = () => false;
@@ -149,9 +140,6 @@ export function AgentsContent() {
   const newChatFormKeyRef = useRef(0);
   const isMobile = useIsMobile();
   const [isHydrated, setIsHydrated] = useState(false);
-  const { userId } = useCombinedAuth();
-  const { user } = useUser();
-  const { signOut } = useClerk();
   const isAdmin = useIsAdmin();
 
   // Quick-switch dialog state - Agents (Opt+Ctrl+Tab)
@@ -300,7 +288,7 @@ export function AgentsContent() {
     if (freshState.allSubChats.length === 0 && chatData.subChats?.length > 0) {
       const subChatMetas: SubChatMeta[] = chatData.subChats.map((sc: any) => ({
         id: sc.id,
-        name: sc.name || "New Chat",
+        name: sc.name || "新建对话",
         created_at: sc.created_at,
         updated_at: sc.updated_at,
         mode: sc.mode || "agent",
@@ -884,17 +872,6 @@ export function AgentsContent() {
 
   // Note: Cmd+E archive hotkey is handled in AgentsSidebar to share undo stack
 
-  const handleSignOut = async () => {
-    // Check if running in Electron desktop app
-    if (typeof window !== "undefined" && window.desktopApi) {
-      // Use desktop logout which clears the token and shows login page
-      await window.desktopApi.logout();
-    } else {
-      // Web: use Clerk sign out
-      await signOut({ redirectUrl: window.location.pathname });
-    }
-  };
-
   // Check if chat has sandbox with port for preview
   const chatMeta = chatData?.meta as
     | {
@@ -928,9 +905,6 @@ export function AgentsContent() {
         {mobileViewMode === "chats" ? (
           // Chats List Mode (default) - uses AgentsSidebar in fullscreen
           <AgentsSidebar
-            userId={userId}
-            clerkUser={user}
-            onSignOut={handleSignOut}
             onToggleSidebar={() => {}}
             isMobileFullscreen={true}
             onChatSelect={() => setMobileViewMode("chat")}
@@ -1097,9 +1071,9 @@ export function AgentsContent() {
             href={`https://codesandbox.io/p/devbox/${chatData.sandbox_id}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="fixed bottom-4 right-4 z-50 bg-zinc-900 text-zinc-300 px-3 py-1.5 rounded-md text-xs font-mono opacity-70 hover:opacity-100 hover:bg-zinc-800 transition-all cursor-pointer"
+            className="fixed bottom-4 right-4 z-50 bg-popover text-popover-foreground border border-border px-3 py-1.5 rounded-md text-xs font-mono opacity-70 hover:opacity-100 hover:bg-accent transition-all cursor-pointer"
           >
-            sandbox: {chatData.sandbox_id}
+            沙盒：{chatData.sandbox_id}
           </a>
         )}
     </>

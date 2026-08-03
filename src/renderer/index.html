@@ -1,13 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; connect-src 'self' ws://localhost:* http://localhost:* https://unpkg.com https://api.anthropic.com; img-src 'self' data: blob: https:; media-src 'self' blob:; font-src 'self' https://fonts.gstatic.com; frame-src http://localhost:* https://localhost:* http://127.0.0.1:* https://127.0.0.1:*;" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; connect-src 'self' ws://localhost:* http://localhost:* https://unpkg.com https://api.anthropic.com; img-src 'self' data: blob: https:; media-src 'self' blob:; font-src 'self' https://fonts.gstatic.com; frame-src http://localhost:* https://localhost:* http://127.0.0.1:* https://127.0.0.1:*;" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Source+Code+Pro:ital,wght@0,200..900;1,200..900&display=swap" rel="stylesheet">
-    <title>BetterCode</title>
+    <title>SamBetterCode</title>
     <!-- Prevent theme flash: detect system/stored theme before render -->
     <script>
       (() => {
@@ -20,18 +20,18 @@
     <style>
       /* Loading state before React loads - respects system theme */
       :root {
-        --loading-bg: #ffffff;
-        --loading-text: #09090b;
-        --loading-logo: #a1a1aa;
+        --loading-bg: #fffbeb;
+        --loading-text: #1f1f1f;
+        --loading-logo: #6c664b;
       }
       .dark {
-        --loading-bg: #09090b;
-        --loading-text: #fafafa;
-        --loading-logo: #71717a;
+        --loading-bg: #282a36;
+        --loading-text: #f8f8f2;
+        --loading-logo: #6272a4;
       }
       body {
         /* Keep in sync with --font-sans in globals.css and src/renderer/lib/fonts.ts */
-        font-family: "Inter", system-ui, sans-serif;
+        font-family: "Inter", "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", system-ui, sans-serif;
         margin: 0;
         background: var(--loading-bg);
         color: var(--loading-text);

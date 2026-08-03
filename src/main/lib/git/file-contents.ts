@@ -226,7 +226,7 @@ async function getFileVersions(
 
     case "committed":
       if (!commitHash) {
-        throw new Error("commitHash required for committed category");
+        throw new Error("已提交类别必须提供 commitHash");
       }
       return getCommittedVersions(git, filePath, originalPath, commitHash);
 

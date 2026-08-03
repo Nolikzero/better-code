@@ -52,7 +52,7 @@ export function useCommitFiles(
         files: [],
         isLoading: false,
         hasFetched: true,
-        error: error instanceof Error ? error.message : "Failed to load files",
+        error: error instanceof Error ? error.message : "文件加载失败",
       });
     } finally {
       isFetchingRef.current = false;

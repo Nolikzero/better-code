@@ -85,7 +85,7 @@ export function usePlanApproval(
     // Send "Implement plan" message (now in agent mode)
     sendMessage({
       role: "user",
-      parts: [{ type: "text", text: "Implement plan" }],
+      parts: [{ type: "text", text: "实施规划" }],
     });
   }, [subChatId, setAgentMode, sendMessage]);
 

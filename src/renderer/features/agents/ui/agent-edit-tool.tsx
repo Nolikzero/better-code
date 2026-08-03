@@ -392,9 +392,9 @@ export const AgentEditTool = memo(
     // Header title based on mode and state (used only in minimal view)
     const headerAction = useMemo(() => {
       if (isWriteMode) {
-        return isPending ? "Creating" : "Created";
+        return isPending ? "正在创建" : "已创建";
       }
-      return isPending ? "Editing" : "Edited";
+      return isPending ? "正在编辑" : "已编辑";
     }, [isWriteMode, isPending]);
 
     // Show minimal view (no background/border) until we have the full file path
@@ -403,7 +403,7 @@ export const AgentEditTool = memo(
       // If interrupted without file path, show interrupted state
       if (isInterrupted) {
         return (
-          <AgentToolInterrupted toolName={isWriteMode ? "Write" : "Edit"} />
+          <AgentToolInterrupted toolName={isWriteMode ? "写入" : "编辑"} />
         );
       }
       return (

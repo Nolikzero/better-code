@@ -89,8 +89,8 @@ export function useDesktopNotifications() {
 
         if (isDesktopNotificationsEnabled()) {
           window.desktopApi?.showNotification({
-            title: "Agent finished",
-            body: `${agentName} completed the task`,
+            title: "智能体已完成",
+            body: `${agentName} 已完成任务`,
             chatId,
             subChatId,
           });
@@ -109,8 +109,8 @@ export function useDesktopNotifications() {
 
         if (isDesktopNotificationsEnabled()) {
           window.desktopApi?.showNotification({
-            title: "Plan ready",
-            body: `${chatName} - Review the proposed changes`,
+            title: "规划已就绪",
+            body: `${chatName}：请审查建议的更改`,
             chatId,
             subChatId,
           });
@@ -140,8 +140,8 @@ export function useDesktopNotifications() {
 
         if (isDesktopNotificationsEnabled()) {
           window.desktopApi?.showNotification({
-            title: "Input needed",
-            body: `${chatName} is waiting for your response`,
+            title: "需要输入",
+            body: `${chatName} 正在等待你的回复`,
             chatId,
             subChatId,
           });
@@ -202,8 +202,8 @@ export function showQuestionNotification(
 
   if (!document.hasFocus() && isDesktopNotificationsEnabled()) {
     window.desktopApi?.showNotification({
-      title: "Question from agent",
-      body: `${chatName} needs your input`,
+      title: "智能体提问",
+      body: `${chatName} 需要你的输入`,
       chatId,
       subChatId,
     });
@@ -222,8 +222,8 @@ export function showRalphCompleteNotification(
 
   if (!document.hasFocus() && isDesktopNotificationsEnabled()) {
     window.desktopApi?.showNotification({
-      title: "Ralph finished",
-      body: `${chatName} - All stories complete`,
+      title: "Ralph 已完成",
+      body: `${chatName}：所有故事均已完成`,
       chatId,
       subChatId,
     });
@@ -242,8 +242,8 @@ export function showTimeoutNotification(
 
   if (!document.hasFocus() && isDesktopNotificationsEnabled()) {
     window.desktopApi?.showNotification({
-      title: "Input needed",
-      body: `${chatName} is waiting for your response`,
+      title: "需要输入",
+      body: `${chatName} 正在等待你的回复`,
       chatId,
       subChatId,
     });

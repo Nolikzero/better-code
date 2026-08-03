@@ -117,22 +117,22 @@ export const ModeToggleDropdown = memo(function ModeToggleDropdown({
   const getModeLabel = () => {
     switch (mode) {
       case "plan":
-        return "Plan";
+        return "规划";
       case "ralph":
         return "Ralph";
       default:
-        return "Agent";
+        return "智能体";
     }
   };
 
   const getTooltipText = (tooltipMode: AgentMode) => {
     switch (tooltipMode) {
       case "plan":
-        return "Create a plan before making changes";
+        return "先制定计划，再开始修改";
       case "ralph":
-        return "Autonomous PRD-driven development";
+        return "由 PRD 驱动的自主开发";
       default:
-        return "Apply changes directly without a plan";
+        return "无需计划，直接应用修改";
     }
   };
 
@@ -161,7 +161,7 @@ export const ModeToggleDropdown = memo(function ModeToggleDropdown({
         >
           <div className="flex items-center gap-2">
             <AgentIcon className="w-4 h-4 text-muted-foreground" />
-            <span>Agent</span>
+            <span>智能体</span>
           </div>
           {mode === "agent" && (
             <CheckIcon className="h-3.5 w-3.5 ml-auto shrink-0" />
@@ -177,7 +177,7 @@ export const ModeToggleDropdown = memo(function ModeToggleDropdown({
         >
           <div className="flex items-center gap-2">
             <PlanIcon className="w-4 h-4 text-muted-foreground" />
-            <span>Plan</span>
+            <span>规划</span>
           </div>
           {mode === "plan" && (
             <CheckIcon className="h-3.5 w-3.5 ml-auto shrink-0" />

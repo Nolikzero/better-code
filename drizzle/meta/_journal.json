@@ -127,6 +127,27 @@
       "when": 1769531170028,
       "tag": "0017_tricky_sersi",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1784771506019,
+      "tag": "0018_military_thundra",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1784787803369,
+      "tag": "0019_safe_vulcan",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1784965757280,
+      "tag": "0020_classy_jazinda",
+      "breakpoints": true
     }
   ]
 }

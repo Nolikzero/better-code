@@ -147,15 +147,15 @@ export const AgentPlanTool = memo(function AgentPlanTool({
   // Determine header title based on action and status
   const getHeaderTitle = () => {
     if (isPending) {
-      if (action === "create") return "Creating plan...";
-      if (action === "approve") return "Approving plan...";
-      if (action === "complete") return "Completing plan...";
-      return "Updating plan...";
+      if (action === "create") return "正在创建规划…";
+      if (action === "approve") return "正在批准规划…";
+      if (action === "complete") return "正在完成规划…";
+      return "正在更新规划…";
     }
 
-    if (plan.status === "awaiting_approval") return "Plan ready for review";
-    if (plan.status === "completed") return "Plan completed";
-    if (plan.status === "approved") return "Plan approved";
+    if (plan.status === "awaiting_approval") return "规划已可审查";
+    if (plan.status === "completed") return "规划已完成";
+    if (plan.status === "approved") return "规划已批准";
     return plan.title;
   };
 
@@ -163,12 +163,12 @@ export const AgentPlanTool = memo(function AgentPlanTool({
   const getProgressText = () => {
     if (totalSteps === 0) return null;
     if (completedCount === totalSteps) {
-      return `${completedCount} of ${totalSteps} Completed`;
+      return `已完成 ${completedCount}/${totalSteps}`;
     }
     if (inProgressCount > 0) {
-      return `${completedCount} of ${totalSteps} Completed, ${inProgressCount} in progress`;
+      return `已完成 ${completedCount}/${totalSteps}，${inProgressCount} 个进行中`;
     }
-    return `${completedCount} of ${totalSteps} Completed`;
+    return `已完成 ${completedCount}/${totalSteps}`;
   };
 
   return (
@@ -316,7 +316,7 @@ export const AgentPlanTool = memo(function AgentPlanTool({
           {plan.status === "awaiting_approval" && (
             <div className="px-2.5 py-2 border-t border-border bg-muted/50">
               <span className="text-xs text-muted-foreground">
-                Awaiting your approval to proceed
+                等待你的批准后继续
               </span>
             </div>
           )}
@@ -324,7 +324,7 @@ export const AgentPlanTool = memo(function AgentPlanTool({
           {plan.status === "completed" && (
             <div className="px-2.5 py-2 border-t border-border bg-muted/50">
               <span className="text-xs text-muted-foreground">
-                Plan completed successfully
+                规划已成功完成
               </span>
             </div>
           )}

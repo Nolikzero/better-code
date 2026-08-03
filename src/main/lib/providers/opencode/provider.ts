@@ -50,8 +50,7 @@ export class OpenCodeProvider implements AIProvider {
   private _config: ProviderConfig = {
     id: "opencode",
     name: "OpenCode",
-    description:
-      "Multi-provider AI coding agent (Anthropic, OpenAI, Google, etc.)",
+    description: "支持多提供商的 AI 编程智能体（Anthropic、OpenAI、Google 等）",
     models: [], // Dynamic - populated from server
     authType: "both",
     binaryName: "opencode",
@@ -131,7 +130,7 @@ export class OpenCodeProvider implements AIProvider {
       if (!hasBinary) {
         return {
           authenticated: false,
-          error: "OpenCode not installed",
+          error: "尚未安装 OpenCode",
         };
       }
 
@@ -143,7 +142,7 @@ export class OpenCodeProvider implements AIProvider {
       } catch (serverError) {
         return {
           authenticated: false,
-          error: `Server failed to start: ${(serverError as Error).message}`,
+          error: `服务器启动失败：${(serverError as Error).message}`,
         };
       }
 
@@ -164,12 +163,12 @@ export class OpenCodeProvider implements AIProvider {
 
       return {
         authenticated: false,
-        error: "No providers connected. Configure API keys in OpenCode.",
+        error: "未连接任何提供商。请在 OpenCode 中配置 API 密钥。",
       };
     } catch (error) {
       return {
         authenticated: false,
-        error: `Auth check failed: ${(error as Error).message}`,
+        error: `身份验证检查失败：${(error as Error).message}`,
       };
     }
   }
@@ -231,13 +230,13 @@ export class OpenCodeProvider implements AIProvider {
 
       if (!sessionId) {
         const newSession = await createSession(
-          `BetterCode-${options.subChatId}`,
+          `SamBetterCode-${options.subChatId}`,
           options.cwd,
         );
         if (!newSession) {
           yield {
             type: "error",
-            errorText: "Failed to create OpenCode session",
+            errorText: "创建 OpenCode 会话失败",
           };
           yield { type: "finish" };
           return;
@@ -294,8 +293,7 @@ export class OpenCodeProvider implements AIProvider {
         } else {
           yield {
             type: "error",
-            errorText:
-              "Failed to compact session. The session may not have enough context to summarize.",
+            errorText: "压缩会话失败，当前会话可能没有足够的上下文可供总结。",
           } as UIMessageChunk;
         }
 
@@ -432,7 +430,7 @@ export class OpenCodeProvider implements AIProvider {
           console.error("[opencode] Stream error:", streamError);
           yield {
             type: "error",
-            errorText: `Stream error: ${(streamError as Error).message}`,
+            errorText: `流式响应错误：${(streamError as Error).message}`,
           };
         }
       }
@@ -442,7 +440,7 @@ export class OpenCodeProvider implements AIProvider {
         console.error("[opencode] Chat error:", err);
         yield {
           type: "error",
-          errorText: `OpenCode error: ${err.message}`,
+          errorText: `OpenCode 错误：${err.message}`,
         };
         yield { type: "finish" };
       }

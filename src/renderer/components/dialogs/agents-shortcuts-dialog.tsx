@@ -54,7 +54,7 @@ function ShortcutRow({ binding }: { binding: ResolvedKeybinding }) {
         ))}
         {altKeys && (
           <>
-            <span className="text-xs text-muted-foreground mx-0.5">or</span>
+            <span className="text-xs text-muted-foreground mx-0.5">或</span>
             {altKeys.map((key, index) => (
               <ShortcutKey key={`alt-${index}`} keyName={key} />
             ))}
@@ -66,9 +66,9 @@ function ShortcutRow({ binding }: { binding: ResolvedKeybinding }) {
 }
 
 const CATEGORY_LABELS: Record<KeybindingCategory, string> = {
-  general: "General",
-  workspaces: "Workspaces",
-  agents: "Agents",
+  general: "常规",
+  workspaces: "工作区",
+  agents: "智能体",
 };
 
 export function AgentsShortcutsDialog({
@@ -154,7 +154,7 @@ export function AgentsShortcutsDialog({
               >
                 <div className="p-6">
                   <h2 className="text-xl font-semibold mb-5 text-center">
-                    Keyboard Shortcuts
+                    键盘快捷键
                   </h2>
 
                   {/* Two-column layout */}

@@ -41,7 +41,7 @@ export function useBranchSwitchConfirmation(
   // Mutation for branch checkout
   const checkoutMutation = trpc.changes.checkoutBranch.useMutation({
     onError: (error) => {
-      toast.error(error.message || "Failed to switch branch");
+      toast.error(error.message || "切换分支失败");
     },
     onSuccess: () => {
       trpcUtils.changes.getBranches.invalidate();

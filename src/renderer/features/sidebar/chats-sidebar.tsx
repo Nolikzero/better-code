@@ -633,7 +633,7 @@ export function ChatsSidebar({
   // Mutation for checking out branch before creating sub-chat
   const checkoutBranchMutation = trpc.changes.checkoutBranch.useMutation({
     onError: (error) => {
-      toast.error(error.message || "Failed to switch branch");
+      toast.error(error.message || "切换分支失败");
     },
     onSuccess: () => {
       utils.changes.getBranches.invalidate();
@@ -728,10 +728,10 @@ export function ChatsSidebar({
   const deleteSubChatMutation = trpc.chats.deleteSubChat.useMutation({
     onSuccess: () => {
       utils.chats.listWithSubChats.invalidate();
-      toast.success("Chat deleted");
+      toast.success("对话已删除");
     },
     onError: () => {
-      toast.error("Failed to delete chat");
+      toast.error("删除对话失败");
     },
   });
 
@@ -818,13 +818,13 @@ export function ChatsSidebar({
     const diffHours = Math.floor(diffMs / 3_600_000);
     const diffDays = Math.floor(diffMs / 86_400_000);
 
-    if (diffMins < 1) return "now";
-    if (diffMins < 60) return `${diffMins}m`;
-    if (diffHours < 24) return `${diffHours}h`;
-    if (diffDays < 7) return `${diffDays}d`;
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)}w`;
-    if (diffDays < 365) return `${Math.floor(diffDays / 30)}mo`;
-    return `${Math.floor(diffDays / 365)}y`;
+    if (diffMins < 1) return "刚刚";
+    if (diffMins < 60) return `${diffMins} 分钟前`;
+    if (diffHours < 24) return `${diffHours} 小时前`;
+    if (diffDays < 7) return `${diffDays} 天前`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} 周前`;
+    if (diffDays < 365) return `${Math.floor(diffDays / 30)} 个月前`;
+    return `${Math.floor(diffDays / 365)} 年前`;
   };
 
   // Direct listener for Cmd+F to focus search input
@@ -946,7 +946,7 @@ export function ChatsSidebar({
             <div className="relative">
               <Input
                 ref={searchInputRef}
-                placeholder="Search workspaces..."
+                placeholder="搜索工作区…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => {
@@ -1003,7 +1003,7 @@ export function ChatsSidebar({
           {drafts.length > 0 && !searchQuery && (
             <div className="shrink-0 max-h-[25%] overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
               <SidebarListSection
-                title="Drafts"
+                title="草稿"
                 count={drafts.length}
                 isCollapsed={draftsCollapsed}
                 onToggleCollapsed={() => setDraftsCollapsed((prev) => !prev)}
@@ -1062,7 +1062,7 @@ export function ChatsSidebar({
                                 }}
                                 tabIndex={-1}
                                 className="shrink-0 text-muted-foreground hover:text-foreground active:text-foreground transition-[opacity,transform,color] duration-150 ease-out opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto active:scale-[0.97]"
-                                aria-label="Delete draft"
+                                aria-label="删除草稿"
                               >
                                 <TrashIcon className="h-3.5 w-3.5" />
                               </button>
@@ -1070,7 +1070,7 @@ export function ChatsSidebar({
                           </div>
                           <div className="flex items-center justify-between gap-2">
                             <span className="text-[11px] text-muted-foreground/60 truncate">
-                              <span className="text-blue-500">Draft</span>
+                              <span className="text-blue-500">草稿</span>
                               {draft.project?.gitRepo
                                 ? ` \u2022 ${draft.project.gitRepo}`
                                 : draft.project?.name
@@ -1101,7 +1101,7 @@ export function ChatsSidebar({
               )}
             >
               <SidebarListSection
-                title="Pinned"
+                title="已置顶"
                 count={pinnedAgents.length}
                 isCollapsed={pinnedCollapsed}
                 onToggleCollapsed={() => setPinnedCollapsed((prev) => !prev)}
@@ -1165,7 +1165,7 @@ export function ChatsSidebar({
               className="flex flex-col min-h-0 flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent"
             >
               <SidebarListSection
-                title={pinnedAgents.length > 0 ? "Recent" : "Workspaces"}
+                title={pinnedAgents.length > 0 ? "最近" : "工作区"}
                 count={unpinnedAgents.length}
                 isCollapsed={recentCollapsed}
                 onToggleCollapsed={() => setRecentCollapsed((prev) => !prev)}
@@ -1230,12 +1230,10 @@ export function ChatsSidebar({
                 <FolderGit2 className="h-5 w-5 text-muted-foreground" />
               </div>
               <p className="text-sm font-medium text-foreground">
-                {searchQuery ? "No results" : "No workspaces"}
+                {searchQuery ? "没有结果" : "没有工作区"}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                {searchQuery
-                  ? "Try a different search term"
-                  : "Create a new chat to get started"}
+                {searchQuery ? "请尝试其他搜索关键词" : "新建对话即可开始"}
               </p>
             </div>
           )}
@@ -1273,13 +1271,13 @@ export function ChatsSidebar({
             >
               <div className="flex items-center justify-between px-1">
                 <span className="text-xs text-muted-foreground">
-                  {selectedChatsCount} selected
+                  {selectedChatsCount} 已选择
                 </span>
                 <button
                   onClick={clearChatSelection}
                   className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  Cancel
+                  取消
                 </button>
               </div>
 
@@ -1292,9 +1290,7 @@ export function ChatsSidebar({
                   className="flex-1 h-8 gap-1.5 text-xs rounded-lg"
                 >
                   <ArchiveIcon className="h-3.5 w-3.5" />
-                  {archiveChatsBatchMutation.isPending
-                    ? "Archiving..."
-                    : "Archive"}
+                  {archiveChatsBatchMutation.isPending ? "正在归档…" : "归档"}
                 </Button>
               </div>
             </motion.div>
@@ -1318,7 +1314,7 @@ export function ChatsSidebar({
                       <button
                         type="button"
                         onClick={() => {
-                          setSettingsActiveTab("profile");
+                          setSettingsActiveTab("provider");
                           setSettingsDialogOpen(true);
                         }}
                         className="flex items-center justify-center h-7 w-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-[background-color,color,transform] duration-150 ease-out active:scale-[0.97] outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70"
@@ -1326,7 +1322,7 @@ export function ChatsSidebar({
                         <SettingsIcon className="h-4 w-4" />
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent>Settings</TooltipContent>
+                    <TooltipContent>设置</TooltipContent>
                   </Tooltip>
 
                   <Tooltip
@@ -1353,7 +1349,7 @@ export function ChatsSidebar({
                         </AgentsHelpPopover>
                       </div>
                     </TooltipTrigger>
-                    <TooltipContent>Help</TooltipContent>
+                    <TooltipContent>帮助</TooltipContent>
                   </Tooltip>
 
                   {/* Archive Button */}
@@ -1381,7 +1377,7 @@ export function ChatsSidebar({
                           />
                         </div>
                       </TooltipTrigger>
-                      <TooltipContent>Archive</TooltipContent>
+                      <TooltipContent>归档</TooltipContent>
                     </Tooltip>
                   )}
                 </div>

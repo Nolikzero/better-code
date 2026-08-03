@@ -121,7 +121,7 @@ export const WorktreeInitProgress = memo(function WorktreeInitProgress({
               ref={outputRef}
               className="max-h-[200px] overflow-auto p-3 text-xs font-mono bg-background/50 border-b border-border whitespace-pre-wrap"
             >
-              {output || "Initializing..."}
+              {output || "正在初始化…"}
             </pre>
           </motion.div>
         )}
@@ -145,13 +145,13 @@ export const WorktreeInitProgress = memo(function WorktreeInitProgress({
           <span className="text-muted-foreground">
             {isRunning ? (
               <>
-                Running init command
+                正在运行初始化命令
                 <AnimatedDots />
               </>
             ) : isError ? (
-              `Init command failed (exit code ${status.exitCode})`
+              `初始化命令失败（退出代码 ${status.exitCode}）`
             ) : (
-              "Init command completed"
+              "初始化命令已完成"
             )}
           </span>
         </div>
@@ -166,7 +166,7 @@ export const WorktreeInitProgress = memo(function WorktreeInitProgress({
               }}
               className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted transition-colors"
             >
-              Dismiss
+              关闭提示
             </button>
           )}
           {isExpanded ? (

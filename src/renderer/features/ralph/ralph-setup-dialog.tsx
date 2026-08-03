@@ -178,20 +178,19 @@ export const RalphSetupDialog = memo(function RalphSetupDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Ralph PRD Setup</DialogTitle>
+          <DialogTitle>Ralph PRD 设置</DialogTitle>
           <DialogDescription>
-            Define your product requirements. Each story should be completable
-            in one AI iteration.
+            定义产品需求。每个故事都应能在一次 AI 迭代中完成。
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto space-y-4 pr-2">
           {/* Goal */}
           <div className="space-y-2">
-            <Label htmlFor="goal">Goal</Label>
+            <Label htmlFor="goal">目标</Label>
             <Textarea
               id="goal"
-              placeholder="Describe the overall goal of this feature..."
+              placeholder="描述此功能的总体目标…"
               value={goal}
               onChange={(e) => setGoal(e.target.value)}
               rows={2}
@@ -200,7 +199,7 @@ export const RalphSetupDialog = memo(function RalphSetupDialog({
 
           {/* Branch Name */}
           <div className="space-y-2">
-            <Label htmlFor="branchName">Branch Name</Label>
+            <Label htmlFor="branchName">分支名称</Label>
             <Input
               id="branchName"
               placeholder="ralph/feature-name"
@@ -212,7 +211,7 @@ export const RalphSetupDialog = memo(function RalphSetupDialog({
           {/* Stories */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label>User Stories</Label>
+              <Label>用户故事</Label>
               <Button
                 variant="ghost"
                 size="sm"
@@ -220,7 +219,7 @@ export const RalphSetupDialog = memo(function RalphSetupDialog({
                 className="h-7 text-xs"
               >
                 <PlusIcon className="h-3 w-3 mr-1" />
-                Add Story
+                添加故事
               </Button>
             </div>
 
@@ -252,10 +251,10 @@ export const RalphSetupDialog = memo(function RalphSetupDialog({
                       P{story.priority}
                     </span>
                     <span className="flex-1 text-sm truncate">
-                      {story.title || "Untitled story"}
+                      {story.title || "未命名用户故事"}
                     </span>
                     {story.passes && (
-                      <span className="text-xs text-green-500">Complete</span>
+                      <span className="text-xs text-green-500">完成</span>
                     )}
                     <Button
                       variant="ghost"
@@ -275,9 +274,9 @@ export const RalphSetupDialog = memo(function RalphSetupDialog({
                     <div className="px-3 pb-3 space-y-3 border-t border-border pt-3">
                       {/* Title */}
                       <div className="space-y-1">
-                        <Label className="text-xs">Title</Label>
+                        <Label className="text-xs">标题</Label>
                         <Input
-                          placeholder="Story title"
+                          placeholder="故事标题"
                           value={story.title}
                           onChange={(e) =>
                             handleUpdateStory(index, { title: e.target.value })
@@ -287,9 +286,9 @@ export const RalphSetupDialog = memo(function RalphSetupDialog({
 
                       {/* Description */}
                       <div className="space-y-1">
-                        <Label className="text-xs">Description</Label>
+                        <Label className="text-xs">描述</Label>
                         <Textarea
-                          placeholder="As a user, I want to..."
+                          placeholder="作为用户，我希望…"
                           value={story.description}
                           onChange={(e) =>
                             handleUpdateStory(index, {
@@ -303,7 +302,7 @@ export const RalphSetupDialog = memo(function RalphSetupDialog({
                       {/* Acceptance Criteria */}
                       <div className="space-y-1">
                         <div className="flex items-center justify-between">
-                          <Label className="text-xs">Acceptance Criteria</Label>
+                          <Label className="text-xs">验收标准</Label>
                           <Button
                             variant="ghost"
                             size="sm"
@@ -321,7 +320,7 @@ export const RalphSetupDialog = memo(function RalphSetupDialog({
                                 className="flex items-center gap-1"
                               >
                                 <Input
-                                  placeholder="Criterion..."
+                                  placeholder="验收标准…"
                                   value={criteria}
                                   onChange={(e) =>
                                     handleUpdateCriteria(
@@ -359,7 +358,7 @@ export const RalphSetupDialog = memo(function RalphSetupDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            取消
           </Button>
           <Button
             onClick={handleSave}
@@ -368,7 +367,7 @@ export const RalphSetupDialog = memo(function RalphSetupDialog({
               !stories.some((s) => s.title.trim() || s.description.trim())
             }
           >
-            {savePrdMutation.isPending ? "Saving..." : "Save PRD"}
+            {savePrdMutation.isPending ? "正在保存…" : "保存 PRD"}
           </Button>
         </DialogFooter>
       </DialogContent>

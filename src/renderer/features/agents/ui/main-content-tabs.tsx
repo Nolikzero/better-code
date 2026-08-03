@@ -78,7 +78,7 @@ export function MainContentTabs() {
     () => [
       {
         id: "chat",
-        label: "Chat",
+        label: "对话",
         icon: <MessageSquare className="h-3.5 w-3.5" />,
         visible: true,
       },
@@ -98,7 +98,7 @@ export function MainContentTabs() {
       },
       {
         id: "changes",
-        label: "Changes",
+        label: "更改",
         icon: <GitBranch className="h-3.5 w-3.5" />,
         badge: changesCount,
         visible: hasChanges || viewingMode.type !== "uncommitted",
@@ -169,7 +169,7 @@ export function MainContentTabs() {
                       tab.onClose?.();
                     }}
                     className="ml-0.5 p-0.5 rounded hover:bg-muted-foreground/20 opacity-0 group-hover:opacity-100 transition-opacity"
-                    aria-label={`Close ${tab.label}`}
+                    aria-label={`关闭 ${tab.label}`}
                   >
                     <X className="h-3 w-3" />
                   </button>

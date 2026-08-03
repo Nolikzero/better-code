@@ -33,7 +33,7 @@ export function AgentsHeaderControls({
             size="icon"
             onClick={onToggleSidebar}
             className="h-6 w-6 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] text-foreground shrink-0 rounded-md relative"
-            aria-label="Open sidebar"
+            aria-label="打开侧栏"
             style={{
               // @ts-expect-error - WebKit-specific property to allow clicks in drag region
               WebkitAppRegion: "no-drag",
@@ -42,12 +42,12 @@ export function AgentsHeaderControls({
             <AlignJustify className="h-4 w-4" />
             {/* Unseen changes indicator */}
             {hasUnseenChanges && (
-              <div className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-[#307BD0] ring-2 ring-background" />
+              <div className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-primary ring-2 ring-background" />
             )}
           </Button>
         </TooltipTrigger>
         <TooltipContent>
-          Open sidebar
+          打开侧栏
           <Kbd>⌘\</Kbd>
         </TooltipContent>
       </Tooltip>

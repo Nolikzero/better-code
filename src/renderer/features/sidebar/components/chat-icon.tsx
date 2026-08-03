@@ -88,9 +88,7 @@ export const ChatIcon = React.memo(function ChatIcon({
           <div
             className={cn(
               "absolute -bottom-1 -right-1 w-3 h-3 rounded-full flex items-center justify-center",
-              isSelected
-                ? "bg-[#E8E8E8] dark:bg-[#1B1B1B]"
-                : "bg-[#F4F4F4] group-hover:bg-[#E8E8E8] dark:bg-[#101010] dark:group-hover:bg-[#1B1B1B]",
+              isSelected ? "bg-accent" : "bg-muted group-hover:bg-accent",
             )}
           >
             {/* Priority: loader > amber dot (pending plan) > blue dot (unseen) */}

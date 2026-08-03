@@ -42,11 +42,11 @@ export function LeftSidebarTabs({ changesCount = 0 }: LeftSidebarTabsProps) {
               )}
             >
               <FileText className="h-3.5 w-3.5" />
-              <span>Project</span>
+              <span>项目</span>
             </button>
           </TooltipTrigger>
           <TooltipContent side="bottom" sideOffset={4}>
-            Browse project files
+            浏览项目文件
           </TooltipContent>
         </Tooltip>
 
@@ -63,7 +63,7 @@ export function LeftSidebarTabs({ changesCount = 0 }: LeftSidebarTabsProps) {
               )}
             >
               <GitBranch className="h-3.5 w-3.5" />
-              <span>Changes</span>
+              <span>更改</span>
               {changesCount > 0 && (
                 <span className="min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-primary/10 text-primary text-[10px] font-medium">
                   {changesCount > 99 ? "99+" : changesCount}
@@ -72,7 +72,7 @@ export function LeftSidebarTabs({ changesCount = 0 }: LeftSidebarTabsProps) {
             </button>
           </TooltipTrigger>
           <TooltipContent side="bottom" sideOffset={4}>
-            View uncommitted changes
+            查看未提交的更改
           </TooltipContent>
         </Tooltip>
       </div>

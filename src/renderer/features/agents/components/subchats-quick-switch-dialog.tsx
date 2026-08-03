@@ -97,7 +97,7 @@ function SubChatCard({
                   )}
                 />
               ) : (
-                <div className="w-2 h-2 rounded-full bg-[#307BD0]" />
+                <div className="w-2 h-2 rounded-full bg-primary" />
               )}
             </div>
           )}
@@ -110,7 +110,7 @@ function SubChatCard({
               isSelected ? "text-primary-foreground" : "text-foreground",
             )}
           >
-            {subChat.name || "New Chat"}
+            {subChat.name || "新建对话"}
           </span>
           {/* Time and stats */}
           <div className="flex items-center gap-1.5 text-[11px]">
@@ -141,7 +141,7 @@ function SubChatCard({
                       : "text-muted-foreground/60",
                   )}
                 >
-                  {stats.fileCount} {stats.fileCount === 1 ? "file" : "files"}
+                  {stats.fileCount} 个文件
                 </span>
                 {(stats.additions > 0 || stats.deletions > 0) && (
                   <>
@@ -209,7 +209,7 @@ export function SubChatsQuickSwitchDialog({
                 {subChats.length === 0 ? (
                   <div className="px-4 py-12 text-center bg-background rounded-xs border-[0.5px]">
                     <p className="text-sm text-muted-foreground">
-                      No chats in this agent
+                      此智能体暂无对话
                     </p>
                   </div>
                 ) : (

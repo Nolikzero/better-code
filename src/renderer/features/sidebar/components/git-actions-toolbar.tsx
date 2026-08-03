@@ -78,7 +78,7 @@ export function GitActionsToolbar({
 
   const selectedCount = selectedFiles.size;
   const commitLabel =
-    selectedCount > 0 ? `Commit (${selectedCount})` : "Commit all";
+    selectedCount > 0 ? `提交（${selectedCount}）` : "全部提交";
 
   const isDisabled = !worktreePath || isAnyLoading;
 
@@ -93,7 +93,7 @@ export function GitActionsToolbar({
           onKeyDown={handleKeyDown}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
-          placeholder="Commit message..."
+          placeholder="提交信息…"
           disabled={isDisabled}
           rows={1}
           className={`w-full px-2 py-1.5 text-xs border rounded-md resize-none overflow-hidden focus:outline-none focus:ring-1 focus:ring-primary/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
@@ -133,8 +133,8 @@ export function GitActionsToolbar({
           </TooltipTrigger>
           <TooltipContent side="bottom" sideOffset={4}>
             {selectedCount > 0
-              ? `Commit ${selectedCount} selected file(s)`
-              : "Commit all changes"}
+              ? `提交选中的 ${selectedCount} 个文件`
+              : "提交全部更改"}
           </TooltipContent>
         </Tooltip>
 
@@ -156,7 +156,7 @@ export function GitActionsToolbar({
             </Button>
           </TooltipTrigger>
           <TooltipContent side="bottom" sideOffset={4}>
-            Stash changes
+            暂存更改
           </TooltipContent>
         </Tooltip>
 
@@ -178,7 +178,7 @@ export function GitActionsToolbar({
             </Button>
           </TooltipTrigger>
           <TooltipContent side="bottom" sideOffset={4}>
-            {hasStash ? "Pop stash" : "No stash available"}
+            {hasStash ? "应用暂存" : "没有可用的暂存"}
           </TooltipContent>
         </Tooltip>
 
@@ -200,7 +200,7 @@ export function GitActionsToolbar({
             </Button>
           </TooltipTrigger>
           <TooltipContent side="bottom" sideOffset={4}>
-            Push to remote
+            推送到远程仓库
           </TooltipContent>
         </Tooltip>
       </div>

@@ -145,7 +145,7 @@ export function ProjectSelector() {
   };
 
   // Validate selected project still exists
-  // While loading, trust localStorage value to prevent showing "Select repo" on app restart
+  // While loading, trust localStorage value to prevent showing "选择仓库" on app restart
   const validSelection = useMemo(() => {
     if (!selectedProject) return null;
     // While loading, trust localStorage value
@@ -156,7 +156,7 @@ export function ProjectSelector() {
     return exists ? selectedProject : null;
   }, [selectedProject, projects, isLoadingProjects]);
 
-  // If no projects exist and none selected - show direct "Add repository" button
+  // If no projects exist and none selected - show direct "添加仓库" button
   if (
     !validSelection &&
     (!projects || projects.length === 0) &&
@@ -169,7 +169,7 @@ export function ProjectSelector() {
         className="flex items-center gap-1.5 px-2 py-1 text-sm text-muted-foreground hover:text-foreground transition-[background-color,color] duration-150 ease-out rounded-md hover:bg-muted/50 outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70"
       >
         <FolderPlusIcon className="h-3.5 w-3.5" />
-        <span>{openFolder.isPending ? "Adding..." : "Add repository"}</span>
+        <span>{openFolder.isPending ? "正在添加…" : "添加仓库"}</span>
       </button>
     );
   }
@@ -186,7 +186,7 @@ export function ProjectSelector() {
             setShowProjectSettings(true);
           }}
           className="p-1 text-muted-foreground hover:text-foreground rounded-md hover:bg-muted/50 transition-colors"
-          title="Project settings"
+          title="项目设置"
         >
           <Settings className="h-3.5 w-3.5" />
         </button>
@@ -208,7 +208,7 @@ export function ProjectSelector() {
               gitProvider={validSelection?.gitProvider}
             />
             <span className="truncate max-w-[120px]">
-              {validSelection?.name || "Select repo"}
+              {validSelection?.name || "选择仓库"}
             </span>
             <IconChevronDown className="h-3 w-3 shrink-0 opacity-50" />
           </button>
@@ -216,14 +216,14 @@ export function ProjectSelector() {
         <PopoverContent className="w-64 p-0" align="start">
           <Command shouldFilter={false}>
             <CommandInput
-              placeholder="Search repos..."
+              placeholder="搜索仓库…"
               value={searchQuery}
               onValueChange={setSearchQuery}
             />
             <CommandList className="max-h-[300px] overflow-y-auto">
               {isLoadingProjects ? (
                 <div className="px-2.5 py-4 text-center text-sm text-muted-foreground">
-                  Loading...
+                  正在加载…
                 </div>
               ) : filteredProjects.length > 0 ? (
                 <CommandGroup>
@@ -251,7 +251,7 @@ export function ProjectSelector() {
                             setOpen(false);
                           }}
                           className="h-6 w-6 p-0 rounded-md opacity-0 group-hover:opacity-100 hover:bg-muted flex items-center justify-center transition-opacity"
-                          title="Project settings"
+                          title="项目设置"
                         >
                           <Settings className="h-3.5 w-3.5 text-muted-foreground" />
                         </button>
@@ -263,19 +263,17 @@ export function ProjectSelector() {
                   })}
                 </CommandGroup>
               ) : (
-                <CommandEmpty>No projects found.</CommandEmpty>
+                <CommandEmpty>未找到项目。</CommandEmpty>
               )}
             </CommandList>
             <div className="border-t border-border/50 py-1">
               <button
                 onClick={handleOpenFolder}
                 disabled={openFolder.isPending}
-                className="flex items-center gap-1.5 min-h-[32px] py-[5px] px-1.5 mx-1 w-[calc(100%-8px)] rounded-md text-sm cursor-default select-none outline-hidden dark:hover:bg-neutral-800 hover:text-foreground transition-colors"
+                className="flex items-center gap-1.5 min-h-[32px] py-[5px] px-1.5 mx-1 w-[calc(100%-8px)] rounded-md text-sm cursor-default select-none outline-hidden hover:bg-accent hover:text-accent-foreground transition-colors"
               >
                 <FolderPlusIcon className="h-4 w-4 text-muted-foreground" />
-                <span>
-                  {openFolder.isPending ? "Adding..." : "Add repository"}
-                </span>
+                <span>{openFolder.isPending ? "正在添加…" : "添加仓库"}</span>
               </button>
             </div>
           </Command>

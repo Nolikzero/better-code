@@ -6,6 +6,7 @@ import {
   FolderPlus,
   MessageSquareCode,
   ShieldCheck,
+  Target,
 } from "lucide-react";
 import {
   memo,
@@ -46,6 +47,8 @@ function getCommandIcon(commandName: string) {
       return ShieldCheck;
     case "add-dir":
       return FolderPlus;
+    case "goal":
+      return Target;
     default:
       return IconChatBubble;
   }
@@ -388,7 +391,7 @@ export const AgentsSlashCommand = memo(function AgentsSlashCommand({
       {builtinOptions.length > 0 && (
         <>
           <div className="px-2.5 py-1.5 mx-1 text-xs font-medium text-muted-foreground">
-            Commands
+            命令
           </div>
           {builtinOptions.map((option) => {
             const currentIndex = globalIndex++;
@@ -409,8 +412,8 @@ export const AgentsSlashCommand = memo(function AgentsSlashCommand({
                   "h-7 px-1.5 justify-start text-xs rounded-md",
                   "transition-colors cursor-pointer select-none gap-1.5",
                   isSelected
-                    ? "dark:bg-neutral-800 bg-accent text-foreground"
-                    : "text-muted-foreground dark:hover:bg-neutral-800 hover:bg-accent hover:text-foreground",
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
                 )}
               >
                 <CommandIcon className="h-3 w-3 text-muted-foreground shrink-0" />
@@ -432,7 +435,7 @@ export const AgentsSlashCommand = memo(function AgentsSlashCommand({
       {repoOptions.length > 0 && (
         <>
           <div className="px-2.5 py-1.5 mx-1 text-xs font-medium text-muted-foreground mt-1">
-            From repository
+            来自仓库
           </div>
           {repoOptions.map((option) => {
             const currentIndex = globalIndex++;
@@ -453,8 +456,8 @@ export const AgentsSlashCommand = memo(function AgentsSlashCommand({
                   "h-7 px-1.5 justify-start text-xs rounded-md",
                   "transition-colors cursor-pointer select-none gap-1.5",
                   isSelected
-                    ? "dark:bg-neutral-800 bg-accent text-foreground"
-                    : "text-muted-foreground dark:hover:bg-neutral-800 hover:bg-accent hover:text-foreground",
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
                 )}
               >
                 <CommandIcon className="h-3 w-3 text-muted-foreground shrink-0" />
@@ -476,7 +479,7 @@ export const AgentsSlashCommand = memo(function AgentsSlashCommand({
       {isLoading && (
         <div className="flex items-center gap-1.5 h-7 px-1.5 mx-1 text-xs text-muted-foreground">
           <IconSpinner className="h-3.5 w-3.5" />
-          <span>Loading commands...</span>
+          <span>正在加载命令…</span>
         </div>
       )}
 
@@ -484,8 +487,8 @@ export const AgentsSlashCommand = memo(function AgentsSlashCommand({
       {!isLoading && options.length === 0 && (
         <div className="h-7 px-1.5 mx-1 flex items-center text-xs text-muted-foreground">
           {debouncedSearchText
-            ? `No commands matching "${debouncedSearchText}"`
-            : "No commands available"}
+            ? `没有与“${debouncedSearchText}”匹配的命令`
+            : "没有可用命令"}
         </div>
       )}
     </div>

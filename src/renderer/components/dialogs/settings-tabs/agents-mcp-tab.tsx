@@ -4,7 +4,10 @@ import { useAtomValue } from "jotai";
 import { ChevronRight } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
+import { useProviders } from "../../../features/agents/hooks/use-providers";
+import { resolveProviderDisplayName } from "../../../features/agents/lib/provider-display";
 import { defaultProviderIdAtom, sessionInfoAtom } from "../../../lib/atoms";
+import { getProviderMcpHelp } from "../../../lib/provider-mcp";
 import { cn } from "../../../lib/utils";
 import { OriginalMCPIcon } from "../../ui/icons";
 
@@ -43,15 +46,15 @@ function StatusDot({ status }: { status: string }) {
 function getStatusText(status: string): string {
   switch (status) {
     case "connected":
-      return "Connected";
+      return "已连接";
     case "failed":
-      return "Failed";
+      return "失败";
     case "needs-auth":
-      return "Needs auth";
+      return "需要认证";
     case "pending":
-      return "Connecting...";
+      return "正在连接…";
     default:
-      return status;
+      return "未知状态";
   }
 }
 
@@ -114,7 +117,7 @@ function ServerRow({ server, tools, isExpanded, onToggle }: ServerRowProps) {
         {/* Status / tool count */}
         <span className="text-xs text-muted-foreground shrink-0">
           {server.status === "connected" && hasTools
-            ? `${tools.length} tool${tools.length !== 1 ? "s" : ""}`
+            ? `${tools.length} 个工具`
             : getStatusText(server.status)}
         </span>
       </button>
@@ -152,6 +155,7 @@ export function AgentsMcpTab() {
 
   const sessionInfo = useAtomValue(sessionInfoAtom);
   const defaultProvider = useAtomValue(defaultProviderIdAtom);
+  const { providers } = useProviders();
 
   // Check if sessionInfo is from a different provider
   const sessionProvider = sessionInfo?.providerId;
@@ -162,16 +166,8 @@ export function AgentsMcpTab() {
   const mcpServers = providerMismatch ? [] : sessionInfo?.mcpServers || [];
   const tools = providerMismatch ? [] : sessionInfo?.tools || [];
 
-  // Determine config file path based on provider
-  const configFilePath =
-    defaultProvider === "codex" ? "~/.codex/config.toml" : "~/.claude.json";
-  const configFileDescription =
-    defaultProvider === "codex"
-      ? "Add MCP server configuration to ~/.codex/config.toml"
-      : "Add MCP server configuration to ~/.claude.json under your project path.";
-
-  // Provider display names
-  const providerName = defaultProvider === "codex" ? "Codex" : "Claude";
+  const mcpHelp = getProviderMcpHelp(defaultProvider);
+  const providerName = resolveProviderDisplayName(defaultProvider, providers);
 
   // Group tools by server
   const toolsByServer = mcpServers.reduce(
@@ -194,19 +190,21 @@ export function AgentsMcpTab() {
       {/* Header */}
       {!isNarrowScreen && (
         <div className="flex flex-col space-y-1.5 text-center sm:text-left">
-          <h3 className="text-sm font-semibold text-foreground">MCP Servers</h3>
-          <a
-            href={
-              defaultProvider === "codex"
-                ? "https://github.com/openai/codex#mcp-servers"
-                : "https://docs.anthropic.com/en/docs/claude-code/mcp"
-            }
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-muted-foreground hover:text-foreground underline transition-colors"
-          >
-            Documentation
-          </a>
+          <h3 className="text-sm font-semibold text-foreground">MCP 服务器</h3>
+          {mcpHelp.docsUrl ? (
+            <a
+              href={mcpHelp.docsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-muted-foreground hover:text-foreground underline transition-colors"
+            >
+              查看配置文档
+            </a>
+          ) : (
+            <span className="text-xs text-muted-foreground">
+              {mcpHelp.description}
+            </span>
+          )}
         </div>
       )}
 
@@ -218,25 +216,24 @@ export function AgentsMcpTab() {
             {providerMismatch ? (
               <>
                 <p className="text-sm text-muted-foreground mb-2">
-                  MCP servers will appear after starting a new {providerName}{" "}
-                  chat
+                  启动新的 {providerName} 对话后，MCP 服务器会显示在这里
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Configure servers in{" "}
+                  在以下位置配置服务器：{" "}
                   <code className="px-1 py-0.5 bg-muted rounded">
-                    {configFilePath}
+                    {mcpHelp.location}
                   </code>
                 </p>
               </>
             ) : (
               <>
                 <p className="text-sm text-muted-foreground mb-2">
-                  No MCP servers configured
+                  未配置 MCP 服务器
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Add servers to{" "}
+                  请通过以下方式添加服务器：{" "}
                   <code className="px-1 py-0.5 bg-muted rounded">
-                    {configFilePath}
+                    {mcpHelp.location}
                   </code>
                 </p>
               </>
@@ -263,21 +260,19 @@ export function AgentsMcpTab() {
       <div className="pt-4 border-t border-border space-y-3">
         <div>
           <h4 className="text-xs font-medium text-foreground mb-1.5">
-            How to use MCP Tools
+            如何使用 MCP 工具
           </h4>
           <p className="text-xs text-muted-foreground">
-            Mention a tool in chat with{" "}
-            <code className="px-1 py-0.5 bg-muted rounded">@tool-name</code> or
-            ask Claude to use it directly.
+            在对话中通过{" "}
+            <code className="px-1 py-0.5 bg-muted rounded">@tool-name</code>{" "}
+            提及工具，或直接要求智能体使用它。
           </p>
         </div>
         <div>
           <h4 className="text-xs font-medium text-foreground mb-1.5">
-            Configuring Servers
+            配置服务器
           </h4>
-          <p className="text-xs text-muted-foreground">
-            {configFileDescription}
-          </p>
+          <p className="text-xs text-muted-foreground">{mcpHelp.description}</p>
         </div>
       </div>
     </div>

@@ -12,11 +12,11 @@ import {
   chatProviderOverridesAtom,
   defaultProviderIdAtom,
   lastSelectedModelByProviderAtom,
-  PROVIDER_INFO,
-  PROVIDER_MODELS,
   subChatProviderOverridesAtom,
 } from "../../../lib/atoms";
 import { cn } from "../../../lib/utils";
+import { useProviders } from "../hooks/use-providers";
+import { resolveProviderDisplayName } from "../lib/provider-display";
 import { getProviderIcon } from "./provider-icons";
 
 interface ProviderIndicatorProps {
@@ -40,6 +40,7 @@ export const ProviderIndicator = memo(function ProviderIndicator({
   const chatOverrides = useAtomValue(chatProviderOverridesAtom);
   const subChatOverrides = useAtomValue(subChatProviderOverridesAtom);
   const modelsByProvider = useAtomValue(lastSelectedModelByProviderAtom);
+  const { getModels, providers } = useProviders();
 
   // Determine effective provider (per-subchat override -> per-chat override -> global default)
   const effectiveProvider = useMemo(() => {
@@ -49,11 +50,13 @@ export const ProviderIndicator = memo(function ProviderIndicator({
     return chatOverrides[chatId] || defaultProvider;
   }, [subChatOverrides, subChatId, chatOverrides, chatId, defaultProvider]);
 
-  // Get provider info
-  const providerInfo = PROVIDER_INFO[effectiveProvider];
-  const models = PROVIDER_MODELS[effectiveProvider];
-  const selectedModel = modelsByProvider[effectiveProvider];
-  const modelInfo = models?.find((m) => m.id === selectedModel);
+  const providerName = resolveProviderDisplayName(effectiveProvider, providers);
+  const models = getModels(effectiveProvider);
+  const selectedModel = modelsByProvider[effectiveProvider] ?? "";
+  const activeModelId = models.some((model) => model.id === selectedModel)
+    ? selectedModel
+    : (models[0]?.id ?? selectedModel);
+  const modelInfo = models.find((model) => model.id === activeModelId);
 
   // Get the appropriate icon
   const providerIcon = getProviderIcon(effectiveProvider, "h-3.5 w-3.5");
@@ -72,27 +75,27 @@ export const ProviderIndicator = memo(function ProviderIndicator({
             "h-6 px-2 gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors rounded-md",
             className,
           )}
-          aria-label={`AI Provider: ${providerInfo.name}`}
+          aria-label={`AI 提供商：${providerName}`}
         >
           {providerIcon}
-          <span>{modelInfo?.displayName || selectedModel}</span>
+          <span>{modelInfo?.displayName || activeModelId}</span>
           {hasOverride && (
             <span
               className="w-1.5 h-1.5 rounded-full bg-blue-500"
-              aria-label="Custom provider"
+              aria-label="自定义提供商"
             />
           )}
         </Button>
       </TooltipTrigger>
       <TooltipContent side="bottom" className="max-w-[250px]">
         <div className="space-y-1">
-          <div className="font-medium">{providerInfo.name}</div>
+          <div className="font-medium">{providerName}</div>
           <div className="text-xs text-muted-foreground">
-            Model: {modelInfo?.displayName || selectedModel}
+            模型： {modelInfo?.displayName || activeModelId}
           </div>
           {hasOverride && (
             <div className="text-xs text-blue-400">
-              Using custom provider for this chat
+              此对话正在使用自定义提供商
             </div>
           )}
         </div>

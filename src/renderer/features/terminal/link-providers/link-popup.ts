@@ -146,8 +146,8 @@ function createAndShowPopup(
 
   // "Follow link" clickable text
   const followLink = document.createElement("span");
-  followLink.innerText = "Follow link";
-  followLink.style.color = "#2563eb"; // blue-600
+  followLink.innerText = "打开链接";
+  followLink.style.color = "hsl(var(--primary))";
   followLink.style.cursor = "pointer";
   followLink.style.textDecoration = "underline";
   followLink.style.textUnderlineOffset = "2px";
@@ -166,7 +166,7 @@ function createAndShowPopup(
   shortcutHint.style.opacity = "0.5";
   shortcutHint.style.fontSize = "11px";
   shortcutHint.style.marginLeft = "4px";
-  shortcutHint.innerText = `(${getModifierKeyName()} + click)`;
+  shortcutHint.innerText = `（${getModifierKeyName()} + 单击）`;
   popup.appendChild(shortcutHint);
 
   // Find the terminal element using elementFromPoint at cursor position

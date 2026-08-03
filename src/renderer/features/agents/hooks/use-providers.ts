@@ -1,119 +1,109 @@
-import type { ProviderId } from "@shared/types";
+import type {
+  ApiProviderProtocol,
+  ProviderId,
+  ProviderModel,
+} from "@shared/types";
 import { useMemo } from "react";
 import { trpc } from "../../../lib/trpc";
 
-export interface ProviderModel {
-  id: string;
-  name: string;
-  displayName: string;
-}
+export type { ProviderModel } from "@shared/types";
 
-export interface ProviderInfo {
-  id: ProviderId;
-  name: string;
-  description: string;
-  available: boolean;
-  authStatus: {
-    authenticated: boolean;
-    method?: "oauth" | "api-key";
-    error?: string;
+export type ProviderInfo = {
+  readonly id: ProviderId;
+  readonly name: string;
+  readonly description: string;
+  readonly protocol: ApiProviderProtocol;
+  readonly baseUrl: string;
+  readonly contextWindow: number;
+  readonly enabled: boolean;
+  readonly hasApiKey: boolean;
+  readonly available: boolean;
+  readonly authStatus: {
+    readonly authenticated: boolean;
+    readonly method?: "oauth" | "api-key";
+    readonly error?: string;
   };
-  models: ProviderModel[];
+  readonly models: ProviderModel[];
+};
+
+function isProviderModel(value: unknown): value is ProviderModel {
+  if (!value || typeof value !== "object") return false;
+  return (
+    "id" in value &&
+    typeof value.id === "string" &&
+    "name" in value &&
+    typeof value.name === "string" &&
+    "displayName" in value &&
+    typeof value.displayName === "string"
+  );
 }
 
 function isProviderInfo(value: unknown): value is ProviderInfo {
   if (!value || typeof value !== "object") return false;
-
-  const candidate = value as Partial<ProviderInfo>;
+  if (!("protocol" in value)) return false;
+  const protocol = value.protocol;
   return (
-    typeof candidate.id === "string" &&
-    typeof candidate.name === "string" &&
-    typeof candidate.description === "string" &&
-    typeof candidate.available === "boolean" &&
-    Array.isArray(candidate.models)
+    "id" in value &&
+    typeof value.id === "string" &&
+    "name" in value &&
+    typeof value.name === "string" &&
+    "description" in value &&
+    typeof value.description === "string" &&
+    (protocol === "openai-compatible" || protocol === "anthropic-compatible") &&
+    "baseUrl" in value &&
+    typeof value.baseUrl === "string" &&
+    "contextWindow" in value &&
+    typeof value.contextWindow === "number" &&
+    "enabled" in value &&
+    typeof value.enabled === "boolean" &&
+    "hasApiKey" in value &&
+    typeof value.hasApiKey === "boolean" &&
+    "available" in value &&
+    typeof value.available === "boolean" &&
+    "models" in value &&
+    Array.isArray(value.models) &&
+    value.models.every(isProviderModel)
   );
 }
 
 export function normalizeProvidersList(value: unknown): ProviderInfo[] {
-  if (Array.isArray(value)) {
-    return value.filter(isProviderInfo);
-  }
+  if (Array.isArray(value)) return value.filter(isProviderInfo);
 
   if (value && typeof value === "object" && "json" in value) {
-    const jsonValue = (value as { json?: unknown }).json;
-    if (Array.isArray(jsonValue)) {
-      return jsonValue.filter(isProviderInfo);
-    }
+    const jsonValue = value.json;
+    if (Array.isArray(jsonValue)) return jsonValue.filter(isProviderInfo);
   }
 
   return [];
 }
 
-/**
- * Hook to fetch all providers and their models via tRPC.
- * Centralizes provider/model logic - supports dynamic models (e.g., OpenCode).
- *
- * Usage:
- * ```tsx
- * const { providers, getModels, isLoading } = useProviders();
- * const models = getModels("opencode"); // Returns dynamic models from server
- * ```
- */
 export function useProviders() {
-  const {
-    data: providers,
-    isLoading,
-    error,
-    refetch,
-  } = trpc.providers.list.useQuery(undefined, {
-    staleTime: 60_000, // Cache for 1 minute
+  const query = trpc.providers.list.useQuery(undefined, {
+    staleTime: 30_000,
     refetchOnWindowFocus: false,
   });
-
-  const providerList = useMemo(
-    () => normalizeProvidersList(providers),
-    [providers],
+  const providers = useMemo(
+    () => normalizeProvidersList(query.data),
+    [query.data],
   );
 
-  // Helper to get models for a specific provider
-  const getModels = useMemo(() => {
-    return (providerId: ProviderId): ProviderModel[] => {
-      const provider = providerList.find((p) => p.id === providerId);
-      return provider?.models ?? [];
-    };
-  }, [providerList]);
-
-  // Helper to get provider info
-  const getProvider = useMemo(() => {
-    return (providerId: ProviderId): ProviderInfo | undefined => {
-      return providerList.find((p) => p.id === providerId);
-    };
-  }, [providerList]);
-
-  // List of available provider IDs (for dropdowns)
-  const availableProviderIds = useMemo(() => {
-    return providerList.map((p) => p.id);
-  }, [providerList]);
-
-  // Check if a provider is ready (available + authenticated)
-  const isProviderReady = useMemo(() => {
-    return (providerId: ProviderId): boolean => {
-      const provider = providerList.find((p) => p.id === providerId);
-      return (
-        provider?.available === true &&
-        provider?.authStatus?.authenticated === true
-      );
-    };
-  }, [providerList]);
+  const getModels = (providerId: ProviderId): ProviderModel[] =>
+    providers.find((provider) => provider.id === providerId)?.models ?? [];
+  const getProvider = (providerId: ProviderId): ProviderInfo | undefined =>
+    providers.find((provider) => provider.id === providerId);
 
   return {
-    providers: providerList,
+    providers,
+    enabledProviders: providers.filter((provider) => provider.enabled),
+    availableProviderIds: providers.map((provider) => provider.id),
     getModels,
     getProvider,
-    availableProviderIds,
-    isProviderReady,
-    isLoading,
-    error,
-    refetch,
+    isProviderReady: (providerId: ProviderId): boolean => {
+      const provider = getProvider(providerId);
+      return provider?.available === true && provider.models.length > 0;
+    },
+    isLoading: query.isLoading,
+    error: query.error,
+    refetch: query.refetch,
   };
 }

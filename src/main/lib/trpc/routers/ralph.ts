@@ -129,7 +129,7 @@ export const ralphRouter = router({
       const service = getRalphService();
       const prd = service.getPrd(input.subChatId);
       if (!prd) {
-        throw new Error("No PRD found for this sub-chat");
+        throw new Error("此子对话没有 PRD");
       }
 
       const updatedStories = prd.stories.map((story) =>
@@ -154,7 +154,7 @@ export const ralphRouter = router({
       const service = getRalphService();
       const prd = service.getPrd(input.subChatId);
       if (!prd) {
-        throw new Error("No PRD found for this sub-chat");
+        throw new Error("此子对话没有 PRD");
       }
 
       const updatedStories = [...prd.stories, input.story as UserStory];
@@ -176,7 +176,7 @@ export const ralphRouter = router({
       const service = getRalphService();
       const prd = service.getPrd(input.subChatId);
       if (!prd) {
-        throw new Error("No PRD found for this sub-chat");
+        throw new Error("此子对话没有 PRD");
       }
 
       const updatedStories = prd.stories.filter(

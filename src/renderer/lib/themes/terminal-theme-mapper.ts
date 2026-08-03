@@ -59,44 +59,44 @@ const TERMINAL_COLOR_MAP: Partial<Record<keyof ITheme, string[]>> = {
  * Default dark terminal ANSI colors (fallback)
  */
 const DEFAULT_DARK_ANSI: Partial<ITheme> = {
-  black: "#18181b",
-  red: "#ef4444",
-  green: "#22c55e",
-  yellow: "#eab308",
-  blue: "#3b82f6",
-  magenta: "#a855f7",
-  cyan: "#06b6d4",
-  white: "#f4f4f5",
-  brightBlack: "#71717a",
-  brightRed: "#f87171",
-  brightGreen: "#4ade80",
-  brightYellow: "#facc15",
-  brightBlue: "#60a5fa",
-  brightMagenta: "#c084fc",
-  brightCyan: "#22d3ee",
-  brightWhite: "#fafafa",
+  black: "#21222c",
+  red: "#ff5555",
+  green: "#50fa7b",
+  yellow: "#f1fa8c",
+  blue: "#8be9fd",
+  magenta: "#ff79c6",
+  cyan: "#8be9fd",
+  white: "#f8f8f2",
+  brightBlack: "#6272a4",
+  brightRed: "#ff6e6e",
+  brightGreen: "#69ff94",
+  brightYellow: "#ffffa5",
+  brightBlue: "#d6acff",
+  brightMagenta: "#ff92df",
+  brightCyan: "#a4ffff",
+  brightWhite: "#ffffff",
 };
 
 /**
  * Default light terminal ANSI colors (fallback)
  */
 const DEFAULT_LIGHT_ANSI: Partial<ITheme> = {
-  black: "#18181b",
-  red: "#dc2626",
-  green: "#16a34a",
-  yellow: "#ca8a04",
-  blue: "#2563eb",
-  magenta: "#9333ea",
-  cyan: "#0891b2",
-  white: "#f4f4f5",
-  brightBlack: "#52525b",
-  brightRed: "#ef4444",
-  brightGreen: "#22c55e",
-  brightYellow: "#eab308",
-  brightBlue: "#3b82f6",
-  brightMagenta: "#a855f7",
-  brightCyan: "#06b6d4",
-  brightWhite: "#fafafa",
+  black: "#1f1f1f",
+  red: "#cb3a2a",
+  green: "#14710a",
+  yellow: "#846e15",
+  blue: "#036a96",
+  magenta: "#a3144d",
+  cyan: "#036a96",
+  white: "#fffbeb",
+  brightBlack: "#6c664b",
+  brightRed: "#e14938",
+  brightGreen: "#238416",
+  brightYellow: "#9a821d",
+  brightBlue: "#087fab",
+  brightMagenta: "#b52360",
+  brightCyan: "#087fab",
+  brightWhite: "#fffdf5",
 };
 
 /**
@@ -127,8 +127,7 @@ export function extractTerminalTheme(
     if (!vsCodeKeys) continue;
     const color = getColorFromTheme(themeColors, vsCodeKeys);
     if (color) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (theme as any)[xtermKey] = color;
+      Object.assign(theme, { [xtermKey]: color });
     }
   }
 
@@ -142,16 +141,16 @@ export function extractTerminalTheme(
 
   // Ensure all required colors are present
   const finalTheme: ITheme = {
-    background: theme.background || (isLight ? "#fafafa" : "#121212"),
-    foreground: theme.foreground || (isLight ? "#0a0a0a" : "#f4f4f5"),
+    background: theme.background || (isLight ? "#f7f1d9" : "#21222c"),
+    foreground: theme.foreground || (isLight ? "#1f1f1f" : "#f8f8f2"),
     cursor:
-      theme.cursor || theme.foreground || (isLight ? "#0a0a0a" : "#f4f4f5"),
+      theme.cursor || theme.foreground || (isLight ? "#644ac9" : "#bd93f9"),
     cursorAccent:
       theme.cursorAccent ||
       theme.background ||
-      (isLight ? "#fafafa" : "#121212"),
+      (isLight ? "#f7f1d9" : "#21222c"),
     selectionBackground:
-      theme.selectionBackground || (isLight ? "#d4d4d8" : "#3f3f46"),
+      theme.selectionBackground || (isLight ? "#cfcfde" : "#44475a"),
     selectionForeground: theme.selectionForeground,
 
     // ANSI colors with fallbacks
@@ -217,7 +216,7 @@ export function extractTerminalThemeWithTransparency(
     isTransparent,
     containerBackground: isTransparent
       ? "transparent"
-      : theme.background || "#121212",
+      : theme.background || "#21222c",
   };
 }
 

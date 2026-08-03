@@ -119,8 +119,8 @@ export const projectsRouter = router({
 
     const result = await dialog.showOpenDialog(window, {
       properties: ["openDirectory", "createDirectory"],
-      title: "Select Project Folder",
-      buttonLabel: "Open Project",
+      title: "选择项目文件夹",
+      buttonLabel: "打开项目",
     });
 
     if (result.canceled || result.filePaths.length === 0) {
@@ -413,7 +413,7 @@ export const projectsRouter = router({
         .get();
 
       if (!project?.path) {
-        return { diff: null, error: "Project not found" };
+        return { diff: null, error: "未找到项目" };
       }
 
       // Use getWorktreeDiff with uncommittedOnly: true for project-level view

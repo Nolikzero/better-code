@@ -20,7 +20,9 @@ import { closeDatabase, initDatabase } from "./lib/db";
 import { initDockMenu } from "./lib/dock-menu";
 import { fileIndexManager } from "./lib/files/file-index";
 import { branchWatcher } from "./lib/git/branch-watcher";
-import { shutdownProviders } from "./lib/providers/init";
+import { listApiProviderSettings } from "./lib/providers/api/store";
+import { initializeProviders, shutdownProviders } from "./lib/providers/init";
+import { selectEnabledProviderIds } from "./lib/providers/provider-selection";
 import { terminalManager } from "./lib/terminal/manager";
 import { initTray, updateTrayStatus } from "./lib/tray-menu";
 import { createMainWindow, getWindow } from "./windows/main";
@@ -32,7 +34,7 @@ const IS_DEV = process.env.NODE_ENV === "development";
 // Set dev mode userData path BEFORE requestSingleInstanceLock()
 // This ensures dev and prod have separate instance locks
 if (IS_DEV && app) {
-  const devUserData = join(app.getPath("userData"), "..", "BetterCode Dev");
+  const devUserData = join(app.getPath("userData"), "..", "SamBetterCode Dev");
   app.setPath("userData", devUserData);
   console.log("[Dev] Using separate userData path:", devUserData);
 }
@@ -115,7 +117,7 @@ if (gotTheLock) {
   app.whenReady().then(async () => {
     // Set dev mode app name (userData path was already set before requestSingleInstanceLock)
     if (IS_DEV) {
-      app.name = "BetterCode Dev";
+      app.name = "SamBetterCode Dev";
     }
 
     // Set app user model ID for Windows (different in dev to avoid taskbar conflicts)
@@ -123,7 +125,7 @@ if (gotTheLock) {
       app.setAppUserModelId(IS_DEV ? "com.bettercode.dev" : "com.bettercode");
     }
 
-    console.log(`[App] Starting BetterCode${IS_DEV ? " (DEV)" : ""}...`);
+    console.log(`[App] Starting SamBetterCode${IS_DEV ? " (DEV)" : ""}...`);
 
     // Defer About panel setup to avoid blocking startup with VERSION file read
     // This runs after the critical startup path completes
@@ -145,7 +147,7 @@ if (gotTheLock) {
       }
 
       app.setAboutPanelOptions({
-        applicationName: "BetterCode",
+        applicationName: "SamBetterCode",
         applicationVersion: app.getVersion(),
         version: `Claude Code ${claudeCodeVersion}`,
         copyright: "Copyright © 2026",
@@ -165,11 +167,11 @@ if (gotTheLock) {
         template.push({
           label: app.name,
           submenu: [
-            { role: "about", label: "About BetterCode" },
+            { role: "about", label: "关于 SamBetterCode" },
             {
               label: updateAvailable
-                ? `Update to v${availableVersion}...`
-                : "Check for Updates...",
+                ? `更新至 v${availableVersion}…`
+                : "检查更新…",
               click: () => {
                 const win = getWindow();
                 if (win) {
@@ -197,7 +199,7 @@ if (gotTheLock) {
       // File menu (all platforms)
       const fileSubmenu: Electron.MenuItemConstructorOptions[] = [
         {
-          label: "New Chat",
+          label: "新建对话",
           accelerator: "CmdOrCtrl+N",
           click: () => {
             const win = getWindow();
@@ -211,11 +213,11 @@ if (gotTheLock) {
       if (process.platform !== "darwin") {
         fileSubmenu.push({ type: "separator" }, { role: "quit" });
       }
-      template.push({ label: "File", submenu: fileSubmenu });
+      template.push({ label: "文件", submenu: fileSubmenu });
 
       // Edit menu (all platforms)
       template.push({
-        label: "Edit",
+        label: "编辑",
         submenu: [
           { role: "undo" },
           { role: "redo" },
@@ -229,7 +231,7 @@ if (gotTheLock) {
 
       // View menu (all platforms)
       template.push({
-        label: "View",
+        label: "视图",
         submenu: [
           { role: "reload" },
           { role: "forceReload" },
@@ -245,7 +247,7 @@ if (gotTheLock) {
 
       // Window menu (platform-aware)
       template.push({
-        label: "Window",
+        label: "窗口",
         submenu: [
           { role: "minimize" },
           ...(process.platform === "darwin"
@@ -274,8 +276,8 @@ if (gotTheLock) {
           { type: "separator" },
           {
             label: updateAvailable
-              ? `Update to v${availableVersion}...`
-              : "Check for Updates...",
+              ? `更新至 v${availableVersion}…`
+              : "检查更新…",
             click: () => {
               const win = getWindow();
               if (win) {
@@ -288,10 +290,10 @@ if (gotTheLock) {
               }
             },
           },
-          { role: "about", label: "About BetterCode" },
+          { role: "about", label: "关于 SamBetterCode" },
         );
       }
-      template.push({ role: "help", submenu: helpSubmenu });
+      template.push({ role: "help", label: "帮助", submenu: helpSubmenu });
 
       Menu.setApplicationMenu(Menu.buildFromTemplate(template));
     };
@@ -317,7 +319,13 @@ if (gotTheLock) {
       console.error("[App] Failed to initialize database:", error);
     }
 
-    // Providers are initialized on-demand after onboarding/settings selection
+    try {
+      const configuredProviders = listApiProviderSettings();
+      await initializeProviders(selectEnabledProviderIds(configuredProviders));
+      console.log("[App] API providers initialized");
+    } catch (error) {
+      console.error("[App] Failed to initialize API providers:", error);
+    }
 
     // Create main window
     createMainWindow();

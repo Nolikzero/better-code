@@ -3,11 +3,7 @@ import { Bug, ChevronLeft, ChevronRight, Cpu, Keyboard, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import {
-  EyeOpenFilledIcon,
-  ProfileIconFilled,
-  SlidersFilledIcon,
-} from "../../icons";
+import { EyeOpenFilledIcon, SlidersFilledIcon } from "../../icons";
 import {
   agentsSettingsDialogActiveTabAtom,
   type SettingsTab,
@@ -24,7 +20,6 @@ import { AgentsDebugTab } from "./settings-tabs/agents-debug-tab";
 import { AgentsKeybindingsTab } from "./settings-tabs/agents-keybindings-tab";
 import { AgentsMcpTab } from "./settings-tabs/agents-mcp-tab";
 import { AgentsPreferencesTab } from "./settings-tabs/agents-preferences-tab";
-import { AgentsProfileTab } from "./settings-tabs/agents-profile-tab";
 import { AgentsProviderTab } from "./settings-tabs/agents-provider-tab";
 import { AgentsSkillsTab } from "./settings-tabs/agents-skills-tab";
 
@@ -55,63 +50,55 @@ interface AgentsSettingsDialogProps {
 
 const ALL_TABS = [
   {
-    id: "profile" as SettingsTab,
-    label: "Account",
-    icon: ProfileIconFilled,
-    description: "Manage your account settings",
+    id: "provider" as SettingsTab,
+    label: "模型与服务商",
+    icon: Cpu,
+    description: "配置接口、模型与默认选择",
   },
   {
     id: "appearance" as SettingsTab,
-    label: "Appearance",
+    label: "外观",
     icon: EyeOpenFilledIcon,
-    description: "Theme settings",
+    description: "主题设置",
   },
   {
     id: "preferences" as SettingsTab,
-    label: "Preferences",
+    label: "偏好设置",
     icon: SlidersFilledIcon,
-    description: "Claude behavior settings",
+    description: "Claude 行为设置",
   },
   {
     id: "keybindings" as SettingsTab,
-    label: "Keybindings",
+    label: "快捷键",
     icon: Keyboard,
-    description: "Customize keyboard shortcuts",
-  },
-  {
-    id: "provider" as SettingsTab,
-    label: "AI Provider",
-    icon: Cpu,
-    description: "Choose AI provider and model",
+    description: "自定义键盘快捷键",
   },
   {
     id: "skills" as SettingsTab,
-    label: "Skills",
+    label: "技能",
     icon: SkillIconFilled,
-    description: "Custom Claude skills",
-    beta: true,
+    description: "自定义 Claude 技能",
   },
   {
     id: "agents" as SettingsTab,
-    label: "Custom Agents",
+    label: "自定义智能体",
     icon: CustomAgentIconFilled,
-    description: "Manage custom Claude agents",
-    beta: true,
+    description: "管理 Claude 自定义智能体",
   },
   {
     id: "mcp" as SettingsTab,
-    label: "MCP Servers",
+    label: "MCP 服务器",
     icon: OriginalMCPIcon,
-    description: "Model Context Protocol servers",
+    description: "模型上下文协议服务器",
   },
   // Debug tab - always shown in desktop for development
   ...(isDevelopment
     ? [
         {
           id: "debug" as SettingsTab,
-          label: "Debug",
+          label: "调试",
           icon: Bug,
-          description: "Test first-time user experience",
+          description: "测试首次使用体验",
         },
       ]
     : []),
@@ -126,7 +113,6 @@ interface TabButtonProps {
 
 function TabButton({ tab, isActive, onClick, isNarrow }: TabButtonProps) {
   const Icon = tab.icon;
-  const isBeta = "beta" in tab && tab.beta;
   return (
     <button
       onClick={onClick}
@@ -149,11 +135,6 @@ function TabButton({ tab, isActive, onClick, isNarrow }: TabButtonProps) {
         )}
       />
       <span className="flex-1">{tab.label}</span>
-      {isBeta && (
-        <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-muted text-muted-foreground">
-          Beta
-        </span>
-      )}
       {isNarrow && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
     </button>
   );
@@ -161,7 +142,7 @@ function TabButton({ tab, isActive, onClick, isNarrow }: TabButtonProps) {
 
 // Helper to get tab label from tab id
 function getTabLabel(tabId: SettingsTab): string {
-  return ALL_TABS.find((t) => t.id === tabId)?.label ?? "Settings";
+  return ALL_TABS.find((t) => t.id === tabId)?.label ?? "设置";
 }
 
 export function AgentsSettingsDialog({
@@ -219,8 +200,6 @@ export function AgentsSettingsDialog({
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case "profile":
-        return <AgentsProfileTab />;
       case "appearance":
         return <AgentsAppearanceTab />;
       case "preferences":
@@ -272,7 +251,6 @@ export function AgentsSettingsDialog({
           aria-labelledby="agents-settings-dialog-title-narrow"
           data-modal="agents-settings"
           data-canvas-dialog
-          data-agents-page
         >
           {/* Header */}
           <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
@@ -288,7 +266,7 @@ export function AgentsSettingsDialog({
               id="agents-settings-dialog-title-narrow"
               className="text-lg font-semibold flex-1"
             >
-              {showContent ? getTabLabel(activeTab) : "Settings"}
+              {showContent ? getTabLabel(activeTab) : "设置"}
             </h2>
             <button
               type="button"
@@ -296,7 +274,7 @@ export function AgentsSettingsDialog({
               className="flex items-center justify-center h-8 w-8 rounded-full hover:bg-foreground/5 transition-colors"
             >
               <X className="h-4 w-4" />
-              <span className="sr-only">Close</span>
+              <span className="sr-only">关闭</span>
             </button>
           </div>
 
@@ -346,17 +324,16 @@ export function AgentsSettingsDialog({
               aria-labelledby="agents-settings-dialog-title"
               data-modal="agents-settings"
               data-canvas-dialog
-              data-agents-page
             >
               <h2 id="agents-settings-dialog-title" className="sr-only">
-                Settings
+                设置
               </h2>
 
               <div className="flex h-full p-2">
                 {/* Left Sidebar - Tabs */}
                 <div className="w-52 px-1 py-5 space-y-4">
                   <h2 className="text-lg font-semibold px-2 pb-3 text-foreground">
-                    Settings
+                    设置
                   </h2>
 
                   {/* All Tabs */}
@@ -387,7 +364,7 @@ export function AgentsSettingsDialog({
                 className="absolute appearance-none outline-hidden select-none top-5 right-5 rounded-full cursor-pointer flex items-center justify-center ring-offset-background focus:ring-ring bg-secondary h-7 w-7 text-foreground/70 hover:text-foreground focus:outline-hidden disabled:pointer-events-none active:scale-95 transition-all duration-200 ease-in-out z-[60] focus:outline-hidden focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2"
               >
                 <X className="h-4 w-4" />
-                <span className="sr-only">Close</span>
+                <span className="sr-only">关闭</span>
               </button>
             </motion.div>
           </div>

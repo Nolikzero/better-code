@@ -219,7 +219,7 @@ const TerminalTab = memo(
                   type="button"
                   onClick={handleCloseClick}
                   className="relative z-20 hover:text-foreground rounded p-0.5 transition-[color,transform] duration-150 ease-out active:scale-[0.97]"
-                  aria-label="Close terminal"
+                  aria-label="关闭终端"
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -228,21 +228,19 @@ const TerminalTab = memo(
           </button>
         </ContextMenuTrigger>
         <ContextMenuContent className="w-48">
-          <ContextMenuItem onClick={onStartRename}>
-            Rename terminal
-          </ContextMenuItem>
+          <ContextMenuItem onClick={onStartRename}>重命名终端</ContextMenuItem>
           <ContextMenuSeparator />
           <ContextMenuItem
             onClick={() => onClose(terminal.id)}
             disabled={isOnly}
           >
-            Close terminal
+            关闭终端
           </ContextMenuItem>
           <ContextMenuItem onClick={onCloseOthers} disabled={!canCloseOthers}>
-            Close other terminals
+            关闭其他终端
           </ContextMenuItem>
           <ContextMenuItem onClick={onCloseToRight} disabled={!hasTabsToRight}>
-            Close terminals to the right
+            关闭右侧终端
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
@@ -489,12 +487,12 @@ export const TerminalTabs = memo(function TerminalTabs({
                 size="icon"
                 onClick={onCreateTerminal}
                 className="h-6 w-6 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] rounded-md"
-                aria-label="New terminal"
+                aria-label="新建终端"
               >
                 <PlusIcon className="h-3.5 w-3.5" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="bottom">New terminal</TooltipContent>
+            <TooltipContent side="bottom">新建终端</TooltipContent>
           </Tooltip>
         </div>
       </div>

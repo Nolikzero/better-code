@@ -90,7 +90,7 @@ async function assertParentInWorktree(
           const targetReal = await realpath(resolvedTarget);
           if (!isPathWithinWorktree(worktreeReal, targetReal)) {
             throw new PathValidationError(
-              "Symlink in path resolves outside the worktree",
+              "路径中的符号链接指向工作树之外",
               "SYMLINK_ESCAPE",
             );
           }
@@ -113,7 +113,7 @@ async function assertParentInWorktree(
               isAbsolute(targetRelative)
             ) {
               throw new PathValidationError(
-                "Dangling symlink points outside the worktree",
+                "悬空符号链接指向工作树之外",
                 "SYMLINK_ESCAPE",
               );
             }
@@ -125,7 +125,7 @@ async function assertParentInWorktree(
           }
           // Other errors - fail closed for security
           throw new PathValidationError(
-            "Cannot validate symlink target",
+            "无法验证符号链接目标",
             "SYMLINK_ESCAPE",
           );
         }
@@ -136,7 +136,7 @@ async function assertParentInWorktree(
       const parentReal = await realpath(currentPath);
       if (!isPathWithinWorktree(worktreeReal, parentReal)) {
         throw new PathValidationError(
-          "Parent directory resolves outside the worktree",
+          "父目录解析到工作树之外",
           "SYMLINK_ESCAPE",
         );
       }
@@ -155,18 +155,12 @@ async function assertParentInWorktree(
         continue;
       }
       // Other errors (EACCES, ENOTDIR, etc.) - fail closed for security
-      throw new PathValidationError(
-        "Cannot validate path ancestry",
-        "SYMLINK_ESCAPE",
-      );
+      throw new PathValidationError("无法验证路径层级", "SYMLINK_ESCAPE");
     }
   }
 
   // Reached filesystem root without finding valid ancestor
-  throw new PathValidationError(
-    "Could not validate path ancestry within worktree",
-    "SYMLINK_ESCAPE",
-  );
+  throw new PathValidationError("无法验证工作树内的路径层级", "SYMLINK_ESCAPE");
 }
 
 /**
@@ -186,7 +180,7 @@ async function assertRealpathInWorktree(
     // Use path.relative for safer boundary checking
     if (!isPathWithinWorktree(worktreeReal, real)) {
       throw new PathValidationError(
-        "File is a symlink pointing outside the worktree",
+        "文件是指向工作树之外的符号链接",
         "SYMLINK_ESCAPE",
       );
     }
@@ -202,10 +196,7 @@ async function assertRealpathInWorktree(
       throw error;
     }
     // Other errors (permission denied, etc.) - fail closed for security
-    throw new PathValidationError(
-      "Cannot validate file path",
-      "SYMLINK_ESCAPE",
-    );
+    throw new PathValidationError("无法验证文件路径", "SYMLINK_ESCAPE");
   }
 }
 
@@ -248,7 +239,7 @@ async function assertDanglingSymlinkSafe(
         isAbsolute(targetRelative)
       ) {
         throw new PathValidationError(
-          "Dangling symlink points outside the worktree",
+          "悬空符号链接指向工作树之外",
           "SYMLINK_ESCAPE",
         );
       }
@@ -268,7 +259,7 @@ async function assertDanglingSymlinkSafe(
       return;
     }
     // Other errors - fail closed
-    throw new PathValidationError("Cannot validate path", "SYMLINK_ESCAPE");
+    throw new PathValidationError("无法验证路径", "SYMLINK_ESCAPE");
   }
 }
 export const secureFs = {

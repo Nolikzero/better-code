@@ -84,32 +84,32 @@ export function TerminalSearch({
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder="Find..."
+        placeholder="查找…"
         className="w-40 bg-transparent px-2 py-1 text-sm outline-hidden placeholder:text-muted-foreground"
       />
       {matchCount !== null && (
         <span className="px-1 text-xs text-muted-foreground">
-          {matchCount} matches
+          {matchCount} 个匹配项
         </span>
       )}
       <button
         onClick={() => handleSearch("prev")}
         className="rounded p-1 hover:bg-muted"
-        title="Previous match (Shift+Enter)"
+        title="上一个匹配项（Shift+Enter）"
       >
         <ChevronUp className="h-4 w-4 text-muted-foreground" />
       </button>
       <button
         onClick={() => handleSearch("next")}
         className="rounded p-1 hover:bg-muted"
-        title="Next match (Enter)"
+        title="下一个匹配项（Enter）"
       >
         <ChevronDown className="h-4 w-4 text-muted-foreground" />
       </button>
       <button
         onClick={onClose}
         className="rounded p-1 hover:bg-muted"
-        title="Close (Escape)"
+        title="关闭（Escape）"
       >
         <X className="h-4 w-4 text-muted-foreground" />
       </button>

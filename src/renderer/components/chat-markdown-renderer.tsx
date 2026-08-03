@@ -115,7 +115,7 @@ function CodeBlock({
         onClick={handleCopy}
         tabIndex={-1}
         className="absolute top-[6px] right-[6px] p-1 z-10"
-        title={copied ? "Copied!" : "Copy code"}
+        title={copied ? "已复制" : "复制代码"}
       >
         <div className="relative w-3.5 h-3.5">
           <Copy

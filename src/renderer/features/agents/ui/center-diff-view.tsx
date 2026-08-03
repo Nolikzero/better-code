@@ -234,9 +234,9 @@ export function CenterDiffView() {
         return msg.length > 24 ? `${msg.slice(0, 24)}...` : msg;
       }
       case "full":
-        return "All changes";
+        return "全部更改";
       default:
-        return "Uncommitted";
+        return "未提交";
     }
   }, [viewingMode]);
 
@@ -253,7 +253,7 @@ export function CenterDiffView() {
   if (!effectiveData) {
     return (
       <div className="flex-1 flex items-center justify-center text-muted-foreground">
-        No changes to display
+        没有可显示的更改
       </div>
     );
   }
@@ -284,7 +284,7 @@ export function CenterDiffView() {
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom" sideOffset={4}>
-              Back to chat (Esc)
+              返回对话（Esc）
             </TooltipContent>
           </Tooltip>
 
@@ -317,7 +317,7 @@ export function CenterDiffView() {
                       <CheckIcon className="h-3 w-3" />
                     </span>
                   )}
-                  <span>Uncommitted</span>
+                  <span>未提交</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => setViewingMode({ type: "full" })}
@@ -329,7 +329,7 @@ export function CenterDiffView() {
                     </span>
                   )}
                   <GitBranch className="w-3.5 h-3.5" />
-                  <span>All changes</span>
+                  <span>全部更改</span>
                 </DropdownMenuItem>
                 {viewingMode.type === "commit" && (
                   <>
@@ -351,7 +351,7 @@ export function CenterDiffView() {
 
             {!isLoading && (
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <span className="font-mono">{diffStats.fileCount} files</span>
+                <span className="font-mono">{diffStats.fileCount} 个文件</span>
                 {(diffStats.additions > 0 || diffStats.deletions > 0) && (
                   <>
                     <span className="text-emerald-600 dark:text-emerald-400">
@@ -390,11 +390,11 @@ export function CenterDiffView() {
                     ) : (
                       <Eye className="w-3.5 h-3.5" />
                     )}
-                    <span className="hidden sm:inline">Review</span>
+                    <span className="hidden sm:inline">审查</span>
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" sideOffset={4}>
-                  Get AI code review
+                  获取 AI 代码审查
                 </TooltipContent>
               </Tooltip>
 
@@ -414,11 +414,11 @@ export function CenterDiffView() {
                       ) : (
                         <PullRequestIcon className="w-3.5 h-3.5" />
                       )}
-                      <span className="hidden sm:inline">Create PR</span>
+                      <span className="hidden sm:inline">创建 PR</span>
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" sideOffset={4}>
-                    Create Pull Request
+                    创建拉取请求
                   </TooltipContent>
                 </Tooltip>
               )}
@@ -440,11 +440,11 @@ export function CenterDiffView() {
                         ) : (
                           <GitMerge className="w-3.5 h-3.5" />
                         )}
-                        <span className="hidden sm:inline">Merge</span>
+                        <span className="hidden sm:inline">合并</span>
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent side="bottom" sideOffset={4}>
-                      Merge Pull Request
+                      合并拉取请求
                     </TooltipContent>
                   </Tooltip>
                 )}
@@ -466,11 +466,11 @@ export function CenterDiffView() {
                         ) : (
                           <GitCommitHorizontal className="w-3.5 h-3.5" />
                         )}
-                        <span className="hidden sm:inline">Commit</span>
+                        <span className="hidden sm:inline">提交</span>
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent side="bottom" sideOffset={4}>
-                      Commit to PR
+                      提交到 PR
                     </TooltipContent>
                   </Tooltip>
                 )}
@@ -499,7 +499,7 @@ export function CenterDiffView() {
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" sideOffset={4}>
-                Split view
+                拆分视图
               </TooltipContent>
             </Tooltip>
             <Tooltip>
@@ -512,7 +512,7 @@ export function CenterDiffView() {
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" sideOffset={4}>
-                Unified view
+                统一视图
               </TooltipContent>
             </Tooltip>
           </div>
@@ -533,7 +533,7 @@ export function CenterDiffView() {
                     ) : (
                       <Rows2 className="w-3.5 h-3.5" />
                     )}
-                    <span>View</span>
+                    <span>视图</span>
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent
                     sideOffset={6}
@@ -550,7 +550,7 @@ export function CenterDiffView() {
                         </span>
                       )}
                       <Columns2 className="w-3.5 h-3.5" />
-                      <span>Split</span>
+                      <span>拆分</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => setDiffMode(DiffModeEnum.Unified)}
@@ -562,7 +562,7 @@ export function CenterDiffView() {
                         </span>
                       )}
                       <Rows2 className="w-3.5 h-3.5" />
-                      <span>Unified</span>
+                      <span>统一</span>
                     </DropdownMenuItem>
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
@@ -572,7 +572,7 @@ export function CenterDiffView() {
                   className="gap-2"
                 >
                   <ExpandIcon className="w-3.5 h-3.5" />
-                  <span>Expand all</span>
+                  <span>全部展开</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => diffViewRef.current?.collapseAll()}
@@ -580,7 +580,7 @@ export function CenterDiffView() {
                   className="gap-2"
                 >
                   <CollapseIcon className="w-3.5 h-3.5" />
-                  <span>Collapse all</span>
+                  <span>全部折叠</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

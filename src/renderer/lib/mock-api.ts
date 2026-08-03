@@ -222,7 +222,7 @@ export const api = {
         return {
           mutateAsync: async (args: {
             userMessage: string;
-            providerId?: "claude" | "codex" | "opencode";
+            providerId?: string;
             projectPath?: string;
           }) => {
             return mutation.mutateAsync({
@@ -261,10 +261,7 @@ export const api = {
           onError: (err) => opts?.onError?.(err),
         });
         return {
-          mutate: (args?: {
-            subChatId: string;
-            providerId: "claude" | "codex" | "opencode";
-          }) => {
+          mutate: (args?: { subChatId: string; providerId: string }) => {
             if (args?.subChatId && args?.providerId) {
               mutation.mutate({
                 id: args.subChatId,
@@ -281,12 +278,10 @@ export const api = {
       useMutation: (opts?: { onSuccess?: AnyFn; onError?: AnyFn }) => ({
         mutate: (_args?: AnyObj, _callbacks?: { onSuccess?: AnyFn }) => {
           // Desktop: PR creation not implemented yet
-          opts?.onError?.(
-            new Error("PR creation not available in desktop app"),
-          );
+          opts?.onError?.(new Error("桌面应用暂不支持创建 PR"));
         },
         mutateAsync: async (_args?: AnyObj) => {
-          throw new Error("PR creation not available in desktop app");
+          throw new Error("桌面应用暂不支持创建 PR");
         },
         isPending: false,
       }),

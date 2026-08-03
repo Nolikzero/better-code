@@ -103,7 +103,7 @@ export const AgentUserMessageBubble = memo(function AgentUserMessageBubble({
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-sm font-medium text-muted-foreground">
-              Full message
+              完整消息
             </DialogTitle>
           </DialogHeader>
           <div className="whitespace-pre-wrap text-sm">

@@ -64,7 +64,7 @@ export const SubChatIcon = React.memo(function SubChatIcon({
         )}
       >
         {hasPendingQuestion ? (
-          <QuestionIcon className="w-4 h-4 text-blue-500" />
+          <QuestionIcon className="w-4 h-4 text-primary" />
         ) : mode === "plan" ? (
           <PlanIcon className="w-4 h-4 text-muted-foreground" />
         ) : (
@@ -78,9 +78,7 @@ export const SubChatIcon = React.memo(function SubChatIcon({
           <div
             className={cn(
               "absolute -bottom-1 -right-1 w-3 h-3 rounded-full flex items-center justify-center",
-              isActive
-                ? "bg-[#E8E8E8] dark:bg-[#1B1B1B]"
-                : "bg-[#F4F4F4] group-hover:bg-[#E8E8E8] dark:bg-[#101010] dark:group-hover:bg-[#1B1B1B]",
+              isActive ? "bg-accent" : "bg-sidebar group-hover:bg-accent",
             )}
           >
             {/* Priority: loader > amber dot (pending plan) > blue dot (unseen) */}
@@ -90,7 +88,7 @@ export const SubChatIcon = React.memo(function SubChatIcon({
                 className="w-2.5 h-2.5 text-muted-foreground"
               />
             ) : hasPendingPlan ? (
-              <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+              <div className="w-1.5 h-1.5 rounded-full bg-plan-mode" />
             ) : (
               <LoadingDot
                 isLoading={false}

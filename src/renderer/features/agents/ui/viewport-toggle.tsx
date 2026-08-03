@@ -55,7 +55,7 @@ export function ViewportToggle({
               onChange("desktop");
             }
           }}
-          aria-label="Desktop viewport"
+          aria-label="桌面视口"
           aria-pressed={value === "desktop"}
           className={cn(
             "relative z-[2] px-2 flex-1 flex items-center justify-center transition-colors duration-200 rounded-md outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70 text-muted-foreground",
@@ -76,7 +76,7 @@ export function ViewportToggle({
               onChange("mobile");
             }
           }}
-          aria-label="Mobile viewport"
+          aria-label="移动端视口"
           aria-pressed={value === "mobile"}
           className={cn(
             "relative z-[2] px-2 flex-1 flex items-center justify-center transition-colors duration-200 rounded-md outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70 text-muted-foreground",

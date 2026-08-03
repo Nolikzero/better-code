@@ -67,11 +67,9 @@ export function SelectRepoPage() {
             </div>
           </div>
           <div className="space-y-1">
-            <h1 className="text-base font-semibold tracking-tight">
-              Select a repository
-            </h1>
+            <h1 className="text-base font-semibold tracking-tight">选择仓库</h1>
             <p className="text-sm text-muted-foreground">
-              Choose a local folder to start working with
+              选择一个本地文件夹开始工作
             </p>
           </div>
         </div>
@@ -86,7 +84,7 @@ export function SelectRepoPage() {
             {openFolder.isPending ? (
               <IconSpinner className="h-4 w-4" />
             ) : (
-              "Select folder"
+              "选择文件夹"
             )}
           </button>
         </div>

@@ -59,14 +59,14 @@ export const ctrlTabTargetAtom = atomWithStorage<CtrlTabTarget>(
 // Selected themes for code syntax highlighting (separate for light/dark UI themes)
 export const vscodeCodeThemeLightAtom = atomWithStorage<string>(
   "preferences:vscode-code-theme-light",
-  "github-light",
+  "alucard",
   undefined,
   { getOnInit: true },
 );
 
 export const vscodeCodeThemeDarkAtom = atomWithStorage<string>(
   "preferences:vscode-code-theme-dark",
-  "github-dark",
+  "dracula",
   undefined,
   { getOnInit: true },
 );
@@ -130,7 +130,7 @@ export const selectedFullThemeIdAtom = atomWithStorage<string | null>(
  */
 export const systemLightThemeIdAtom = atomWithStorage<string>(
   "preferences:system-light-theme-id",
-  "liquid-glass-dark", // Default to Liquid Glass (dark) for both modes
+  "alucard", // Canonical light appearance
   undefined,
   { getOnInit: true },
 );
@@ -140,7 +140,7 @@ export const systemLightThemeIdAtom = atomWithStorage<string>(
  */
 export const systemDarkThemeIdAtom = atomWithStorage<string>(
   "preferences:system-dark-theme-id",
-  "liquid-glass-dark", // Default to Liquid Glass Dark
+  "dracula", // Canonical dark appearance
   undefined,
   { getOnInit: true },
 );

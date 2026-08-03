@@ -78,14 +78,14 @@ export function categorizeGitError(errorMessage: string): BranchExistsResult {
   if (GIT_ERROR_PATTERNS.network.some((p) => lowerMessage.includes(p))) {
     return {
       status: "error",
-      message: "Cannot connect to remote. Check your network connection.",
+      message: "无法连接远程仓库，请检查网络连接。",
     };
   }
 
   if (GIT_ERROR_PATTERNS.auth.some((p) => lowerMessage.includes(p))) {
     return {
       status: "error",
-      message: "Authentication failed. Check your Git credentials.",
+      message: "身份验证失败，请检查 Git 凭据。",
     };
   }
 
@@ -94,14 +94,13 @@ export function categorizeGitError(errorMessage: string): BranchExistsResult {
   ) {
     return {
       status: "error",
-      message:
-        "Remote 'origin' is not configured or the repository was not found.",
+      message: "未配置远程仓库 'origin'，或找不到该仓库。",
     };
   }
 
   return {
     status: "error",
-    message: `Failed to verify branch: ${errorMessage}`,
+    message: `分支验证失败：${errorMessage}`,
   };
 }
 

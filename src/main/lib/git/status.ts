@@ -150,7 +150,7 @@ export const createStatusRouter = () => {
           } catch (e) {
             return {
               diff: null,
-              error: e instanceof Error ? e.message : "Unknown error",
+              error: e instanceof Error ? e.message : "未知错误",
             };
           }
         }

@@ -17,6 +17,7 @@ import * as fs from "fs/promises";
 import os from "os";
 import path from "path";
 import type { UIMessageChunk } from "../claude/types";
+import { probeCliVersion, runCliCommand } from "../cli-runtime";
 import type {
   AIProvider,
   AuthStatus,
@@ -24,13 +25,14 @@ import type {
   ProviderConfig,
   ProviderSpecificConfig,
 } from "../types";
+import { buildCodexConfig } from "./config";
 import {
   buildCodexEnv,
   getCodexApiKey,
   getCodexBinaryPath,
-  getCodexOAuthToken,
   logCodexEnv,
 } from "./env";
+import { loadCodexModels } from "./models";
 import { createCodexTransformer } from "./transform";
 
 // Active sessions for cancellation
@@ -38,9 +40,6 @@ const activeSessions = new Map<
   string,
   { abortController: AbortController; thread?: Thread }
 >();
-
-// Singleton Codex client
-let codexClient: Codex | null = null;
 
 /**
  * Prepare images for Codex SDK by writing base64 data to temp files.
@@ -139,94 +138,87 @@ function generateFileChangePatch(
 
 export class CodexProvider implements AIProvider {
   readonly id = "codex" as const;
-  readonly config: ProviderConfig = {
-    id: "codex",
-    name: "OpenAI Codex",
-    description: "OpenAI's Codex CLI for code generation",
-    models: [
-      {
-        id: "gpt-5.3-codex",
-        name: "gpt-5.3-codex",
-        displayName: "GPT-5.3 Codex",
-      },
-      {
-        id: "gpt-5.2-codex",
-        name: "gpt-5.2-codex",
-        displayName: "GPT-5.2 Codex",
-      },
-      {
-        id: "gpt-5.1-codex-max",
-        name: "gpt-5.1-codex-max",
-        displayName: "GPT-5.1 Codex Max",
-      },
-      {
-        id: "gpt-5.1-codex-mini",
-        name: "gpt-5.1-codex-mini",
-        displayName: "GPT-5.1 Codex Mini",
-      },
-      { id: "gpt-5.2", name: "gpt-5.2", displayName: "GPT-5.2" },
-    ],
-    authType: "api-key",
-    binaryName: "codex",
-  };
-
+  get config(): ProviderConfig {
+    const codexHome =
+      process.env.CODEX_HOME || path.join(os.homedir(), ".codex");
+    return {
+      id: "codex",
+      name: "OpenAI Codex",
+      description: "用于代码生成的 OpenAI Codex CLI",
+      models: loadCodexModels(codexHome),
+      authType: "both",
+      binaryName: "codex",
+    };
+  }
   /**
-   * Get the Codex SDK client singleton
+   * Create an isolated SDK client so concurrent chats can use different
+   * built-in agent developer instructions without sharing mutable state.
    */
-  private getClient(): Codex {
-    if (!codexClient) {
-      // Only get actual API key (not OAuth tokens)
-      // OAuth auth is handled by the binary reading from ~/.codex/auth.json
-      const apiKey = getCodexApiKey();
-      const env = buildCodexEnv({ apiKey: apiKey || undefined });
-      const binaryResult = getCodexBinaryPath();
+  private createClient(systemPrompt: string | undefined): Codex {
+    // Only get actual API key (not OAuth tokens).
+    // OAuth auth is handled by the binary reading from ~/.codex/auth.json.
+    const apiKey = getCodexApiKey();
+    const env = buildCodexEnv({ apiKey: apiKey || undefined });
+    const binaryResult = getCodexBinaryPath();
+    const config = buildCodexConfig(systemPrompt);
 
-      codexClient = new Codex({
-        apiKey: apiKey || undefined,
-        env,
-        codexPathOverride: binaryResult?.path || undefined,
-      });
+    const client = new Codex({
+      apiKey: apiKey || undefined,
+      env,
+      codexPathOverride: binaryResult?.path || undefined,
+      ...(config && { config }),
+    });
 
-      if (binaryResult) {
-        console.log(
-          `[codex] Using binary from ${binaryResult.source}: ${binaryResult.path}`,
-        );
-      }
-      if (apiKey) {
-        console.log("[codex] Using API key authentication");
-      } else {
-        console.log(
-          "[codex] Using OAuth authentication (binary reads from ~/.codex/auth.json)",
-        );
-      }
+    if (binaryResult) {
+      console.log(
+        `[codex] Using binary from ${binaryResult.source}: ${binaryResult.path}`,
+      );
     }
-    return codexClient;
+    if (apiKey) {
+      console.log("[codex] Using API key authentication");
+    } else {
+      console.log(
+        "[codex] Using OAuth authentication (binary reads from ~/.codex/auth.json)",
+      );
+    }
+
+    return client;
   }
 
   async isAvailable(): Promise<boolean> {
-    // SDK handles binary resolution internally
-    // Just check if we can instantiate the client
-    try {
-      this.getClient();
-      return true;
-    } catch {
-      return false;
-    }
+    const binary = getCodexBinaryPath();
+    return binary !== null && probeCliVersion(binary) !== null;
   }
 
   async getAuthStatus(): Promise<AuthStatus> {
-    // Check for API key in environment
+    const binary = getCodexBinaryPath();
+    if (!binary) {
+      return { authenticated: false, error: "未找到 Codex CLI" };
+    }
+
+    const result = runCliCommand(binary, ["login", "status"], {
+      environment: buildCodexEnv(),
+    });
+    const output = `${result.stdout}
+${result.stderr}`.toLowerCase();
+    if (output.includes("logged in") || output.includes("authenticated")) {
+      return {
+        authenticated: true,
+        method:
+          output.includes("api key") || output.includes("api-key")
+            ? "api-key"
+            : "oauth",
+      };
+    }
+
     if (process.env.OPENAI_API_KEY) {
       return { authenticated: true, method: "api-key" };
     }
 
-    // Check for OAuth token
-    const token = getCodexOAuthToken();
-    if (token) {
-      return { authenticated: true, method: "api-key" };
-    }
-
-    return { authenticated: false };
+    return {
+      authenticated: false,
+      error: output.trim() || "Codex CLI 尚未登录，请运行 codex login",
+    };
   }
 
   /**
@@ -320,33 +312,38 @@ export class CodexProvider implements AIProvider {
       if (options.prompt.trim() === "/compact") {
         yield {
           type: "error",
-          errorText:
-            "Context compaction is not supported by the Codex provider.",
+          errorText: "Codex 提供商不支持上下文压缩。",
         } as UIMessageChunk;
         yield { type: "finish" } as UIMessageChunk;
         return;
       }
 
-      // Get API key
-      const apiKey = getCodexOAuthToken();
-      if (!apiKey) {
+      const binary = getCodexBinaryPath();
+      if (!binary || probeCliVersion(binary) === null) {
+        yield { type: "error", errorText: "未找到可运行的 Codex CLI。" };
+        yield { type: "finish" };
+        return;
+      }
+
+      const authStatus = await this.getAuthStatus();
+      if (!authStatus.authenticated) {
         yield {
           type: "auth-error",
-          errorText:
-            "OpenAI API key not found. Set OPENAI_API_KEY environment variable or run 'codex auth'",
+          errorText: authStatus.error || "Codex 尚未登录，请运行 codex login",
         };
         yield { type: "finish" };
         return;
       }
 
-      // Log in dev mode
+      // API key is optional: the real Codex CLI reads local OAuth credentials itself.
+      const apiKey = getCodexApiKey();
       if (process.env.NODE_ENV !== "production") {
-        const env = buildCodexEnv({ apiKey });
+        const env = buildCodexEnv({ apiKey: apiKey || undefined });
         logCodexEnv(env, `[${options.subChatId}] `);
       }
 
       // Get SDK client
-      const client = this.getClient();
+      const client = this.createClient(options.systemPrompt);
 
       // Check if we're in plan mode - this affects sandbox, approval, and reasoning settings
       const isPlanMode = options.mode === "plan";
@@ -504,7 +501,7 @@ export class CodexProvider implements AIProvider {
         if (!abortController.signal.aborted) {
           yield {
             type: "error",
-            errorText: `Codex streaming error: ${err.message}`,
+            errorText: `Codex 流式响应错误：${err.message}`,
           };
         }
       } finally {
@@ -518,7 +515,7 @@ export class CodexProvider implements AIProvider {
       const err = error as Error;
       yield {
         type: "error",
-        errorText: `Codex error: ${err.message}`,
+        errorText: `Codex 错误：${err.message}`,
       };
       yield { type: "finish" };
     } finally {

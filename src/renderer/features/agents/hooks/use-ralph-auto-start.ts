@@ -63,16 +63,28 @@ export function useRalphAutoStart(
 
   // Open Ralph setup dialog when switching to Ralph mode if no PRD exists
   const prevAgentModeRef = useRef(agentMode);
+  const pendingRalphSetupRef = useRef(false);
   useEffect(() => {
     const wasNotRalph = prevAgentModeRef.current !== "ralph";
     const isNowRalph = agentMode === "ralph";
     prevAgentModeRef.current = agentMode;
 
-    // Only trigger when switching TO ralph mode
-    if (wasNotRalph && isNowRalph && ralphState !== undefined) {
-      if (!ralphState?.hasPrd) {
-        setRalphSetupOpen(true);
-      }
+    if (wasNotRalph && isNowRalph) {
+      pendingRalphSetupRef.current = true;
+    }
+
+    if (!isNowRalph) {
+      pendingRalphSetupRef.current = false;
+      return;
+    }
+
+    if (!pendingRalphSetupRef.current || ralphState === undefined) {
+      return;
+    }
+
+    pendingRalphSetupRef.current = false;
+    if (!ralphState.hasPrd) {
+      setRalphSetupOpen(true);
     }
   }, [agentMode, ralphState]);
 

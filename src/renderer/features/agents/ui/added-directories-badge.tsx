@@ -48,10 +48,10 @@ export const AddedDirectoriesBadge = memo(function AddedDirectoriesBadge({
       });
       // Update atom
       setAddedDirs(newDirs);
-      toast.success("Directory removed from context");
+      toast.success("已从上下文移除目录");
     } catch (error) {
       console.error("Failed to remove directory:", error);
-      toast.error("Failed to remove directory");
+      toast.error("移除目录失败");
     }
   };
 
@@ -75,19 +75,16 @@ export const AddedDirectoriesBadge = memo(function AddedDirectoriesBadge({
               variant="ghost"
               size="sm"
               className="h-6 px-2 gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors rounded-md"
-              aria-label="Added Directories"
+              aria-label="已添加目录"
               aria-haspopup="dialog"
             >
               <FolderPlus className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>
-                +{addedDirs.length} dir{addedDirs.length !== 1 ? "s" : ""}
-              </span>
+              <span>+{addedDirs.length} 个目录</span>
             </Button>
           </PopoverTrigger>
         </TooltipTrigger>
         <TooltipContent>
-          {addedDirs.length} additional director
-          {addedDirs.length !== 1 ? "ies" : "y"} added to context
+          已将 {addedDirs.length} 个其他目录添加到上下文
         </TooltipContent>
       </Tooltip>
 
@@ -96,14 +93,14 @@ export const AddedDirectoriesBadge = memo(function AddedDirectoriesBadge({
         className="w-72 p-0"
         onOpenAutoFocus={(e) => e.preventDefault()}
         role="dialog"
-        aria-label="Added Directories"
+        aria-label="已添加目录"
       >
         <div className="px-3 py-2 border-b">
           <h4 className="font-medium text-sm" id="added-dirs-title">
-            Additional Directories
+            其他目录
           </h4>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Added to chat context via /add-dir
+            已通过 /add-dir 添加到对话上下文
           </p>
         </div>
 
@@ -134,7 +131,7 @@ export const AddedDirectoriesBadge = memo(function AddedDirectoriesBadge({
                 type="button"
                 onClick={() => handleRemove(dir)}
                 className="opacity-0 group-hover:opacity-100 p-1 hover:bg-muted rounded transition-opacity"
-                aria-label={`Remove ${getDisplayName(dir)}`}
+                aria-label={`移除 ${getDisplayName(dir)}`}
               >
                 <X className="h-3 w-3 text-muted-foreground" />
               </button>
@@ -143,8 +140,8 @@ export const AddedDirectoriesBadge = memo(function AddedDirectoriesBadge({
         </div>
 
         <div className="border-t px-3 py-2 text-xs text-muted-foreground">
-          Use <code className="bg-muted px-1 py-0.5 rounded">/add-dir</code> to
-          add more directories
+          使用 <code className="bg-muted px-1 py-0.5 rounded">/add-dir</code>{" "}
+          添加更多目录
         </div>
       </PopoverContent>
     </Popover>

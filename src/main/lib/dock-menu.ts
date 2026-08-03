@@ -35,8 +35,8 @@ function getRecentChats(): RecentChat[] {
 
     return rows.map((row) => ({
       id: row.chatId,
-      name: row.chatName || row.chatBranch || "Untitled",
-      projectName: row.projectName || "Unknown Project",
+      name: row.chatName || row.chatBranch || "未命名",
+      projectName: row.projectName || "未知项目",
     }));
   } catch (error) {
     console.error("[DockMenu] Failed to get recent chats:", error);
@@ -89,7 +89,7 @@ export function buildDockMenu(): void {
     }
   } else {
     template.push({
-      label: "No recent chats",
+      label: "暂无最近对话",
       enabled: false,
     });
   }

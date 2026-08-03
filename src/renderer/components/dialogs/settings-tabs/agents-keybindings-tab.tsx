@@ -37,9 +37,9 @@ function useIsNarrowScreen(): boolean {
 }
 
 const CATEGORY_LABELS: Record<KeybindingCategory, string> = {
-  general: "General",
-  workspaces: "Workspaces",
-  agents: "Agents",
+  general: "常规",
+  workspaces: "工作区",
+  agents: "智能体",
 };
 
 const CATEGORY_ORDER: KeybindingCategory[] = [
@@ -81,13 +81,13 @@ function KeyComboDisplay({ combo }: { combo: KeyCombo }) {
 function BindingDisplay({ binding }: { binding: PlatformKeybinding }) {
   const combos = getActiveCombo(binding);
   if (combos.length === 0)
-    return <span className="text-xs text-muted-foreground">None</span>;
+    return <span className="text-xs text-muted-foreground">无</span>;
 
   return (
     <div className="flex items-center gap-1.5">
       {combos.map((combo, i) => (
         <span key={i} className="flex items-center gap-1.5">
-          {i > 0 && <span className="text-xs text-muted-foreground">or</span>}
+          {i > 0 && <span className="text-xs text-muted-foreground">或</span>}
           <KeyComboDisplay combo={combo} />
         </span>
       ))}
@@ -159,7 +159,7 @@ function KeyRecorder({ binding, onSave, onCancel }: KeyRecorderProps) {
             <KeyComboDisplay combo={captured} />
           ) : (
             <span className="text-xs text-muted-foreground animate-pulse">
-              Press a key combination...
+              请按下快捷键组合…
             </span>
           )}
         </div>
@@ -169,7 +169,7 @@ function KeyRecorder({ binding, onSave, onCancel }: KeyRecorderProps) {
             onClick={onCancel}
             className="px-2 py-0.5 text-xs rounded border border-border hover:bg-foreground/5 transition-colors"
           >
-            Cancel
+            取消
           </button>
           {captured && (
             <button
@@ -177,14 +177,14 @@ function KeyRecorder({ binding, onSave, onCancel }: KeyRecorderProps) {
               onClick={() => onSave(captured)}
               className="px-2 py-0.5 text-xs rounded bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
             >
-              Save
+              保存
             </button>
           )}
         </div>
       </div>
       {conflicts.length > 0 && (
         <p className="text-xs text-yellow-500">
-          Conflicts with: {conflicts.join(", ")}
+          与以下快捷键冲突： {conflicts.join(", ")}
         </p>
       )}
     </div>
@@ -232,14 +232,14 @@ function KeybindingRow({
             onClick={onStartRecording}
             className="px-1.5 py-0.5 text-[10px] rounded border border-border text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors"
           >
-            Edit
+            编辑
           </button>
           {binding.isCustomized && (
             <button
               type="button"
               onClick={onReset}
               className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] rounded border border-border text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors"
-              title="Reset to default"
+              title="重置为默认值"
             >
               <RotateCcw className="h-2.5 w-2.5" />
             </button>
@@ -313,12 +313,8 @@ export function AgentsKeybindingsTab() {
       {!isNarrowScreen && (
         <div className="flex items-center justify-between">
           <div className="flex flex-col space-y-1">
-            <h3 className="text-sm font-semibold text-foreground">
-              Keybindings
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              Customize keyboard shortcuts
-            </p>
+            <h3 className="text-sm font-semibold text-foreground">快捷键</h3>
+            <p className="text-xs text-muted-foreground">自定义键盘快捷键</p>
           </div>
           {hasOverrides && (
             <button
@@ -327,7 +323,7 @@ export function AgentsKeybindingsTab() {
               className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border border-border text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors"
             >
               <RotateCcw className="h-3 w-3" />
-              Reset All
+              全部重置
             </button>
           )}
         </div>
@@ -340,7 +336,7 @@ export function AgentsKeybindingsTab() {
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search keybindings..."
+          placeholder="搜索快捷键…"
           className="w-full h-8 pl-8 pr-3 text-sm rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
         />
       </div>
@@ -374,7 +370,7 @@ export function AgentsKeybindingsTab() {
 
       {filtered.length === 0 && (
         <div className="text-center py-8 text-sm text-muted-foreground">
-          No keybindings found matching "{searchQuery}"
+          没有找到匹配以下内容的快捷键：“{searchQuery}"
         </div>
       )}
     </div>

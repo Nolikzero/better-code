@@ -5,7 +5,7 @@ export const FONT_SANS_NAME = "Inter";
 export const FONT_MONO_NAME = "Source Code Pro";
 
 // Full font stacks as CSS strings (for inline styles)
-export const FONT_SANS = `"${FONT_SANS_NAME}", system-ui, sans-serif`;
+export const FONT_SANS = `"${FONT_SANS_NAME}", "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", system-ui, sans-serif`;
 export const FONT_MONO = `"${FONT_MONO_NAME}", ui-monospace, monospace`;
 
 // Terminal-specific font stack (includes Nerd Font fallbacks for powerline symbols)

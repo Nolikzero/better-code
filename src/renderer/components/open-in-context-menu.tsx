@@ -47,7 +47,7 @@ export const OpenInContextMenu = memo(function OpenInContextMenu({
     <ContextMenuSub>
       <ContextMenuSubTrigger>
         <ExternalLink className="mr-2 h-4 w-4" />
-        Open In...
+        打开方式…
       </ContextMenuSubTrigger>
       <ContextMenuPortal>
         <ContextMenuSubContent

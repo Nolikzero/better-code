@@ -13,7 +13,7 @@ interface ProjectSettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   projectId: string;
-  /** If true, shows "Continue" instead of "Save" and doesn't fetch project data */
+  /** If true, shows "继续" instead of "保存" and doesn't fetch project data */
   isNewProject?: boolean;
 }
 
@@ -45,7 +45,7 @@ export function ProjectSettingsDialog({
     onSuccess: () => {
       utils.projects.list.invalidate();
       utils.projects.get.invalidate({ id: projectId });
-      toast.success("Project settings saved");
+      toast.success("项目设置已保存");
       onOpenChange(false);
     },
     onError: (err) => {
@@ -70,36 +70,34 @@ export function ProjectSettingsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>
-            {isNewProject ? "Configure Project" : "Project Settings"}
-          </DialogTitle>
+          <DialogTitle>{isNewProject ? "配置项目" : "项目设置"}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           {!isNewProject && (
             <div className="space-y-2">
-              <Label htmlFor="project-name">Project Name</Label>
+              <Label htmlFor="project-name">项目名称</Label>
               <Input
                 id="project-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Enter project name"
+                placeholder="输入项目名称"
               />
             </div>
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="init-command">Worktree Init Command</Label>
+            <Label htmlFor="init-command">工作树初始化命令</Label>
             <Textarea
               id="init-command"
-              placeholder="e.g., bun install && cp $PROJECT_DIR/.env ./"
+              placeholder="例如：bun install && cp $PROJECT_DIR/.env ./"
               value={initCommand}
               onChange={(e) => setInitCommand(e.target.value)}
               rows={3}
               className="font-mono text-sm"
             />
             <p className="text-xs text-muted-foreground">
-              Command to run after creating a new worktree. Available variables:{" "}
+              创建新工作树后运行的命令。可用变量：{" "}
               <code className="text-xs bg-muted px-1 rounded">
                 $PROJECT_DIR
               </code>
@@ -115,17 +113,16 @@ export function ProjectSettingsDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="run-command">Dev Server Command</Label>
+            <Label htmlFor="run-command">开发服务器命令</Label>
             <Input
               id="run-command"
-              placeholder="e.g., bun dev, npm run dev"
+              placeholder="例如：bun dev、npm run dev"
               value={runCommand}
               onChange={(e) => setRunCommand(e.target.value)}
               className="font-mono text-sm"
             />
             <p className="text-xs text-muted-foreground">
-              Command to start the dev server. The preview will auto-open when a
-              port is detected.
+              用于启动开发服务器的命令。检测到端口后会自动打开预览。
             </p>
           </div>
         </div>
@@ -134,19 +131,19 @@ export function ProjectSettingsDialog({
           {isNewProject ? (
             <>
               <Button variant="ghost" onClick={handleSkip}>
-                Skip
+                跳过
               </Button>
               <Button onClick={handleSave} disabled={updateProject.isPending}>
-                {updateProject.isPending ? "Saving..." : "Continue"}
+                {updateProject.isPending ? "正在保存…" : "继续"}
               </Button>
             </>
           ) : (
             <>
               <Button variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
+                取消
               </Button>
               <Button onClick={handleSave} disabled={updateProject.isPending}>
-                {updateProject.isPending ? "Saving..." : "Save"}
+                {updateProject.isPending ? "正在保存…" : "保存"}
               </Button>
             </>
           )}

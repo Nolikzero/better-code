@@ -126,7 +126,7 @@ class TerminalManager extends EventEmitter {
     const session = this.sessions.get(paneId);
 
     if (!session || !session.isAlive) {
-      throw new Error(`Terminal session ${paneId} not found or not alive`);
+      throw new Error(`终端会话 ${paneId} 不存在或已停止`);
     }
 
     session.pty.write(data);
@@ -152,9 +152,7 @@ class TerminalManager extends EventEmitter {
     const session = this.sessions.get(paneId);
 
     if (!session || !session.isAlive) {
-      console.warn(
-        `Cannot resize terminal ${paneId}: session not found or not alive`,
-      );
+      console.warn(`无法调整终端 ${paneId} 的大小：会话不存在或已停止`);
       return;
     }
 
@@ -176,9 +174,7 @@ class TerminalManager extends EventEmitter {
     const session = this.sessions.get(paneId);
 
     if (!session || !session.isAlive) {
-      console.warn(
-        `Cannot signal terminal ${paneId}: session not found or not alive`,
-      );
+      console.warn(`无法向终端 ${paneId} 发送信号：会话不存在或已停止`);
       return;
     }
 
@@ -227,9 +223,7 @@ class TerminalManager extends EventEmitter {
     const session = this.sessions.get(paneId);
 
     if (!session) {
-      console.warn(
-        `Cannot clear scrollback for terminal ${paneId}: session not found`,
-      );
+      console.warn(`无法清除终端 ${paneId} 的回滚缓冲区：未找到会话`);
       return;
     }
 

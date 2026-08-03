@@ -89,14 +89,14 @@ export function DevicePresetsBar({
                 value={preset.name}
                 className="whitespace-nowrap"
               >
-                {preset.name}
+                {preset.label}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
 
         <div className="flex items-center gap-1">
-          <span className="text-xs text-muted-foreground font-medium">W</span>
+          <span className="text-xs text-muted-foreground font-medium">宽</span>
           <Input
             type="number"
             value={widthInputValue}
@@ -117,7 +117,7 @@ export function DevicePresetsBar({
         </div>
 
         <div className="flex items-center gap-1">
-          <span className="text-xs text-muted-foreground font-medium">H</span>
+          <span className="text-xs text-muted-foreground font-medium">高</span>
           <Input
             type="number"
             value={height}

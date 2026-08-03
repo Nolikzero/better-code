@@ -10,7 +10,7 @@
  */
 
 import type { ITheme } from "@xterm/xterm";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom } from "jotai";
 import { useTheme } from "next-themes";
 import {
   createContext,
@@ -30,7 +30,13 @@ import {
   type VSCodeFullTheme,
 } from "../atoms";
 import { trpc } from "../trpc";
-import { BUILTIN_THEMES, getBuiltinThemeById } from "./builtin-themes";
+import {
+  ALUCARD_THEME_ID,
+  BUILTIN_THEMES,
+  DRACULA_THEME_ID,
+  getBuiltinThemeById,
+  resolveBuiltinThemeId,
+} from "./builtin-themes";
 import { extractTerminalTheme } from "./terminal-theme-mapper";
 import {
   applyCSSVariables,
@@ -80,51 +86,51 @@ function useVSCodeTheme(): ThemeContextValue {
  * Default terminal themes (fallback when no VS Code theme is selected)
  */
 const DEFAULT_TERMINAL_THEME_DARK: ITheme = {
-  background: "#121212",
-  foreground: "#f4f4f5",
-  cursor: "#f4f4f5",
-  cursorAccent: "#121212",
-  selectionBackground: "#3f3f46",
-  black: "#18181b",
-  red: "#ef4444",
-  green: "#22c55e",
-  yellow: "#eab308",
-  blue: "#3b82f6",
-  magenta: "#a855f7",
-  cyan: "#06b6d4",
-  white: "#f4f4f5",
-  brightBlack: "#71717a",
-  brightRed: "#f87171",
-  brightGreen: "#4ade80",
-  brightYellow: "#facc15",
-  brightBlue: "#60a5fa",
-  brightMagenta: "#c084fc",
-  brightCyan: "#22d3ee",
-  brightWhite: "#fafafa",
+  background: "#21222c",
+  foreground: "#f8f8f2",
+  cursor: "#bd93f9",
+  cursorAccent: "#21222c",
+  selectionBackground: "#44475a",
+  black: "#21222c",
+  red: "#ff5555",
+  green: "#50fa7b",
+  yellow: "#f1fa8c",
+  blue: "#8be9fd",
+  magenta: "#ff79c6",
+  cyan: "#8be9fd",
+  white: "#f8f8f2",
+  brightBlack: "#6272a4",
+  brightRed: "#ff6e6e",
+  brightGreen: "#69ff94",
+  brightYellow: "#ffffa5",
+  brightBlue: "#d6acff",
+  brightMagenta: "#ff92df",
+  brightCyan: "#a4ffff",
+  brightWhite: "#ffffff",
 };
 
 const DEFAULT_TERMINAL_THEME_LIGHT: ITheme = {
-  background: "#fafafa",
-  foreground: "#0a0a0a",
-  cursor: "#0a0a0a",
-  cursorAccent: "#fafafa",
-  selectionBackground: "#d4d4d8",
-  black: "#18181b",
-  red: "#dc2626",
-  green: "#16a34a",
-  yellow: "#ca8a04",
-  blue: "#2563eb",
-  magenta: "#9333ea",
-  cyan: "#0891b2",
-  white: "#f4f4f5",
-  brightBlack: "#52525b",
-  brightRed: "#ef4444",
-  brightGreen: "#22c55e",
-  brightYellow: "#eab308",
-  brightBlue: "#3b82f6",
-  brightMagenta: "#a855f7",
-  brightCyan: "#06b6d4",
-  brightWhite: "#fafafa",
+  background: "#f7f1d9",
+  foreground: "#1f1f1f",
+  cursor: "#644ac9",
+  cursorAccent: "#f7f1d9",
+  selectionBackground: "#cfcfde",
+  black: "#1f1f1f",
+  red: "#cb3a2a",
+  green: "#14710a",
+  yellow: "#846e15",
+  blue: "#036a96",
+  magenta: "#a3144d",
+  cyan: "#036a96",
+  white: "#fffbeb",
+  brightBlack: "#6c664b",
+  brightRed: "#e14938",
+  brightGreen: "#238416",
+  brightYellow: "#9a821d",
+  brightBlue: "#087fab",
+  brightMagenta: "#b52360",
+  brightCyan: "#087fab",
+  brightWhite: "#fffdf5",
 };
 
 interface VSCodeThemeProviderProps {
@@ -142,8 +148,12 @@ export function VSCodeThemeProvider({ children }: VSCodeThemeProviderProps) {
     selectedFullThemeIdAtom,
   );
   const [fullThemeData, setFullThemeData] = useAtom(fullThemeDataAtom);
-  const systemLightThemeId = useAtomValue(systemLightThemeIdAtom);
-  const systemDarkThemeId = useAtomValue(systemDarkThemeIdAtom);
+  const [systemLightThemeId, setSystemLightThemeId] = useAtom(
+    systemLightThemeIdAtom,
+  );
+  const [systemDarkThemeId, setSystemDarkThemeId] = useAtom(
+    systemDarkThemeIdAtom,
+  );
 
   // Use builtin themes only
   const allThemes = BUILTIN_THEMES;
@@ -156,21 +166,54 @@ export function VSCodeThemeProvider({ children }: VSCodeThemeProviderProps) {
     return resolvedTheme === "dark";
   }, [fullThemeData, resolvedTheme]);
 
-  // Find the current theme by ID (considering system mode)
-  const currentTheme = useMemo(() => {
-    if (selectedThemeId === null) {
-      // System mode - use the appropriate theme based on system preference
-      const systemThemeId =
-        resolvedTheme === "dark" ? systemDarkThemeId : systemLightThemeId;
-      return getBuiltinThemeById(systemThemeId) || null;
+  const resolvedSystemLightThemeId = ALUCARD_THEME_ID;
+  const resolvedSystemDarkThemeId = DRACULA_THEME_ID;
+  const selectedFallbackType = resolvedTheme === "light" ? "light" : "dark";
+  const resolvedSelectedThemeId =
+    selectedThemeId === null
+      ? null
+      : resolveBuiltinThemeId(selectedThemeId, selectedFallbackType);
+
+  // Persist one-time aliases so installations carrying former theme IDs recover
+  // without flashing an unthemed renderer or keeping stale selections.
+  useEffect(() => {
+    if (systemLightThemeId !== resolvedSystemLightThemeId) {
+      setSystemLightThemeId(ALUCARD_THEME_ID);
     }
-    return allThemes.find((t) => t.id === selectedThemeId) || null;
+    if (systemDarkThemeId !== resolvedSystemDarkThemeId) {
+      setSystemDarkThemeId(DRACULA_THEME_ID);
+    }
+    if (
+      selectedThemeId !== null &&
+      selectedThemeId !== resolvedSelectedThemeId
+    ) {
+      setSelectedThemeId(resolvedSelectedThemeId);
+    }
   }, [
+    resolvedSelectedThemeId,
+    resolvedSystemDarkThemeId,
+    resolvedSystemLightThemeId,
     selectedThemeId,
-    allThemes,
-    resolvedTheme,
-    systemLightThemeId,
+    setSelectedThemeId,
+    setSystemDarkThemeId,
+    setSystemLightThemeId,
     systemDarkThemeId,
+    systemLightThemeId,
+  ]);
+
+  // Find the current theme by ID, including the fixed system pair.
+  const currentTheme = useMemo(() => {
+    const themeId =
+      resolvedSelectedThemeId ??
+      (resolvedTheme === "dark"
+        ? resolvedSystemDarkThemeId
+        : resolvedSystemLightThemeId);
+    return getBuiltinThemeById(themeId) ?? null;
+  }, [
+    resolvedSelectedThemeId,
+    resolvedSystemDarkThemeId,
+    resolvedSystemLightThemeId,
+    resolvedTheme,
   ]);
 
   // Update fullThemeData when theme changes
@@ -224,9 +267,22 @@ export function VSCodeThemeProvider({ children }: VSCodeThemeProviderProps) {
 
   // Handle vibrancy/liquid glass for transparent themes (macOS)
   useEffect(() => {
+    const platform = window.desktopApi?.platform;
+
+    // Liquid Glass uses a transparent renderer root. It is native macOS-only:
+    // applying that class on Windows/Linux exposes the native window backdrop
+    // and creates unusable see-through layers.
+    if (platform !== "darwin") {
+      document.documentElement.classList.remove("vibrancy-active");
+      document.documentElement.classList.remove("vibrancy-fallback");
+      vibrancyActiveRef.current = false;
+      liquidGlassActiveRef.current = false;
+      currentVibrancyThemeRef.current = null;
+      return;
+    }
+
     const hasVibrancy = fullThemeData?.vibrancy?.enabled === true;
     const vibrancyThemeId = hasVibrancy ? fullThemeData?.id : null;
-    const platform = window.desktopApi?.platform;
 
     // Check if vibrancy state actually needs to change
     const vibrancyChanged = vibrancyThemeId !== currentVibrancyThemeRef.current;
@@ -261,9 +317,6 @@ export function VSCodeThemeProvider({ children }: VSCodeThemeProviderProps) {
             },
           },
         );
-      } else {
-        // Non-macOS: use CSS fallback
-        document.documentElement.classList.add("vibrancy-fallback");
       }
 
       vibrancyActiveRef.current = true;

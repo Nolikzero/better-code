@@ -108,11 +108,11 @@ function MentionChip({ mention }: { mention: ParsedMention }) {
 
   const title =
     mention.type === "skill"
-      ? `Skill: ${mention.label}`
+      ? `技能：${mention.label}`
       : mention.type === "agent"
-        ? `Agent: ${mention.label}`
+        ? `智能体：${mention.label}`
         : mention.type === "tool"
-          ? `MCP Tool: ${mention.path}`
+          ? `MCP 工具：${mention.path}`
           : `${mention.repository}:${mention.path}`;
 
   return (

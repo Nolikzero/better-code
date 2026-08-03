@@ -1,11 +1,12 @@
 import { Provider as JotaiProvider, useAtomValue, useSetAtom } from "jotai";
 import { ThemeProvider, useTheme } from "next-themes";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo } from "react";
 import { Toaster } from "sonner";
 import { AppLoadingScreen } from "./components/app-loading-screen";
 import { TooltipProvider } from "./components/ui/tooltip";
 import { TRPCProvider } from "./contexts/TRPCProvider";
 import { selectedProjectAtom } from "./features/agents/atoms";
+import { normalizeProvidersList } from "./features/agents/hooks/use-providers";
 import { AgentsLayout } from "./features/layout/agents-layout";
 import { OnboardingWizard } from "./features/onboarding";
 import {
@@ -27,6 +28,7 @@ function ThemedToaster() {
     <Toaster
       position="bottom-right"
       theme={resolvedTheme as "light" | "dark" | "system"}
+      containerAriaLabel="通知"
       closeButton
     />
   );
@@ -42,13 +44,14 @@ function AppContent() {
   const defaultProvider = useAtomValue(defaultProviderIdAtom);
   const setDefaultProvider = useSetAtom(defaultProviderIdAtom);
   const setEnabledProviders = useSetAtom(enabledProviderIdsAtom);
-  const utils = trpc.useUtils();
-  const setEnabledProvidersMutation = trpc.providers.setEnabled.useMutation({
-    onSuccess: () => {
-      utils.providers.list.invalidate();
-    },
+  const { data: providerData } = trpc.providers.list.useQuery(undefined, {
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
   });
-  const lastEnabledRef = useRef<string>("--");
+  const providerList = useMemo(
+    () => normalizeProvidersList(providerData),
+    [providerData],
+  );
 
   // Fetch projects to validate selectedProject exists
   const {
@@ -65,29 +68,27 @@ function AppContent() {
   }, [selectedProject, projects]);
 
   useEffect(() => {
-    if (!onboardingCompleted) return;
-    if (enabledProviders.length === 0) {
-      setEnabledProviders([defaultProvider]);
-      return;
+    if (!providerData) return;
+    const serverEnabled = providerList
+      .filter((provider) => provider.enabled)
+      .map((provider) => provider.id);
+    const localSignature = enabledProviders.slice().sort().join(",");
+    const serverSignature = serverEnabled.slice().sort().join(",");
+    if (localSignature !== serverSignature) {
+      setEnabledProviders(serverEnabled);
     }
-
-    const signature = enabledProviders.slice().sort().join(",");
-    if (lastEnabledRef.current === signature) return;
-    lastEnabledRef.current = signature;
-
-    setEnabledProvidersMutation.mutate({ providerIds: enabledProviders });
-  }, [
-    enabledProviders,
-    onboardingCompleted,
-    setEnabledProviders,
-    setEnabledProvidersMutation,
-  ]);
+  }, [enabledProviders, providerData, providerList, setEnabledProviders]);
 
   useEffect(() => {
-    if (enabledProviders.length === 0) return;
-    if (enabledProviders.includes(defaultProvider)) return;
-    setDefaultProvider(enabledProviders[0]);
-  }, [defaultProvider, enabledProviders, setDefaultProvider]);
+    const validDefault = providerList.some(
+      (provider) => provider.enabled && provider.id === defaultProvider,
+    );
+    if (validDefault) return;
+    const replacement = providerList.find((provider) => provider.enabled);
+    if ((replacement?.id ?? "") !== defaultProvider) {
+      setDefaultProvider(replacement?.id ?? "");
+    }
+  }, [defaultProvider, providerList, setDefaultProvider]);
 
   // Show loading screen until projects query resolves
   // (only when onboarding is done - otherwise show onboarding directly)

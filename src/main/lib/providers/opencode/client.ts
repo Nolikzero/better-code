@@ -90,7 +90,7 @@ export async function checkHealth(): Promise<{
 async function listProvidersFromServer() {
   const health = await checkHealth();
   if (!health?.healthy) {
-    throw new Error("OpenCode server is unavailable");
+    throw new Error("OpenCode 服务器不可用");
   }
 
   const client = getClient();
@@ -100,7 +100,7 @@ async function listProvidersFromServer() {
   });
 
   if (!response.data) {
-    throw new Error("No provider data returned");
+    throw new Error("未返回提供商数据");
   }
 
   return response.data;

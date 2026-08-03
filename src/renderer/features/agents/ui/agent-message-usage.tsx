@@ -34,15 +34,15 @@ function formatTokens(tokens: number): string {
 
 function formatDuration(ms: number): string {
   if (ms < 1000) {
-    return `${ms}ms`;
+    return `${ms} 毫秒`;
   }
   const seconds = ms / 1000;
   if (seconds < 60) {
-    return `${seconds.toFixed(1)}s`;
+    return `${seconds.toFixed(1)} 秒`;
   }
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = Math.round(seconds % 60);
-  return `${minutes}m ${remainingSeconds}s`;
+  return `${minutes} 分钟 ${remainingSeconds} 秒`;
 }
 
 export const AgentMessageUsage = memo(function AgentMessageUsage({
@@ -91,16 +91,16 @@ export const AgentMessageUsage = memo(function AgentMessageUsage({
             <div className="space-y-1">
               {resultSubtype && (
                 <div className="flex justify-between text-xs gap-4">
-                  <span className="text-muted-foreground">Status:</span>
+                  <span className="text-muted-foreground">状态：</span>
                   <span className="font-mono text-foreground">
-                    {resultSubtype === "success" ? "Success" : "Failed"}
+                    {resultSubtype === "success" ? "成功" : "失败"}
                   </span>
                 </div>
               )}
 
               {durationMs !== undefined && durationMs > 0 && (
                 <div className="flex justify-between text-xs gap-4">
-                  <span className="text-muted-foreground">Duration:</span>
+                  <span className="text-muted-foreground">时长：</span>
                   <span className="font-mono text-foreground">
                     {formatDuration(durationMs)}
                   </span>
@@ -112,7 +112,7 @@ export const AgentMessageUsage = memo(function AgentMessageUsage({
           {/* Tokens group */}
           {displayTokens > 0 && (
             <div className="flex justify-between text-xs gap-4 pt-1.5 mt-1 border-t border-border/50">
-              <span className="text-muted-foreground">Tokens:</span>
+              <span className="text-muted-foreground">令牌：</span>
               <span className="font-mono font-medium text-foreground">
                 {displayTokens.toLocaleString()}
               </span>

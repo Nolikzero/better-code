@@ -100,11 +100,11 @@ function detectChanges(
 function getStatusVerb(status: TodoItem["status"], content: string): string {
   switch (status) {
     case "in_progress":
-      return `Started: ${content}`;
+      return `已开始：${content}`;
     case "completed":
-      return `Finished: ${content}`;
+      return `已完成：${content}`;
     case "pending":
-      return `Created: ${content}`;
+      return `已创建：${content}`;
     default:
       return content;
   }
@@ -342,10 +342,10 @@ export const AgentTodoTool = memo(function AgentTodoTool({
                   duration={1.2}
                   className="inline-flex items-center text-xs leading-none h-4 m-0"
                 >
-                  Creating to-do list...
+                  正在创建待办事项列表…
                 </TextShimmer>
               ) : (
-                "Creating to-do list..."
+                "正在创建待办事项列表…"
               )}
             </span>
           </div>
@@ -367,7 +367,7 @@ export const AgentTodoTool = memo(function AgentTodoTool({
                 duration={1.2}
                 className="inline-flex items-center text-xs leading-none h-4 m-0"
               >
-                Updating todos...
+                正在更新待办事项…
               </TextShimmer>
             </span>
           </div>
@@ -408,13 +408,13 @@ export const AgentTodoTool = memo(function AgentTodoTool({
     ).length;
 
     // Build summary title
-    let summaryTitle = "Updated todos";
+    let summaryTitle = "已更新待办事项";
     if (completedChanges > 0 && startedChanges === 0) {
-      summaryTitle = `Finished ${completedChanges} ${completedChanges === 1 ? "task" : "tasks"}`;
+      summaryTitle = `已完成 ${completedChanges} 个任务`;
     } else if (startedChanges > 0 && completedChanges === 0) {
-      summaryTitle = `Started ${startedChanges} ${startedChanges === 1 ? "task" : "tasks"}`;
+      summaryTitle = `已开始 ${startedChanges} 个任务`;
     } else if (completedChanges > 0 && startedChanges > 0) {
-      summaryTitle = `Updated ${changes.items.length} ${changes.items.length === 1 ? "task" : "tasks"}`;
+      summaryTitle = `已更新 ${changes.items.length} 个任务`;
     }
 
     // Limit displayed items to avoid overflow
@@ -461,7 +461,7 @@ export const AgentTodoTool = memo(function AgentTodoTool({
               })}
               {remainingCount > 0 && (
                 <span className="text-muted-foreground/60 whitespace-nowrap shrink-0">
-                  +{remainingCount} more
+                  另有 {remainingCount} 项
                 </span>
               )}
             </div>
@@ -512,7 +512,7 @@ export const AgentTodoTool = memo(function AgentTodoTool({
         onClick={() => setIsExpanded(!isExpanded)}
         role="button"
         aria-expanded={isExpanded}
-        aria-label={`Todo list with ${totalTodos} items. Click to ${isExpanded ? "collapse" : "expand"}`}
+        aria-label={`待办事项列表，共 ${totalTodos} 项。点击${isExpanded ? "折叠" : "展开"}`}
         tabIndex={0}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
@@ -523,9 +523,9 @@ export const AgentTodoTool = memo(function AgentTodoTool({
       >
         <div className="flex items-center gap-1.5">
           <PlanIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-          <span className="text-xs font-medium text-foreground">To-dos</span>
+          <span className="text-xs font-medium text-foreground">待办事项</span>
           <span className="text-xs text-muted-foreground truncate flex-1">
-            {displayTodos[0]?.content || "Todo List"}
+            {displayTodos[0]?.content || "待办事项列表"}
           </span>
           {/* Expand/Collapse icon */}
           <div className="relative w-4 h-4 shrink-0">

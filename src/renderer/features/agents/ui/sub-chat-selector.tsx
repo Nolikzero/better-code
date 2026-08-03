@@ -223,9 +223,9 @@ export function SubChatSelector({
     onError: (error) => {
       // Show helpful error message (like Canvas)
       if (error.data?.code === "NOT_FOUND") {
-        toast.error("Send a message first before renaming this chat");
+        toast.error("请先发送一条消息，再重命名此对话");
       } else {
-        toast.error("Failed to rename chat");
+        toast.error("重命名对话失败");
       }
     },
   });
@@ -274,7 +274,7 @@ export function SubChatSelector({
         // Revert on error (like Canvas)
         useAgentSubChatStore
           .getState()
-          .updateSubChatName(subChat.id, oldName || "New Chat");
+          .updateSubChatName(subChat.id, oldName || "新建对话");
       } finally {
         setEditLoading(false);
       }
@@ -461,14 +461,14 @@ export function SubChatSelector({
           size="icon"
           onClick={onBackToChats}
           className="h-7 w-7 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] shrink-0"
-          aria-label="Back to chats"
+          aria-label="返回对话列表"
           style={{
             // @ts-expect-error - WebKit-specific property
             WebkitAppRegion: "no-drag",
           }}
         >
           <AlignJustify className="h-4 w-4" />
-          <span className="sr-only">Back to chats</span>
+          <span className="sr-only">返回对话列表</span>
         </Button>
       )}
 
@@ -601,7 +601,7 @@ export function SubChatSelector({
                             }}
                             className="relative z-0 text-left flex-1 min-w-0 pr-1 overflow-hidden block whitespace-nowrap"
                           >
-                            {subChat.name || "New Chat"}
+                            {subChat.name || "新建对话"}
                           </span>
                         )}
 
@@ -640,8 +640,8 @@ export function SubChatSelector({
                                 className="relative z-20 hover:text-foreground rounded p-0.5 transition-[color,transform] duration-150 ease-out active:scale-[0.97] cursor-pointer"
                                 title={
                                   isActive
-                                    ? `Close tab (${getShortcutKey("closeTab")})`
-                                    : "Close tab"
+                                    ? `关闭标签页（${getShortcutKey("closeTab")}）`
+                                    : "关闭标签页"
                                 }
                               >
                                 <X className="h-3 w-3" />
@@ -688,7 +688,7 @@ export function SubChatSelector({
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
-                New chat
+                新建对话
                 <Kbd>{getShortcutKey("newTab")}</Kbd>
               </TooltipContent>
             </Tooltip>
@@ -709,10 +709,10 @@ export function SubChatSelector({
           onOpenChange={setIsHistoryOpen}
           items={sortedSubChats}
           onSelect={handleSelectFromHistory}
-          placeholder="Search chats..."
-          emptyMessage="No results"
+          placeholder="搜索对话…"
+          emptyMessage="没有结果"
           getItemValue={(subChat) =>
-            `${subChat.name || "New Chat"} ${subChat.id}`
+            `${subChat.name || "新建对话"} ${subChat.id}`
           }
           renderItem={(subChat) => {
             const timeAgo = formatTimeAgo(
@@ -752,7 +752,7 @@ export function SubChatSelector({
                     )}
                 </div>
                 <span className="text-sm truncate flex-1">
-                  {subChat.name || "New Chat"}
+                  {subChat.name || "新建对话"}
                 </span>
                 <span className="text-sm text-muted-foreground whitespace-nowrap">
                   {timeAgo}
@@ -775,7 +775,7 @@ export function SubChatSelector({
                 </PopoverTrigger>
               </TooltipTrigger>
               <TooltipContent side="bottom">
-                Search chats
+                搜索对话
                 <Kbd>/</Kbd>
               </TooltipContent>
             </Tooltip>
@@ -811,19 +811,19 @@ export function SubChatSelector({
                 ) : (
                   <DiffIcon className="h-4 w-4" />
                 )}
-                <span className="sr-only">Open diff</span>
+                <span className="sr-only">打开差异</span>
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom">
               {diffStats?.isLoading ? (
-                "Loading changes..."
+                "正在加载更改…"
               ) : diffStats?.hasChanges ? (
                 <>
-                  <span>View changes</span>
+                  <span>查看更改</span>
                   <Kbd>⌘D</Kbd>
                 </>
               ) : (
-                "No changes"
+                "没有更改"
               )}
             </TooltipContent>
           </Tooltip>
@@ -846,7 +846,7 @@ export function SubChatSelector({
             className="h-7 w-7 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] shrink-0 flex items-center justify-center"
           >
             <DiffIcon className="h-4 w-4" />
-            <span className="sr-only">Open diff</span>
+            <span className="sr-only">打开差异</span>
           </Button>
         </div>
       )}
@@ -867,7 +867,7 @@ export function SubChatSelector({
             className="h-7 w-7 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] shrink-0 flex items-center justify-center"
           >
             <Play className="h-4 w-4" />
-            <span className="sr-only">Open preview</span>
+            <span className="sr-only">打开预览</span>
           </Button>
         </div>
       )}

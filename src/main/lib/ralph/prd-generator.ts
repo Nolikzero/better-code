@@ -333,7 +333,7 @@ export async function generatePrdFromPlan(
 ): Promise<RalphPrdData> {
   const provider = providerRegistry.get(providerId);
   if (!provider) {
-    throw new Error(`Provider '${providerId}' not found`);
+    throw new Error(`未找到提供商“${providerId}”`);
   }
 
   const compressedPlan = compressPlanText(planText);
@@ -362,7 +362,7 @@ export async function generatePrdFromPlan(
       abortController,
     })) {
       if (abortController.signal.aborted) {
-        throw new Error("PRD generation aborted");
+        throw new Error("PRD 生成已中止");
       }
 
       if (chunk.type === "text-delta") {
@@ -393,7 +393,7 @@ export async function generatePrdFromPlan(
   } catch (err) {
     console.error("[ralph] PRD generation stream error:", err);
     throw new Error(
-      `PRD generation failed: ${err instanceof Error ? err.message : String(err)}`,
+      `PRD 生成失败：${err instanceof Error ? err.message : String(err)}`,
     );
   }
 
@@ -410,7 +410,7 @@ export async function generatePrdFromPlan(
   );
 
   if (!fullResponse) {
-    throw new Error("No response received from PRD generation");
+    throw new Error("未收到 PRD 生成响应");
   }
 
   // Extract JSON using balanced bracket matching
@@ -442,7 +442,7 @@ export async function generatePrdFromPlan(
         "[ralph] No JSON found in response:",
         fullResponse.slice(0, 500),
       );
-      throw new Error("Failed to extract JSON from PRD generation response");
+      throw new Error("无法从 PRD 生成响应中提取 JSON");
     }
   }
 
@@ -502,7 +502,7 @@ export async function generatePrdFromPlan(
           "[ralph] Last JSON candidate:",
           jsonCandidates[jsonCandidates.length - 1]?.slice(0, 500),
         );
-        throw new Error("Failed to parse JSON from PRD generation response");
+        throw new Error("无法解析 PRD 生成响应中的 JSON");
       }
     }
   }
@@ -517,7 +517,7 @@ export async function generatePrdFromPlan(
   };
 
   if (normalizedPrd.stories.length === 0) {
-    throw new Error("PRD generation produced no stories");
+    throw new Error("PRD 生成结果中没有故事");
   }
 
   console.log(

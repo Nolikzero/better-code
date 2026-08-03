@@ -5,11 +5,10 @@
  * For SDK types (events, messages, parts), import from "@opencode-ai/sdk" or "@opencode-ai/sdk/v2".
  */
 
+import type { CliBinaryResult } from "../cli-runtime";
+
 // Binary discovery result
-export interface OpenCodeBinaryResult {
-  path: string;
-  source: "bundled" | "system-path" | "system-install" | "npm-global";
-}
+export type OpenCodeBinaryResult = CliBinaryResult;
 
 // Server lifecycle state
 export type ServerStatus =

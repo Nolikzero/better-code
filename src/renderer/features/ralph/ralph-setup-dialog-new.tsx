@@ -214,16 +214,16 @@ export function RalphSetupDialogNew({
         {step === "input" ? (
           <>
             <DialogHeader>
-              <DialogTitle>Describe Your Feature</DialogTitle>
+              <DialogTitle>描述你的功能</DialogTitle>
               <DialogDescription>
-                Describe what you want to build in plain text. AI will generate
-                a structured PRD with user stories.
+                用自然语言描述你想构建的功能，AI 将生成包含用户故事的结构化
+                PRD。
               </DialogDescription>
             </DialogHeader>
 
             <div className="flex-1 space-y-4">
               <Textarea
-                placeholder="I want to add a dark mode toggle to the settings page. It should save the preference, apply immediately, and work across all components..."
+                placeholder="我想在设置页面添加深色模式开关。它应保存偏好、立即生效，并适用于所有组件…"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={8}
@@ -235,7 +235,7 @@ export function RalphSetupDialogNew({
 
             <DialogFooter>
               <Button variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
+                取消
               </Button>
               <Button
                 onClick={handleGenerate}
@@ -244,12 +244,12 @@ export function RalphSetupDialogNew({
                 {isGenerating ? (
                   <>
                     <SparklesIcon className="h-4 w-4 mr-2 animate-pulse" />
-                    Generating...
+                    正在生成…
                   </>
                 ) : (
                   <>
                     <SparklesIcon className="h-4 w-4 mr-2" />
-                    Generate PRD
+                    生成 PRD
                   </>
                 )}
               </Button>
@@ -266,21 +266,20 @@ export function RalphSetupDialogNew({
                 >
                   <ChevronLeftIcon className="h-4 w-4" />
                 </button>
-                Review PRD
+                审查 PRD
               </DialogTitle>
               <DialogDescription>
-                Review and edit the generated PRD. Each story should be
-                completable in one AI iteration.
+                审查并编辑生成的 PRD。每个故事都应能在一次 AI 迭代中完成。
               </DialogDescription>
             </DialogHeader>
 
             <div className="flex-1 overflow-y-auto space-y-4 pr-2">
               {/* Goal */}
               <div className="space-y-2">
-                <Label htmlFor="goal">Goal</Label>
+                <Label htmlFor="goal">目标</Label>
                 <Textarea
                   id="goal"
-                  placeholder="Describe the overall goal of this feature..."
+                  placeholder="描述此功能的总体目标…"
                   value={goal}
                   onChange={(e) => setGoal(e.target.value)}
                   rows={2}
@@ -289,7 +288,7 @@ export function RalphSetupDialogNew({
 
               {/* Branch Name */}
               <div className="space-y-2">
-                <Label htmlFor="branchName">Branch Name</Label>
+                <Label htmlFor="branchName">分支名称</Label>
                 <Input
                   id="branchName"
                   placeholder="ralph/feature-name"
@@ -301,7 +300,7 @@ export function RalphSetupDialogNew({
               {/* Stories */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label>User Stories ({stories.length})</Label>
+                  <Label>用户故事（{stories.length})</Label>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -309,7 +308,7 @@ export function RalphSetupDialogNew({
                     className="h-7 text-xs"
                   >
                     <PlusIcon className="h-3 w-3 mr-1" />
-                    Add Story
+                    添加故事
                   </Button>
                 </div>
 
@@ -341,7 +340,7 @@ export function RalphSetupDialogNew({
                           P{story.priority}
                         </span>
                         <span className="flex-1 text-sm truncate">
-                          {story.title || "Untitled story"}
+                          {story.title || "未命名用户故事"}
                         </span>
                         <Button
                           variant="ghost"
@@ -361,9 +360,9 @@ export function RalphSetupDialogNew({
                         <div className="px-3 pb-3 space-y-3 border-t border-border pt-3">
                           {/* Title */}
                           <div className="space-y-1">
-                            <Label className="text-xs">Title</Label>
+                            <Label className="text-xs">标题</Label>
                             <Input
-                              placeholder="Story title"
+                              placeholder="故事标题"
                               value={story.title}
                               onChange={(e) =>
                                 handleUpdateStory(index, {
@@ -375,9 +374,9 @@ export function RalphSetupDialogNew({
 
                           {/* Description */}
                           <div className="space-y-1">
-                            <Label className="text-xs">Description</Label>
+                            <Label className="text-xs">描述</Label>
                             <Textarea
-                              placeholder="As a user, I want to..."
+                              placeholder="作为用户，我希望…"
                               value={story.description}
                               onChange={(e) =>
                                 handleUpdateStory(index, {
@@ -391,9 +390,7 @@ export function RalphSetupDialogNew({
                           {/* Acceptance Criteria */}
                           <div className="space-y-1">
                             <div className="flex items-center justify-between">
-                              <Label className="text-xs">
-                                Acceptance Criteria
-                              </Label>
+                              <Label className="text-xs">验收标准</Label>
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -411,7 +408,7 @@ export function RalphSetupDialogNew({
                                     className="flex items-center gap-1"
                                   >
                                     <Input
-                                      placeholder="Criterion..."
+                                      placeholder="验收标准…"
                                       value={criteria}
                                       onChange={(e) =>
                                         handleUpdateCriteria(
@@ -452,7 +449,7 @@ export function RalphSetupDialogNew({
 
             <DialogFooter>
               <Button variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
+                取消
               </Button>
               <Button
                 onClick={handleSave}
@@ -460,7 +457,7 @@ export function RalphSetupDialogNew({
                   !stories.some((s) => s.title.trim() || s.description.trim())
                 }
               >
-                Save PRD
+                保存 PRD
               </Button>
             </DialogFooter>
           </>

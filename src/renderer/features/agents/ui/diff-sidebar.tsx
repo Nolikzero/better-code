@@ -141,8 +141,7 @@ export function DiffSidebar({
             {!diffStats.isLoading && diffStats.hasChanges && (
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground whitespace-nowrap overflow-hidden">
                 <span className="font-mono truncate">
-                  {diffStats.fileCount} file
-                  {diffStats.fileCount !== 1 ? "s" : ""}
+                  {diffStats.fileCount} 个文件
                 </span>
                 {(diffStats.additions > 0 || diffStats.deletions > 0) && (
                   <span className="flex items-center gap-1.5 shrink-0">
@@ -174,21 +173,21 @@ export function DiffSidebar({
                     ) : (
                       <Eye className="w-3.5 h-3.5" />
                     )}
-                    <span>{isReviewing ? "Reviewing..." : "Review"}</span>
+                    <span>{isReviewing ? "正在审查…" : "审查"}</span>
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent sideOffset={8}>
-                  <span>Get AI code review</span>
+                  <span>获取 AI 代码审查</span>
                 </TooltipContent>
               </Tooltip>
             )}
             {/* Create PR / Merge / Commit button - dynamic based on PR state */}
             {/*
               Button logic:
-              1. No PR exists + has changes → "Create PR"
-              2. PR is open/draft + no changes → "Merge"
-              3. PR is open/draft + has changes → "Commit" (to push to existing PR)
-              4. PR is merged/closed + has changes → "Create PR" (for new PR)
+              1. No PR exists + has changes → "创建 PR"
+              2. PR is open/draft + no changes → "合并"
+              3. PR is open/draft + has changes → "提交" (to push to existing PR)
+              4. PR is merged/closed + has changes → "创建 PR" (for new PR)
               5. PR is merged/closed + no changes → nothing (just show status in PrStatusBar)
             */}
             {/* Show Create PR when: no PR exists, OR PR is merged/closed with new changes */}
@@ -207,12 +206,12 @@ export function DiffSidebar({
                         <PullRequestIcon className="w-3.5 h-3.5" />
                       )}
                       <span className="whitespace-nowrap">
-                        {isCreatingPr ? "Creating..." : "Create PR"}
+                        {isCreatingPr ? "正在创建…" : "创建 PR"}
                       </span>
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent sideOffset={8}>
-                    Create a Pull Request
+                    创建拉取请求
                     <Kbd>{getShortcutKey("preview")}</Kbd>
                   </TooltipContent>
                 </Tooltip>
@@ -232,12 +231,12 @@ export function DiffSidebar({
                       <GitMerge className="w-3.5 h-3.5" />
                     )}
                     <span className="whitespace-nowrap">
-                      {isMergingPr ? "Merging..." : "Merge"}
+                      {isMergingPr ? "正在合并…" : "合并"}
                     </span>
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent sideOffset={8}>
-                  Merge Pull Request (squash)
+                  合并拉取请求（squash）
                 </TooltipContent>
               </Tooltip>
             )}
@@ -256,12 +255,12 @@ export function DiffSidebar({
                       <GitCommitHorizontal className="w-3.5 h-3.5" />
                     )}
                     <span className="whitespace-nowrap">
-                      {isCommittingToPr ? "Committing..." : "Commit"}
+                      {isCommittingToPr ? "正在提交…" : "提交"}
                     </span>
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent sideOffset={8}>
-                  Commit changes and push to PR
+                  提交更改并推送到 PR
                 </TooltipContent>
               </Tooltip>
             )}
@@ -284,7 +283,7 @@ export function DiffSidebar({
                       <Columns2 className="h-3.5 w-3.5" />
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent sideOffset={8}>Split view</TooltipContent>
+                  <TooltipContent sideOffset={8}>拆分视图</TooltipContent>
                 </Tooltip>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -295,7 +294,7 @@ export function DiffSidebar({
                       <Rows2 className="h-3.5 w-3.5" />
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent sideOffset={8}>Unified view</TooltipContent>
+                  <TooltipContent sideOffset={8}>统一视图</TooltipContent>
                 </Tooltip>
               </div>
             )}
@@ -327,7 +326,7 @@ export function DiffSidebar({
                       ) : (
                         <Eye className="w-3.5 h-3.5" />
                       )}
-                      <span>{isReviewing ? "Reviewing..." : "Review"}</span>
+                      <span>{isReviewing ? "正在审查…" : "审查"}</span>
                     </DropdownMenuItem>
                   )}
                   {/* View mode submenu - only show when toggle is hidden in header */}
@@ -339,7 +338,7 @@ export function DiffSidebar({
                         ) : (
                           <Rows2 className="w-3.5 h-3.5" />
                         )}
-                        <span>View</span>
+                        <span>视图</span>
                       </DropdownMenuSubTrigger>
                       <DropdownMenuSubContent
                         sideOffset={6}
@@ -356,7 +355,7 @@ export function DiffSidebar({
                             </span>
                           )}
                           <Columns2 className="w-3.5 h-3.5" />
-                          <span>Split</span>
+                          <span>拆分</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => setDiffMode(DiffModeEnum.Unified)}
@@ -368,7 +367,7 @@ export function DiffSidebar({
                             </span>
                           )}
                           <Rows2 className="w-3.5 h-3.5" />
-                          <span>Unified</span>
+                          <span>统一</span>
                         </DropdownMenuItem>
                       </DropdownMenuSubContent>
                     </DropdownMenuSub>
@@ -382,7 +381,7 @@ export function DiffSidebar({
                         className="gap-2"
                       >
                         <ExpandIcon className="w-3.5 h-3.5" />
-                        <span>Expand all</span>
+                        <span>全部展开</span>
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => diffViewRef.current?.collapseAll()}
@@ -390,7 +389,7 @@ export function DiffSidebar({
                         className="gap-2"
                       >
                         <CollapseIcon className="w-3.5 h-3.5" />
-                        <span>Collapse all</span>
+                        <span>全部折叠</span>
                       </DropdownMenuItem>
                     </>
                   )}

@@ -143,11 +143,11 @@ export function UpdateBanner() {
   if (justUpdated) {
     return (
       <div className="fixed bottom-4 left-4 z-50 flex items-center gap-3 rounded-lg border border-border bg-popover p-2.5 text-sm text-popover-foreground shadow-lg animate-in fade-in-0 slide-in-from-bottom-2">
-        <span className="text-foreground">Updated to v{displayVersion}</span>
+        <span className="text-foreground">已更新至 v{displayVersion}</span>
         <button
           onClick={handleDismissWhatsNew}
           className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded hover:bg-muted ml-2"
-          aria-label="Dismiss"
+          aria-label="关闭提示"
         >
           <svg
             width="14"
@@ -187,16 +187,16 @@ export function UpdateBanner() {
       {/* Update Available State */}
       {state.status === "available" && !isPending && (
         <>
-          <span className="text-foreground">Update available</span>
+          <span className="text-foreground">有可用更新</span>
           <div className="flex items-center gap-2 ml-2">
             <button
               onClick={handleDismiss}
               className="text-muted-foreground hover:text-foreground transition-colors"
             >
-              Later
+              稍后
             </button>
             <Button size="sm" onClick={handleUpdate}>
-              Update
+              更新
             </Button>
           </div>
         </>
@@ -207,7 +207,7 @@ export function UpdateBanner() {
         <>
           <IconSpinner className="h-4 w-4 text-muted-foreground" />
           <span className="text-foreground">
-            {isPending ? "Starting update..." : "Updating..."}
+            {isPending ? "正在启动更新…" : "正在更新…"}
           </span>
           {progress !== undefined && !isPending && (
             <span className="text-muted-foreground ml-1">

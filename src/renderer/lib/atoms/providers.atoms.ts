@@ -55,7 +55,7 @@ export const enabledProviderIdsAtom = atomWithStorage<ProviderId[]>(
 // Global default provider (persisted to localStorage)
 export const defaultProviderIdAtom = atomWithStorage<ProviderId>(
   "preferences:default-provider",
-  "claude", // Default to Claude
+  "",
   undefined,
   { getOnInit: true },
 );
@@ -84,16 +84,7 @@ export const subChatModelOverridesAtom = atomWithStorage<
 // Each provider has its own last selected model
 export const lastSelectedModelByProviderAtom = atomWithStorage<
   Record<ProviderId, string>
->(
-  "agents:lastSelectedModelByProvider",
-  {
-    claude: "sonnet",
-    codex: "gpt-5.3-codex",
-    opencode: "", // Dynamic - will be set when user selects a model
-  },
-  undefined,
-  { getOnInit: true },
-);
+>("agents:lastSelectedModelByProvider", {}, undefined, { getOnInit: true });
 
 // ============================================
 // CODEX-SPECIFIC SETTINGS

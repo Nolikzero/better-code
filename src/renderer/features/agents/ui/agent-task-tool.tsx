@@ -22,11 +22,11 @@ const TOOL_HEIGHT_PX = 24;
 function formatElapsedTime(ms: number): string {
   if (ms < 1000) return "";
   const seconds = Math.floor(ms / 1000);
-  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 60) return `${seconds} 秒`;
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = seconds % 60;
-  if (remainingSeconds === 0) return `${minutes}m`;
-  return `${minutes}m ${remainingSeconds}s`;
+  if (remainingSeconds === 0) return `${minutes} 分钟`;
+  return `${minutes} 分钟 ${remainingSeconds} 秒`;
 }
 
 export const AgentTaskTool = memo(
@@ -100,14 +100,14 @@ export const AgentTaskTool = memo(
 
     const subtitle = getSubtitle();
 
-    // Get title text - always use "Task"
+    // Get title text - always use "任务"
     const getTitle = () => {
-      return isPending ? "Running Task" : "Task";
+      return isPending ? "正在执行任务" : "任务";
     };
 
     // Show interrupted state if task was interrupted without completing
     if (isInterrupted && !part.output) {
-      return <AgentToolInterrupted toolName="Task" subtitle={subtitle} />;
+      return <AgentToolInterrupted toolName="任务" subtitle={subtitle} />;
     }
 
     return (

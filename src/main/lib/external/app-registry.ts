@@ -38,7 +38,7 @@ export const APP_REGISTRY: AppDefinition[] = [
   },
   {
     id: "explorer",
-    name: "Explorer",
+    name: "文件资源管理器",
     category: "file-manager",
     platforms: ["win32"],
     detection: { win32: { exeNames: ["explorer.exe"] } },
@@ -46,7 +46,7 @@ export const APP_REGISTRY: AppDefinition[] = [
   },
   {
     id: "file-manager",
-    name: "File Manager",
+    name: "文件管理器",
     category: "file-manager",
     platforms: ["linux"],
     detection: {
@@ -205,7 +205,7 @@ export const APP_REGISTRY: AppDefinition[] = [
   // Terminals
   {
     id: "terminal",
-    name: "Terminal",
+    name: "终端",
     category: "terminal",
     platforms: ["darwin"],
     detection: {
@@ -241,7 +241,7 @@ export const APP_REGISTRY: AppDefinition[] = [
   },
   {
     id: "cmd",
-    name: "Command Prompt",
+    name: "命令提示符",
     category: "terminal",
     platforms: ["win32"],
     detection: { win32: { exeNames: ["cmd.exe"] } },
@@ -269,7 +269,7 @@ export const APP_REGISTRY: AppDefinition[] = [
   },
   {
     id: "gnome-terminal",
-    name: "GNOME Terminal",
+    name: "GNOME 终端",
     category: "terminal",
     platforms: ["linux"],
     detection: { linux: { cliCommands: ["gnome-terminal"] } },
@@ -295,7 +295,7 @@ export const APP_REGISTRY: AppDefinition[] = [
   },
   {
     id: "xfce4-terminal",
-    name: "Xfce Terminal",
+    name: "Xfce 终端",
     category: "terminal",
     platforms: ["linux"],
     detection: { linux: { cliCommands: ["xfce4-terminal"] } },

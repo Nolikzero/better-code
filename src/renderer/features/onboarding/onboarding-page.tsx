@@ -20,9 +20,16 @@ import {
   type ProviderId,
 } from "../../lib/atoms";
 import { trpc } from "../../lib/trpc";
-import { normalizeProvidersList } from "../agents/hooks/use-providers";
 import { cn } from "../../lib/utils";
+import { normalizeProvidersList } from "../agents/hooks/use-providers";
 import { getProviderIcon } from "../agents/ui/provider-icons";
+
+const PROVIDER_ICON_BACKGROUNDS: Record<ProviderId, string> = {
+  claude: "bg-[#D97757]",
+  codex: "bg-[#10A37F]",
+  opencode: "bg-[#6366F1]",
+  grok: "bg-slate-900 dark:bg-slate-700",
+};
 
 function ProviderStatusBadge({
   available,
@@ -35,7 +42,7 @@ function ProviderStatusBadge({
     return (
       <Badge variant="outline" className="text-orange-500 border-orange-500/30">
         <AlertCircle className="w-3 h-3 mr-1" />
-        Not Installed
+        未安装
       </Badge>
     );
   }
@@ -44,7 +51,7 @@ function ProviderStatusBadge({
     return (
       <Badge variant="outline" className="text-yellow-500 border-yellow-500/30">
         <AlertCircle className="w-3 h-3 mr-1" />
-        Not Signed In
+        未登录
       </Badge>
     );
   }
@@ -52,7 +59,7 @@ function ProviderStatusBadge({
   return (
     <Badge variant="outline" className="text-green-500 border-green-500/30">
       <Check className="w-3 h-3 mr-1" />
-      Ready
+      就绪
     </Badge>
   );
 }
@@ -88,13 +95,13 @@ function ClaudeInstructions({ installed }: { installed: boolean }) {
     return (
       <div className="space-y-3">
         <p className="text-sm text-muted-foreground">
-          Install Claude Code CLI to get started:
+          安装 Claude Code CLI 后即可开始：
         </p>
         <CopyableCommand command="curl -fsSL https://claude.ai/install.sh | sh" />
         <p className="text-xs text-muted-foreground">
-          After installation, run{" "}
-          <code className="bg-muted px-1 rounded">claude login</code> to
-          authenticate.
+          安装后请运行{" "}
+          <code className="bg-muted px-1 rounded">claude login</code>{" "}
+          完成身份验证。
         </p>
       </div>
     );
@@ -106,14 +113,14 @@ function ClaudeInstructions({ installed }: { installed: boolean }) {
         <div className="flex items-center justify-center w-5 h-5 rounded-full bg-muted text-xs font-medium shrink-0 mt-0.5">
           1
         </div>
-        <p className="text-muted-foreground">Open Terminal</p>
+        <p className="text-muted-foreground">打开终端</p>
       </div>
       <div className="flex items-start gap-3">
         <div className="flex items-center justify-center w-5 h-5 rounded-full bg-muted text-xs font-medium shrink-0 mt-0.5">
           2
         </div>
         <div className="flex-1 space-y-2">
-          <p className="text-muted-foreground">Run the login command:</p>
+          <p className="text-muted-foreground">运行登录命令：</p>
           <CopyableCommand command="claude login" />
         </div>
       </div>
@@ -121,9 +128,7 @@ function ClaudeInstructions({ installed }: { installed: boolean }) {
         <div className="flex items-center justify-center w-5 h-5 rounded-full bg-muted text-xs font-medium shrink-0 mt-0.5">
           3
         </div>
-        <p className="text-muted-foreground">
-          Complete authentication in your browser
-        </p>
+        <p className="text-muted-foreground">在浏览器中完成身份验证</p>
       </div>
     </div>
   );
@@ -134,13 +139,13 @@ function CodexInstructions({ installed }: { installed: boolean }) {
     return (
       <div className="space-y-3">
         <p className="text-sm text-muted-foreground">
-          Install OpenAI Codex CLI to get started:
+          安装 OpenAI Codex CLI 后即可开始：
         </p>
         <CopyableCommand command="npm install -g @openai/codex" />
         <p className="text-xs text-muted-foreground">
-          After installation, run{" "}
-          <code className="bg-muted px-1 rounded">codex login</code> or set your
-          API key.
+          安装后请运行{" "}
+          <code className="bg-muted px-1 rounded">codex login</code>，或设置 API
+          密钥。
         </p>
       </div>
     );
@@ -148,25 +153,69 @@ function CodexInstructions({ installed }: { installed: boolean }) {
 
   return (
     <div className="space-y-3 text-sm">
-      <p className="text-muted-foreground">Sign in to Codex:</p>
+      <p className="text-muted-foreground">登录 Codex：</p>
       <div className="space-y-2">
         <p className="text-xs text-muted-foreground font-medium">
-          Option 1: Login with OpenAI
+          方式一：使用 OpenAI 登录
         </p>
         <CopyableCommand command="codex login" />
       </div>
       <div className="space-y-2 pt-2">
         <p className="text-xs text-muted-foreground font-medium">
-          Option 2: Use API Key
+          方式二：使用 API 密钥
         </p>
         <p className="text-xs text-muted-foreground">
-          Set the <code className="bg-muted px-1 rounded">OPENAI_API_KEY</code>{" "}
-          environment variable
+          设置 <code className="bg-muted px-1 rounded">OPENAI_API_KEY</code>{" "}
+          环境变量
         </p>
       </div>
     </div>
   );
 }
+
+function OpenCodeInstructions({ installed }: { installed: boolean }) {
+  return (
+    <div className="space-y-3 text-sm">
+      {!installed && (
+        <>
+          <p className="text-muted-foreground">安装 OpenCode CLI：</p>
+          <CopyableCommand command="npm install -g opencode-ai" />
+        </>
+      )}
+      <p className="text-muted-foreground">登录并配置模型提供商：</p>
+      <CopyableCommand command="opencode auth login" />
+    </div>
+  );
+}
+
+function GrokInstructions({ installed }: { installed: boolean }) {
+  return (
+    <div className="space-y-3 text-sm">
+      {!installed && (
+        <p className="text-muted-foreground">
+          请先安装 Grok Build CLI，再重新检查提供商状态。
+        </p>
+      )}
+      <p className="text-muted-foreground">登录 Grok Build：</p>
+      <CopyableCommand command="grok login" />
+      <p className="text-xs text-muted-foreground">
+        无法打开浏览器时，可运行{" "}
+        <code className="bg-muted px-1 rounded">grok login --device-code</code>
+        。
+      </p>
+    </div>
+  );
+}
+
+const PROVIDER_INSTRUCTIONS: Record<
+  ProviderId,
+  (props: { installed: boolean }) => React.ReactNode
+> = {
+  claude: ClaudeInstructions,
+  codex: CodexInstructions,
+  opencode: OpenCodeInstructions,
+  grok: GrokInstructions,
+};
 
 function InstructionsPanel({
   providerId,
@@ -182,21 +231,14 @@ function InstructionsPanel({
       <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
         <p className="text-sm text-green-600 dark:text-green-400 flex items-center gap-2">
           <Check className="w-4 h-4" />
-          {PROVIDER_INFO[providerId].name} is ready to use!
+          {PROVIDER_INFO[providerId].name} 已可使用！
         </p>
       </div>
     );
   }
 
-  if (providerId === "claude") {
-    return <ClaudeInstructions installed={available} />;
-  }
-
-  if (providerId === "codex") {
-    return <CodexInstructions installed={available} />;
-  }
-
-  return null;
+  const ProviderInstructions = PROVIDER_INSTRUCTIONS[providerId];
+  return <ProviderInstructions installed={available} />;
 }
 
 export function OnboardingPage() {
@@ -244,10 +286,10 @@ export function OnboardingPage() {
           </div>
           <div className="space-y-1">
             <h1 className="text-base font-semibold tracking-tight">
-              Choose Your AI Provider
+              选择 AI 提供商
             </h1>
             <p className="text-sm text-muted-foreground">
-              Select which AI assistant to use for coding
+              选择用于编程的 AI 助手
             </p>
           </div>
         </div>
@@ -255,7 +297,7 @@ export function OnboardingPage() {
         {/* Provider Selection */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Available Providers</span>
+            <span className="text-sm font-medium">可用提供商</span>
             <button
               type="button"
               onClick={handleRefresh}
@@ -265,14 +307,14 @@ export function OnboardingPage() {
               <RefreshCw
                 className={cn("w-3 h-3", isRefetching && "animate-spin")}
               />
-              Refresh
+              刷新
             </button>
           </div>
 
           {isLoading ? (
             <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground">
               <Loader2 className="w-4 h-4 animate-spin" />
-              <span className="text-sm">Checking providers...</span>
+              <span className="text-sm">正在检查提供商…</span>
             </div>
           ) : (
             <div className="space-y-2">
@@ -280,7 +322,7 @@ export function OnboardingPage() {
                 <button
                   key={provider.id}
                   type="button"
-                  onClick={() => setSelectedProvider(provider.id as ProviderId)}
+                  onClick={() => setSelectedProvider(provider.id)}
                   className={cn(
                     "w-full p-4 rounded-lg border transition-all text-left",
                     selectedProvider === provider.id
@@ -292,15 +334,10 @@ export function OnboardingPage() {
                     <div
                       className={cn(
                         "w-10 h-10 rounded-full flex items-center justify-center shrink-0",
-                        provider.id === "claude"
-                          ? "bg-[#D97757]"
-                          : "bg-[#10A37F]",
+                        PROVIDER_ICON_BACKGROUNDS[provider.id],
                       )}
                     >
-                      {getProviderIcon(
-                        provider.id as ProviderId,
-                        "w-5 h-5 text-white",
-                      )}
+                      {getProviderIcon(provider.id, "w-5 h-5 text-white")}
                     </div>
 
                     <div className="flex-1 min-w-0">
@@ -346,11 +383,11 @@ export function OnboardingPage() {
             onClick={handleContinue}
             className="w-full h-8 px-3 bg-primary text-primary-foreground rounded-lg text-sm font-medium transition-[background-color,transform] duration-150 hover:bg-primary/90 active:scale-[0.97] shadow-[0_0_0_0.5px_rgb(23,23,23),inset_0_0_0_1px_rgba(255,255,255,0.14)] dark:shadow-[0_0_0_0.5px_rgb(23,23,23),inset_0_0_0_1px_rgba(255,255,255,0.14)] flex items-center justify-center"
           >
-            Continue
+            继续
           </button>
 
           <p className="text-xs text-muted-foreground text-center">
-            You can change your provider anytime in Settings.
+            你可以随时在设置中更改提供商。
           </p>
         </div>
       </div>

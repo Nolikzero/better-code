@@ -110,11 +110,11 @@ export class OpenCodeServer extends EventEmitter {
       this.state = {
         ...this.state,
         status: "error",
-        error: "OpenCode binary not found",
+        error: "未找到 OpenCode 可执行文件",
       };
-      this.emit("error", new Error("OpenCode binary not found"));
+      this.emit("error", new Error("未找到 OpenCode 可执行文件"));
       throw new Error(
-        "OpenCode binary not found. Install via: npm install -g opencode",
+        "未找到 OpenCode 可执行文件。请运行：npm install -g opencode",
       );
     }
 
@@ -203,7 +203,7 @@ export class OpenCodeServer extends EventEmitter {
       // Check if process died
       if (this.process && this.process.exitCode !== null) {
         const error = new Error(
-          `Server process exited with code ${this.process.exitCode}`,
+          `服务器进程已退出，退出代码：${this.process.exitCode}`,
         );
         this.state = {
           ...this.state,
@@ -218,9 +218,7 @@ export class OpenCodeServer extends EventEmitter {
     }
 
     // Timeout
-    const error = new Error(
-      `Server startup timeout after ${STARTUP_TIMEOUT}ms`,
-    );
+    const error = new Error(`服务器启动超时（${STARTUP_TIMEOUT} 毫秒）`);
     this.state = {
       ...this.state,
       status: "error",

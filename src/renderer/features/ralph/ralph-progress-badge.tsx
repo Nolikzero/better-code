@@ -126,7 +126,7 @@ export function RalphProgressBadge({
         )}
       >
         <Loader2 className="h-3 w-3 animate-spin" />
-        <span>Generating...</span>
+        <span>正在生成…</span>
       </div>
     );
   }
@@ -141,7 +141,7 @@ export function RalphProgressBadge({
         )}
       >
         <CheckIcon className="h-3 w-3" />
-        <span>PRD Generated!</span>
+        <span>PRD 已生成！</span>
       </div>
     );
   }
@@ -183,7 +183,7 @@ export function RalphProgressBadge({
       >
         <div className="p-3 border-b border-border">
           <div className="flex items-center justify-between">
-            <h4 className="text-sm font-medium">Ralph Progress</h4>
+            <h4 className="text-sm font-medium">Ralph 进度</h4>
             <span
               className={cn(
                 "text-xs px-2 py-0.5 rounded-full",
@@ -192,7 +192,7 @@ export function RalphProgressBadge({
                   : "bg-muted text-muted-foreground",
               )}
             >
-              {isComplete ? "Complete" : `${stats.completed}/${stats.total}`}
+              {isComplete ? "已完成" : `${stats.completed}/${stats.total}`}
             </span>
           </div>
           {prd.goal && (
@@ -232,9 +232,7 @@ export function RalphProgressBadge({
                         markIncompleteMutation.isPending) &&
                         "opacity-50 cursor-wait",
                     )}
-                    title={
-                      story.passes ? "Mark as incomplete" : "Mark as complete"
-                    }
+                    title={story.passes ? "标记为未完成" : "标记为已完成"}
                   >
                     {story.passes && (
                       <CheckIcon className="h-2.5 w-2.5 text-white" />

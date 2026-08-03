@@ -84,7 +84,7 @@ export function ArchivePopover({ trigger }: ArchivePopoverProps) {
       setConfirmDeleteId(null);
     },
     onError: (error) => {
-      toast.error(`Failed to delete: ${error.message}`);
+      toast.error(`删除失败：${error.message}`);
       setConfirmDeleteId(null);
     },
   });
@@ -193,13 +193,13 @@ export function ArchivePopover({ trigger }: ArchivePopoverProps) {
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMins < 1) return "now";
-    if (diffMins < 60) return `${diffMins}m`;
-    if (diffHours < 24) return `${diffHours}h`;
-    if (diffDays < 7) return `${diffDays}d`;
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)}w`;
-    if (diffDays < 365) return `${Math.floor(diffDays / 30)}mo`;
-    return `${Math.floor(diffDays / 365)}y`;
+    if (diffMins < 1) return "刚刚";
+    if (diffMins < 60) return `${diffMins} 分钟前`;
+    if (diffHours < 24) return `${diffHours} 小时前`;
+    if (diffDays < 7) return `${diffDays} 天前`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} 周前`;
+    if (diffDays < 365) return `${Math.floor(diffDays / 30)} 个月前`;
+    return `${Math.floor(diffDays / 365)} 年前`;
   };
 
   return (
@@ -220,7 +220,7 @@ export function ArchivePopover({ trigger }: ArchivePopoverProps) {
             <SearchIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
             <Input
               ref={searchInputRef}
-              placeholder="Search..."
+              placeholder="搜索…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="h-auto p-0 border-0 bg-transparent text-sm placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
@@ -232,13 +232,13 @@ export function ArchivePopover({ trigger }: ArchivePopoverProps) {
         <div className="flex-1 overflow-y-auto py-1">
           {isLoading ? (
             <div className="flex items-center justify-center p-8 text-muted-foreground text-sm">
-              Loading...
+              正在加载…
             </div>
           ) : filteredChats.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center">
               <ArchiveIcon className="h-6 w-6 mb-2 text-muted-foreground opacity-40" />
               <p className="text-xs text-muted-foreground opacity-40 pb-10">
-                No archived agents
+                暂无已归档智能体
               </p>
             </div>
           ) : (
@@ -257,13 +257,13 @@ export function ArchivePopover({ trigger }: ArchivePopoverProps) {
                 ? `https://github.com/${gitOwner}.png?size=64`
                 : null;
 
-              // Build display text like web: "repoName • branch" or just "repoName" or "Local project"
+              // Build display text like web: "repoName • branch" or just "repoName" or "本地项目"
               const repoName = gitRepo || project?.name;
               const displayText = branch
                 ? repoName
                   ? `${repoName} • ${branch}`
                   : branch
-                : repoName || "Local project";
+                : repoName || "本地项目";
 
               return (
                 <div
@@ -277,8 +277,8 @@ export function ArchivePopover({ trigger }: ArchivePopoverProps) {
                     "outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70",
                     // Selected or keyboard navigation highlight
                     isSelected || selectedChatId === chat.id
-                      ? "dark:bg-neutral-800 bg-accent text-foreground"
-                      : "text-muted-foreground dark:hover:bg-neutral-800 hover:bg-accent hover:text-foreground",
+                      ? "bg-accent text-accent-foreground"
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
                   )}
                 >
                   <div className="flex items-start gap-2.5">
@@ -318,7 +318,7 @@ export function ArchivePopover({ trigger }: ArchivePopoverProps) {
                         <span className="truncate block text-sm leading-tight flex-1">
                           {chat.name || (
                             <span className="text-muted-foreground/50">
-                              New workspace
+                              新建工作区
                             </span>
                           )}
                         </span>
@@ -329,7 +329,7 @@ export function ArchivePopover({ trigger }: ArchivePopoverProps) {
                             restoreMutation.mutate({ id: chat.id });
                           }}
                           className="shrink-0 text-muted-foreground hover:text-foreground active:text-foreground transition-[color,transform] duration-150 ease-out active:scale-[0.97]"
-                          aria-label="Restore chat"
+                          aria-label="恢复对话"
                         >
                           <IconTextUndo className="h-3 w-3" />
                         </button>
@@ -342,7 +342,7 @@ export function ArchivePopover({ trigger }: ArchivePopoverProps) {
                                 deleteMutation.mutate({ id: chat.id });
                               }}
                               className="shrink-0 text-destructive hover:text-destructive/80 transition-colors"
-                              aria-label="Confirm delete"
+                              aria-label="确认删除"
                             >
                               <CheckIcon className="h-3 w-3" />
                             </button>
@@ -352,7 +352,7 @@ export function ArchivePopover({ trigger }: ArchivePopoverProps) {
                                 setConfirmDeleteId(null);
                               }}
                               className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-                              aria-label="Cancel delete"
+                              aria-label="取消删除"
                             >
                               <X className="h-3 w-3" />
                             </button>
@@ -364,7 +364,7 @@ export function ArchivePopover({ trigger }: ArchivePopoverProps) {
                               setConfirmDeleteId(chat.id);
                             }}
                             className="shrink-0 text-muted-foreground hover:text-destructive transition-colors"
-                            aria-label="Delete permanently"
+                            aria-label="永久删除"
                           >
                             <TrashIcon className="h-3 w-3" />
                           </button>

@@ -1,145 +1,175 @@
+import { API_PROVIDER_PROTOCOLS, type ProviderId } from "@shared/types";
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { getEnabledProviders, setEnabledProviders } from "../../providers/init";
-import { providerRegistry } from "../../providers/registry";
-import type { ProviderId } from "../../providers/types";
+import { ApiProvider } from "../../providers/api/provider";
+import {
+  createApiProvider,
+  deleteApiProvider,
+  getApiProviderRecord,
+  getApiProviderSettings,
+  listApiProviderSettings,
+  updateApiProvider,
+} from "../../providers/api/store";
+import {
+  getEnabledProviders,
+  reloadProvider,
+  removeProvider,
+  setEnabledProviders,
+} from "../../providers/init";
 import { publicProcedure, router } from "../index";
 
-/**
- * Providers router - exposes provider status through providerRegistry
- *
- * This router delegates to providerRegistry.getAllStatus() and getStatus()
- * instead of reimplementing auth checks and binary lookups.
- */
+const providerIdSchema = z
+  .string()
+  .trim()
+  .min(5)
+  .max(80)
+  .regex(/^api:[0-9a-f-]+$/i, "服务商 ID 格式无效");
 
-// Flatten ProviderStatus for renderer compatibility
-// Renderer expects { id, name, description, ... } not { config: { id, name, ... }, ... }
-interface FlatProviderStatus {
-  id: ProviderId;
-  name: string;
-  description: string;
-  available: boolean;
-  authStatus: {
-    authenticated: boolean;
-    method?: "oauth" | "api-key";
-    error?: string;
+const providerFieldsSchema = z.object({
+  name: z.string().trim().min(1, "请输入服务商名称").max(80),
+  protocol: z.enum(API_PROVIDER_PROTOCOLS),
+  baseUrl: z.url("请输入有效的接口地址").max(2048),
+  apiKey: z.string().trim().max(4096).optional(),
+  models: z
+    .array(z.string().trim().min(1).max(200))
+    .max(200)
+    .transform((models) => Array.from(new Set(models))),
+  contextWindow: z.number().int().min(1024).max(10_000_000),
+  enabled: z.boolean(),
+});
+
+function toFlatStatus(
+  settings: ReturnType<typeof listApiProviderSettings>[number],
+) {
+  return {
+    ...settings,
+    description:
+      settings.protocol === "openai-compatible"
+        ? "OpenAI 兼容接口"
+        : "Anthropic 兼容接口",
+    available: settings.hasApiKey && settings.baseUrl.length > 0,
+    authStatus: settings.hasApiKey
+      ? ({ authenticated: true, method: "api-key" } as const)
+      : ({ authenticated: false, error: "尚未配置 API Key" } as const),
   };
-  models: Array<{ id: string; name: string; displayName: string }>;
 }
 
-const providerIdSchema = z.enum(["claude", "codex", "opencode"]);
+type LegacyOpenCodeProvider = {
+  readonly id: string;
+  readonly name: string;
+  readonly connected: boolean;
+  readonly models: readonly {
+    readonly id: string;
+    readonly name: string;
+    readonly displayName: string;
+  }[];
+};
 
 export const providersRouter = router({
-  /**
-   * Get enabled providers (user-selected)
-   */
   getEnabled: publicProcedure.query((): ProviderId[] => {
     return getEnabledProviders();
   }),
 
-  /**
-   * Enable a specific set of providers
-   */
   setEnabled: publicProcedure
     .input(z.object({ providerIds: z.array(providerIdSchema) }))
     .mutation(async ({ input }): Promise<ProviderId[]> => {
-      await setEnabledProviders(input.providerIds as ProviderId[]);
+      await setEnabledProviders(input.providerIds);
       return getEnabledProviders();
     }),
-  /**
-   * List all available providers with their status
-   */
-  list: publicProcedure.query(async (): Promise<FlatProviderStatus[]> => {
-    const statuses = await providerRegistry.getAllStatus();
-    return statuses.map((status) => ({
-      id: status.config.id,
-      name: status.config.name,
-      description: status.config.description,
-      available: status.available,
-      authStatus: status.authStatus,
-      models: status.config.models,
-    }));
+
+  list: publicProcedure.query(() => {
+    return listApiProviderSettings().map(toFlatStatus);
   }),
 
-  /**
-   * Get status for a single provider
-   */
-  getStatus: publicProcedure
-    .input(z.object({ providerId: providerIdSchema }))
-    .query(async ({ input }): Promise<FlatProviderStatus | null> => {
-      const status = await providerRegistry.getStatus(
-        input.providerId as ProviderId,
-      );
-      if (!status) return null;
-
-      return {
-        id: status.config.id,
-        name: status.config.name,
-        description: status.config.description,
-        available: status.available,
-        authStatus: status.authStatus,
-        models: status.config.models,
-      };
+  create: publicProcedure
+    .input(
+      providerFieldsSchema.extend({
+        apiKey: z.string().trim().min(1).max(4096),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const settings = createApiProvider(input);
+      if (settings.enabled) {
+        await setEnabledProviders([...getEnabledProviders(), settings.id]);
+      }
+      return toFlatStatus(settings);
     }),
 
-  /**
-   * Check if a provider is available and authenticated
-   */
+  update: publicProcedure
+    .input(providerFieldsSchema.extend({ providerId: providerIdSchema }))
+    .mutation(async ({ input }) => {
+      const updated = updateApiProvider(input.providerId, input);
+      if (!updated) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "未找到服务商" });
+      }
+
+      if (updated.enabled) {
+        const nextEnabled = Array.from(
+          new Set([...getEnabledProviders(), updated.id]),
+        );
+        await setEnabledProviders(nextEnabled);
+        await reloadProvider(updated.id);
+      } else {
+        await setEnabledProviders(
+          getEnabledProviders().filter((id) => id !== updated.id),
+        );
+      }
+      return toFlatStatus(updated);
+    }),
+
+  remove: publicProcedure
+    .input(z.object({ providerId: providerIdSchema }))
+    .mutation(async ({ input }) => {
+      await removeProvider(input.providerId);
+      return { removed: deleteApiProvider(input.providerId) };
+    }),
+
+  getStatus: publicProcedure
+    .input(z.object({ providerId: providerIdSchema }))
+    .query(({ input }) => {
+      const settings = getApiProviderSettings(input.providerId);
+      return settings ? toFlatStatus(settings) : null;
+    }),
+
   isReady: publicProcedure
     .input(z.object({ providerId: providerIdSchema }))
-    .query(async ({ input }) => {
-      const status = await providerRegistry.getStatus(
-        input.providerId as ProviderId,
-      );
-
-      if (!status) {
-        return { ready: false, reason: "Provider not found" };
+    .query(({ input }) => {
+      const settings = getApiProviderSettings(input.providerId);
+      if (!settings) return { ready: false, reason: "未找到服务商" };
+      if (!settings.hasApiKey) {
+        return { ready: false, reason: "尚未配置 API Key" };
       }
-
-      if (!status.available) {
-        return {
-          ready: false,
-          reason: `${status.config.name} CLI not installed`,
-          installHint:
-            input.providerId === "claude"
-              ? "Install via https://claude.ai/install.sh"
-              : "Install via: npm install -g @openai/codex",
-        };
+      if (settings.models.length === 0) {
+        return { ready: false, reason: "尚未配置模型列表" };
       }
-
-      if (!status.authStatus.authenticated) {
-        return {
-          ready: false,
-          reason: status.authStatus.error || "Not authenticated",
-          authHint:
-            input.providerId === "claude"
-              ? "Run: claude login"
-              : "Set OPENAI_API_KEY or run: codex login",
-        };
-      }
-
       return { ready: true };
     }),
 
-  /**
-   * Get models for a specific provider
-   */
   getModels: publicProcedure
     .input(z.object({ providerId: providerIdSchema }))
-    .query(async ({ input }) => {
-      const status = await providerRegistry.getStatus(
-        input.providerId as ProviderId,
-      );
-      return status?.config.models || [];
+    .query(({ input }) => {
+      return getApiProviderSettings(input.providerId)?.models ?? [];
     }),
 
-  /**
-   * Get OpenCode providers with their models and connection status
-   * Returns providers grouped with models, sorted by connection status
-   */
-  getOpenCodeProviders: publicProcedure.query(async () => {
-    const { fetchProvidersWithDetails } = await import(
-      "../../providers/opencode/client"
-    );
-    return fetchProvidersWithDetails();
-  }),
+  testConnection: publicProcedure
+    .input(
+      z.object({
+        providerId: providerIdSchema,
+        modelId: z.string().trim().min(1).max(200),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const record = getApiProviderRecord(input.providerId);
+      if (!record) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "未找到服务商" });
+      }
+      const result = await new ApiProvider(record).testModel(input.modelId);
+      return { ok: true, ...result };
+    }),
+
+  getOpenCodeProviders: publicProcedure.query(
+    (): { readonly providers: readonly LegacyOpenCodeProvider[] } => ({
+      providers: [],
+    }),
+  ),
 });

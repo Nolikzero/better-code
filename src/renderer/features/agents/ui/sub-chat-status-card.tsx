@@ -144,7 +144,7 @@ export const SubChatStatusCard = memo(function SubChatStatusCard({
                     tabIndex={0}
                     onClick={handleFileClick}
                     onKeyDown={handleKeyDown}
-                    aria-label={`View diff for ${file.displayPath}`}
+                    aria-label={`查看 ${file.displayPath} 的差异`}
                     className="flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-muted/50 transition-colors cursor-pointer focus:outline-hidden rounded-xs"
                   >
                     {FileIcon && (
@@ -179,7 +179,7 @@ export const SubChatStatusCard = memo(function SubChatStatusCard({
           >
             <div className="border-b border-border">
               <div className="px-3 py-1.5 text-xs text-muted-foreground flex items-center justify-between border-b border-border/50">
-                <span className="font-medium">Queued Messages</span>
+                <span className="font-medium">排队中的消息</span>
                 {onClearQueue && messageQueue.length > 1 && (
                   <Button
                     variant="ghost"
@@ -190,7 +190,7 @@ export const SubChatStatusCard = memo(function SubChatStatusCard({
                       onClearQueue();
                     }}
                   >
-                    Clear all
+                    全部清除
                   </Button>
                 )}
               </div>
@@ -215,7 +215,7 @@ export const SubChatStatusCard = memo(function SubChatStatusCard({
                           e.stopPropagation();
                           onRemoveFromQueue(message.id);
                         }}
-                        aria-label="Remove from queue"
+                        aria-label="从队列移除"
                       >
                         <X className="h-3 w-3" />
                       </Button>
@@ -242,7 +242,9 @@ export const SubChatStatusCard = memo(function SubChatStatusCard({
         aria-expanded={changedFiles.length > 0 ? isExpanded : undefined}
         aria-label={
           changedFiles.length > 0
-            ? `${isExpanded ? "Collapse" : "Expand"} changed files list`
+            ? isExpanded
+              ? "折叠更改文件列表"
+              : "展开更改文件列表"
             : undefined
         }
         className={cn(
@@ -265,7 +267,7 @@ export const SubChatStatusCard = memo(function SubChatStatusCard({
           {/* Streaming indicator */}
           {isStreaming && changedFiles.length === 0 && (
             <span className="text-xs text-muted-foreground">
-              {isCompacting ? "Compacting" : "Generating"}
+              {isCompacting ? "正在压缩" : "正在生成"}
               <AnimatedDots />
             </span>
           )}
@@ -273,7 +275,7 @@ export const SubChatStatusCard = memo(function SubChatStatusCard({
           {/* File count and stats */}
           {changedFiles.length > 0 && (
             <span className="text-xs text-muted-foreground">
-              {totals.fileCount} {totals.fileCount === 1 ? "file" : "files"}
+              {totals.fileCount} 个文件
               {(totals.additions > 0 || totals.deletions > 0) && (
                 <>
                   {" "}
@@ -295,7 +297,7 @@ export const SubChatStatusCard = memo(function SubChatStatusCard({
                 <span className="text-border">•</span>
               )}
               <ListPlus className="w-3.5 h-3.5" />
-              <span>{messageQueue.length} queued</span>
+              <span>{messageQueue.length} 排队中</span>
             </span>
           )}
         </div>
@@ -312,7 +314,7 @@ export const SubChatStatusCard = memo(function SubChatStatusCard({
               }}
               className="h-6 px-2 text-xs font-normal rounded-md transition-transform duration-150 active:scale-[0.97]"
             >
-              Stop
+              停止
               <span className="text-muted-foreground/60 ml-1">⌃C</span>
             </Button>
           )}
@@ -326,7 +328,7 @@ export const SubChatStatusCard = memo(function SubChatStatusCard({
               }}
               className="h-6 px-3 text-xs font-medium rounded-md transition-transform duration-150 active:scale-[0.97]"
             >
-              Review
+              审查
             </Button>
           )}
         </div>

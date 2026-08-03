@@ -87,10 +87,10 @@ export const AgentSendButton = memo(function AgentSendButton({
     if (isQueueMode) {
       return (
         <span className="flex items-center">
-          Queue message
+          将消息加入队列
           {queueCount > 0 && (
             <span className="ml-1 text-muted-foreground">
-              ({queueCount} pending)
+              ({queueCount} 条待处理）
             </span>
           )}
           <Kbd className="-me-1 ms-1">
@@ -102,16 +102,16 @@ export const AgentSendButton = memo(function AgentSendButton({
     if (isStreaming)
       return (
         <span className="flex items-center gap-1">
-          Stop
+          停止
           <Kbd className="ms-0.5">Esc</Kbd>
-          <span className="text-muted-foreground/60">or</span>
+          <span className="text-muted-foreground/60">或</span>
           <Kbd className="-me-1">Ctrl C</Kbd>
         </span>
       );
-    if (isSubmitting) return "Generating...";
+    if (isSubmitting) return "正在生成…";
     return (
       <span className="flex items-center">
-        Send
+        发送
         <Kbd className="-me-1 ms-1">
           <EnterIcon className="size-2.5 inline" />
         </Kbd>
@@ -122,17 +122,17 @@ export const AgentSendButton = memo(function AgentSendButton({
   // Determine aria-label
   const getAriaLabel = () => {
     if (ariaLabel) return ariaLabel;
-    if (isQueueMode) return "Queue message";
-    if (isStreaming) return "Stop generation";
-    if (isSubmitting) return "Generating...";
-    return "Send message";
+    if (isQueueMode) return "将消息加入队列";
+    if (isStreaming) return "停止生成";
+    if (isSubmitting) return "正在生成…";
+    return "发送消息";
   };
 
   // Apply glow effect when button is active and ready to send
   const shouldShowGlow = !isStreaming && !isSubmitting && !disabled;
 
   const glowClass = shouldShowGlow
-    ? "shadow-[0_0_0_2px_white,0_0_0_4px_rgba(0,0,0,0.06)] dark:shadow-[0_0_0_2px_#1a1a1a,0_0_0_4px_rgba(255,255,255,0.08)]"
+    ? "ring-2 ring-background outline outline-1 outline-ring/20"
     : undefined;
 
   // Mode-specific styling (agent=foreground, plan=orange)

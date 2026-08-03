@@ -36,8 +36,7 @@ export const terminalRouter = router({
         console.error("[TerminalRouter] createOrAttach error:", err);
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message:
-            err instanceof Error ? err.message : "Failed to create terminal",
+          message: err instanceof Error ? err.message : "创建终端失败",
         });
       }
     }),
@@ -183,7 +182,7 @@ export const terminalRouter = router({
           currentPath: dirPath,
           parentPath: null,
           items: [],
-          error: "Unable to read directory",
+          error: "无法读取目录",
         };
       }
     }),

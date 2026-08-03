@@ -39,6 +39,8 @@ const COMMON_LANGUAGES = [
  * Map our custom theme IDs to @pierre/diffs bundled themes
  */
 const THEME_TO_PIERRE_MAP: Record<string, string> = {
+  dracula: "github-dark",
+  alucard: "github",
   "default-dark": "github-dark",
   "default-light": "github",
   "claude-dark": "github-dark",

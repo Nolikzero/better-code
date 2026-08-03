@@ -77,12 +77,12 @@ export function useGitActions({
   // Commit handler
   const handleCommit = useCallback(async () => {
     if (!worktreePath) {
-      toast.error("No worktree path available", { position: "top-center" });
+      toast.error("没有可用的工作树路径", { position: "top-center" });
       return;
     }
 
     if (!commitMessage.trim()) {
-      toast.error("Please enter a commit message", { position: "top-center" });
+      toast.error("请输入提交信息", { position: "top-center" });
       return;
     }
 
@@ -96,7 +96,7 @@ export function useGitActions({
           files: Array.from(selectedFiles),
           message: commitMessage.trim(),
         });
-        toast.success(`Committed ${selectedFiles.size} file(s)`, {
+        toast.success(`已提交 ${selectedFiles.size} 个文件`, {
           position: "top-center",
         });
       } else {
@@ -106,7 +106,7 @@ export function useGitActions({
           worktreePath,
           message: commitMessage.trim(),
         });
-        toast.success("Committed all changes", { position: "top-center" });
+        toast.success("已提交所有更改", { position: "top-center" });
       }
 
       // Clear state after successful commit
@@ -114,7 +114,7 @@ export function useGitActions({
       deselectAll();
       onSuccess?.();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to commit", {
+      toast.error(error instanceof Error ? error.message : "提交失败", {
         position: "top-center",
       });
     } finally {
@@ -133,7 +133,7 @@ export function useGitActions({
   // Stash handler
   const handleStash = useCallback(async () => {
     if (!worktreePath) {
-      toast.error("No worktree path available", { position: "top-center" });
+      toast.error("没有可用的工作树路径", { position: "top-center" });
       return;
     }
 
@@ -144,7 +144,7 @@ export function useGitActions({
         worktreePath,
         message: commitMessage.trim() || undefined,
       });
-      toast.success("Changes stashed", { position: "top-center" });
+      toast.success("更改已暂存", { position: "top-center" });
 
       // Clear state after successful stash
       setCommitMessage("");
@@ -152,10 +152,9 @@ export function useGitActions({
       await refreshStashStatus();
       onSuccess?.();
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to stash changes",
-        { position: "top-center" },
-      );
+      toast.error(error instanceof Error ? error.message : "暂存更改失败", {
+        position: "top-center",
+      });
     } finally {
       setLoadingState((prev) => ({ ...prev, isStashing: false }));
     }
@@ -172,7 +171,7 @@ export function useGitActions({
   // Unstash (pop) handler
   const handleUnstash = useCallback(async () => {
     if (!worktreePath) {
-      toast.error("No worktree path available", { position: "top-center" });
+      toast.error("没有可用的工作树路径", { position: "top-center" });
       return;
     }
 
@@ -180,15 +179,14 @@ export function useGitActions({
 
     try {
       await trpcClient.changes.stashPop.mutate({ worktreePath });
-      toast.success("Stash applied", { position: "top-center" });
+      toast.success("已应用暂存", { position: "top-center" });
 
       await refreshStashStatus();
       onSuccess?.();
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to apply stash",
-        { position: "top-center" },
-      );
+      toast.error(error instanceof Error ? error.message : "应用暂存失败", {
+        position: "top-center",
+      });
     } finally {
       setLoadingState((prev) => ({ ...prev, isUnstashing: false }));
     }
@@ -197,7 +195,7 @@ export function useGitActions({
   // Push handler
   const handlePush = useCallback(async () => {
     if (!worktreePath) {
-      toast.error("No worktree path available", { position: "top-center" });
+      toast.error("没有可用的工作树路径", { position: "top-center" });
       return;
     }
 
@@ -208,10 +206,10 @@ export function useGitActions({
         worktreePath,
         setUpstream: true,
       });
-      toast.success("Pushed to remote", { position: "top-center" });
+      toast.success("已推送到远程仓库", { position: "top-center" });
       onSuccess?.();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to push", {
+      toast.error(error instanceof Error ? error.message : "推送失败", {
         position: "top-center",
       });
     } finally {

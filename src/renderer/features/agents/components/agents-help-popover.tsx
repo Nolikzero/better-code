@@ -46,7 +46,7 @@ export function AgentsHelpPopover({
             className="gap-2"
           >
             <KeyboardIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-            <span className="flex-1">Shortcuts</span>
+            <span className="flex-1">快捷键</span>
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>

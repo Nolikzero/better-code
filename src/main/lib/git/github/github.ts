@@ -114,7 +114,7 @@ async function getPRForBranch(
     if (!result.success) {
       console.error("[GitHub] PR schema validation failed:", result.error);
       console.error("[GitHub] Raw data:", JSON.stringify(raw, null, 2));
-      throw new Error("PR schema validation failed");
+      throw new Error("PR 数据结构验证失败");
     }
     const data = result.data;
 
@@ -170,7 +170,7 @@ function parseChecks(rollup: GHPRResponse["statusCheckRollup"]): CheckItem[] {
 
   return rollup.map((ctx) => {
     // CheckRun uses 'name', StatusContext uses 'context'
-    const name = ctx.name || ctx.context || "Unknown check";
+    const name = ctx.name || ctx.context || "未知检查";
     // CheckRun uses 'detailsUrl', StatusContext uses 'targetUrl'
     const url = ctx.detailsUrl || ctx.targetUrl;
     // StatusContext uses 'state', CheckRun uses 'conclusion'

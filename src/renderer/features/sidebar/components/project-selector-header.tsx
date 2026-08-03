@@ -198,7 +198,7 @@ export function ProjectSelectorHeader({
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right">
-                {openFolder.isPending ? "Adding..." : "Add repository"}
+                {openFolder.isPending ? "正在添加…" : "添加仓库"}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -220,7 +220,7 @@ export function ProjectSelectorHeader({
             <button
               className="p-2 rounded-md hover:bg-muted/50 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70 outline-offset-2"
               type="button"
-              title={validSelection?.name || "Select repository"}
+              title={validSelection?.name || "选择仓库"}
             >
               <ProjectIcon
                 gitOwner={validSelection?.gitOwner}
@@ -232,14 +232,14 @@ export function ProjectSelectorHeader({
           <PopoverContent className="w-64 p-0" align="start" sideOffset={4}>
             <Command shouldFilter={false}>
               <CommandInput
-                placeholder="Search repositories..."
+                placeholder="搜索仓库…"
                 value={searchQuery}
                 onValueChange={setSearchQuery}
               />
               <CommandList className="max-h-[300px] overflow-y-auto">
                 {isLoadingProjects ? (
                   <div className="px-2.5 py-4 text-center text-sm text-muted-foreground">
-                    Loading...
+                    正在加载…
                   </div>
                 ) : filteredProjects.length > 0 ? (
                   <CommandGroup>
@@ -267,19 +267,17 @@ export function ProjectSelectorHeader({
                     })}
                   </CommandGroup>
                 ) : (
-                  <CommandEmpty>No repositories found.</CommandEmpty>
+                  <CommandEmpty>未找到仓库。</CommandEmpty>
                 )}
               </CommandList>
               <div className="border-t border-border/50 py-1">
                 <button
                   onClick={handleOpenFolder}
                   disabled={openFolder.isPending}
-                  className="flex items-center gap-1.5 min-h-[32px] py-[5px] px-1.5 mx-1 w-[calc(100%-8px)] rounded-md text-sm cursor-default select-none outline-hidden dark:hover:bg-neutral-800 hover:text-foreground transition-colors"
+                  className="flex items-center gap-1.5 min-h-[32px] py-[5px] px-1.5 mx-1 w-[calc(100%-8px)] rounded-md text-sm cursor-default select-none outline-hidden hover:bg-accent hover:text-accent-foreground transition-colors"
                 >
                   <FolderPlusIcon className="h-4 w-4 text-muted-foreground" />
-                  <span>
-                    {openFolder.isPending ? "Adding..." : "Add repository"}
-                  </span>
+                  <span>{openFolder.isPending ? "正在添加…" : "添加仓库"}</span>
                 </button>
               </div>
             </Command>
@@ -289,7 +287,7 @@ export function ProjectSelectorHeader({
     );
   }
 
-  // No projects - show "Add repository" prompt
+  // No projects - show "添加仓库" prompt
   if (
     !validSelection &&
     (!projects || projects.length === 0) &&
@@ -303,7 +301,7 @@ export function ProjectSelectorHeader({
           className="flex items-center gap-2 w-full px-2 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted/50"
         >
           <FolderPlusIcon className="h-4 w-4" />
-          <span>{openFolder.isPending ? "Adding..." : "Add repository"}</span>
+          <span>{openFolder.isPending ? "正在添加…" : "添加仓库"}</span>
         </button>
       </div>
     );
@@ -332,7 +330,7 @@ export function ProjectSelectorHeader({
             />
             <div className="flex flex-col flex-1 min-w-0 text-left">
               <span className="truncate font-medium">
-                {validSelection?.name || "Select repository"}
+                {validSelection?.name || "选择仓库"}
               </span>
               {displayInfo && (
                 <span className="flex items-center gap-1 text-xs text-muted-foreground truncate">
@@ -351,14 +349,14 @@ export function ProjectSelectorHeader({
         <PopoverContent className="w-64 p-0" align="start" sideOffset={4}>
           <Command shouldFilter={false}>
             <CommandInput
-              placeholder="Search repositories..."
+              placeholder="搜索仓库…"
               value={searchQuery}
               onValueChange={setSearchQuery}
             />
             <CommandList className="max-h-[300px] overflow-y-auto">
               {isLoadingProjects ? (
                 <div className="px-2.5 py-4 text-center text-sm text-muted-foreground">
-                  Loading...
+                  正在加载…
                 </div>
               ) : filteredProjects.length > 0 ? (
                 <CommandGroup>
@@ -384,19 +382,17 @@ export function ProjectSelectorHeader({
                   })}
                 </CommandGroup>
               ) : (
-                <CommandEmpty>No repositories found.</CommandEmpty>
+                <CommandEmpty>未找到仓库。</CommandEmpty>
               )}
             </CommandList>
             <div className="border-t border-border/50 py-1">
               <button
                 onClick={handleOpenFolder}
                 disabled={openFolder.isPending}
-                className="flex items-center gap-1.5 min-h-[32px] py-[5px] px-1.5 mx-1 w-[calc(100%-8px)] rounded-md text-sm cursor-default select-none outline-hidden dark:hover:bg-neutral-800 hover:text-foreground transition-colors"
+                className="flex items-center gap-1.5 min-h-[32px] py-[5px] px-1.5 mx-1 w-[calc(100%-8px)] rounded-md text-sm cursor-default select-none outline-hidden hover:bg-accent hover:text-accent-foreground transition-colors"
               >
                 <FolderPlusIcon className="h-4 w-4 text-muted-foreground" />
-                <span>
-                  {openFolder.isPending ? "Adding..." : "Add repository"}
-                </span>
+                <span>{openFolder.isPending ? "正在添加…" : "添加仓库"}</span>
               </button>
             </div>
           </Command>
@@ -407,11 +403,11 @@ export function ProjectSelectorHeader({
       {validSelection && (
         <button
           onClick={() => {
-            setSettingsActiveTab("profile");
+            setSettingsActiveTab("provider");
             setSettingsDialogOpen(true);
           }}
           className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-          title="Settings"
+          title="设置"
         >
           <Settings className="h-4 w-4" />
         </button>
@@ -422,7 +418,7 @@ export function ProjectSelectorHeader({
         <button
           onClick={onNewWorkspace}
           className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-          title="New workspace"
+          title="新建工作区"
         >
           <Plus className="h-4 w-4" />
         </button>

@@ -125,7 +125,7 @@ export function Terminal({
       xtermRef.current.writeln(
         `\r\n\r\n[Process exited with code ${event.exitCode}]`,
       );
-      xtermRef.current.writeln("[Press any key to restart]");
+      xtermRef.current.writeln("[按任意键重新启动]");
     }
   }, []);
 
@@ -274,9 +274,7 @@ export function Terminal({
           xterm.focus();
         },
         onError: (err) => {
-          xterm.write(
-            `\x1b[31m[Failed to start terminal: ${err.message}]\x1b[0m\r\n`,
-          );
+          xterm.write(`\x1b[31m[终端启动失败: ${err.message}]\x1b[0m\r\n`);
         },
       },
     );

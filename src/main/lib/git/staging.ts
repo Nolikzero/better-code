@@ -101,7 +101,7 @@ export const createStagingRouter = () => {
               }
             } catch (error) {
               errors.push(
-                `${file.filePath}: ${error instanceof Error ? error.message : "Unknown error"}`,
+                `${file.filePath}: ${error instanceof Error ? error.message : "未知错误"}`,
               );
             }
           }

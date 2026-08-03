@@ -445,7 +445,7 @@ export function createCodexTransformer() {
 
       case "turn.failed": {
         yield* endTextBlock();
-        const errorMessage = event.error?.message || "Codex execution failed";
+        const errorMessage = event.error?.message || "Codex 执行失败";
         yield {
           type: "error",
           errorText: errorMessage,
@@ -457,7 +457,7 @@ export function createCodexTransformer() {
 
       case "error": {
         yield* endTextBlock();
-        const errorMessage = event.message || "Unknown error";
+        const errorMessage = event.message || "未知错误";
 
         // Check for auth errors
         if (

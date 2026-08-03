@@ -130,8 +130,9 @@ export function ScaleControl({
             }}
             className={cn(
               "flex items-center justify-center w-[calc(100%-8px)] mx-1 first:mt-1 last:mb-1 min-h-[32px] text-sm rounded-md transition-colors",
-              "dark:hover:bg-neutral-800 hover:bg-accent",
-              value === preset && "dark:bg-neutral-800 bg-accent font-medium",
+              "hover:bg-accent hover:text-accent-foreground",
+              value === preset &&
+                "bg-accent text-accent-foreground font-medium",
             )}
           >
             {preset}%

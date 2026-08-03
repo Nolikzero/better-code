@@ -1,5 +1,5 @@
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { AgentsSettingsDialog } from "../../components/dialogs/agents-settings-dialog";
 import { AgentsShortcutsDialog } from "../../components/dialogs/agents-shortcuts-dialog";
 import { LoginModal } from "../../components/dialogs/login-modal";
@@ -17,7 +17,6 @@ import {
   chatsSidebarWidthAtom,
   isDesktopAtom,
   isFullscreenAtom,
-  onboardingCompletedAtom,
   quickOpenDialogOpenAtom,
 } from "../../lib/atoms";
 import { useIsMobile } from "../../lib/hooks/use-mobile";
@@ -134,7 +133,6 @@ export function AgentsLayout() {
   const setQuickOpenDialogOpen = useSetAtom(quickOpenDialogOpenAtom);
   const [selectedChatId, setSelectedChatId] = useAtom(selectedAgentChatIdAtom);
   const [selectedProject, setSelectedProject] = useAtom(selectedProjectAtom);
-  const setOnboardingCompleted = useSetAtom(onboardingCompletedAtom);
   const selectedChatViewMode = useAtomValue(
     selectedChatId
       ? chatViewModeAtomFamily(selectedChatId)
@@ -191,37 +189,6 @@ export function AgentsLayout() {
     }
   }, [sidebarOpen, isDesktop]);
   const setChatId = useAgentSubChatStore((state) => state.setChatId);
-
-  // Desktop user state
-  const [desktopUser, setDesktopUser] = useState<{
-    id: string;
-    email: string;
-    name: string | null;
-    imageUrl: string | null;
-    username: string | null;
-  } | null>(null);
-
-  // Fetch desktop user on mount
-  useEffect(() => {
-    async function fetchUser() {
-      if (window.desktopApi?.getUser) {
-        const user = await window.desktopApi.getUser();
-        setDesktopUser(user);
-      }
-    }
-    fetchUser();
-  }, []);
-
-  // Handle sign out
-  const handleSignOut = useCallback(async () => {
-    // Clear selected project and onboarding on logout
-    setSelectedProject(null);
-    setSelectedChatId(null);
-    setOnboardingCompleted(false);
-    if (window.desktopApi?.logout) {
-      await window.desktopApi.logout();
-    }
-  }, [setSelectedProject, setSelectedChatId, setOnboardingCompleted]);
 
   // Initialize sub-chats when chat is selected
   useEffect(() => {
@@ -367,8 +334,6 @@ export function AgentsLayout() {
           style={{ borderRightWidth: "0.5px" }}
         >
           <AgentsSidebar
-            desktopUser={desktopUser}
-            onSignOut={handleSignOut}
             onToggleSidebar={handleCloseSidebar}
             hasChanges={hasChanges}
           />

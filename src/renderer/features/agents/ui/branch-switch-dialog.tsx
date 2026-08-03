@@ -29,14 +29,10 @@ export const BranchSwitchDialog = memo(function BranchSwitchDialog({
   onCancel,
 }: BranchSwitchDialogProps) {
   const actionText =
-    pendingSwitch?.action === "send-message"
-      ? "Continuing this conversation"
-      : "Creating a new chat";
+    pendingSwitch?.action === "send-message" ? "继续此对话" : "正在新建对话";
 
   const buttonText =
-    pendingSwitch?.action === "send-message"
-      ? "Switch & Send"
-      : "Switch & Create";
+    pendingSwitch?.action === "send-message" ? "切换并发送" : "切换并创建";
 
   return (
     <AlertDialog
@@ -50,28 +46,28 @@ export const BranchSwitchDialog = memo(function BranchSwitchDialog({
     >
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Switch branch?</AlertDialogTitle>
+          <AlertDialogTitle>切换分支？</AlertDialogTitle>
         </AlertDialogHeader>
         <AlertDialogDescription className="px-5 pb-5">
-          {actionText} requires switching from{" "}
+          {actionText} 需要将分支从{" "}
           <span className="font-medium text-foreground">
             {pendingSwitch?.currentBranch}
           </span>{" "}
-          to{" "}
+          切换到{" "}
           <span className="font-medium text-foreground">
             {pendingSwitch?.targetBranch}
           </span>
-          .
+          。
           <br />
           <br />
-          Make sure you have committed or stashed any changes before switching.
+          切换前请确保已提交或暂存所有更改。
         </AlertDialogDescription>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isPending} onClick={onCancel}>
-            Cancel
+            取消
           </AlertDialogCancel>
           <AlertDialogAction onClick={onConfirm} disabled={isPending} autoFocus>
-            {isPending ? "Switching..." : buttonText}
+            {isPending ? "正在切换…" : buttonText}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

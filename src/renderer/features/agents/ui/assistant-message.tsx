@@ -230,7 +230,7 @@ export const AssistantMessage = memo(function AssistantMessage({
               toolCallId: parentId,
               input: {
                 subagent_type: "unknown-agent",
-                description: "Incomplete task",
+                description: "未完成任务",
               },
             }}
             nestedTools={group.parts}
@@ -272,7 +272,7 @@ export const AssistantMessage = memo(function AssistantMessage({
           {/* Only show Summary label if there are steps to collapse */}
           {isFinalText && visibleStepsCount > 0 && (
             <div className="text-[12px] uppercase tracking-wider text-muted-foreground/60 font-medium mb-1">
-              Response
+              响应
             </div>
           )}
           <ChatMarkdownRenderer content={part.text} size="sm" />

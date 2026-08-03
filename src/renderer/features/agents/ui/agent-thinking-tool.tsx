@@ -64,7 +64,7 @@ export const AgentThinkingTool = memo(function AgentThinkingTool({
 
   // Show interrupted state if thinking was interrupted without completing
   if (isInterrupted && !thinkingText) {
-    return <AgentToolInterrupted toolName="Thinking" />;
+    return <AgentToolInterrupted toolName="思考" />;
   }
 
   return (
@@ -77,7 +77,7 @@ export const AgentThinkingTool = memo(function AgentThinkingTool({
         <div className="flex-1 min-w-0 flex items-center gap-1">
           <div className="text-xs flex items-center gap-1.5 min-w-0">
             <span className="font-medium whitespace-nowrap shrink-0 text-muted-foreground">
-              {isStreaming ? "Thinking" : "Thought"}
+              {isStreaming ? "正在思考" : "已思考"}
             </span>
             {/* Preview text when collapsed */}
             {!isExpanded && previewText && (

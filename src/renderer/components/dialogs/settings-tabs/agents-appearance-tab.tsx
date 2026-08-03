@@ -1,388 +1,185 @@
-import { useAtom, useSetAtom } from "jotai";
-import { AnimatePresence, motion } from "motion/react";
+import { useAtom } from "jotai";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useTheme } from "next-themes";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
 } from "../../../components/ui/select";
-import { IconSpinner } from "../../../icons";
 import {
-  fullThemeDataAtom,
   selectedFullThemeIdAtom,
-  systemDarkThemeIdAtom,
-  systemLightThemeIdAtom,
   type VSCodeFullTheme,
 } from "../../../lib/atoms";
 import {
+  ALUCARD_THEME_ID,
   BUILTIN_THEMES,
+  DRACULA_THEME_ID,
   getBuiltinThemeById,
+  resolveBuiltinThemeId,
 } from "../../../lib/themes/builtin-themes";
-import {
-  applyCSSVariables,
-  generateCSSVariables,
-  getThemeTypeFromColors,
-  removeCSSVariables,
-} from "../../../lib/themes/vscode-to-css-mapping";
 import { cn } from "../../../lib/utils";
 
-// Hook to detect narrow screen
-function useIsNarrowScreen(): boolean {
-  const [isNarrow, setIsNarrow] = useState(false);
+const PALETTE_KEYS = [
+  "editor.background",
+  "button.background",
+  "textLink.foreground",
+  "terminal.ansiGreen",
+  "terminal.ansiYellow",
+  "errorForeground",
+] as const;
 
-  useEffect(() => {
-    const checkWidth = () => {
-      setIsNarrow(window.innerWidth <= 768);
-    };
-
-    checkWidth();
-    window.addEventListener("resize", checkWidth);
-    return () => window.removeEventListener("resize", checkWidth);
-  }, []);
-
-  return isNarrow;
-}
-
-// Check if a hex color is visible (not too transparent)
-function isVisibleColor(hex: string | undefined): boolean {
-  if (!hex) return false;
-  // Remove # if present
-  const cleanHex = hex.replace(/^#/, "");
-  // If 8 characters, check alpha
-  if (cleanHex.length === 8) {
-    const alpha = Number.parseInt(cleanHex.slice(6, 8), 16);
-    // Consider colors with less than 50% opacity as "not visible" for accent purposes
-    return alpha >= 128;
-  }
-  return true;
-}
-
-// Theme preview box with dot and "Aa" text
 function ThemePreviewBox({
   theme,
-  size = "md",
-  className,
+  compact = false,
 }: {
-  theme: VSCodeFullTheme | null;
-  size?: "sm" | "md";
-  className?: string;
+  theme: VSCodeFullTheme;
+  compact?: boolean;
 }) {
-  const bgColor = theme?.colors?.["editor.background"] || "#1a1a1a";
-
-  // Get accent color, preferring button.background and skipping transparent colors
-  const getAccentColor = () => {
-    const candidates = [
-      theme?.colors?.["button.background"],
-      theme?.colors?.["textLink.foreground"],
-      theme?.colors?.focusBorder,
-      theme?.colors?.["activityBarBadge.background"],
-    ];
-    for (const color of candidates) {
-      if (isVisibleColor(color)) {
-        return color;
-      }
-    }
-    return "#0034FF";
-  };
-
-  const accentColor = getAccentColor();
-  const isDark = theme ? theme.type === "dark" : true;
-
-  const sizeClasses =
-    size === "sm"
-      ? "w-7 h-5 text-[9px] gap-0.5 rounded-xs"
-      : "w-8 h-6 text-[10px] gap-1 rounded-xs";
-
-  const dotSize = size === "sm" ? "w-1 h-1" : "w-1.5 h-1.5";
-
   return (
     <div
       className={cn(
-        "shrink-0 flex items-center justify-center font-semibold",
-        sizeClasses,
-        className,
+        "flex shrink-0 items-center overflow-hidden rounded-sm border",
+        compact ? "h-6 w-9" : "h-9 w-14",
       )}
       style={{
-        backgroundColor: bgColor,
-        boxShadow: "inset 0 0 0 0.5px rgba(128, 128, 128, 0.3)",
+        backgroundColor: theme.colors["editor.background"],
+        borderColor: theme.colors["sideBar.border"],
       }}
+      aria-hidden="true"
     >
-      {/* Accent dot to the left of text */}
-      <div
-        className={cn("rounded-full shrink-0", dotSize)}
-        style={{ backgroundColor: accentColor }}
+      <span
+        className="h-full w-[38%]"
+        style={{ backgroundColor: theme.colors["sideBar.background"] }}
       />
-      <span style={{ color: isDark ? "#fff" : "#000", opacity: 0.9 }}>Aa</span>
+      <span
+        className="mx-auto block rounded-full"
+        style={{
+          width: compact ? 7 : 10,
+          height: compact ? 7 : 10,
+          backgroundColor: theme.colors["button.background"],
+        }}
+      />
+    </div>
+  );
+}
+
+function PaletteStrip({ theme }: { theme: VSCodeFullTheme }) {
+  return (
+    <div className="flex items-center gap-1" aria-label={`${theme.name} 色板`}>
+      {PALETTE_KEYS.map((key) => (
+        <span
+          key={key}
+          className="h-3.5 w-3.5 rounded-[3px] border border-foreground/10"
+          style={{ backgroundColor: theme.colors[key] }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function SystemThemeCard({
+  label,
+  theme,
+}: {
+  label: string;
+  theme: VSCodeFullTheme;
+}) {
+  return (
+    <div className="flex min-w-0 items-center gap-3 rounded-md border border-border/80 bg-card/70 p-3 shadow-sm">
+      <ThemePreviewBox theme={theme} />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-xs font-medium text-foreground">{label}</span>
+          <PaletteStrip theme={theme} />
+        </div>
+        <p className="mt-1 truncate text-xs text-muted-foreground">
+          {theme.name}
+        </p>
+      </div>
     </div>
   );
 }
 
 export function AgentsAppearanceTab() {
-  const { resolvedTheme, setTheme: setNextTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  const isNarrowScreen = useIsNarrowScreen();
-
-  // Theme atoms
+  const shouldReduceMotion = useReducedMotion();
+  const { resolvedTheme } = useTheme();
   const [selectedThemeId, setSelectedThemeId] = useAtom(
     selectedFullThemeIdAtom,
   );
-  const [systemLightThemeId, setSystemLightThemeId] = useAtom(
-    systemLightThemeIdAtom,
-  );
-  const [systemDarkThemeId, setSystemDarkThemeId] = useAtom(
-    systemDarkThemeIdAtom,
-  );
-  const setFullThemeData = useSetAtom(fullThemeDataAtom);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // Group themes by type
-  const darkThemes = useMemo(
-    () => BUILTIN_THEMES.filter((t) => t.type === "dark"),
-    [],
-  );
-  const lightThemes = useMemo(
-    () => BUILTIN_THEMES.filter((t) => t.type === "light"),
-    [],
-  );
-
-  // Is system mode selected
-  const isSystemMode = selectedThemeId === null;
-
-  // Get the current theme for display
-  const currentTheme = useMemo(() => {
-    if (selectedThemeId === null) {
-      return null; // System mode
-    }
-    return BUILTIN_THEMES.find((t) => t.id === selectedThemeId) || null;
-  }, [selectedThemeId]);
-
-  // Get theme objects for system mode selectors
-  const systemLightTheme = useMemo(
-    () => getBuiltinThemeById(systemLightThemeId),
-    [systemLightThemeId],
-  );
-  const systemDarkTheme = useMemo(
-    () => getBuiltinThemeById(systemDarkThemeId),
-    [systemDarkThemeId],
-  );
-
-  // Apply theme based on current settings
-  const applyTheme = useCallback(
-    (themeId: string | null) => {
-      if (themeId === null) {
-        // System mode - apply theme based on system preference
-        removeCSSVariables();
-        setFullThemeData(null);
-        setNextTheme("system");
-
-        // Apply the appropriate system theme
-        const isDark = resolvedTheme === "dark";
-        const systemTheme = isDark
-          ? getBuiltinThemeById(systemDarkThemeId)
-          : getBuiltinThemeById(systemLightThemeId);
-
-        if (systemTheme) {
-          const cssVars = generateCSSVariables(systemTheme.colors);
-          applyCSSVariables(cssVars);
-        }
-        return;
-      }
-
-      const theme = BUILTIN_THEMES.find((t) => t.id === themeId);
-      if (theme) {
-        setFullThemeData(theme);
-
-        // Apply CSS variables
-        const cssVars = generateCSSVariables(theme.colors);
-        applyCSSVariables(cssVars);
-
-        // Sync next-themes with theme type
-        const themeType = getThemeTypeFromColors(theme.colors);
-        if (themeType === "dark") {
-          document.documentElement.classList.add("dark");
-          document.documentElement.classList.remove("light");
-        } else {
-          document.documentElement.classList.remove("dark");
-          document.documentElement.classList.add("light");
-        }
-        setNextTheme(themeType);
-      }
-    },
-    [
-      resolvedTheme,
-      systemLightThemeId,
-      systemDarkThemeId,
-      setFullThemeData,
-      setNextTheme,
-    ],
-  );
-
-  // Handle main theme selection
-  const handleThemeChange = useCallback(
-    (value: string) => {
-      if (value === "system") {
-        setSelectedThemeId(null);
-        applyTheme(null);
-      } else {
-        setSelectedThemeId(value);
-        applyTheme(value);
-      }
-    },
-    [setSelectedThemeId, applyTheme],
-  );
-
-  // Handle system light theme change
-  const handleSystemLightThemeChange = useCallback(
-    (themeId: string) => {
-      setSystemLightThemeId(themeId);
-      // If currently in light mode, apply the new theme
-      if (resolvedTheme === "light" && selectedThemeId === null) {
-        const theme = getBuiltinThemeById(themeId);
-        if (theme) {
-          const cssVars = generateCSSVariables(theme.colors);
-          applyCSSVariables(cssVars);
-        }
-      }
-    },
-    [setSystemLightThemeId, resolvedTheme, selectedThemeId],
-  );
-
-  // Handle system dark theme change
-  const handleSystemDarkThemeChange = useCallback(
-    (themeId: string) => {
-      setSystemDarkThemeId(themeId);
-      // If currently in dark mode, apply the new theme
-      if (resolvedTheme === "dark" && selectedThemeId === null) {
-        const theme = getBuiltinThemeById(themeId);
-        if (theme) {
-          const cssVars = generateCSSVariables(theme.colors);
-          applyCSSVariables(cssVars);
-        }
-      }
-    },
-    [setSystemDarkThemeId, resolvedTheme, selectedThemeId],
-  );
-
-  // Re-apply theme when system preference changes
-  useEffect(() => {
-    if (selectedThemeId === null && mounted) {
-      const isDark = resolvedTheme === "dark";
-      const systemTheme = isDark
-        ? getBuiltinThemeById(systemDarkThemeId)
-        : getBuiltinThemeById(systemLightThemeId);
-
-      if (systemTheme) {
-        const cssVars = generateCSSVariables(systemTheme.colors);
-        applyCSSVariables(cssVars);
-      }
-    }
-  }, [
-    resolvedTheme,
-    selectedThemeId,
-    systemLightThemeId,
-    systemDarkThemeId,
-    mounted,
-  ]);
-
-  if (!mounted) {
-    return (
-      <div className="p-6 space-y-6">
-        <div className="h-48 flex items-center justify-center">
-          <IconSpinner className="h-8 w-8 text-foreground" />
-        </div>
-      </div>
-    );
+  const alucard = getBuiltinThemeById(ALUCARD_THEME_ID);
+  const dracula = getBuiltinThemeById(DRACULA_THEME_ID);
+  if (!alucard || !dracula) {
+    throw new Error("内置应用主题不可用");
   }
 
-  return (
-    <div className="p-6 space-y-6 overflow-y-auto max-h-[70vh]">
-      {/* Header - hidden on narrow screens since it's in the navigation bar */}
-      {!isNarrowScreen && (
-        <div className="flex flex-col space-y-1.5 text-center sm:text-left">
-          <h3 className="text-sm font-semibold text-foreground">Appearance</h3>
-          <p className="text-xs text-muted-foreground">
-            Customize the look and feel of the interface
-          </p>
-        </div>
-      )}
+  const normalizedSelectedThemeId = useMemo(
+    () =>
+      selectedThemeId === null
+        ? null
+        : resolveBuiltinThemeId(
+            selectedThemeId,
+            resolvedTheme === "light" ? "light" : "dark",
+          ),
+    [resolvedTheme, selectedThemeId],
+  );
 
-      {/* Interface Theme Section */}
-      <div className="bg-background rounded-lg border border-border overflow-hidden">
-        {/* Main theme selector */}
-        <div className="flex items-center justify-between p-4">
-          <div className="flex flex-col space-y-1">
-            <span className="text-sm font-medium text-foreground">
-              Interface theme
-            </span>
-            <span className="text-xs text-muted-foreground">
-              Select or customize your interface color scheme
-            </span>
+  const currentTheme =
+    normalizedSelectedThemeId === null
+      ? resolvedTheme === "light"
+        ? alucard
+        : dracula
+      : (getBuiltinThemeById(normalizedSelectedThemeId) ?? dracula);
+  const isSystemMode = normalizedSelectedThemeId === null;
+
+  return (
+    <div className="max-h-[70vh] space-y-5 overflow-y-auto p-6">
+      <div className="hidden flex-col space-y-1.5 text-left md:flex">
+        <h3 className="text-sm font-semibold text-foreground">外观</h3>
+        <p className="text-xs text-muted-foreground">
+          使用 Dracula 与 Alucard 统一应用、代码和终端配色
+        </p>
+      </div>
+
+      <section className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+        <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h4 className="text-sm font-medium text-card-foreground">
+              界面主题
+            </h4>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              跟随系统会在浅色 Alucard 与深色 Dracula 之间自动切换。
+            </p>
           </div>
 
           <Select
-            value={selectedThemeId ?? "system"}
-            onValueChange={handleThemeChange}
+            value={normalizedSelectedThemeId ?? "system"}
+            onValueChange={(value) => {
+              setSelectedThemeId(value === "system" ? null : value);
+            }}
           >
-            <SelectTrigger className="w-auto px-2">
-              <div className="flex items-center gap-2 min-w-0 -ml-[3px]">
-                {isSystemMode ? (
-                  <>
-                    <ThemePreviewBox
-                      theme={
-                        resolvedTheme === "dark"
-                          ? (systemDarkTheme ?? null)
-                          : (systemLightTheme ?? null)
-                      }
-                    />
-                    <span className="text-xs truncate">System preference</span>
-                  </>
-                ) : (
-                  <>
-                    <ThemePreviewBox theme={currentTheme} />
-                    <span className="text-xs truncate">
-                      {currentTheme?.name || "Select"}
-                    </span>
-                  </>
-                )}
+            <SelectTrigger className="w-full min-w-0 bg-input-background px-2.5 sm:w-[190px]">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <ThemePreviewBox theme={currentTheme} compact />
+                <span className="truncate text-xs">
+                  {isSystemMode ? "跟随系统" : currentTheme.name}
+                </span>
               </div>
             </SelectTrigger>
             <SelectContent>
-              {/* System preference option */}
               <SelectItem value="system">
-                <div className="flex items-center gap-2">
-                  <ThemePreviewBox
-                    theme={
-                      resolvedTheme === "dark"
-                        ? (systemDarkTheme ?? null)
-                        : (systemLightTheme ?? null)
-                    }
-                    size="sm"
-                  />
-                  <span className="truncate">System preference</span>
+                <div className="flex items-center gap-2.5">
+                  <ThemePreviewBox theme={currentTheme} compact />
+                  <span>跟随系统</span>
                 </div>
               </SelectItem>
-
-              {/* Light themes */}
-              {lightThemes.map((theme) => (
+              {BUILTIN_THEMES.map((theme) => (
                 <SelectItem key={theme.id} value={theme.id}>
-                  <div className="flex items-center gap-2">
-                    <ThemePreviewBox theme={theme} size="sm" />
-                    <span className="truncate">{theme.name}</span>
-                  </div>
-                </SelectItem>
-              ))}
-
-              {/* Dark themes */}
-              {darkThemes.map((theme) => (
-                <SelectItem key={theme.id} value={theme.id}>
-                  <div className="flex items-center gap-2">
-                    <ThemePreviewBox theme={theme} size="sm" />
-                    <span className="truncate">{theme.name}</span>
+                  <div className="flex items-center gap-2.5">
+                    <ThemePreviewBox theme={theme} compact />
+                    <span>{theme.name}</span>
                   </div>
                 </SelectItem>
               ))}
@@ -390,94 +187,46 @@ export function AgentsAppearanceTab() {
           </Select>
         </div>
 
-        {/* Animated Light/Dark theme selectors for system mode */}
         <AnimatePresence initial={false}>
           {isSystemMode && (
             <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{
-                height: { type: "spring", stiffness: 300, damping: 30 },
-                opacity: { duration: 0.2 },
-              }}
-              className="overflow-hidden"
+              initial={shouldReduceMotion ? false : { opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={shouldReduceMotion ? undefined : { opacity: 0, height: 0 }}
+              transition={
+                shouldReduceMotion
+                  ? { duration: 0 }
+                  : { duration: 0.18, ease: "easeOut" }
+              }
+              className="overflow-hidden border-t border-border"
             >
-              {/* Light theme selector */}
-              <div className="flex items-center justify-between p-4 border-t border-border">
-                <div className="flex flex-col space-y-1">
-                  <span className="text-sm font-medium text-foreground">
-                    Light
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    Theme to use for light system appearance
-                  </span>
-                </div>
-
-                <Select
-                  value={systemLightThemeId}
-                  onValueChange={handleSystemLightThemeChange}
-                >
-                  <SelectTrigger className="w-auto px-2">
-                    <div className="flex items-center gap-2 min-w-0 -ml-[3px]">
-                      <ThemePreviewBox theme={systemLightTheme || null} />
-                      <span className="text-xs truncate">
-                        {systemLightTheme?.name || "Select"}
-                      </span>
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {lightThemes.map((theme) => (
-                      <SelectItem key={theme.id} value={theme.id}>
-                        <div className="flex items-center gap-2">
-                          <ThemePreviewBox theme={theme} size="sm" />
-                          <span className="truncate">{theme.name}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Dark theme selector */}
-              <div className="flex items-center justify-between p-4 border-t border-border">
-                <div className="flex flex-col space-y-1">
-                  <span className="text-sm font-medium text-foreground">
-                    Dark
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    Theme to use for dark system appearance
-                  </span>
-                </div>
-
-                <Select
-                  value={systemDarkThemeId}
-                  onValueChange={handleSystemDarkThemeChange}
-                >
-                  <SelectTrigger className="w-auto px-2">
-                    <div className="flex items-center gap-2 min-w-0 -ml-[3px]">
-                      <ThemePreviewBox theme={systemDarkTheme || null} />
-                      <span className="text-xs truncate">
-                        {systemDarkTheme?.name || "Select"}
-                      </span>
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {darkThemes.map((theme) => (
-                      <SelectItem key={theme.id} value={theme.id}>
-                        <div className="flex items-center gap-2">
-                          <ThemePreviewBox theme={theme} size="sm" />
-                          <span className="truncate">{theme.name}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="grid gap-3 bg-muted/35 p-4 sm:grid-cols-2">
+                <SystemThemeCard label="浅色外观" theme={alucard} />
+                <SystemThemeCard label="深色外观" theme={dracula} />
               </div>
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+      </section>
+
+      <section className="rounded-lg border border-border bg-card p-4 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h4 className="text-sm font-medium text-card-foreground">
+              当前色板
+            </h4>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              编辑器、终端、差异视图与交互状态共享同一套语义颜色。
+            </p>
+          </div>
+          <div className="flex items-center gap-3 rounded-md border border-border bg-background/70 px-3 py-2">
+            <PaletteStrip theme={currentTheme} />
+            <span className="text-xs font-medium text-foreground">
+              {currentTheme.name}
+            </span>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { resolveBuiltinAgent } from "@shared/builtin-agents";
 import type { UIMessageChunk } from "@shared/types";
 import { observable } from "@trpc/server/observable";
 import { eq } from "drizzle-orm";
@@ -9,12 +10,19 @@ import { z } from "zod";
 import { chats, getDatabase, subChats } from "../../db";
 import { computeAllStats } from "../../db/computed-stats";
 import { chatStatsEmitter } from "../../events";
+import { parseProviderHistory } from "../../providers/api/context";
 import { providerRegistry } from "../../providers/registry";
-import type { ProviderId } from "../../providers/types";
 import { getRalphService } from "../../ralph";
 import { RalphOrchestrator } from "../../ralph/orchestrator";
 import { publicProcedure, router } from "../index";
 import { buildAgentsOption } from "./agent-utils";
+
+const providerIdSchema = z
+  .string()
+  .trim()
+  .min(5)
+  .max(80)
+  .regex(/^api:[0-9a-f-]+$/i);
 
 /**
  * Parse @[agent:name], @[skill:name], and @[tool:name] mentions from prompt text
@@ -194,7 +202,7 @@ function createAskUserQuestionCallback(
           type: "ask-user-question-timeout",
           toolUseId,
         } as UIMessageChunk);
-        resolve({ approved: false, message: "Timed out" });
+        resolve({ approved: false, message: "操作超时" });
       }, 60000);
 
       pendingToolApprovals.set(toolUseId, {
@@ -264,7 +272,7 @@ export const chatRouter = router({
         model: z.string().optional(),
         maxThinkingTokens: z.number().optional(),
         images: z.array(imageAttachmentSchema).optional(),
-        providerId: z.enum(["claude", "codex", "opencode"]).optional(),
+        providerId: providerIdSchema,
         addDirs: z.array(z.string()).optional(),
         // Codex-specific settings
         sandboxMode: z
@@ -348,6 +356,7 @@ export const chatRouter = router({
               .from(subChats)
               .where(eq(subChats.id, input.subChatId))
               .get();
+            const builtinAgent = resolveBuiltinAgent(existing?.agentId);
 
             console.log(
               `[SD] M:LOAD sub=${subId} messages=${existing?.messages ? "found" : "none"}`,
@@ -430,7 +439,7 @@ export const chatRouter = router({
                   chatId: input.chatId,
                   subChatId: input.subChatId,
                   cwd: input.cwd,
-                  providerId: (input.providerId || "claude") as ProviderId,
+                  providerId: input.providerId,
                   originalPrompt: input.prompt,
                   existingMessages,
                 },
@@ -449,13 +458,13 @@ export const chatRouter = router({
             }
 
             // 4. Get provider
-            const providerId = input.providerId || "claude";
-            const provider = providerRegistry.get(providerId as ProviderId);
+            const providerId = input.providerId;
+            const provider = providerRegistry.get(providerId);
 
             if (!provider) {
               emitError(
-                new Error(`Provider '${providerId}' not found`),
-                "Provider not found",
+                new Error(`未找到提供商“${providerId}”`),
+                "未找到提供商",
               );
               safeEmit({ type: "finish" } as UIMessageChunk);
               safeComplete();
@@ -505,6 +514,7 @@ export const chatRouter = router({
 
             // 8. Stream from provider
             try {
+              const history = parseProviderHistory(existingMessages);
               for await (const chunk of provider.chat({
                 subChatId: input.subChatId,
                 chatId: input.chatId,
@@ -518,6 +528,8 @@ export const chatRouter = router({
                 abortController,
                 addDirs: input.addDirs,
                 images: input.images,
+                history,
+                systemPrompt: builtinAgent?.systemPrompt,
                 // Claude-specific options
                 mcpServers: providerConfig?.mcpServers,
                 agents:
@@ -827,7 +839,7 @@ export const chatRouter = router({
             console.log(
               `[SD] M:END sub=${subId} reason=unexpected_error n=${chunkCount} t=${duration}s`,
             );
-            emitError(error, "Unexpected error");
+            emitError(error, "意外错误");
             safeEmit({ type: "finish" } as UIMessageChunk);
             safeComplete();
           }
@@ -838,7 +850,7 @@ export const chatRouter = router({
           console.log(`[SD] M:CLEANUP sub=${subId}`);
           isObservableActive = false;
           abortController.abort();
-          clearPendingApprovals("Session ended.", input.subChatId);
+          clearPendingApprovals("会话已结束。", input.subChatId);
 
           // Clear streamId on abort so conversation can be resumed
           const db = getDatabase();
@@ -857,14 +869,14 @@ export const chatRouter = router({
     .input(
       z.object({
         projectPath: z.string(),
-        providerId: z.enum(["claude", "codex", "opencode"]).default("claude"),
+        providerId: providerIdSchema,
       }),
     )
     .query(async ({ input }) => {
       const { projectPath, providerId } = input;
 
       try {
-        const provider = providerRegistry.get(providerId as ProviderId);
+        const provider = providerRegistry.get(providerId);
         if (!provider?.getProviderConfig) {
           // Fallback: read ~/.claude.json directly for Claude
           if (providerId === "claude") {
@@ -907,7 +919,7 @@ export const chatRouter = router({
       for (const provider of providerRegistry.getAll()) {
         if (provider.isActive(input.subChatId)) {
           provider.cancel(input.subChatId);
-          clearPendingApprovals("Session cancelled.", input.subChatId);
+          clearPendingApprovals("会话已取消。", input.subChatId);
           return { cancelled: true };
         }
       }

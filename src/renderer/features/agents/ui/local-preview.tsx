@@ -35,9 +35,9 @@ interface LocalPreviewProps {
 }
 
 const VIEWPORT_PRESETS = {
-  mobile: { label: "Mobile", width: 393, height: 852, Icon: Smartphone },
-  tablet: { label: "Tablet", width: 820, height: 1180, Icon: Tablet },
-  desktop: { label: "Desktop", width: null, height: null, Icon: Monitor },
+  mobile: { label: "手机", width: 393, height: 852, Icon: Smartphone },
+  tablet: { label: "平板", width: 820, height: 1180, Icon: Tablet },
+  desktop: { label: "桌面", width: null, height: null, Icon: Monitor },
 } as const;
 
 type ViewportPreset = keyof typeof VIEWPORT_PRESETS;
@@ -188,7 +188,7 @@ export function LocalPreview({ chatId, onClose }: LocalPreviewProps) {
     const handleError = () => {
       setIsLoading(false);
       setIsRefreshing(false);
-      setLoadError("Failed to load preview");
+      setLoadError("预览加载失败");
     };
 
     iframe.addEventListener("load", handleLoad);
@@ -228,7 +228,7 @@ export function LocalPreview({ chatId, onClose }: LocalPreviewProps) {
       <div className="flex flex-col h-full bg-tl-background">
         <div className="flex items-center gap-2 px-3 h-10 bg-tl-background shrink-0 border-b border-border/50">
           <div className="flex-1 min-w-0 text-xs text-muted-foreground">
-            Local preview
+            本地预览
           </div>
           {onClose && (
             <Button
@@ -243,12 +243,10 @@ export function LocalPreview({ chatId, onClose }: LocalPreviewProps) {
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
           <Globe className="h-10 w-10 text-muted-foreground/40 mb-3" />
           <p className="text-sm text-muted-foreground">
-            {isStarting
-              ? "Starting dev server..."
-              : "Waiting for dev server..."}
+            {isStarting ? "正在启动开发服务器…" : "正在等待开发服务器…"}
           </p>
           <p className="text-xs text-muted-foreground/70 mt-1">
-            The preview will appear when a port is detected
+            检测到端口后将在此显示预览
           </p>
           {/* Compact log block */}
           {isStarting && logLines.length > 0 && (
@@ -371,7 +369,7 @@ export function LocalPreview({ chatId, onClose }: LocalPreviewProps) {
               logLines.length > 0 && "text-foreground",
             )}
             onClick={() => setIsLogsOpen(!isLogsOpen)}
-            title="Server logs"
+            title="服务器日志"
           >
             <Terminal className="h-3.5 w-3.5 text-muted-foreground" />
           </Button>
@@ -388,7 +386,7 @@ export function LocalPreview({ chatId, onClose }: LocalPreviewProps) {
                 </div>
               ) : (
                 <p className="p-3 text-xs text-muted-foreground text-center">
-                  No logs yet
+                  暂无日志
                 </p>
               )}
             </div>
@@ -436,7 +434,7 @@ export function LocalPreview({ chatId, onClose }: LocalPreviewProps) {
             ref={iframeRef}
             src={localPreviewUrl}
             className="w-full h-full border-0"
-            title="Local Preview"
+            title="本地预览"
             onLoad={() => {
               setIsLoading(false);
               setIsRefreshing(false);
@@ -447,7 +445,7 @@ export function LocalPreview({ chatId, onClose }: LocalPreviewProps) {
               <div className="max-w-md text-center px-4">
                 <Globe className="h-9 w-9 text-muted-foreground/60 mx-auto mb-3" />
                 <div className="text-sm font-medium text-foreground">
-                  Preview failed to load
+                  预览加载失败
                 </div>
                 <div className="text-xs text-muted-foreground mt-1 break-words">
                   {loadError}
@@ -461,7 +459,7 @@ export function LocalPreview({ chatId, onClose }: LocalPreviewProps) {
                   className="mt-3 h-7 px-2 text-xs"
                   onClick={handleReload}
                 >
-                  Retry
+                  重试
                 </Button>
               </div>
             </div>

@@ -7,8 +7,6 @@ import { useCallback, useMemo, useState } from "react";
 import { Button } from "../../../components/ui/button";
 import {
   AgentIcon,
-  ClaudeCodeIcon,
-  CodexIcon,
   CustomTerminalIcon,
   DiffIcon,
   IconSpinner,
@@ -28,6 +26,7 @@ import {
   type SubChatMeta,
   useAgentSubChatStore,
 } from "../stores/sub-chat-store";
+import { getProviderIcon } from "./provider-icons";
 
 interface DiffStats {
   fileCount: number;
@@ -74,19 +73,17 @@ export function MobileChatHeader({
   const defaultProvider = useAtomValue(defaultProviderIdAtom);
   const chatOverrides = useAtomValue(chatProviderOverridesAtom);
 
-  // Determine effective provider
-  const effectiveProvider: ProviderId = chatId
-    ? chatOverrides[chatId] || defaultProvider
-    : defaultProvider;
-  const ProviderIcon =
-    effectiveProvider === "codex" ? CodexIcon : ClaudeCodeIcon;
-
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   // Find active sub-chat metadata
   const activeSubChat = useMemo(() => {
     return allSubChats.find((sc) => sc.id === activeSubChatId);
   }, [allSubChats, activeSubChatId]);
+
+  const effectiveProvider: ProviderId =
+    activeSubChat?.providerId ??
+    (chatId ? chatOverrides[chatId] : undefined) ??
+    defaultProvider;
 
   const isLoading = activeSubChatId
     ? loadingSubChatsAtomValue.has(activeSubChatId)
@@ -137,7 +134,7 @@ export function MobileChatHeader({
           size="icon"
           onClick={onBackToChats}
           className="h-7 w-7 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] shrink-0 rounded-md"
-          aria-label="All projects"
+          aria-label="所有项目"
           style={{
             // @ts-expect-error - WebKit-specific property
             WebkitAppRegion: "no-drag",
@@ -153,13 +150,13 @@ export function MobileChatHeader({
         onOpenChange={setIsHistoryOpen}
         items={sortedSubChats}
         onSelect={handleSelectFromHistory}
-        placeholder="Search chats..."
-        emptyMessage="No results"
+        placeholder="搜索对话…"
+        emptyMessage="没有结果"
         align="start"
         side="bottom"
         sideOffset={8}
         getItemValue={(subChat) =>
-          `${subChat.name || "New Chat"} ${subChat.id}`
+          `${subChat.name || "新建对话"} ${subChat.id}`
         }
         renderItem={(subChat) => {
           const timeAgo = formatTimeAgo(
@@ -174,7 +171,7 @@ export function MobileChatHeader({
               )}
             >
               <span className="text-sm truncate">
-                {subChat.name || "New Chat"}
+                {subChat.name || "新建对话"}
               </span>
               <span className="text-sm text-muted-foreground whitespace-nowrap">
                 {timeAgo}
@@ -197,7 +194,10 @@ export function MobileChatHeader({
               }}
             >
               {/* Provider Icon */}
-              <ProviderIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+              {getProviderIcon(
+                effectiveProvider,
+                "w-3.5 h-3.5 text-muted-foreground shrink-0",
+              )}
 
               {/* Mode Icon */}
               <div className="shrink-0 w-3.5 h-3.5 flex items-center justify-center">
@@ -212,7 +212,7 @@ export function MobileChatHeader({
 
               {/* Name */}
               <span className="truncate text-left">
-                {activeSubChat?.name || "New Chat"}
+                {activeSubChat?.name || "新建对话"}
               </span>
 
               {/* Chevron */}
@@ -297,7 +297,7 @@ export function MobileChatHeader({
             className="h-7 px-2 gap-1.5 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] rounded-md flex items-center"
           >
             <IconTextUndo className="h-4 w-4" />
-            <span className="text-xs">Restore</span>
+            <span className="text-xs">恢复</span>
           </Button>
         )}
       </div>

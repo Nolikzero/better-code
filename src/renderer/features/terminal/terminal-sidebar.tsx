@@ -71,7 +71,7 @@ function getNextTerminalName(terminals: TerminalInstance[]): string {
 
   const maxNumber =
     existingNumbers.length > 0 ? Math.max(...existingNumbers) : 0;
-  return `Terminal ${maxNumber + 1}`;
+  return `终端 ${maxNumber + 1}`;
 }
 
 export function TerminalSidebar({
@@ -365,7 +365,7 @@ export function TerminalSidebar({
             size="icon"
             onClick={handleMobileClose}
             className="h-7 w-7 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] shrink-0 rounded-md"
-            aria-label="Back to chat"
+            aria-label="返回对话"
             style={{
               // @ts-expect-error - WebKit-specific property
               WebkitAppRegion: "no-drag",
@@ -418,7 +418,7 @@ export function TerminalSidebar({
             </motion.div>
           ) : (
             <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-              {!canRenderTerminal ? "" : "No terminal open"}
+              {!canRenderTerminal ? "" : "没有打开的终端"}
             </div>
           )}
         </div>
@@ -471,13 +471,13 @@ export function TerminalSidebar({
                   size="icon"
                   onClick={closeSidebar}
                   className="h-6 w-6 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] text-foreground shrink-0 rounded-md"
-                  aria-label="Close terminal"
+                  aria-label="关闭终端"
                 >
                   <IconDoubleChevronRight className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
-                Close terminal
+                关闭终端
                 <Kbd>⌘J</Kbd>
               </TooltipContent>
             </Tooltip>
@@ -505,7 +505,7 @@ export function TerminalSidebar({
             </motion.div>
           ) : (
             <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-              {!canRenderTerminal ? "" : "No terminal open"}
+              {!canRenderTerminal ? "" : "没有打开的终端"}
             </div>
           )}
         </div>

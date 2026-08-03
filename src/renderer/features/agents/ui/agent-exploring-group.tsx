@@ -52,12 +52,10 @@ export const AgentExploringGroup = memo(function AgentExploringGroup({
   // Build subtitle parts
   const subtitleParts: string[] = [];
   if (fileCount > 0) {
-    subtitleParts.push(`${fileCount} ${fileCount === 1 ? "file" : "files"}`);
+    subtitleParts.push(`${fileCount} 个文件`);
   }
   if (searchCount > 0) {
-    subtitleParts.push(
-      `${searchCount} ${searchCount === 1 ? "search" : "searches"}`,
-    );
+    subtitleParts.push(`${searchCount} 次搜索`);
   }
   const subtitle = subtitleParts.join(" ");
 
@@ -71,7 +69,7 @@ export const AgentExploringGroup = memo(function AgentExploringGroup({
         <div className="flex-1 min-w-0 flex items-center gap-1">
           <div className="text-xs flex items-center gap-1.5 min-w-0">
             <span className="font-medium whitespace-nowrap shrink-0 text-muted-foreground">
-              {isStreaming ? "Exploring" : "Explored"}
+              {isStreaming ? "正在探索" : "已探索"}
             </span>
             <span className="text-muted-foreground/60 whitespace-nowrap shrink-0">
               {subtitle}

@@ -34,7 +34,7 @@ export const AgentExitPlanModeTool = memo(function AgentExitPlanModeTool({
       data-plan-section="true"
     >
       <div className="text-[12px] uppercase tracking-wider text-muted-foreground/60 font-medium mb-1">
-        Plan
+        规划
       </div>
       <ChatMarkdownRenderer content={planText} size="sm" />
     </div>

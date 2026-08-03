@@ -35,7 +35,7 @@ export function CollapsibleSteps({
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <ListTree className="w-3.5 h-3.5 shrink-0" />
           <span className="font-medium whitespace-nowrap">
-            {stepsCount} {stepsCount === 1 ? "step" : "steps"}
+            {stepsCount} 个步骤
           </span>
         </div>
         <button

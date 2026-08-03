@@ -1,3 +1,4 @@
+import type { BuiltinAgentId } from "@shared/builtin-agents";
 import type { ProviderId } from "@shared/types";
 import { create } from "zustand";
 import type { AgentMode } from "../atoms";
@@ -10,6 +11,7 @@ export interface SubChatMeta {
   mode?: AgentMode;
   providerId?: ProviderId;
   modelId?: string;
+  agentId?: BuiltinAgentId | null;
 }
 
 interface AgentSubChatStore {
@@ -35,6 +37,10 @@ interface AgentSubChatStore {
   updateSubChatMode: (subChatId: string, mode: AgentMode) => void;
   updateSubChatProvider: (subChatId: string, providerId: ProviderId) => void;
   updateSubChatModel: (subChatId: string, modelId: string) => void;
+  updateSubChatAgent: (
+    subChatId: string,
+    agentId: BuiltinAgentId | null,
+  ) => void;
   updateSubChatTimestamp: (subChatId: string) => void;
   reset: () => void;
 }
@@ -205,6 +211,15 @@ export const useAgentSubChatStore = create<AgentSubChatStore>((set, get) => ({
     set({
       allSubChats: allSubChats.map((sc) =>
         sc.id === subChatId ? { ...sc, modelId } : sc,
+      ),
+    });
+  },
+
+  updateSubChatAgent: (subChatId, agentId) => {
+    const { allSubChats } = get();
+    set({
+      allSubChats: allSubChats.map((sc) =>
+        sc.id === subChatId ? { ...sc, agentId } : sc,
       ),
     });
   },

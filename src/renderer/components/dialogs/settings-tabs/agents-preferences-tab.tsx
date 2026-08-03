@@ -51,9 +51,9 @@ export function AgentsPreferencesTab() {
       {/* Header - hidden on narrow screens since it's in the navigation bar */}
       {!isNarrowScreen && (
         <div className="flex flex-col space-y-1.5 text-center sm:text-left">
-          <h3 className="text-sm font-semibold text-foreground">Preferences</h3>
+          <h3 className="text-sm font-semibold text-foreground">偏好设置</h3>
           <p className="text-xs text-muted-foreground">
-            Configure Claude's behavior and features
+            配置智能体的行为与功能
           </p>
         </div>
       )}
@@ -65,14 +65,11 @@ export function AgentsPreferencesTab() {
           <div className="flex items-start justify-between">
             <div className="flex flex-col space-y-1">
               <span className="text-sm font-medium text-foreground">
-                Extended Thinking
+                扩展思考
               </span>
               <span className="text-xs text-muted-foreground">
-                Enable deeper reasoning with more thinking tokens (uses more
-                credits).{" "}
-                <span className="text-foreground/70">
-                  Disables response streaming.
-                </span>
+                使用更多思考 Token 启用深度推理（会消耗更多额度），并
+                <span className="text-foreground/70">禁用响应流式传输。</span>
               </span>
             </div>
             <Switch
@@ -85,11 +82,10 @@ export function AgentsPreferencesTab() {
           <div className="flex items-start justify-between">
             <div className="flex flex-col space-y-1">
               <span className="text-sm font-medium text-foreground">
-                Desktop Notifications
+                桌面通知
               </span>
               <span className="text-xs text-muted-foreground">
-                Show native notifications when agent completes work while you're
-                away
+                离开时智能体完成工作后显示系统通知
               </span>
             </div>
             <Switch
@@ -102,10 +98,10 @@ export function AgentsPreferencesTab() {
           <div className="flex items-start justify-between">
             <div className="flex flex-col space-y-1">
               <span className="text-sm font-medium text-foreground">
-                Sound Notifications
+                声音通知
               </span>
               <span className="text-xs text-muted-foreground">
-                Play a sound when agent completes work while you're away
+                离开时智能体完成工作后播放提示音
               </span>
             </div>
             <Switch checked={soundEnabled} onCheckedChange={setSoundEnabled} />
@@ -118,10 +114,10 @@ export function AgentsPreferencesTab() {
         <div className="flex items-start justify-between p-4">
           <div className="flex flex-col space-y-1">
             <span className="text-sm font-medium text-foreground">
-              Quick Switch
+              快速切换
             </span>
             <span className="text-xs text-muted-foreground">
-              What <Kbd>⌃Tab</Kbd> switches between
+              设置 <Kbd>⌃Tab</Kbd> 的切换对象
             </span>
           </div>
 
@@ -131,12 +127,12 @@ export function AgentsPreferencesTab() {
           >
             <SelectTrigger className="w-auto px-2">
               <span className="text-xs">
-                {ctrlTabTarget === "workspaces" ? "Workspaces" : "Agents"}
+                {ctrlTabTarget === "workspaces" ? "工作区" : "智能体"}
               </span>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="workspaces">Workspaces</SelectItem>
-              <SelectItem value="agents">Agents</SelectItem>
+              <SelectItem value="workspaces">工作区</SelectItem>
+              <SelectItem value="agents">智能体</SelectItem>
             </SelectContent>
           </Select>
         </div>

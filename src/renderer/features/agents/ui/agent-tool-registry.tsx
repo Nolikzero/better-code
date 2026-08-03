@@ -103,7 +103,7 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
     title: (part) => {
       const isPending =
         part.state !== "output-available" && part.state !== "output-error";
-      return isPending ? "Running Task" : "Task completed";
+      return isPending ? "正在运行任务" : "任务已完成";
     },
     subtitle: (part) => {
       const description = part.input?.description || "";
@@ -119,9 +119,9 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
     title: (part) => {
       const isPending =
         part.state !== "output-available" && part.state !== "output-error";
-      if (isPending) return "Grepping";
+      if (isPending) return "正在搜索文本";
       const numFiles = part.output?.numFiles || 0;
-      return numFiles > 0 ? `Grepped ${numFiles} files` : "No matches";
+      return numFiles > 0 ? `已搜索 ${numFiles} 个文件` : "没有匹配项";
     },
     subtitle: (part) => {
       const pattern = part.input?.pattern || "";
@@ -129,7 +129,7 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
 
       if (path) {
         // Show "pattern in path"
-        const combined = `${pattern} in ${path}`;
+        const combined = `${pattern}，位于 ${path}`;
         return combined.length > 40 ? `${combined.slice(0, 37)}...` : combined;
       }
 
@@ -143,9 +143,9 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
     title: (part) => {
       const isPending =
         part.state !== "output-available" && part.state !== "output-error";
-      if (isPending) return "Exploring files";
+      if (isPending) return "正在浏览文件";
       const numFiles = part.output?.numFiles || 0;
-      return numFiles > 0 ? `Found ${numFiles} files` : "No files found";
+      return numFiles > 0 ? `找到 ${numFiles} 个文件` : "未找到文件";
     },
     subtitle: (part) => {
       const pattern = part.input?.pattern || "";
@@ -153,7 +153,7 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
 
       if (targetDir) {
         // Show "pattern in targetDir"
-        const combined = `${pattern} in ${targetDir}`;
+        const combined = `${pattern}，位于 ${targetDir}`;
         return combined.length > 40 ? `${combined.slice(0, 37)}...` : combined;
       }
 
@@ -167,7 +167,7 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
     title: (part) => {
       const isPending =
         part.state !== "output-available" && part.state !== "output-error";
-      return isPending ? "Reading" : "Read";
+      return isPending ? "正在读取" : "已读取";
     },
     subtitle: (part) => {
       const filePath = part.input?.file_path || "";
@@ -185,8 +185,8 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
     icon: IconEditFile,
     title: (part) => {
       const filePath = part.input?.file_path || "";
-      if (!filePath) return "Edit"; // Show "Edit" if no file path yet during streaming
-      return filePath.split("/").pop() || "Edit";
+      if (!filePath) return "编辑"; // Show "编辑" if no file path yet during streaming
+      return filePath.split("/").pop() || "编辑";
     },
     subtitle: (part) => {
       const isPending =
@@ -206,7 +206,7 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
           oldString,
           newString,
         );
-        return `<span style="font-size: 11px; color: light-dark(#587C0B, #A3BE8C)">+${addedLines}</span> <span style="font-size: 11px; color: light-dark(#AD0807, #AE5A62)">-${removedLines}</span>`;
+        return `<span style="font-size: 11px; color: light-dark(#14710a, #50fa7b)">+${addedLines}</span> <span style="font-size: 11px; color: light-dark(#cb3a2a, #ff5555)">-${removedLines}</span>`;
       }
 
       return "";
@@ -217,7 +217,7 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
   // Cloning indicator - shown while sandbox is being created
   "tool-cloning": {
     icon: GitBranch,
-    title: () => "Cloning repo",
+    title: () => "正在克隆仓库",
     variant: "simple",
   },
 
@@ -226,17 +226,17 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
     icon: PlanningIcon,
     title: () => {
       const messages = [
-        "Crafting...",
-        "Whirring...",
-        "Imagining...",
-        "Cooking...",
-        "Sussing...",
-        "Unravelling...",
-        "Creating...",
-        "Spinning...",
-        "Computing...",
-        "Synthesizing...",
-        "Manifesting...",
+        "正在构思…",
+        "正在运转…",
+        "正在想象…",
+        "正在处理…",
+        "正在分析…",
+        "正在梳理…",
+        "正在创建…",
+        "正在思考…",
+        "正在计算…",
+        "正在整合…",
+        "正在生成…",
       ];
       return messages[Math.floor(Math.random() * messages.length)];
     },
@@ -245,7 +245,7 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
 
   "tool-Write": {
     icon: WriteFileIcon,
-    title: () => "Create",
+    title: () => "创建",
     subtitle: (part) => {
       const filePath = part.input?.file_path || "";
       if (!filePath) return ""; // Don't show "file" placeholder during streaming
@@ -259,7 +259,7 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
     title: (part) => {
       const isPending =
         part.state !== "output-available" && part.state !== "output-error";
-      return isPending ? "Running command" : "Ran command";
+      return isPending ? "正在运行命令" : "命令已运行";
     },
     subtitle: (part) => {
       const command = part.input?.command || "";
@@ -275,7 +275,7 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
     title: (part) => {
       const isPending =
         part.state !== "output-available" && part.state !== "output-error";
-      return isPending ? "Fetching" : "Fetched";
+      return isPending ? "正在获取" : "已获取";
     },
     subtitle: (part) => {
       const url = part.input?.url || "";
@@ -293,7 +293,7 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
     title: (part) => {
       const isPending =
         part.state !== "output-available" && part.state !== "output-error";
-      return isPending ? "Searching web" : "Searched web";
+      return isPending ? "正在搜索网页" : "网页搜索完成";
     },
     subtitle: (part) => {
       const query = part.input?.query || "";
@@ -310,14 +310,14 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
         part.state !== "output-available" && part.state !== "output-error";
       const action = part.input?.action || "update";
       if (isPending) {
-        return action === "add" ? "Adding todo" : "Updating todos";
+        return action === "add" ? "正在添加待办事项" : "正在更新待办事项";
       }
-      return action === "add" ? "Added todo" : "Updated todos";
+      return action === "add" ? "已添加待办事项" : "已更新待办事项";
     },
     subtitle: (part) => {
       const todos = part.input?.todos || [];
       if (todos.length === 0) return "";
-      return `${todos.length} ${todos.length === 1 ? "item" : "items"}`;
+      return `${todos.length} 项`;
     },
     variant: "simple",
   },
@@ -330,15 +330,15 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
       const action = part.input?.action || "create";
       const status = part.input?.plan?.status;
       if (isPending) {
-        if (action === "create") return "Creating plan";
-        if (action === "approve") return "Approving plan";
-        if (action === "complete") return "Completing plan";
-        return "Updating plan";
+        if (action === "create") return "正在创建规划";
+        if (action === "approve") return "正在批准规划";
+        if (action === "complete") return "正在完成规划";
+        return "正在更新规划";
       }
-      if (status === "awaiting_approval") return "Plan ready for review";
-      if (status === "approved") return "Plan approved";
-      if (status === "completed") return "Plan completed";
-      return action === "create" ? "Created plan" : "Updated plan";
+      if (status === "awaiting_approval") return "规划已可审查";
+      if (status === "approved") return "规划已批准";
+      if (status === "completed") return "规划已完成";
+      return action === "create" ? "已创建规划" : "已更新规划";
     },
     subtitle: (part) => {
       const plan = part.input?.plan;
@@ -352,7 +352,7 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
           ? `${plan.title} (${completed}/${steps.length})`
           : plan.title;
       }
-      return steps.length > 0 ? `${completed}/${steps.length} steps` : "";
+      return steps.length > 0 ? `${completed}/${steps.length} 个步骤` : "";
     },
     variant: "simple",
   },
@@ -362,7 +362,7 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
     title: (part) => {
       const isPending =
         part.state !== "output-available" && part.state !== "output-error";
-      return isPending ? "Finishing plan" : "Plan complete";
+      return isPending ? "正在完成规划" : "规划已完成";
     },
     subtitle: () => "",
     variant: "simple",
@@ -374,7 +374,7 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
     title: (part) => {
       const isPending =
         part.state !== "output-available" && part.state !== "output-error";
-      return isPending ? "Editing notebook" : "Edited notebook";
+      return isPending ? "正在编辑笔记本" : "已编辑笔记本";
     },
     subtitle: (part) => {
       const filePath = part.input?.file_path || "";
@@ -390,7 +390,7 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
     title: (part) => {
       const isPending =
         part.state !== "output-available" && part.state !== "output-error";
-      return isPending ? "Getting output" : "Got output";
+      return isPending ? "正在获取输出" : "已获取输出";
     },
     subtitle: (part) => {
       const pid = part.input?.pid;
@@ -404,7 +404,7 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
     title: (part) => {
       const isPending =
         part.state !== "output-available" && part.state !== "output-error";
-      return isPending ? "Stopping shell" : "Stopped shell";
+      return isPending ? "正在停止 Shell" : "Shell 已停止";
     },
     subtitle: (part) => {
       const pid = part.input?.pid;
@@ -419,7 +419,7 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
     title: (part) => {
       const isPending =
         part.state !== "output-available" && part.state !== "output-error";
-      return isPending ? "Listing resources" : "Listed resources";
+      return isPending ? "正在列出资源" : "已列出资源";
     },
     subtitle: (part) => {
       const server = part.input?.server || "";
@@ -433,7 +433,7 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
     title: (part) => {
       const isPending =
         part.state !== "output-available" && part.state !== "output-error";
-      return isPending ? "Reading resource" : "Read resource";
+      return isPending ? "正在读取资源" : "已读取资源";
     },
     subtitle: (part) => {
       const uri = part.input?.uri || "";
@@ -448,7 +448,7 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
     title: (part) => {
       const isPending =
         part.state !== "output-available" && part.state !== "output-error";
-      return isPending ? "Compacting..." : "Compacted";
+      return isPending ? "正在压缩…" : "已压缩";
     },
     variant: "simple",
   },
@@ -459,7 +459,7 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
     title: (part) => {
       const isPending =
         part.state !== "output-available" && part.state !== "output-error";
-      return isPending ? "Thinking..." : "Thought";
+      return isPending ? "正在思考…" : "思考完成";
     },
     subtitle: (part) => {
       const text = part.input?.text || "";
@@ -475,7 +475,7 @@ export const AgentToolRegistry: Record<string, ToolMeta> = {
     title: (part) => {
       const isPending =
         part.state !== "output-available" && part.state !== "output-error";
-      return isPending ? "Generating PRD..." : "PRD Generated";
+      return isPending ? "正在生成 PRD…" : "PRD 已生成";
     },
     subtitle: (part) => {
       const goal = part.output?.goal || part.input?.goal || "";

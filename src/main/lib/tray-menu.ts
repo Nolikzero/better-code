@@ -58,8 +58,8 @@ function getRecentChats(): RecentChat[] {
 
     return rows.map((row) => ({
       id: row.chatId,
-      name: row.chatName || row.chatBranch || "Untitled",
-      projectName: row.projectName || "Unknown Project",
+      name: row.chatName || row.chatBranch || "未命名",
+      projectName: row.projectName || "未知项目",
     }));
   } catch (error) {
     console.error("[Tray] Failed to get recent chats:", error);
@@ -154,41 +154,41 @@ export function buildTrayMenu(): void {
   const template: Electron.MenuItemConstructorOptions[] = [
     // Show/Hide Window
     {
-      label: isWindowVisible ? "Hide Window" : "Show BetterCode",
+      label: isWindowVisible ? "隐藏窗口" : "显示 SamBetterCode",
       click: toggleWindowVisibility,
     },
     { type: "separator" },
 
     // New Chat
     {
-      label: "New Chat",
+      label: "新建对话",
       click: createNewChat,
     },
     { type: "separator" },
 
     // Recent Chats submenu
     {
-      label: "Recent Chats",
+      label: "最近对话",
       submenu:
         recentChats.length > 0
           ? recentChats.map((chat) => ({
               label: `${chat.name} - ${chat.projectName}`,
               click: () => navigateToChat(chat.id),
             }))
-          : [{ label: "No recent chats", enabled: false }],
+          : [{ label: "暂无最近对话", enabled: false }],
     },
     { type: "separator" },
 
     // Preferences
     {
-      label: "Preferences...",
+      label: "偏好设置…",
       click: openPreferences,
     },
     { type: "separator" },
 
     // Quit
     {
-      label: "Quit BetterCode",
+      label: "退出 SamBetterCode",
       click: () => app.quit(),
     },
   ];
@@ -206,8 +206,8 @@ export function updateTrayStatus(activeCount: number): void {
   // Update tooltip to show active sessions
   const tooltip =
     activeCount > 0
-      ? `BetterCode - ${activeCount} active session${activeCount > 1 ? "s" : ""}`
-      : "BetterCode";
+      ? `SamBetterCode - ${activeCount} 个活动会话`
+      : "SamBetterCode";
   tray.setToolTip(tooltip);
 
   // On macOS, use setTitle for menubar text
@@ -236,7 +236,7 @@ export function initTray(): () => void {
     }
 
     tray = new Tray(icon);
-    tray.setToolTip("BetterCode");
+    tray.setToolTip("SamBetterCode");
 
     // Platform-specific click behavior
     if (process.platform === "win32") {

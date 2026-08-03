@@ -26,12 +26,12 @@ export function MentionTooltipContent({
         )}
         {option.model && (
           <div className="text-xs text-muted-foreground">
-            Model: {option.model}
+            模型： {option.model}
           </div>
         )}
         {option.tools && option.tools.length > 0 && (
           <div className="text-xs text-muted-foreground break-words">
-            Tools: {option.tools.join(", ")}
+            工具： {option.tools.join(", ")}
           </div>
         )}
         <div className="text-[10px] text-muted-foreground/70 font-mono truncate w-full">

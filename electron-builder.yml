@@ -1,5 +1,5 @@
 appId: app.bettercode.desktop
-productName: BetterCode
+productName: SamBetterCode
 copyright: Copyright © 2026
 
 directories:
@@ -33,7 +33,7 @@ extraResources:
     filter:
       - "*"
   - from: resources/bin/VERSION
-    to: bin
+    to: bin/VERSION
   # Tray icons
   - from: build
     to: icons
@@ -99,7 +99,7 @@ nsis:
   installerIcon: build/icon.ico
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: BetterCode
+  shortcutName: SamBetterCode
 
 # Linux Configuration
 linux:
@@ -118,8 +118,8 @@ linux:
         - arm64
   category: Development
   icon: build/icon.png
-  maintainer: BetterCode
-  vendor: BetterCode
+  maintainer: SamBetterCode
+  vendor: SamBetterCode
 
 deb:
   priority: optional
@@ -138,5 +138,5 @@ publish:
 afterPack: scripts/afterPack.js
 
 # Native module handling
-npmRebuild: true
+npmRebuild: false
 nodeGypRebuild: false

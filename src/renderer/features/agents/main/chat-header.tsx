@@ -178,12 +178,12 @@ export function ChatHeader({
                   size="icon"
                   onClick={onOpenPreview}
                   className="h-6 w-6 p-0 hover:bg-foreground/10 transition-colors text-foreground shrink-0 rounded-md ml-2"
-                  aria-label="Open preview"
+                  aria-label="打开预览"
                 >
                   <IconOpenSidebarRight className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Open preview</TooltipContent>
+              <TooltipContent>打开预览</TooltipContent>
             </Tooltip>
           ) : (
             <PreviewSetupHoverCard>
@@ -193,7 +193,7 @@ export function ChatHeader({
                   size="icon"
                   disabled
                   className="h-6 w-6 p-0 text-muted-foreground shrink-0 rounded-md cursor-not-allowed pointer-events-none"
-                  aria-label="Preview not available"
+                  aria-label="预览不可用"
                 >
                   <IconOpenSidebarRight className="h-4 w-4" />
                 </Button>
@@ -209,7 +209,7 @@ export function ChatHeader({
               className="h-5 px-1.5 text-[11px] rounded-sm"
               onClick={() => onSetViewMode("chat")}
             >
-              Chat
+              对话
             </Button>
             <Button
               variant={viewMode === "split" ? "secondary" : "ghost"}
@@ -222,7 +222,7 @@ export function ChatHeader({
                 }
               }}
             >
-              Split
+              拆分
             </Button>
             <Button
               variant={viewMode === "preview" ? "secondary" : "ghost"}
@@ -235,7 +235,7 @@ export function ChatHeader({
                 }
               }}
             >
-              Preview
+              预览
             </Button>
             {/* Running indicator / Stop button */}
             {(isDevServerRunning || isDevServerStarting) && (
@@ -255,7 +255,7 @@ export function ChatHeader({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">
-                  {isDevServerStarting ? "Starting..." : "Stop dev server"}
+                  {isDevServerStarting ? "正在启动…" : "停止开发服务器"}
                 </TooltipContent>
               </Tooltip>
             )}
@@ -273,13 +273,13 @@ export function ChatHeader({
                   size="icon"
                   onClick={onOpenTerminal}
                   className="h-6 w-6 p-0 hover:bg-foreground/10 transition-colors text-foreground shrink-0 rounded-md ml-2"
-                  aria-label="Open terminal"
+                  aria-label="打开终端"
                 >
                   <TerminalSquare className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
-                Open terminal
+                打开终端
                 <Kbd>⌘J</Kbd>
               </TooltipContent>
             </Tooltip>
@@ -299,7 +299,9 @@ export function ChatHeader({
                 size="icon"
                 onClick={onToggleChatsSidebar}
                 className="h-6 w-6 p-0 hover:bg-foreground/10 transition-colors text-foreground shrink-0 rounded-md ml-2"
-                aria-label={isChatsSidebarOpen ? "Close chats" : "Open chats"}
+                aria-label={
+                  isChatsSidebarOpen ? "关闭对话列表" : "打开对话列表"
+                }
               >
                 {isChatsSidebarOpen ? (
                   <IconCloseSidebarRight className="h-4 w-4" />
@@ -309,7 +311,7 @@ export function ChatHeader({
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom">
-              {isChatsSidebarOpen ? "Close chats" : "Open chats"}
+              {isChatsSidebarOpen ? "关闭对话列表" : "打开对话列表"}
               <Kbd>⌘⇧\</Kbd>
             </TooltipContent>
           </Tooltip>
@@ -323,14 +325,14 @@ export function ChatHeader({
                 onClick={onRestoreWorkspace}
                 disabled={isRestoring}
                 className="h-6 px-2 gap-1.5 hover:bg-foreground/10 transition-colors text-foreground shrink-0 rounded-md ml-2 flex items-center"
-                aria-label="Restore workspace"
+                aria-label="恢复工作区"
               >
                 <IconTextUndo className="h-4 w-4" />
-                <span className="text-xs">Restore</span>
+                <span className="text-xs">恢复</span>
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom">
-              Restore workspace
+              恢复工作区
               <Kbd>⇧⌘E</Kbd>
             </TooltipContent>
           </Tooltip>

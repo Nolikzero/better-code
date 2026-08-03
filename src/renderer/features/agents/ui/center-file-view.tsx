@@ -274,7 +274,7 @@ export function CenterFileView() {
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom" sideOffset={4}>
-                Back (Esc)
+                返回（Esc）
               </TooltipContent>
             </Tooltip>
 
@@ -311,7 +311,7 @@ export function CenterFileView() {
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom" sideOffset={4}>
-              Back (Esc)
+              返回（Esc）
             </TooltipContent>
           </Tooltip>
 
@@ -345,7 +345,7 @@ export function CenterFileView() {
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom" sideOffset={4}>
-              {copied ? "Copied!" : "Copy content"}
+              {copied ? "已复制" : "复制内容"}
             </TooltipContent>
           </Tooltip>
         </div>
@@ -363,7 +363,7 @@ export function CenterFileView() {
         >
           {isLoading ? (
             <div className="flex items-center justify-center h-full text-muted-foreground">
-              Loading...
+              正在加载…
             </div>
           ) : highlightedCode ? (
             /* Native Shiki output with CSS-based line numbers */

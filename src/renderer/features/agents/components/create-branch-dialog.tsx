@@ -81,7 +81,7 @@ export function CreateBranchDialog({
 
   const createBranchMutation = trpc.changes.createBranch.useMutation({
     onSuccess: (data) => {
-      toast.success(`Branch '${data.branchName}' created successfully`);
+      toast.success(`分支“${data.branchName}”已创建`);
       // Invalidate branches query to refresh the list
       utils.changes.getBranches.invalidate({ worktreePath: projectPath });
       onBranchCreated(data.branchName);
@@ -90,7 +90,7 @@ export function CreateBranchDialog({
       setBaseBranch(defaultBranch);
     },
     onError: (error) => {
-      toast.error(`Failed to create branch: ${error.message}`);
+      toast.error(`创建分支失败：${error.message}`);
     },
   });
 
@@ -98,15 +98,13 @@ export function CreateBranchDialog({
     e.preventDefault();
 
     if (!branchName.trim()) {
-      toast.error("Branch name is required");
+      toast.error("请输入分支名称");
       return;
     }
 
     // Basic validation for branch name
     if (!/^[a-zA-Z0-9._/-]+$/.test(branchName)) {
-      toast.error(
-        "Branch name can only contain letters, numbers, dots, hyphens, underscores, and slashes",
-      );
+      toast.error("分支名称只能包含字母、数字、点、连字符、下划线和斜杠");
       return;
     }
 
@@ -121,14 +119,14 @@ export function CreateBranchDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <CanvasDialogContent className="sm:max-w-[350px] overflow-visible">
         <CanvasDialogHeader>
-          <DialogTitle>Create a Branch</DialogTitle>
+          <DialogTitle>创建分支</DialogTitle>
         </CanvasDialogHeader>
 
         <CanvasDialogBody className="space-y-4">
           {/* Branch Name Input */}
           <div className="space-y-2">
             <Label htmlFor="branch-name" className="text-sm">
-              Name
+              名称
             </Label>
             <Input
               id="branch-name"
@@ -153,7 +151,7 @@ export function CreateBranchDialog({
 
           {/* Base Branch Selection with Search */}
           <div className="space-y-2">
-            <Label className="text-sm">Create branch based on...</Label>
+            <Label className="text-sm">基于以下内容创建分支…</Label>
             {/* Using Popover WITHOUT Portal so it renders inside Dialog's DOM tree */}
             <PopoverPrimitive.Root
               open={baseBranchOpen}
@@ -183,13 +181,13 @@ export function CreateBranchDialog({
               >
                 <Command>
                   <CommandInput
-                    placeholder="Search branches..."
+                    placeholder="搜索分支…"
                     value={baseBranchSearch}
                     onValueChange={setBaseBranchSearch}
                   />
                   <CommandList className="max-h-[200px]">
                     {filteredBaseBranches.length === 0 ? (
-                      <CommandEmpty>No branches found.</CommandEmpty>
+                      <CommandEmpty>未找到分支。</CommandEmpty>
                     ) : (
                       <CommandGroup>
                         {filteredBaseBranches.map((branch) => (
@@ -233,7 +231,7 @@ export function CreateBranchDialog({
             disabled={createBranchMutation.isPending}
             className="transition-transform duration-150 active:scale-[0.97] rounded-md"
           >
-            Cancel
+            取消
           </Button>
           <Button
             type="button"
@@ -244,10 +242,10 @@ export function CreateBranchDialog({
             {createBranchMutation.isPending ? (
               <>
                 <IconSpinner className="w-4 h-4 mr-2" />
-                Creating...
+                正在创建…
               </>
             ) : (
-              "Create Branch"
+              "创建分支"
             )}
           </Button>
         </CanvasDialogFooter>

@@ -1,5 +1,22 @@
 # Changelog
 
+## SamBetterCode 汉化升级（2026-07-22）
+
+### 升级
+
+- 基于 BetterCode 上游 `main` 分支提交 `d8b0248f70b2` 完成源码升级与独立品牌迭代。
+- 将用户可见品牌统一为 SamBetterCode，并保留历史内部标识以兼容既有安装和数据。
+- 完成 onboarding、主界面、设置、项目、对话、Git、终端、Provider、Ralph、差异查看、错误和空状态的简体中文本地化。
+- 增加中文字体回退、中文换行和桌面布局适配，兼顾明暗主题与窄窗口。
+- 新建对话默认名称调整为“新建对话”，同时继续兼容历史数据中的 `New Chat`。
+- 重写中文 README 与贡献指南，补充环境要求、登录方式、构建、隐私和兼容性说明。
+
+### 兼容性
+
+- 保留 npm 包名 `bettercode-desktop`、Electron `appId`、深层链接协议、`.bettercode/worktrees`、更新缓存和 Windows AppUserModelId。
+- 保留 `LICENSE`、`NOTICE` 及上游英文历史版本记录。
+
+
 ## [0.0.15]
 
 ### Changed

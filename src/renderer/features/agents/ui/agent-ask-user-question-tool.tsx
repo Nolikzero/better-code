@@ -85,7 +85,7 @@ export const AgentAskUserQuestionTool = memo(function AgentAskUserQuestionTool({
     return (
       <div className="flex items-center gap-2 py-1 px-2 text-xs text-muted-foreground">
         <TextShimmer className="text-xs" duration={1.5}>
-          Asking question...
+          正在提问…
         </TextShimmer>
       </div>
     );
@@ -96,9 +96,9 @@ export const AgentAskUserQuestionTool = memo(function AgentAskUserQuestionTool({
     const firstQuestion = questions[0]?.header || questions[0]?.question;
     return (
       <div className="flex items-center gap-2 py-1 px-2 text-xs text-muted-foreground">
-        <span>{firstQuestion || "Question"}</span>
+        <span>{firstQuestion || "问题"}</span>
         <span className="text-muted-foreground/50">•</span>
-        <span>{isTimedOut ? "Timed out" : "Skipped"}</span>
+        <span>{isTimedOut ? "已超时" : "已跳过"}</span>
       </div>
     );
   }
@@ -107,9 +107,9 @@ export const AgentAskUserQuestionTool = memo(function AgentAskUserQuestionTool({
   if (state === "result" && isError) {
     return (
       <div className="flex items-center gap-2 py-1 px-2 text-xs text-muted-foreground">
-        <span>Question</span>
+        <span>问题</span>
         <span className="text-muted-foreground/50">•</span>
-        <span className="text-red-500">{effectiveErrorText || "Error"}</span>
+        <span className="text-red-500">{effectiveErrorText || "错误"}</span>
       </div>
     );
   }
@@ -120,7 +120,7 @@ export const AgentAskUserQuestionTool = memo(function AgentAskUserQuestionTool({
     if (entries.length === 0) {
       return (
         <div className="flex items-center gap-2 py-1 px-2 text-xs text-muted-foreground">
-          <span>Question answered</span>
+          <span>问题已回答</span>
         </div>
       );
     }
@@ -131,7 +131,7 @@ export const AgentAskUserQuestionTool = memo(function AgentAskUserQuestionTool({
         <div className="flex items-center gap-1.5 pl-2.5 pr-2 h-7 border-b border-border">
           <QuestionIcon className="w-3.5 h-3.5 text-muted-foreground" />
           <span className="text-xs text-muted-foreground">
-            {entries.length === 1 ? "Answer" : "Answers"}
+            {entries.length === 1 ? "回答" : "回答"}
           </span>
         </div>
         {/* Content */}
@@ -155,9 +155,9 @@ export const AgentAskUserQuestionTool = memo(function AgentAskUserQuestionTool({
   if (isStreaming) {
     return (
       <div className="flex items-center gap-2 py-1 px-2 text-xs text-muted-foreground">
-        <span>{firstQuestion || "Question"}</span>
+        <span>{firstQuestion || "问题"}</span>
         <span className="text-muted-foreground/50">•</span>
-        <span>Waiting for response...</span>
+        <span>等待响应…</span>
       </div>
     );
   }
@@ -176,9 +176,9 @@ export const AgentAskUserQuestionTool = memo(function AgentAskUserQuestionTool({
   ) {
     return (
       <div className="flex items-center gap-2 py-1 px-2 text-xs text-muted-foreground">
-        <span>{firstQuestion || "Question"}</span>
+        <span>{firstQuestion || "问题"}</span>
         <span className="text-muted-foreground/50">•</span>
-        <span>Submitting...</span>
+        <span>正在提交…</span>
       </div>
     );
   }
@@ -186,9 +186,9 @@ export const AgentAskUserQuestionTool = memo(function AgentAskUserQuestionTool({
   // Not streaming and state is "call" - it was truly interrupted
   return (
     <div className="flex items-center gap-2 py-1 px-2 text-xs text-muted-foreground">
-      <span>{firstQuestion || "Question"}</span>
+      <span>{firstQuestion || "问题"}</span>
       <span className="text-muted-foreground/50">•</span>
-      <span>Interrupted</span>
+      <span>已中断</span>
     </div>
   );
 });

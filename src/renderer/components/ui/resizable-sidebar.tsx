@@ -534,12 +534,12 @@ export function ResizableSidebar({
                     >
                       {!disableClickToClose && (
                         <div className="flex items-center gap-1 text-xs">
-                          <span>Close</span>
+                          <span>关闭</span>
                           <span className="text-muted-foreground inline-flex items-center gap-1">
-                            <span>Click</span>
+                            <span>单击</span>
                             {closeHotkey && (
                               <>
-                                <span>or</span>
+                                <span>或</span>
                                 <Kbd>{closeHotkey}</Kbd>
                               </>
                             )}
@@ -547,8 +547,8 @@ export function ResizableSidebar({
                         </div>
                       )}
                       <div className="flex items-center gap-1 text-xs">
-                        <span>Resize</span>
-                        <span className="text-muted-foreground">Drag</span>
+                        <span>调整大小</span>
+                        <span className="text-muted-foreground">拖动</span>
                       </div>
                     </div>
                   </motion.div>

@@ -258,7 +258,7 @@ export function useMessageHandling(
     // Trigger auto-rename on first message in a new sub-chat
     if (messages.length === 0 && !hasTriggeredRenameRef.current) {
       hasTriggeredRenameRef.current = true;
-      onAutoRename(text || "Image message", subChatId);
+      onAutoRename(text || "图片消息", subChatId);
     }
 
     clearAll();
@@ -334,8 +334,8 @@ export function useMessageHandling(
       await sendMessage({ role: "user", parts });
     } catch (error) {
       const errorMessage =
-        error instanceof Error ? error.message : "Failed to send message";
-      toast.error("Message failed to send", {
+        error instanceof Error ? error.message : "消息发送失败";
+      toast.error("消息发送失败", {
         description: errorMessage,
         duration: 5000,
       });
@@ -405,7 +405,7 @@ export function useMessageHandling(
     if (messages.length === 0 && !hasTriggeredRenameRef.current) {
       hasTriggeredRenameRef.current = true;
       // Extract text for rename (use first 50 chars or "Image message" if no text)
-      const renameText = text || "Image message";
+      const renameText = text || "图片消息";
       onAutoRename(renameText, subChatId);
     }
 
@@ -473,8 +473,8 @@ export function useMessageHandling(
       await sendMessage({ role: "user", parts: messageParts });
     } catch (error) {
       const errorMessage =
-        error instanceof Error ? error.message : "Failed to send message";
-      toast.error("Message failed to send", {
+        error instanceof Error ? error.message : "消息发送失败";
+      toast.error("消息发送失败", {
         description: errorMessage,
         duration: 5000,
       });

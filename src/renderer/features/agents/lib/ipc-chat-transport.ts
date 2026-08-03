@@ -2,12 +2,7 @@ import type { ChatTransport, UIMessage } from "ai";
 import { toast } from "sonner";
 import { getQueryClient } from "../../../contexts/TRPCProvider";
 import {
-  agentsLoginModalOpenAtom,
   chatProviderOverridesAtom,
-  codexApprovalPolicyAtom,
-  codexReasoningEffortAtom,
-  codexSandboxModeAtom,
-  codexWebSearchModeAtom,
   defaultProviderIdAtom,
   enabledProviderIdsAtom,
   extendedThinkingEnabledAtom,
@@ -30,12 +25,8 @@ import {
   addedDirectoriesAtomFamily,
   agentModeAtom,
   askUserQuestionResultsAtom,
-  authErrorProviderAtom,
   compactingSubChatsAtom,
   currentTodosAtomFamily,
-  lastSelectedModelIdAtom,
-  MODEL_ID_MAP,
-  pendingAuthRetryMessageAtom,
   pendingRalphAutoStartsAtom,
   pendingUserQuestionsAtom,
   ralphInjectedPromptsAtom,
@@ -43,70 +34,26 @@ import {
 } from "../atoms";
 import { useAgentSubChatStore } from "../stores/sub-chat-store";
 
-// Error categories and their user-friendly messages
+// Error categories returned by the API-provider boundary.
 const ERROR_TOAST_CONFIG: Record<
   string,
-  {
-    title: string;
-    description: string;
-    action?: { label: string; onClick: () => void };
-  }
+  { readonly title: string; readonly description: string }
 > = {
-  AUTH_FAILED_SDK: {
-    title: "Not logged in",
-    description: "Run 'claude login' in your terminal to authenticate",
-    action: {
-      label: "Copy command",
-      onClick: () => navigator.clipboard.writeText("claude login"),
-    },
-  },
-  INVALID_API_KEY_SDK: {
-    title: "Invalid API key",
-    description:
-      "Your Claude API key is invalid. Check your CLI configuration.",
-  },
   INVALID_API_KEY: {
-    title: "Invalid API key",
-    description:
-      "Your Claude API key is invalid. Check your CLI configuration.",
-  },
-  RATE_LIMIT_SDK: {
-    title: "Rate limited",
-    description: "Too many requests. Please wait a moment and try again.",
+    title: "API Key 无效",
+    description: "请检查服务商的 API Key、Base URL 和接口格式。",
   },
   RATE_LIMIT: {
-    title: "Rate limited",
-    description: "Too many requests. Please wait a moment and try again.",
-  },
-  OVERLOADED_SDK: {
-    title: "Claude is busy",
-    description:
-      "The service is overloaded. Please try again in a few moments.",
-  },
-  PROCESS_CRASH: {
-    title: "Claude crashed",
-    description:
-      "The Claude process exited unexpectedly. Try sending your message again.",
-  },
-  EXECUTABLE_NOT_FOUND: {
-    title: "Claude CLI not found",
-    description:
-      "Install Claude Code CLI: npm install -g @anthropic-ai/claude-code",
-    action: {
-      label: "Copy command",
-      onClick: () =>
-        navigator.clipboard.writeText(
-          "npm install -g @anthropic-ai/claude-code",
-        ),
-    },
+    title: "请求频率受限",
+    description: "服务商拒绝了过于频繁的请求，请稍候再试。",
   },
   NETWORK_ERROR: {
-    title: "Network error",
-    description: "Check your internet connection and try again.",
+    title: "网络错误",
+    description: "请检查 Base URL、网络连接和服务商运行状态。",
   },
   AUTH_FAILURE: {
-    title: "Authentication failed",
-    description: "Your session may have expired. Try logging in again.",
+    title: "身份验证失败",
+    description: "请前往设置检查 API Key 和服务商配置。",
   },
 };
 
@@ -119,7 +66,7 @@ type IPCChatTransportConfig = {
   projectPath?: string; // Original project path for MCP config lookup (when using worktrees)
   mode: "plan" | "agent" | string;
   model?: string;
-  providerId?: ProviderId; // AI provider selection (claude or codex)
+  providerId?: ProviderId; // API provider selection
 };
 
 // Image attachment type matching the tRPC schema
@@ -143,18 +90,24 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
     const prompt = this.extractText(lastUser);
     const images = this.extractImages(lastUser);
 
-    // Get sessionId for resume
+    // Get the persisted provider session ID when available.
     const lastAssistant = [...options.messages]
       .reverse()
-      .find((m) => m.role === "assistant");
-    const sessionId = (lastAssistant as any)?.metadata?.sessionId;
+      .find((message) => message.role === "assistant");
+    const metadata = lastAssistant?.metadata;
+    const sessionId =
+      metadata &&
+      typeof metadata === "object" &&
+      "sessionId" in metadata &&
+      typeof metadata.sessionId === "string"
+        ? metadata.sessionId
+        : undefined;
 
-    // Read extended thinking setting dynamically (so toggle applies to existing chats)
-    // Note: claude-opus-4-5-20251101 has a max output of 64000 tokens, so we use 60000 to stay within limits
+    // Keep the existing optional extended-thinking budget for compatible gateways.
     const thinkingEnabled = appStore.get(extendedThinkingEnabledAtom);
     const maxThinkingTokens = thinkingEnabled ? 60_000 : undefined;
 
-    // Determine effective provider (config override -> subchat override -> chat override -> global default)
+    // Resolve provider and model from dynamic API-provider settings.
     const defaultProvider = appStore.get(defaultProviderIdAtom);
     const enabledProviders = appStore.get(enabledProviderIdsAtom);
     const chatOverrides = appStore.get(chatProviderOverridesAtom);
@@ -166,52 +119,40 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
       defaultProvider;
     const resolvedProvider = enabledProviders.includes(effectiveProvider)
       ? effectiveProvider
-      : enabledProviders[0] || effectiveProvider;
+      : enabledProviders[0];
 
-    // Read per-subchat model override first
+    if (!resolvedProvider) {
+      const message = "尚未配置接口服务商，请前往设置添加。";
+      toast.error("无法发送消息", { description: message });
+      throw new Error(message);
+    }
+
+    const configuredModels = await trpcClient.providers.getModels.query({
+      providerId: resolvedProvider,
+    });
     const subChatModelOverrides = appStore.get(subChatModelOverridesAtom);
-    const subChatModel = subChatModelOverrides[this.config.subChatId];
-
-    // Read model selection for the effective provider (fallback)
     const modelsByProvider = appStore.get(lastSelectedModelByProviderAtom);
-    const modelString =
-      modelsByProvider[resolvedProvider] ||
-      (resolvedProvider === "claude" ? "sonnet" : "gpt-5.2-codex");
+    const storedModelId =
+      this.config.model ||
+      subChatModelOverrides[this.config.subChatId] ||
+      modelsByProvider[resolvedProvider];
+    const finalModelString = configuredModels.some(
+      (model) => model.id === storedModelId,
+    )
+      ? storedModelId
+      : configuredModels[0]?.id;
 
-    // Legacy: still read from lastSelectedModelIdAtom for backwards compatibility with Claude
-    const selectedModelId = appStore.get(lastSelectedModelIdAtom);
-    const legacyModelString = MODEL_ID_MAP[selectedModelId];
-
-    // Priority: per-subchat override -> legacy/global model
-    const finalModelString = subChatModel
-      ? subChatModel
-      : resolvedProvider === "claude"
-        ? legacyModelString || modelString
-        : modelString;
+    if (!finalModelString) {
+      const message = "当前服务商没有可用模型，请前往设置填写模型列表。";
+      toast.error("无法发送消息", { description: message });
+      throw new Error(message);
+    }
 
     const currentMode =
       useAgentSubChatStore
         .getState()
         .allSubChats.find((subChat) => subChat.id === this.config.subChatId)
         ?.mode || this.config.mode;
-
-    // Read Codex-specific settings (only used when provider is codex)
-    const sandboxMode =
-      resolvedProvider === "codex"
-        ? appStore.get(codexSandboxModeAtom)
-        : undefined;
-    const approvalPolicy =
-      resolvedProvider === "codex"
-        ? appStore.get(codexApprovalPolicyAtom)
-        : undefined;
-    const reasoningEffort =
-      resolvedProvider === "codex"
-        ? appStore.get(codexReasoningEffortAtom)
-        : undefined;
-    const webSearchMode =
-      resolvedProvider === "codex"
-        ? appStore.get(codexWebSearchModeAtom)
-        : undefined;
 
     // Get added directories for this sub-chat
     const addDirs = appStore.get(
@@ -246,11 +187,6 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
             ...(images.length > 0 && { images }),
             // Additional working directories
             ...(addDirs && addDirs.length > 0 && { addDirs }),
-            // Codex-specific settings
-            ...(sandboxMode && { sandboxMode }),
-            ...(approvalPolicy && { approvalPolicy }),
-            ...(reasoningEffort && { reasoningEffort }),
-            ...(webSearchMode && { webSearchMode }),
           },
           {
             onData: (chunk: UIMessageChunk) => {
@@ -407,9 +343,8 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
               };
 
               if (chunk.type === "ralph-complete") {
-                toast.success("Ralph: All stories complete!", {
-                  description:
-                    "All PRD stories have been implemented. Switching to Agent mode.",
+                toast.success("Ralph：所有故事已完成！", {
+                  description: "所有 PRD 故事均已实现，正在切换到智能体模式。",
                   duration: 5000,
                 });
 
@@ -460,10 +395,10 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
               }
 
               if (chunk.type === "ralph-story-complete") {
-                toast.success(`Story ${chunk.storyId} complete!`, {
+                toast.success(`故事 ${chunk.storyId} 已完成！`, {
                   description: chunk.autoStartNext
-                    ? "Starting next story..."
-                    : "All stories complete!",
+                    ? "正在开始下一个故事…"
+                    : "所有故事均已完成！",
                   duration: 3000,
                 });
                 // Invalidate ralph query cache to update UI immediately
@@ -473,8 +408,8 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
               }
 
               if (chunk.type === "ralph-story-transition") {
-                toast.info(`Starting story: ${chunk.nextStoryTitle}`, {
-                  description: `${chunk.storiesCompleted}/${chunk.storiesTotal} stories complete`,
+                toast.info(`正在开始故事：${chunk.nextStoryTitle}`, {
+                  description: `已完成 ${chunk.storiesCompleted}/${chunk.storiesTotal} 个故事`,
                   duration: 3000,
                 });
                 invalidateRalphQueries();
@@ -491,7 +426,7 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
               }
 
               if (chunk.type === "ralph-prd-generating") {
-                toast.info(chunk.message || "Generating PRD...", {
+                toast.info(chunk.message || "正在生成 PRD…", {
                   duration: 2000,
                 });
                 console.log(
@@ -513,10 +448,10 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
               }
 
               if (chunk.type === "ralph-prd-generated") {
-                toast.success("PRD generated!", {
+                toast.success("PRD 已生成！", {
                   description: chunk.autoStartImplementation
-                    ? "Starting implementation of first story..."
-                    : "Ready to start implementation.",
+                    ? "正在开始实现第一个故事…"
+                    : "已准备好开始实现。",
                   duration: 3000,
                 });
 
@@ -570,25 +505,17 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
                 }
               }
 
-              // Handle authentication errors - show login modal
               if (chunk.type === "auth-error") {
-                // Store the failed message for retry after successful auth
-                // readyToRetry=false prevents immediate retry - modal sets it to true on OAuth success
-                appStore.set(pendingAuthRetryMessageAtom, {
-                  subChatId: this.config.subChatId,
-                  prompt,
-                  ...(images.length > 0 && { images }),
-                  readyToRetry: false,
+                const errorDescription =
+                  chunk.errorText ||
+                  "请前往设置检查 Base URL、API Key、接口格式和模型。";
+                toast.error("服务商身份验证失败", {
+                  description: errorDescription,
+                  duration: 8000,
                 });
-                // Store which provider triggered the auth error
-                appStore.set(authErrorProviderAtom, resolvedProvider);
-                // Show the login modal
-                appStore.set(agentsLoginModalOpenAtom, true);
-                // Use controller.error() instead of controller.close() so that
-                // the SDK Chat properly resets status from "streaming" to "ready"
-                // This allows user to retry sending messages after failed auth
+                showErrorNotification("服务商身份验证失败", errorDescription);
                 streamClosed = true;
-                controller.error(new Error("Authentication required"));
+                controller.error(new Error(errorDescription));
                 return;
               }
 
@@ -602,19 +529,12 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
                   toast.error(config.title, {
                     description: config.description,
                     duration: 8000,
-                    action: config.action
-                      ? {
-                          label: config.action.label,
-                          onClick: config.action.onClick,
-                        }
-                      : undefined,
                   });
                   // Also show desktop notification if window is unfocused
                   showErrorNotification(config.title, config.description);
                 } else {
-                  const errorTitle = "Something went wrong";
-                  const errorDescription =
-                    chunk.errorText || "An unexpected error occurred";
+                  const errorTitle = "出现问题";
+                  const errorDescription = chunk.errorText || "发生了意外错误";
                   toast.error(errorTitle, {
                     description: errorDescription,
                     duration: 8000,

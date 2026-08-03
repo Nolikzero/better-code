@@ -1,144 +1,94 @@
-import { ClaudeProvider } from "./claude";
-import { CodexProvider } from "./codex";
-import { OpenCodeProvider } from "./opencode";
 /**
- * Provider initialization
+ * API provider initialization.
  *
- * Providers are only loaded when enabled by the user (via onboarding/settings).
+ * Provider definitions are stored in SQLite and instantiated only when enabled.
+ * Legacy CLI provider implementations remain in the source tree for migration
+ * compatibility but are not registered in the application runtime.
  */
+import { ApiProvider } from "./api/provider";
+import { getApiProviderRecord, setApiProvidersEnabled } from "./api/store";
 import { providerRegistry } from "./registry";
-import type { AIProvider, ProviderId } from "./types";
-
-const providerFactories: Record<ProviderId, () => AIProvider> = {
-  claude: () => new ClaudeProvider(),
-  codex: () => new CodexProvider(),
-  opencode: () => new OpenCodeProvider(),
-};
+import type { ProviderId } from "./types";
 
 let initialized = false;
 let enabledProviderIds: ProviderId[] = [];
 
-function normalizeProviderIds(ids: ProviderId[]): ProviderId[] {
-  return Array.from(new Set(ids));
+function normalizeProviderIds(ids: readonly ProviderId[]): ProviderId[] {
+  return Array.from(new Set(ids.filter((id) => id.startsWith("api:"))));
 }
 
-async function registerProvider(id: ProviderId): Promise<void> {
-  if (providerRegistry.has(id)) return;
+async function registerProvider(id: ProviderId): Promise<boolean> {
+  const record = getApiProviderRecord(id);
+  if (!record) return false;
 
-  const providerFactory = providerFactories[id];
-  const provider = providerFactory();
+  const existing = providerRegistry.get(id);
+  if (existing?.shutdown) await existing.shutdown();
+  if (existing) providerRegistry.unregister(id);
+
+  const provider = new ApiProvider(record);
   providerRegistry.register(provider);
-  console.log(`[providers] Registered ${provider.id} provider`);
-
-  if (provider.initialize) {
-    provider.initialize().catch((error) => {
-      console.error(`[providers] ${provider.id} initialization failed:`, error);
-    });
-  }
+  console.log(`[providers] Registered API provider ${provider.id}`);
+  return true;
 }
 
 async function unregisterProvider(id: ProviderId): Promise<void> {
   const provider = providerRegistry.get(id);
   if (!provider) return;
-
-  if (provider.shutdown) {
-    try {
-      await provider.shutdown();
-      console.log(`[providers] Shutdown ${provider.id} provider`);
-    } catch (error) {
-      console.error(`[providers] Failed to shutdown ${provider.id}:`, error);
-    }
-  }
-
+  if (provider.shutdown) await provider.shutdown();
   providerRegistry.unregister(id);
-  console.log(`[providers] Unregistered ${id} provider`);
+  console.log(`[providers] Unregistered API provider ${id}`);
 }
 
-/**
- * Enable a specific set of providers (registers + initializes as needed).
- */
 export async function setEnabledProviders(
-  providerIds: ProviderId[],
+  providerIds: readonly ProviderId[],
 ): Promise<void> {
   const desiredIds = normalizeProviderIds(providerIds);
   const desiredSet = new Set(desiredIds);
-  const currentIds = providerRegistry.getIds();
 
-  // Remove providers no longer enabled
-  for (const id of currentIds) {
-    if (!desiredSet.has(id)) {
-      await unregisterProvider(id);
-    }
+  for (const id of providerRegistry.getIds()) {
+    if (!desiredSet.has(id)) await unregisterProvider(id);
   }
 
-  // Register newly enabled providers
+  const registeredIds: ProviderId[] = [];
   for (const id of desiredIds) {
-    await registerProvider(id);
+    if (await registerProvider(id)) registeredIds.push(id);
   }
 
-  if (desiredIds.length > 0 && providerRegistry.has(desiredIds[0])) {
-    providerRegistry.setDefault(desiredIds[0]);
+  if (registeredIds[0] && providerRegistry.has(registeredIds[0])) {
+    providerRegistry.setDefault(registeredIds[0]);
   }
 
-  enabledProviderIds = desiredIds;
+  setApiProvidersEnabled(registeredIds);
+  enabledProviderIds = registeredIds;
   initialized = true;
   console.log(
-    `[providers] Enabled providers: ${enabledProviderIds.join(", ") || "none"}`,
+    `[providers] Enabled API providers: ${enabledProviderIds.join(", ") || "none"}`,
   );
 }
 
-/**
- * Initialize providers with a list (legacy entry point).
- */
-export async function initializeProviders(
-  providerIds: ProviderId[] = [],
-): Promise<void> {
-  if (initialized && providerIds.length === 0) {
-    console.log("[providers] Already initialized, skipping");
-    return;
-  }
-
-  if (providerIds.length === 0) {
-    console.log("[providers] Initialization skipped (no providers enabled)");
-    initialized = true;
-    return;
-  }
-
-  console.log("[providers] Initializing providers...");
-  await setEnabledProviders(providerIds);
-  console.log("[providers] Initialization complete");
+export async function reloadProvider(providerId: ProviderId): Promise<void> {
+  if (!enabledProviderIds.includes(providerId)) return;
+  await registerProvider(providerId);
 }
 
-/**
- * Shutdown all providers (call during app quit)
- */
-export async function shutdownProviders(): Promise<void> {
-  console.log("[providers] Shutting down providers...");
+export async function removeProvider(providerId: ProviderId): Promise<void> {
+  await unregisterProvider(providerId);
+  enabledProviderIds = enabledProviderIds.filter((id) => id !== providerId);
+}
 
+export async function initializeProviders(
+  providerIds: readonly ProviderId[] = [],
+): Promise<void> {
+  if (initialized && providerIds.length === 0) return;
+  await setEnabledProviders(providerIds);
+}
+
+export async function shutdownProviders(): Promise<void> {
   for (const provider of providerRegistry.getAll()) {
     await unregisterProvider(provider.id);
   }
-
-  console.log("[providers] All providers shutdown complete");
 }
 
-/**
- * Check if providers have been initialized
- */
-function _isProvidersInitialized(): boolean {
-  return initialized;
-}
-
-/**
- * Reset initialization state (for testing)
- */
-function _resetProviderInitialization(): void {
-  initialized = false;
-}
-
-/**
- * Get the currently enabled providers (in-memory).
- */
 export function getEnabledProviders(): ProviderId[] {
   return [...enabledProviderIds];
 }

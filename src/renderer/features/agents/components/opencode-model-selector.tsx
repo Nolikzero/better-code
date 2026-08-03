@@ -99,7 +99,7 @@ export const OpenCodeModelSelector = memo(function OpenCodeModelSelector({
   // Memoized display name to avoid recalculation on every render
   const currentModelDisplay = useMemo(() => {
     if (!providersData?.providers || !currentModelId) {
-      return currentModelId || "Select model...";
+      return currentModelId || "选择模型…";
     }
 
     // Model ID is in format "providerId/modelId"
@@ -211,9 +211,9 @@ export const OpenCodeModelSelector = memo(function OpenCodeModelSelector({
         <IconChevronDown className="h-3 w-3 shrink-0 opacity-50" />
       </ModelSelectorTrigger>
 
-      <ModelSelectorContent title="Select Model" shouldFilter={false}>
+      <ModelSelectorContent title="选择模型" shouldFilter={false}>
         <ModelSelectorInput
-          placeholder="Search models..."
+          placeholder="搜索模型…"
           value={searchQuery}
           onValueChange={setSearchQuery}
         />
@@ -223,13 +223,13 @@ export const OpenCodeModelSelector = memo(function OpenCodeModelSelector({
           style={{ maxHeight: MAX_VISIBLE_HEIGHT }}
         >
           {isLoading ? (
-            <ModelSelectorEmpty>Loading providers...</ModelSelectorEmpty>
+            <ModelSelectorEmpty>正在加载提供商…</ModelSelectorEmpty>
           ) : !providersData?.providers?.length ? (
             <ModelSelectorEmpty>
-              OpenCode is unavailable or has no configured providers
+              OpenCode 不可用，或尚未配置提供商
             </ModelSelectorEmpty>
           ) : flatItems.length === 0 ? (
-            <ModelSelectorEmpty>No models found</ModelSelectorEmpty>
+            <ModelSelectorEmpty>未找到模型</ModelSelectorEmpty>
           ) : (
             <div
               style={{
@@ -267,7 +267,7 @@ export const OpenCodeModelSelector = memo(function OpenCodeModelSelector({
                             ? "bg-green-500"
                             : "bg-muted-foreground/30",
                         )}
-                        title={item.connected ? "Connected" : "Not connected"}
+                        title={item.connected ? "已连接" : "未连接"}
                       />
                     </div>
                   );

@@ -49,9 +49,9 @@ export const OpenInDropdown = memo(function OpenInDropdown({
           variant="ghost"
           size="icon"
           className="h-6 w-6 p-0 hover:bg-foreground/10 transition-colors text-foreground shrink-0 rounded-md ml-2"
-          aria-label="Open in..."
+          aria-label="打开方式…"
           disabled={!isLoading && apps.length === 0}
-          title="Open in..."
+          title="打开方式…"
         >
           <ExternalLink className="h-3.5 w-3.5" />
         </Button>

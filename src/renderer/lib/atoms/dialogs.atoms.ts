@@ -5,7 +5,6 @@ import { atom } from "jotai";
 // ============================================
 
 export type SettingsTab =
-  | "profile"
   | "appearance"
   | "preferences"
   | "keybindings"
@@ -15,7 +14,7 @@ export type SettingsTab =
   | "mcp"
   | "debug";
 
-export const agentsSettingsDialogActiveTabAtom = atom<SettingsTab>("profile");
+export const agentsSettingsDialogActiveTabAtom = atom<SettingsTab>("provider");
 export const agentsSettingsDialogOpenAtom = atom<boolean>(false);
 
 // ============================================

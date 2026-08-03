@@ -19,6 +19,8 @@ export type {
 } from "./message.types";
 export type {
   AgentMode,
+  ApiProviderProtocol,
+  ApiProviderSettings,
   ApprovalPolicy,
   AuthStatus,
   ImageAttachment,
@@ -31,3 +33,4 @@ export type {
   SandboxMode,
   WebSearchMode,
 } from "./provider.types";
+export { API_PROVIDER_PROTOCOLS } from "./provider.types";

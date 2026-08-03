@@ -90,7 +90,7 @@ class WorktreeInitRunner extends EventEmitter {
         });
       } catch (err) {
         const errorMessage =
-          err instanceof Error ? err.message : "Failed to spawn process";
+          err instanceof Error ? err.message : "进程启动失败";
         status.status = "error";
         status.error = errorMessage;
         status.completedAt = Date.now();
@@ -121,7 +121,7 @@ class WorktreeInitRunner extends EventEmitter {
         status.completedAt = Date.now();
 
         if (exitCode !== 0) {
-          status.error = `Command exited with code ${exitCode}`;
+          status.error = `命令已退出，退出代码：${exitCode}`;
         }
 
         this.emit("init-progress", {

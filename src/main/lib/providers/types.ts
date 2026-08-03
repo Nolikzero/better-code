@@ -24,6 +24,11 @@ import type {
   WebSearchMode,
 } from "@shared/types";
 
+export type ProviderChatMessage = {
+  readonly role: "user" | "assistant";
+  readonly content: string;
+};
+
 // Chat session options (provider-agnostic, main-process specific due to AbortController)
 export interface ChatSessionOptions {
   subChatId: string;
@@ -69,8 +74,9 @@ export interface ChatSessionOptions {
   emittedDiffKeys?: string[];
   // OpenCode-specific: tool enable/disable map
   tools?: Record<string, boolean>;
-  // OpenCode-specific: custom system prompt
+  // Built-in agent instructions resolved by the main process
   systemPrompt?: string;
+  history?: readonly ProviderChatMessage[];
 }
 
 // Provider interface - must be implemented by all providers

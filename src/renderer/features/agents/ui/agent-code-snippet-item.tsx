@@ -144,7 +144,7 @@ export function AgentCodeSnippetItem({
             {filePath}
           </span>
           <span className="text-[10px] text-muted-foreground">
-            lines {lineRange}
+            第 {lineRange} 行
           </span>
         </div>
 

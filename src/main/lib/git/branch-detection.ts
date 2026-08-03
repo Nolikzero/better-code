@@ -226,7 +226,7 @@ export async function branchExistsOnRemote(
     if (!isExecFileException(error)) {
       return {
         status: "error",
-        message: `Unexpected error: ${error instanceof Error ? error.message : String(error)}`,
+        message: `意外错误：${error instanceof Error ? error.message : String(error)}`,
       };
     }
 
@@ -234,25 +234,25 @@ export async function branchExistsOnRemote(
       if (error.code === "ENOENT") {
         return {
           status: "error",
-          message: "Git is not installed or not found in PATH.",
+          message: "未安装 Git，或无法在 PATH 中找到 Git。",
         };
       }
       if (error.code === "ETIMEDOUT") {
         return {
           status: "error",
-          message: "Git command timed out. Check your network connection.",
+          message: "Git 命令执行超时，请检查网络连接。",
         };
       }
       return {
         status: "error",
-        message: `System error: ${error.code}`,
+        message: `系统错误：${error.code}`,
       };
     }
 
     if (error.killed || error.signal) {
       return {
         status: "error",
-        message: "Git command timed out. Check your network connection.",
+        message: "Git 命令执行超时，请检查网络连接。",
       };
     }
 
@@ -388,8 +388,7 @@ export async function checkBranchCheckoutSafety(
     if (hasChanges) {
       return {
         safe: false,
-        error:
-          "Cannot switch branches: you have uncommitted changes. Please commit or stash your changes first.",
+        error: "无法切换分支：当前存在未提交的更改。请先提交或暂存这些更改。",
         hasUncommittedChanges: true,
         hasUntrackedFiles,
       };
@@ -409,7 +408,7 @@ export async function checkBranchCheckoutSafety(
   } catch (error) {
     return {
       safe: false,
-      error: `Failed to check repository status: ${error instanceof Error ? error.message : String(error)}`,
+      error: `检查仓库状态失败：${error instanceof Error ? error.message : String(error)}`,
     };
   }
 }
@@ -462,7 +461,7 @@ export async function safeCheckoutBranch(
   const verifyBranch = await getCurrentBranch(repoPath);
   if (verifyBranch !== branch) {
     throw new Error(
-      `Branch checkout verification failed: expected "${branch}" but HEAD is on "${verifyBranch ?? "detached HEAD"}"`,
+      `分支检出验证失败：预期为“${branch}”，但 HEAD 位于“${verifyBranch ?? "分离头指针"}”`,
     );
   }
 }

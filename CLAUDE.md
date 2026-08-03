@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What is this?
 
-**BetterCode** - A local-first Electron desktop app for AI-powered code assistance. Users create chat sessions linked to local project folders, interact with Claude in Plan or Agent mode, and see real-time tool execution (bash, file edits, web search, etc.).
+**SamBetterCode** - A local-first Electron desktop app for AI-powered code assistance. Users create chat sessions linked to local project folders, interact with Claude in Plan or Agent mode, and see real-time tool execution (bash, file edits, web search, etc.).
 
 ## Commands
 
@@ -174,7 +174,7 @@ When testing auth flows or behavior for new users, you need to simulate a fresh 
 
 ```bash
 # 1. Clear all app data (auth, database, settings)
-rm -rf ~/Library/Application\ Support/BetterCode\ Dev/
+rm -rf ~/Library/Application\ Support/SamBetterCode\ Dev/
 
 # 2. Reset macOS protocol handler registration (if testing deep links)
 /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister -kill -r -domain local -domain system -domain user
@@ -194,7 +194,7 @@ bun run dev
 
 **Dev vs Production App:**
 - Dev mode uses `bettercode-dev://` protocol
-- Dev mode uses separate userData path (`~/Library/Application Support/BetterCode Dev/`)
+- Dev mode uses separate userData path (`~/Library/Application Support/SamBetterCode Dev/`)
 - This prevents conflicts between dev and production installs
 
 ## Releasing a New Version
@@ -235,10 +235,10 @@ npm version major  # 0.1.0 → 1.0.0
 |------|---------|
 | `latest-mac.yml` | Manifest for arm64 auto-updates |
 | `latest-mac-x64.yml` | Manifest for Intel auto-updates |
-| `BetterCode-{version}-arm64-mac.zip` | Auto-update payload (arm64) |
-| `BetterCode-{version}-mac.zip` | Auto-update payload (Intel) |
-| `BetterCode-{version}-arm64.dmg` | Manual download (arm64) |
-| `BetterCode-{version}.dmg` | Manual download (Intel) |
+| `SamBetterCode-{version}-arm64-mac.zip` | Auto-update payload (arm64) |
+| `SamBetterCode-{version}-mac.zip` | Auto-update payload (Intel) |
+| `SamBetterCode-{version}-arm64.dmg` | Manual download (arm64) |
+| `SamBetterCode-{version}.dmg` | Manual download (Intel) |
 
 ### Auto-Update Flow
 

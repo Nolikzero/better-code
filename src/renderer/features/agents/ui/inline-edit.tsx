@@ -95,7 +95,7 @@ export function InlineEdit({
       ref={inputRef}
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className={`ring-1 ring-[#3182ED] focus-visible:ring-1 focus-visible:ring-[#3182ED] focus-visible:ring-offset-0 rounded-[2px] shadow-none min-w-0 text-foreground border-0 h-auto px-1 py-0 leading-4 inline-flex ${className}`}
+      className={`ring-1 ring-ring focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0 rounded-sm shadow-none min-w-0 text-foreground border-0 h-auto px-1 py-0 leading-4 inline-flex ${className}`}
       onKeyDown={handleKeyDown}
       disabled={disabled}
       placeholder={placeholder}

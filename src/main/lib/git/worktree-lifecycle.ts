@@ -104,8 +104,8 @@ async function createWorktree(
       const lfsAvailable = await checkGitLfsAvailable(env);
       if (!lfsAvailable) {
         throw new Error(
-          "This repository uses Git LFS, but git-lfs was not found. " +
-            `Please install git-lfs (e.g., 'brew install git-lfs') and run 'git lfs install'.`,
+          "此仓库使用 Git LFS，但未找到 git-lfs。" +
+            `请安装 git-lfs（例如运行 'brew install git-lfs'），然后执行 'git lfs install'。`,
         );
       }
     }
@@ -134,14 +134,12 @@ async function createWorktree(
       (lowerError.includes(".lock") && lowerError.includes("file exists"));
 
     if (isLockError) {
-      console.error(
-        `Git lock file error during worktree creation: ${errorMessage}`,
-      );
+      console.error(`创建工作树时发生 Git 锁文件错误：${errorMessage}`);
       throw new Error(
-        "Failed to create worktree: The git repository is locked by another process. " +
-          "This usually happens when another git operation is in progress, or a previous operation crashed. " +
-          "Please wait for the other operation to complete, or manually remove the lock file " +
-          `(e.g., .git/config.lock or .git/index.lock) if you're sure no git operations are running.`,
+        "创建工作树失败：Git 仓库正被另一个进程锁定。" +
+          "这通常是因为另一个 Git 操作正在进行，或之前的操作异常退出。" +
+          "请等待其他操作完成；如果确认没有 Git 操作正在运行，也可以手动删除锁文件" +
+          `（例如 .git/config.lock 或 .git/index.lock）。`,
       );
     }
 
@@ -155,13 +153,13 @@ async function createWorktree(
     if (isLfsError) {
       console.error(`Git LFS error during worktree creation: ${errorMessage}`);
       throw new Error(
-        "Failed to create worktree: This repository uses Git LFS, but git-lfs was not found or failed. " +
-          `Please install git-lfs (e.g., 'brew install git-lfs') and run 'git lfs install'.`,
+        "创建工作树失败：此仓库使用 Git LFS，但未找到 git-lfs 或其运行失败。" +
+          `请安装 git-lfs（例如运行 'brew install git-lfs'），然后执行 'git lfs install'。`,
       );
     }
 
-    console.error(`Failed to create worktree: ${errorMessage}`);
-    throw new Error(`Failed to create worktree: ${errorMessage}`);
+    console.error(`创建工作树失败：${errorMessage}`);
+    throw new Error(`创建工作树失败：${errorMessage}`);
   }
 }
 
@@ -181,7 +179,7 @@ export async function removeWorktree(
     return { success: true };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error(`Failed to remove worktree: ${errorMessage}`);
+    console.error(`移除工作树失败：${errorMessage}`);
     return { success: false, error: errorMessage };
   }
 }
@@ -233,7 +231,7 @@ export async function createWorktreeForChat(
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: error instanceof Error ? error.message : "未知错误",
     };
   }
 }
@@ -244,7 +242,7 @@ export async function getGitRoot(path: string): Promise<string> {
     const root = await git.revparse(["--show-toplevel"]);
     return root.trim();
   } catch (_error) {
-    throw new Error(`Not a git repository: ${path}`);
+    throw new Error(`不是 Git 仓库：${path}`);
   }
 }
 
@@ -281,7 +279,7 @@ export async function commitWorktreeChanges(
     const hasChanges = status.staged.length > 0 || status.files.length > 0;
 
     if (!hasChanges) {
-      return { success: false, error: "No changes to commit" };
+      return { success: false, error: "没有可提交的更改" };
     }
 
     const result = await git.commit(message);
@@ -290,7 +288,7 @@ export async function commitWorktreeChanges(
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: error instanceof Error ? error.message : "未知错误",
     };
   }
 }
@@ -311,13 +309,13 @@ export async function mergeWorktreeToMain(
 
     return { success: true };
   } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : "Unknown error";
+    const errorMsg = error instanceof Error ? error.message : "未知错误";
 
     if (errorMsg.includes("CONFLICT") || errorMsg.includes("merge failed")) {
       await git.merge(["--abort"]).catch(() => {});
       return {
         success: false,
-        error: "Merge conflicts detected. Please resolve manually.",
+        error: "检测到合并冲突，请手动解决。",
       };
     }
 
@@ -337,7 +335,7 @@ export async function pushWorktreeBranch(
 
     const remotes = await git.getRemotes();
     if (remotes.length === 0) {
-      return { success: false, error: "No remote repository configured" };
+      return { success: false, error: "未配置远程仓库" };
     }
 
     await git.push(["-u", "origin", branch]);
@@ -346,7 +344,7 @@ export async function pushWorktreeBranch(
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: error instanceof Error ? error.message : "未知错误",
     };
   }
 }
@@ -374,7 +372,7 @@ export async function getGitStatus(worktreePath: string): Promise<{
       hasUncommittedChanges: false,
       hasUnpushedCommits: false,
       currentBranch: "",
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: error instanceof Error ? error.message : "未知错误",
     };
   }
 }

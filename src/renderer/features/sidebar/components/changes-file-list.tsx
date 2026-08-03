@@ -146,7 +146,7 @@ const FileItem = memo(function FileItem({
                 ? "border-primary bg-primary"
                 : "border-border/50 hover:border-primary/50"
             }`}
-            aria-label={isSelected ? "Deselect file" : "Select file"}
+            aria-label={isSelected ? "取消选择文件" : "选择文件"}
           >
             {isSelected && (
               <Check className="w-3 h-3 text-primary-foreground" />
@@ -209,7 +209,7 @@ const FileItem = memo(function FileItem({
             )}
             {file.isBinary && (
               <span className="text-[10px] text-muted-foreground shrink-0">
-                binary
+                二进制
               </span>
             )}
           </button>
@@ -222,7 +222,7 @@ const FileItem = memo(function FileItem({
             className="text-destructive focus:text-destructive"
           >
             <RotateCcw className="mr-2 h-4 w-4" />
-            Discard {selectedCount} selected files
+            放弃 {selectedCount} 个已选文件
           </ContextMenuItem>
         ) : (
           <ContextMenuItem
@@ -230,7 +230,7 @@ const FileItem = memo(function FileItem({
             className="text-destructive focus:text-destructive"
           >
             <RotateCcw className="mr-2 h-4 w-4" />
-            {status === "new" ? "Delete File" : "Discard Changes"}
+            {status === "new" ? "删除文件" : "放弃更改"}
           </ContextMenuItem>
         )}
       </ContextMenuContent>
@@ -515,9 +515,7 @@ export const ChangesFileList = memo(function ChangesFileList({
           <button
             onClick={handleSelectAllClick}
             className="w-4 h-4 shrink-0 rounded border border-border/50 flex items-center justify-center hover:border-primary/50 transition-colors"
-            aria-label={
-              selectionState === "all" ? "Deselect all" : "Select all"
-            }
+            aria-label={selectionState === "all" ? "取消全选" : "全选"}
           >
             {selectionState === "all" && (
               <Check className="w-3 h-3 text-primary" />
@@ -536,11 +534,11 @@ export const ChangesFileList = memo(function ChangesFileList({
           ) : (
             <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
           )}
-          <span className="text-xs font-medium text-foreground">Changes</span>
+          <span className="text-xs font-medium text-foreground">更改</span>
           {/* Selection count badge */}
           {isMultiSelectMode && (
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">
-              {selectedCount} selected
+              {selectedCount} 已选择
             </span>
           )}
           {/* Stats badge */}
@@ -607,7 +605,7 @@ export const ChangesFileList = memo(function ChangesFileList({
               </div>
             ) : (
               <div className="px-3 py-4 text-xs text-muted-foreground text-center">
-                No changes detected
+                未检测到更改
               </div>
             )}
           </div>

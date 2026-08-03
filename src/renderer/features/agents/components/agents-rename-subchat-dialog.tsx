@@ -135,14 +135,14 @@ export function AgentsRenameSubChatDialog({
                 data-canvas-dialog
               >
                 <div className="p-6">
-                  <h2 className="text-xl font-semibold mb-4">Rename agent</h2>
+                  <h2 className="text-xl font-semibold mb-4">重命名智能体</h2>
 
                   {/* Input */}
                   <Input
                     ref={inputRef}
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Chat name"
+                    placeholder="对话名称"
                     className="w-full h-11 text-sm"
                     disabled={isSaving || isLoading}
                   />
@@ -156,7 +156,7 @@ export function AgentsRenameSubChatDialog({
                     disabled={isSaving || isLoading}
                     className="rounded-md"
                   >
-                    Cancel
+                    取消
                   </Button>
                   <Button
                     onClick={handleSave}
@@ -169,7 +169,7 @@ export function AgentsRenameSubChatDialog({
                     }
                     className="rounded-md"
                   >
-                    {isSaving || isLoading ? "Saving..." : "Save"}
+                    {isSaving || isLoading ? "正在保存…" : "保存"}
                   </Button>
                 </div>
               </div>

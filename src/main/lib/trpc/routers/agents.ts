@@ -107,14 +107,14 @@ export const agentsRouter = router({
       // Validate name (kebab-case, no special chars)
       const safeName = input.name.toLowerCase().replace(/[^a-z0-9-]/g, "-");
       if (!safeName || safeName.includes("..")) {
-        throw new Error("Invalid agent name");
+        throw new Error("智能体名称无效");
       }
 
       // Determine target directory
       let targetDir: string;
       if (input.source === "project") {
         if (!input.cwd) {
-          throw new Error("Project path (cwd) required for project agents");
+          throw new Error("项目智能体需要项目路径（cwd）");
         }
         targetDir = path.join(input.cwd, ".claude", "agents");
       } else {
@@ -129,7 +129,7 @@ export const agentsRouter = router({
       // Check if already exists
       try {
         await fs.access(agentPath);
-        throw new Error(`Agent "${safeName}" already exists`);
+        throw new Error(`智能体“${safeName}”已存在`);
       } catch (err) {
         if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
           throw err;
@@ -179,14 +179,14 @@ export const agentsRouter = router({
         .replace(/[^a-z0-9-]/g, "-");
       const safeName = input.name.toLowerCase().replace(/[^a-z0-9-]/g, "-");
       if (!safeOriginalName || !safeName || safeName.includes("..")) {
-        throw new Error("Invalid agent name");
+        throw new Error("智能体名称无效");
       }
 
       // Determine target directory
       let targetDir: string;
       if (input.source === "project") {
         if (!input.cwd) {
-          throw new Error("Project path (cwd) required for project agents");
+          throw new Error("项目智能体需要项目路径（cwd）");
         }
         targetDir = path.join(input.cwd, ".claude", "agents");
       } else {
@@ -200,14 +200,14 @@ export const agentsRouter = router({
       try {
         await fs.access(originalPath);
       } catch {
-        throw new Error(`Agent "${safeOriginalName}" not found`);
+        throw new Error(`未找到智能体“${safeOriginalName}”`);
       }
 
       // If renaming, check new name doesn't exist
       if (safeOriginalName !== safeName) {
         try {
           await fs.access(newPath);
-          throw new Error(`Agent "${safeName}" already exists`);
+          throw new Error(`智能体“${safeName}”已存在`);
         } catch (err) {
           if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
             throw err;
@@ -253,13 +253,13 @@ export const agentsRouter = router({
     .mutation(async ({ input }) => {
       const safeName = input.name.toLowerCase().replace(/[^a-z0-9-]/g, "-");
       if (!safeName || safeName.includes("..")) {
-        throw new Error("Invalid agent name");
+        throw new Error("智能体名称无效");
       }
 
       let targetDir: string;
       if (input.source === "project") {
         if (!input.cwd) {
-          throw new Error("Project path (cwd) required for project agents");
+          throw new Error("项目智能体需要项目路径（cwd）");
         }
         targetDir = path.join(input.cwd, ".claude", "agents");
       } else {

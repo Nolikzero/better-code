@@ -41,13 +41,13 @@ export const CommitSection = memo(function CommitSection({
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
     if (diffDays === 0) {
-      return "today";
+      return "今天";
     } else if (diffDays === 1) {
-      return "yesterday";
+      return "昨天";
     } else if (diffDays < 7) {
-      return `${diffDays} days ago`;
+      return `${diffDays} 天前`;
     } else {
-      return d.toLocaleDateString(undefined, {
+      return d.toLocaleDateString("zh-CN", {
         month: "short",
         day: "numeric",
       });
@@ -85,7 +85,7 @@ export const CommitSection = memo(function CommitSection({
             }
           }}
           className="text-[10px] text-primary/70 hover:text-primary font-mono shrink-0 hover:underline cursor-pointer"
-          title="View commit diff"
+          title="查看提交差异"
         >
           {commit.shortHash}
         </span>
@@ -100,13 +100,13 @@ export const CommitSection = memo(function CommitSection({
           {isLoading ? (
             <div className="flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground">
               <Loader2 className="h-3 w-3 animate-spin" />
-              Loading files...
+              正在加载文件…
             </div>
           ) : error ? (
             <div className="px-3 py-2 text-xs text-destructive">{error}</div>
           ) : files.length === 0 ? (
             <div className="px-3 py-2 text-xs text-muted-foreground">
-              No files in this commit
+              此提交中没有文件
             </div>
           ) : (
             <div className="py-1">

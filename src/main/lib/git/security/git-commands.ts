@@ -32,12 +32,12 @@ export async function gitSwitchBranch(
 
   // Validate: reject anything that looks like a flag
   if (branch.startsWith("-")) {
-    throw new Error("Invalid branch name: cannot start with -");
+    throw new Error("分支名称无效：不能以 - 开头");
   }
 
   // Validate: reject empty branch names
   if (!branch.trim()) {
-    throw new Error("Invalid branch name: cannot be empty");
+    throw new Error("分支名称无效：不能为空");
   }
 
   const git = simpleGit(worktreePath);

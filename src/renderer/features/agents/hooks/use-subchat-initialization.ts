@@ -1,5 +1,6 @@
 "use client";
 
+import { resolveBuiltinAgent } from "@shared/builtin-agents";
 import { useEffect } from "react";
 import type { ProviderId } from "../../../lib/atoms";
 import {
@@ -7,10 +8,56 @@ import {
   useAgentSubChatStore,
 } from "../stores/sub-chat-store";
 
+export type AgentSubChatRecord = {
+  readonly id: string;
+  readonly name?: string | null;
+  readonly created_at?: Date | string | null;
+  readonly updated_at?: Date | string | null;
+  readonly mode?: "plan" | "agent" | "ralph" | null;
+  readonly providerId?: string | null;
+  readonly modelId?: string | null;
+  readonly agentId?: unknown;
+};
+
 export interface UseSubChatInitializationOptions {
-  chatId: string;
-  agentChat: any; // From tRPC query
-  agentSubChats: any[]; // From tRPC query
+  readonly chatId: string;
+  readonly agentChat: unknown;
+  readonly agentSubChats: readonly AgentSubChatRecord[];
+}
+
+export function mapAgentSubChats(
+  agentSubChats: readonly AgentSubChatRecord[],
+  existingSubChats: ReadonlyMap<string, SubChatMeta>,
+): SubChatMeta[] {
+  return agentSubChats.map((sc) => {
+    const existingLocal = existingSubChats.get(sc.id);
+    const createdAt =
+      typeof sc.created_at === "string"
+        ? sc.created_at
+        : sc.created_at?.toISOString();
+    const updatedAt =
+      typeof sc.updated_at === "string"
+        ? sc.updated_at
+        : sc.updated_at?.toISOString();
+    return {
+      id: sc.id,
+      name: sc.name || "新建对话",
+      created_at:
+        createdAt ?? existingLocal?.created_at ?? new Date().toISOString(),
+      updated_at: updatedAt ?? existingLocal?.updated_at,
+      mode:
+        (sc.mode as "plan" | "agent" | "ralph" | undefined) ||
+        existingLocal?.mode ||
+        "agent",
+      providerId:
+        (sc.providerId as ProviderId | undefined) || existingLocal?.providerId,
+      modelId: sc.modelId || existingLocal?.modelId,
+      agentId:
+        sc.agentId === undefined
+          ? (existingLocal?.agentId ?? null)
+          : (resolveBuiltinAgent(sc.agentId)?.id ?? null),
+    };
+  });
 }
 
 /**
@@ -71,33 +118,7 @@ export function useSubChatInitialization(
       freshState.allSubChats.map((sc) => [sc.id, sc]),
     );
 
-    const dbSubChats: SubChatMeta[] = agentSubChats.map((sc) => {
-      const existingLocal = existingSubChatsMap.get(sc.id);
-      const createdAt =
-        typeof sc.created_at === "string"
-          ? sc.created_at
-          : sc.created_at?.toISOString();
-      const updatedAt =
-        typeof sc.updated_at === "string"
-          ? sc.updated_at
-          : sc.updated_at?.toISOString();
-      return {
-        id: sc.id,
-        name: sc.name || "New Chat",
-        // Prefer DB timestamp, fall back to local timestamp, then current time
-        created_at:
-          createdAt ?? existingLocal?.created_at ?? new Date().toISOString(),
-        updated_at: updatedAt ?? existingLocal?.updated_at,
-        mode:
-          (sc.mode as "plan" | "agent" | "ralph" | undefined) ||
-          existingLocal?.mode ||
-          "agent",
-        providerId:
-          (sc.providerId as ProviderId | undefined) ||
-          existingLocal?.providerId,
-        modelId: sc.modelId || existingLocal?.modelId,
-      };
-    });
+    const dbSubChats = mapAgentSubChats(agentSubChats, existingSubChatsMap);
     const dbSubChatIds = new Set(dbSubChats.map((sc) => sc.id));
 
     // Start with DB sub-chats
@@ -110,7 +131,7 @@ export function useSubChatInitialization(
       if (!dbSubChatIds.has(id)) {
         allSubChats.push({
           id,
-          name: "New Chat",
+          name: "新建对话",
           created_at: new Date().toISOString(),
         });
       }

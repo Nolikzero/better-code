@@ -30,10 +30,10 @@ function formatTimeAgo(date: Date | null | undefined): string {
   const hours = Math.floor(minutes / 60);
   const days = Math.floor(hours / 24);
 
-  if (minutes < 1) return "now";
-  if (minutes < 60) return `${minutes}m`;
-  if (hours < 24) return `${hours}h`;
-  if (days < 7) return `${days}d`;
+  if (minutes < 1) return "刚刚";
+  if (minutes < 60) return `${minutes} 分钟前`;
+  if (hours < 24) return `${hours} 小时前`;
+  if (days < 7) return `${days} 天前`;
   return new Date(date).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
@@ -98,9 +98,7 @@ export const SubchatInlineItem = React.memo(function SubchatInlineItem({
           <div
             className={cn(
               "absolute -bottom-1 -right-1 w-3 h-3 rounded-full flex items-center justify-center",
-              isActive
-                ? "bg-[#E8E8E8] dark:bg-[#1B1B1B]"
-                : "bg-[#F4F4F4] group-hover:bg-[#E8E8E8] dark:bg-[#101010] dark:group-hover:bg-[#1B1B1B]",
+              isActive ? "bg-accent" : "bg-sidebar group-hover:bg-accent",
             )}
           >
             {isLoading ? (
@@ -109,9 +107,9 @@ export const SubchatInlineItem = React.memo(function SubchatInlineItem({
                 className="w-2.5 h-2.5 text-muted-foreground"
               />
             ) : hasPendingQuestion ? (
-              <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+              <div className="w-1.5 h-1.5 rounded-full bg-primary" />
             ) : hasPendingPlan ? (
-              <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+              <div className="w-1.5 h-1.5 rounded-full bg-plan-mode" />
             ) : (
               <LoadingDot
                 isLoading={false}
@@ -126,7 +124,7 @@ export const SubchatInlineItem = React.memo(function SubchatInlineItem({
       <div className="flex-1 min-w-0 flex flex-col gap-0.5">
         {/* Name */}
         <span className="truncate block text-xs font-medium leading-tight">
-          {name || "New Chat"}
+          {name || "新建对话"}
         </span>
 
         {/* Metadata row */}
@@ -167,7 +165,7 @@ export const SubchatInlineItem = React.memo(function SubchatInlineItem({
             "shrink-0 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity",
             "text-muted-foreground hover:text-destructive hover:bg-destructive/10",
           )}
-          title="Delete chat permanently"
+          title="永久删除对话"
         >
           <Trash2 className="h-3.5 w-3.5" />
         </button>

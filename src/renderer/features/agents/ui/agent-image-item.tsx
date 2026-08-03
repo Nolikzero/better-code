@@ -118,7 +118,7 @@ export function AgentImageItem({
         ) : hasError ? (
           <div
             className="size-8 flex items-center justify-center bg-muted/50 rounded border border-destructive/20"
-            title="Failed to load image"
+            title="图片加载失败"
           >
             <ImageOff className="size-4 text-destructive/50" />
           </div>
@@ -176,7 +176,7 @@ export function AgentImageItem({
             onClick={closeFullscreen}
             className="absolute top-4 right-4 p-2 rounded-full bg-black/50 hover:bg-black/70 transition-colors text-white z-10"
             type="button"
-            aria-label="Close fullscreen (Esc)"
+            aria-label="关闭全屏（Esc）"
           >
             <X className="size-6" />
           </button>
@@ -187,7 +187,7 @@ export function AgentImageItem({
               onClick={goToPrevious}
               className="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/50 hover:bg-black/70 transition-colors text-white z-10"
               type="button"
-              aria-label="Previous image (←)"
+              aria-label="上一张图片（←）"
             >
               <ChevronLeft className="size-8" />
             </button>
@@ -207,7 +207,7 @@ export function AgentImageItem({
               onClick={goToNext}
               className="absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/50 hover:bg-black/70 transition-colors text-white z-10"
               type="button"
-              aria-label="Next image (→)"
+              aria-label="下一张图片（→）"
             >
               <ChevronRight className="size-8" />
             </button>
@@ -231,7 +231,7 @@ export function AgentImageItem({
                         : "bg-white/40 hover:bg-white/60"
                     }`}
                     type="button"
-                    aria-label={`Go to image ${idx + 1}`}
+                    aria-label={`转到第 ${idx + 1} 张图片`}
                   />
                 ))}
               </div>

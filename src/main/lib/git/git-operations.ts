@@ -70,7 +70,7 @@ export const createGitOperationsRouter = () => {
           assertRegisteredWorktree(input.worktreePath);
 
           if (input.files.length === 0) {
-            throw new Error("No files selected for commit");
+            throw new Error("未选择要提交的文件");
           }
 
           // Stage only the selected files
@@ -163,9 +163,7 @@ export const createGitOperationsRouter = () => {
           const message =
             error instanceof Error ? error.message : String(error);
           if (isUpstreamMissingError(message)) {
-            throw new Error(
-              "No upstream branch to pull from. The remote branch may have been deleted.",
-            );
+            throw new Error("没有可拉取的上游分支，远程分支可能已被删除。");
           }
           throw error;
         }
@@ -254,7 +252,7 @@ export const createGitOperationsRouter = () => {
           // Fallback to parsed URL or fail
           if (!parsed.repoUrl) {
             throw new Error(
-              "Could not determine repository URL. Ensure the remote is configured for GitHub or GitLab.",
+              "无法确定仓库 URL。请确认远程仓库已配置为 GitHub 或 GitLab。",
             );
           }
 

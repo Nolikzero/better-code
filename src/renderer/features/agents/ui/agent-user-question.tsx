@@ -243,11 +243,11 @@ export const AgentUserQuestion = memo(function AgentUserQuestion({
       <div className="flex items-center justify-between px-3 py-1.5">
         <div className="flex items-center gap-1.5">
           <span className="text-[12px] text-muted-foreground">
-            {currentQuestion?.header || "Question"}
+            {currentQuestion?.header || "问题"}
           </span>
           <span className="text-muted-foreground/50">•</span>
           <span className="text-[12px] text-muted-foreground">
-            {currentQuestion?.multiSelect ? "Multi-select" : "Single-select"}
+            {currentQuestion?.multiSelect ? "多选" : "单选"}
           </span>
         </div>
 
@@ -358,7 +358,7 @@ export const AgentUserQuestion = memo(function AgentUserQuestion({
           disabled={isSubmitting}
           className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
         >
-          Skip All
+          全部跳过
         </Button>
         <Button
           size="sm"
@@ -370,10 +370,10 @@ export const AgentUserQuestion = memo(function AgentUserQuestion({
           className="h-6 text-xs px-3 rounded-md"
         >
           {isSubmitting ? (
-            "Sending..."
+            "正在发送…"
           ) : (
             <>
-              {isLastQuestion ? "Submit" : "Continue"}
+              {isLastQuestion ? "提交" : "继续"}
               <CornerDownLeft className="w-3 h-3 ml-1 opacity-60" />
             </>
           )}

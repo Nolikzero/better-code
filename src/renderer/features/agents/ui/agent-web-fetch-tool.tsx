@@ -73,10 +73,10 @@ export const AgentWebFetchTool = memo(function AgentWebFetchTool({
               duration={1.2}
               className="text-xs text-muted-foreground"
             >
-              Fetching
+              正在获取
             </TextShimmer>
           ) : (
-            <span className="text-xs text-muted-foreground">Fetched</span>
+            <span className="text-xs text-muted-foreground">已获取</span>
           )}
 
           <span className="truncate text-foreground">{hostname}</span>
@@ -89,7 +89,7 @@ export const AgentWebFetchTool = memo(function AgentWebFetchTool({
               <IconSpinner className="w-3 h-3" />
             ) : isError || !isSuccess ? (
               <span className="text-destructive">
-                {statusCode ? `Error ${statusCode}` : "Failed"}
+                {statusCode ? `错误 ${statusCode}` : "失败"}
               </span>
             ) : (
               <span className="text-muted-foreground">

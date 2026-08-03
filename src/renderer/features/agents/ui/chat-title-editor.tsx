@@ -18,7 +18,7 @@ interface ChatTitleEditorProps {
 
 export function ChatTitleEditor({
   name,
-  placeholder = "New Chat",
+  placeholder = "新建对话",
   onSave,
   isMobile = false,
   disabled = false,

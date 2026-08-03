@@ -41,14 +41,14 @@ export function MultiSelectFooter({
         >
           <div className="flex items-center justify-between px-1">
             <span className="text-xs text-muted-foreground">
-              {selectedCount} selected
+              {selectedCount} 已选择
             </span>
             <button
               type="button"
               onClick={onCancel}
               className="text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
-              Cancel
+              取消
             </button>
           </div>
 

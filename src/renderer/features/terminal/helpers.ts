@@ -26,7 +26,7 @@ import { debounce } from "./utils";
  */
 export function getDefaultTerminalBg(isDark = true): string {
   const theme = isDark ? TERMINAL_THEME_DARK : TERMINAL_THEME_LIGHT;
-  return theme?.background ?? (isDark ? "#121212" : "#fafafa");
+  return theme.background ?? (isDark ? "#21222c" : "#f7f1d9");
 }
 
 /**

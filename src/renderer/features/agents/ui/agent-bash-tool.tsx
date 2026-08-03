@@ -99,7 +99,7 @@ export const AgentBashTool = memo(function AgentBashTool({
                 duration={1.2}
                 className="inline-flex items-center text-xs leading-none h-4 m-0"
               >
-                Generating command
+                正在生成命令
               </TextShimmer>
             </span>
           </div>
@@ -110,7 +110,7 @@ export const AgentBashTool = memo(function AgentBashTool({
 
   // If no command and not streaming, tool was interrupted
   if (!command) {
-    return <AgentToolInterrupted toolName="Command" />;
+    return <AgentToolInterrupted toolName="命令" />;
   }
 
   return (
@@ -128,7 +128,7 @@ export const AgentBashTool = memo(function AgentBashTool({
         )}
       >
         <span className="text-xs text-muted-foreground truncate flex-1 min-w-0">
-          {isPending ? "Running command: " : "Ran command: "}
+          {isPending ? "正在运行命令：" : "已运行命令："}
           {commandSummary}
         </span>
 
@@ -141,12 +141,12 @@ export const AgentBashTool = memo(function AgentBashTool({
             ) : isSuccess ? (
               <>
                 <Check className="w-3 h-3" />
-                <span>Success</span>
+                <span>成功</span>
               </>
             ) : isError ? (
               <>
                 <X className="w-3 h-3" />
-                <span>Failed</span>
+                <span>失败</span>
               </>
             ) : null}
           </div>

@@ -30,6 +30,7 @@ export type BuiltinCommandAction =
   | { type: "ralph" }
   | { type: "compact" }
   | { type: "add-dir" }
+  | { type: "goal" }
   // Prompt-based commands (send to agent)
   | { type: "review" }
   | { type: "pr-comments" }

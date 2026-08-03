@@ -221,12 +221,14 @@ export function useProviderModelSelection(
   // Derive current provider models and model from effective provider
   const providerModels = getModels(effectiveProvider);
   // Priority: subchat model override -> global lastSelectedModelByProvider -> first model
-  const currentModelId =
-    subChatModelOverrides[subChatId] ||
-    modelByProvider[effectiveProvider] ||
-    providerModels[0]?.id ||
-    "";
-
+  // Ignore persisted IDs that are no longer offered by the real CLI configuration.
+  const preferredModelId =
+    subChatModelOverrides[subChatId] || modelByProvider[effectiveProvider];
+  const currentModelId = providerModels.some(
+    (model) => model.id === preferredModelId,
+  )
+    ? preferredModelId
+    : (providerModels[0]?.id ?? "");
   return {
     effectiveProvider,
     providerModels,

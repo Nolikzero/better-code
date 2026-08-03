@@ -24,12 +24,12 @@ interface WorkModeSelectorProps {
 const workModeOptions = [
   {
     id: "local" as const,
-    label: "Local",
+    label: "本地",
     icon: LaptopIcon,
   },
   {
     id: "worktree" as const,
-    label: "Worktree",
+    label: "工作树",
     icon: GitBranch,
   },
 ];
@@ -74,8 +74,8 @@ export function WorkModeSelector({
               className={cn(
                 "flex items-center gap-1.5 min-h-[32px] py-[5px] px-1.5 mx-1 w-[calc(100%-8px)] text-sm text-left rounded-md cursor-default select-none outline-hidden transition-colors",
                 isSelected
-                  ? "dark:bg-neutral-800 text-foreground"
-                  : "dark:hover:bg-neutral-800 hover:text-foreground",
+                  ? "bg-accent text-accent-foreground"
+                  : "hover:bg-accent hover:text-accent-foreground",
               )}
             >
               <OptionIcon className="h-4 w-4 text-muted-foreground shrink-0" />

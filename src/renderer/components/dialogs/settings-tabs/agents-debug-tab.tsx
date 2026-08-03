@@ -40,7 +40,7 @@ export function AgentsDebugTab() {
   // Mutations
   const clearChatsMutation = trpc.debug.clearChats.useMutation({
     onSuccess: () => {
-      toast.success("All chats cleared");
+      toast.success("已清空所有对话");
       refetchDb();
     },
     onError: (error) => toast.error(error.message),
@@ -48,18 +48,10 @@ export function AgentsDebugTab() {
 
   const clearAllDataMutation = trpc.debug.clearAllData.useMutation({
     onSuccess: () => {
-      toast.success("All data cleared. Reloading...");
+      toast.success("已清空所有数据，正在重新加载…");
       setTimeout(() => window.location.reload(), 500);
     },
     onError: (error) => toast.error(error.message),
-  });
-
-  const logoutMutation = trpc.debug.logout.useMutation({
-    onSuccess: () => {
-      toast.success("Logged out. Reloading...");
-      setTimeout(() => window.location.reload(), 500);
-    },
-    onError: (error: { message: string }) => toast.error(error.message),
   });
 
   const openFolderMutation = trpc.debug.openUserDataFolder.useMutation({
@@ -82,7 +74,7 @@ export function AgentsDebugTab() {
     };
     await navigator.clipboard.writeText(JSON.stringify(info, null, 2));
     setCopiedInfo(true);
-    toast.success("Debug info copied to clipboard");
+    toast.success("调试信息已复制到剪贴板");
     setTimeout(() => setCopiedInfo(false), 2000);
   };
 
@@ -97,26 +89,24 @@ export function AgentsDebugTab() {
       {/* Header - hidden on narrow screens since it's in the navigation bar */}
       {!isNarrowScreen && (
         <div>
-          <h3 className="text-lg font-semibold mb-1">Debug</h3>
-          <p className="text-sm text-muted-foreground">
-            System information and developer tools
-          </p>
+          <h3 className="text-lg font-semibold mb-1">调试</h3>
+          <p className="text-sm text-muted-foreground">系统信息与开发者工具</p>
         </div>
       )}
 
       {/* System Info */}
       <div className="space-y-3">
         <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-          System Info
+          系统信息
         </h4>
         <div className="rounded-lg border bg-muted/30 divide-y">
           <InfoRow
-            label="Version"
+            label="版本"
             value={systemInfo?.version}
             isLoading={isLoading}
           />
           <InfoRow
-            label="Platform"
+            label="平台"
             value={
               systemInfo
                 ? `${systemInfo.platform} (${systemInfo.arch})`
@@ -125,20 +115,18 @@ export function AgentsDebugTab() {
             isLoading={isLoading}
           />
           <InfoRow
-            label="Dev Mode"
-            value={systemInfo?.isDev ? "Yes" : "No"}
+            label="开发者模式"
+            value={systemInfo?.isDev ? "是" : "否"}
             isLoading={isLoading}
           />
           <InfoRow
-            label="Protocol"
-            value={
-              systemInfo?.protocolRegistered ? "Registered" : "Not registered"
-            }
+            label="协议"
+            value={systemInfo?.protocolRegistered ? "已注册" : "未注册"}
             isLoading={isLoading}
             status={systemInfo?.protocolRegistered ? "success" : "warning"}
           />
           <div className="flex items-center justify-between p-3">
-            <span className="text-sm text-muted-foreground">userData</span>
+            <span className="text-sm text-muted-foreground">用户数据目录</span>
             <div className="flex items-center gap-2">
               <span className="text-sm font-mono truncate max-w-[200px]">
                 {isLoading ? "..." : systemInfo?.userDataPath}
@@ -149,6 +137,7 @@ export function AgentsDebugTab() {
                 className="h-6 w-6"
                 onClick={handleCopyPath}
                 disabled={!systemInfo?.userDataPath}
+                aria-label="复制用户数据目录路径"
               >
                 {copiedPath ? (
                   <Check className="h-3 w-3 text-green-500" />
@@ -164,21 +153,21 @@ export function AgentsDebugTab() {
       {/* DB Stats */}
       <div className="space-y-3">
         <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-          Database
+          数据库
         </h4>
         <div className="rounded-lg border bg-muted/30 divide-y">
           <InfoRow
-            label="Projects"
+            label="项目"
             value={dbStats?.projects?.toString()}
             isLoading={isLoading}
           />
           <InfoRow
-            label="Chats"
+            label="对话"
             value={dbStats?.chats?.toString()}
             isLoading={isLoading}
           />
           <InfoRow
-            label="Sub-chats"
+            label="子对话"
             value={dbStats?.subChats?.toString()}
             isLoading={isLoading}
           />
@@ -188,7 +177,7 @@ export function AgentsDebugTab() {
       {/* Quick Actions */}
       <div className="space-y-3">
         <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-          Quick Actions
+          快捷操作
         </h4>
         <div className="grid grid-cols-2 gap-2">
           <Button
@@ -198,11 +187,11 @@ export function AgentsDebugTab() {
             disabled={openFolderMutation.isPending}
           >
             <FolderOpen className="h-4 w-4 mr-2" />
-            Open userData
+            打开用户数据目录
           </Button>
           <Button variant="outline" size="sm" onClick={handleOpenDevTools}>
             <Terminal className="h-4 w-4 mr-2" />
-            DevTools
+            开发者工具
           </Button>
           <Button
             variant="outline"
@@ -210,7 +199,7 @@ export function AgentsDebugTab() {
             onClick={() => window.location.reload()}
           >
             <RefreshCw className="h-4 w-4 mr-2" />
-            Reload
+            重新加载
           </Button>
           <Button
             variant="outline"
@@ -223,7 +212,7 @@ export function AgentsDebugTab() {
             ) : (
               <Copy className="h-4 w-4 mr-2" />
             )}
-            Copy Info
+            复制信息
           </Button>
         </div>
       </div>
@@ -231,74 +220,70 @@ export function AgentsDebugTab() {
       {/* Toast Testing */}
       <div className="space-y-3">
         <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-          Toast Testing
+          消息提示测试
         </h4>
         <div className="grid grid-cols-2 gap-2">
           <Button
             variant="outline"
             size="sm"
             onClick={() =>
-              toast.info("Cancelation sent", {
-                description: "Sent to John Smith",
+              toast.info("已发送取消请求", {
+                description: "已发送给张三",
                 action: {
-                  label: "Undo",
-                  onClick: () => toast("Undone!"),
+                  label: "撤销",
+                  onClick: () => toast("已撤销！"),
                 },
               })
             }
           >
-            Info + Undo
+            信息 + 撤销
           </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={() =>
-              toast.success("Success!", { description: "Operation completed" })
+              toast.success("成功！", { description: "操作已完成" })
             }
           >
-            Success
+            成功
           </Button>
           <Button
             variant="outline"
             size="sm"
-            onClick={() =>
-              toast.error("Error", { description: "Something went wrong" })
-            }
+            onClick={() => toast.error("错误", { description: "出了点问题" })}
           >
-            Error
+            错误
           </Button>
           <Button
             variant="outline"
             size="sm"
-            onClick={() =>
-              toast("Default toast", { description: "This is a description" })
-            }
+            onClick={() => toast("默认消息", { description: "这是描述内容" })}
           >
-            Default
+            默认
           </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={() => {
-              const id = toast.loading("Loading...", {
-                description: "Please wait",
+              const id = toast.loading("正在加载…", {
+                description: "请稍候",
               });
               setTimeout(() => toast.dismiss(id), 3000);
             }}
           >
-            Loading
+            正在加载
           </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={() => {
-              const id = toast.loading("Processing...");
+              const id = toast.loading("正在处理…");
               setTimeout(() => {
-                toast.success("Done!", { id });
+                toast.success("完成！", { id });
               }, 2000);
             }}
           >
-            Promise
+            异步完成
           </Button>
         </div>
       </div>
@@ -306,48 +291,34 @@ export function AgentsDebugTab() {
       {/* Data Management */}
       <div className="space-y-3">
         <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-          Data Management
+          数据管理
         </h4>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <Button
             variant="outline"
             size="sm"
             onClick={() => {
-              if (confirm("Clear all chats? Projects will be kept.")) {
+              if (confirm("确定清空所有对话吗？项目会保留。")) {
                 clearChatsMutation.mutate();
               }
             }}
             disabled={clearChatsMutation.isPending}
           >
-            {clearChatsMutation.isPending ? "..." : "Clear Chats"}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              if (confirm("Logout? You will need to sign in again.")) {
-                logoutMutation.mutate();
-              }
-            }}
-            disabled={logoutMutation.isPending}
-          >
-            {logoutMutation.isPending ? "..." : "Logout"}
+            {clearChatsMutation.isPending ? "..." : "清空对话"}
           </Button>
           <Button
             variant="destructive"
             size="sm"
             onClick={() => {
               if (
-                confirm(
-                  "Reset everything? This will clear all data and log you out.",
-                )
+                confirm("确定重置全部内容吗？这会清除所有本地项目和对话数据。")
               ) {
                 clearAllDataMutation.mutate();
               }
             }}
             disabled={clearAllDataMutation.isPending}
           >
-            {clearAllDataMutation.isPending ? "..." : "Reset All"}
+            {clearAllDataMutation.isPending ? "..." : "全部重置"}
           </Button>
         </div>
       </div>

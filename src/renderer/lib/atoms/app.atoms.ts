@@ -57,7 +57,6 @@ const _updateInfoAtom = atom<UpdateInfo | null>(null);
 // ============================================
 
 // Whether user has completed onboarding (provider selection)
-// Reset on logout
 export const onboardingCompletedAtom = atomWithStorage<boolean>(
   "onboarding:completed",
   false,

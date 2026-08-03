@@ -80,7 +80,7 @@ export const externalRouter = router({
       const apps = await detectInstalledApps();
       const app = apps.find((a) => a.id === input.appId);
       if (!app) {
-        throw new Error(`App "${input.appId}" not found or not installed`);
+        throw new Error(`应用“${input.appId}”不存在或尚未安装`);
       }
       await openInApp(app, input.path);
       return { success: true };

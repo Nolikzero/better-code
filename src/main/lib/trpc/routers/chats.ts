@@ -1,10 +1,8 @@
+import { builtinAgentIdSchema } from "@shared/builtin-agents";
+import { type ChatGoal, parseChatGoal } from "@shared/chat-goal";
 import { TRPCError } from "@trpc/server";
 import { observable } from "@trpc/server/observable";
-import { execSync } from "child_process";
 import { and, desc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
-import { app } from "electron";
-import os from "os";
-import path from "path";
 import simpleGit from "simple-git";
 import { z } from "zod";
 import { chats, getDatabase, projects, subChats } from "../../db";
@@ -22,50 +20,23 @@ import {
 } from "../../git";
 import { gitQueue } from "../../git/git-queue";
 import { execWithShellEnv } from "../../git/shell-env";
-import { getClaudeBinaryPath } from "../../providers/claude";
 import { providerRegistry } from "../../providers/registry";
 import { getRalphService } from "../../ralph";
 import { worktreeInitRunner } from "../../worktree/init-runner";
 import { publicProcedure, router } from "../index";
 
-// Dynamic import for ESM module
-const getClaudeQuery = async () => {
-  const sdk = await import("@anthropic-ai/claude-agent-sdk");
-  return sdk.query;
-};
-
-/**
- * Read Claude Code CLI OAuth token from macOS Keychain
- */
-function getCliOAuthToken(): string | null {
-  if (process.platform !== "darwin") return null;
-
-  try {
-    const output = execSync(
-      'security find-generic-password -s "Claude Code-credentials" -w',
-      { encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] },
-    ).trim();
-
-    if (!output) return null;
-
-    const credentials = JSON.parse(output);
-    const accessToken = credentials?.claudeAiOauth?.accessToken;
-
-    if (accessToken?.startsWith("sk-ant-oat01-")) {
-      return accessToken;
-    }
-
-    return null;
-  } catch {
-    return null;
-  }
-}
+const providerIdSchema = z
+  .string()
+  .trim()
+  .min(5)
+  .max(80)
+  .regex(/^api:[0-9a-f-]+$/i);
 
 // Fallback to truncated user message if AI generation fails
 function getFallbackName(userMessage: string): string {
   const trimmed = userMessage.trim();
   if (trimmed.length <= 25) {
-    return trimmed || "New Chat";
+    return trimmed || "新建对话";
   }
   return `${trimmed.substring(0, 25)}...`;
 }
@@ -116,6 +87,8 @@ export const chatsRouter = router({
             addedDirs: subChats.addedDirs,
             providerId: subChats.providerId,
             modelId: subChats.modelId,
+            agentId: subChats.agentId,
+            goal: subChats.goal,
           },
         })
         .from(chats)
@@ -145,6 +118,8 @@ export const chatsRouter = router({
             addedDirs: string | null;
             providerId: string | null;
             modelId: string | null;
+            agentId: string | null;
+            goal: string | null;
           }>;
         }
       >();
@@ -282,12 +257,10 @@ export const chatsRouter = router({
         selectedBranch: z.string().optional(), // Branch to switch to in local mode
         createNewBranch: z.boolean().optional(), // Create selectedBranch as new branch from current
         mode: z.enum(["plan", "agent", "ralph"]).default("agent"),
-        providerId: z
-          .enum(["claude", "codex", "opencode"])
-          .optional()
-          .default("claude"),
+        providerId: providerIdSchema,
         initialAddedDirs: z.array(z.string()).optional(),
         modelId: z.string().optional(),
+        agentId: builtinAgentIdSchema.nullable().optional(),
         // Ralph PRD data (for ralph mode - allows setting up PRD before chat creation)
         ralphPrd: z
           .object({
@@ -319,7 +292,7 @@ export const chatsRouter = router({
         .where(eq(projects.id, input.projectId))
         .get();
       console.log("[chats.create] found project:", project);
-      if (!project) throw new Error("Project not found");
+      if (!project) throw new Error("未找到项目");
 
       // Build initial messages for sub-chat
       let initialMessages = "[]";
@@ -418,7 +391,7 @@ export const chatsRouter = router({
                 if (postStatus.current !== input.selectedBranch) {
                   throw new TRPCError({
                     code: "INTERNAL_SERVER_ERROR",
-                    message: `Branch checkout failed: expected "${input.selectedBranch}" but on "${postStatus.current}"`,
+                    message: `分支切换失败：预期为“${input.selectedBranch}”，当前为“${postStatus.current}”`,
                   });
                 }
                 console.log("[chats.create] checkout verified successfully");
@@ -440,6 +413,7 @@ export const chatsRouter = router({
               messages: initialMessages,
               providerId: input.providerId,
               ...(input.modelId && { modelId: input.modelId }),
+              agentId: input.agentId ?? null,
               addedDirs: JSON.stringify(input.initialAddedDirs ?? []),
             })
             .returning()
@@ -492,6 +466,7 @@ export const chatsRouter = router({
           messages: initialMessages,
           providerId: input.providerId,
           ...(input.modelId && { modelId: input.modelId }),
+          agentId: input.agentId ?? null,
           addedDirs: JSON.stringify(input.initialAddedDirs ?? []),
         })
         .returning()
@@ -643,7 +618,7 @@ export const chatsRouter = router({
                   db.delete(chats).where(eq(chats.id, chat.id)).run();
                   throw new TRPCError({
                     code: "INTERNAL_SERVER_ERROR",
-                    message: `Branch checkout failed: expected "${input.selectedBranch}" but on "${postStatus.current}"`,
+                    message: `分支切换失败：预期为“${input.selectedBranch}”，当前为“${postStatus.current}”`,
                   });
                 }
                 console.log(
@@ -699,6 +674,7 @@ export const chatsRouter = router({
                 messages: initialMessages,
                 providerId: input.providerId,
                 ...(input.modelId && { modelId: input.modelId }),
+                agentId: input.agentId ?? null,
                 addedDirs: JSON.stringify(input.initialAddedDirs ?? []),
               })
               .returning()
@@ -816,7 +792,7 @@ export const chatsRouter = router({
     .input(
       z.object({
         chatId: z.string(),
-        providerId: z.enum(["claude", "codex", "opencode"]),
+        providerId: providerIdSchema,
       }),
     )
     .mutation(({ input }) => {
@@ -934,8 +910,9 @@ export const chatsRouter = router({
         chatId: z.string(),
         name: z.string().optional(),
         mode: z.enum(["plan", "agent", "ralph"]).default("agent"),
-        providerId: z.enum(["claude", "codex", "opencode"]).optional(),
+        providerId: providerIdSchema.optional(),
         modelId: z.string().optional(),
+        agentId: builtinAgentIdSchema.nullable().optional(),
       }),
     )
     .mutation(({ input }) => {
@@ -949,6 +926,7 @@ export const chatsRouter = router({
           messages: "[]",
           ...(input.providerId && { providerId: input.providerId }),
           ...(input.modelId && { modelId: input.modelId }),
+          agentId: input.agentId ?? null,
         })
         .returning()
         .get();
@@ -1002,13 +980,33 @@ export const chatsRouter = router({
     }),
 
   /**
+   * Update sub-chat built-in agent
+   */
+  updateSubChatAgent: publicProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        agentId: builtinAgentIdSchema.nullable(),
+      }),
+    )
+    .mutation(({ input }) => {
+      const db = getDatabase();
+      return db
+        .update(subChats)
+        .set({ agentId: input.agentId })
+        .where(eq(subChats.id, input.id))
+        .returning()
+        .get();
+    }),
+
+  /**
    * Update sub-chat provider
    */
   updateSubChatProvider: publicProcedure
     .input(
       z.object({
         id: z.string(),
-        providerId: z.enum(["claude", "codex", "opencode"]),
+        providerId: providerIdSchema,
       }),
     )
     .mutation(({ input }) => {
@@ -1039,6 +1037,109 @@ export const chatsRouter = router({
         .where(eq(subChats.id, input.id))
         .returning()
         .get();
+    }),
+
+  /**
+   * Update the current goal for one sub-chat without sending a message to a provider.
+   */
+  updateSubChatGoal: publicProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        action: z.discriminatedUnion("type", [
+          z.object({
+            type: z.literal("set"),
+            title: z.string().trim().min(1).max(500),
+          }),
+          z.object({
+            type: z.literal("complete"),
+            note: z.string().trim().min(1).max(1000).optional(),
+          }),
+          z.object({
+            type: z.literal("block"),
+            reason: z.string().trim().min(1).max(1000),
+          }),
+          z.object({ type: z.literal("clear") }),
+        ]),
+      }),
+    )
+    .mutation(({ input }) => {
+      const db = getDatabase();
+      const subChat = db
+        .select({ chatId: subChats.chatId, goal: subChats.goal })
+        .from(subChats)
+        .where(eq(subChats.id, input.id))
+        .get();
+
+      if (!subChat) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "未找到目标所属的子对话",
+        });
+      }
+
+      const now = new Date();
+      const nowIso = now.toISOString();
+      const existingGoal = parseChatGoal(subChat.goal);
+      let goal: ChatGoal | null;
+
+      switch (input.action.type) {
+        case "set":
+          goal = {
+            title: input.action.title,
+            status: "active",
+            createdAt: nowIso,
+            updatedAt: nowIso,
+          };
+          break;
+        case "complete":
+          if (!existingGoal) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "请先使用 /goal <目标> 创建当前目标",
+            });
+          }
+          goal = {
+            ...existingGoal,
+            status: "completed",
+            updatedAt: nowIso,
+            ...(input.action.note
+              ? { completionNote: input.action.note, blockedReason: undefined }
+              : { blockedReason: undefined }),
+          };
+          break;
+        case "block":
+          if (!existingGoal) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "请先使用 /goal <目标> 创建当前目标",
+            });
+          }
+          goal = {
+            ...existingGoal,
+            status: "blocked",
+            updatedAt: nowIso,
+            blockedReason: input.action.reason,
+            completionNote: undefined,
+          };
+          break;
+        case "clear":
+          goal = null;
+          break;
+      }
+
+      const updatedSubChat = db
+        .update(subChats)
+        .set({ goal: goal ? JSON.stringify(goal) : null, updatedAt: now })
+        .where(eq(subChats.id, input.id))
+        .returning()
+        .get();
+      db.update(chats)
+        .set({ updatedAt: now })
+        .where(eq(chats.id, subChat.chatId))
+        .run();
+
+      return updatedSubChat;
     }),
 
   /**
@@ -1107,7 +1208,7 @@ export const chatsRouter = router({
         .get();
 
       if (!chat?.worktreePath) {
-        return { diff: null, error: "No worktree path" };
+        return { diff: null, error: "没有可用的工作树路径" };
       }
 
       // Pass uncommittedOnly: true to only show uncommitted changes
@@ -1125,117 +1226,16 @@ export const chatsRouter = router({
       return { diff: result.diff || "" };
     }),
 
-  /**
-   * Generate a name for a sub-chat
-   * Uses Claude SDK to generate a concise name, falls back to truncated message
-   */
+  /** Generate a concise local name without invoking an external CLI. */
   generateSubChatName: publicProcedure
     .input(
       z.object({
         userMessage: z.string(),
-        providerId: z
-          .enum(["claude", "codex", "opencode"])
-          .optional()
-          .default("claude"),
+        providerId: providerIdSchema.optional(),
         projectPath: z.string().optional(),
       }),
     )
-    .mutation(async ({ input }) => {
-      // Only use AI generation for Claude provider
-      // Other providers fallback to truncated message
-      if (input.providerId !== "claude") {
-        return { name: getFallbackName(input.userMessage) };
-      }
-
-      try {
-        const claudeQuery = await getClaudeQuery();
-        const binaryResult = getClaudeBinaryPath();
-        if (!binaryResult) {
-          throw new TRPCError({
-            code: "PRECONDITION_FAILED",
-            message:
-              "Claude Code binary not found. Install via https://claude.ai/install.sh",
-          });
-        }
-        const claudeBinaryPath = binaryResult.path;
-
-        // Get CLI OAuth token from keychain
-        const cliOAuthToken = getCliOAuthToken();
-
-        const prompt = `Generate a very short title (2-5 words, max 30 chars) for a chat that starts with this message. Return ONLY the title, no quotes, no explanation:
-
-"${input.userMessage.slice(0, 200)}"`;
-
-        let generatedName = "";
-        const abortController = new AbortController();
-
-        // Set a timeout to abort if it takes too long
-        const timeout = setTimeout(() => abortController.abort(), 10000);
-
-        // Use isolated config dir to avoid loading user's MCP servers/settings
-        // which can trigger macOS TCC prompts (e.g., Photo Library access)
-        const isolatedConfigDir = path.join(
-          app.getPath("userData"),
-          "claude-name-gen",
-        );
-
-        try {
-          // Minimal env for name generation - avoid shell spawning which triggers TCC prompts
-          const minimalEnv: Record<string, string> = {
-            HOME: os.homedir(),
-            USER: os.userInfo().username,
-            PATH: process.env.PATH || "/usr/bin:/bin",
-            SHELL: process.env.SHELL || "/bin/zsh",
-            TERM: "xterm-256color",
-            CLAUDE_CONFIG_DIR: isolatedConfigDir,
-            CLAUDE_CODE_ENTRYPOINT: "sdk-ts",
-            ...(cliOAuthToken && {
-              CLAUDE_CODE_OAUTH_TOKEN: cliOAuthToken,
-            }),
-          };
-
-          const stream = claudeQuery({
-            prompt,
-            options: {
-              abortController,
-              // Use project path as cwd, fallback to userData if not available
-              cwd: input.projectPath || app.getPath("userData"),
-              env: minimalEnv,
-              maxTurns: 1,
-              pathToClaudeCodeExecutable: claudeBinaryPath,
-            },
-          });
-
-          for await (const msg of stream) {
-            // Extract text from assistant messages
-            if (msg.type === "assistant" && msg.message?.content) {
-              for (const block of msg.message.content) {
-                if (block.type === "text") {
-                  generatedName += block.text;
-                }
-              }
-            }
-          }
-        } finally {
-          clearTimeout(timeout);
-        }
-
-        // Clean up the generated name
-        const cleanName = generatedName
-          .trim()
-          .replace(/^["']|["']$/g, "") // Remove quotes
-          .slice(0, 50); // Limit length
-
-        if (cleanName.length > 0) {
-          return { name: cleanName };
-        }
-      } catch (error) {
-        console.warn(
-          "[generateSubChatName] SDK call failed, using fallback:",
-          error,
-        );
-      }
-
+    .mutation(({ input }) => {
       return { name: getFallbackName(input.userMessage) };
     }),
 
@@ -1373,7 +1373,7 @@ export const chatsRouter = router({
         .get();
 
       if (!chat?.worktreePath || !chat?.prNumber) {
-        throw new Error("No PR/MR to merge");
+        throw new Error("没有可合并的 PR/MR");
       }
 
       // Get project to determine git provider
@@ -1413,7 +1413,7 @@ export const chatsRouter = router({
       } catch (error) {
         console.error("[mergePr] Error:", error);
         throw new Error(
-          error instanceof Error ? error.message : "Failed to merge PR/MR",
+          error instanceof Error ? error.message : "合并 PR/MR 失败",
         );
       }
     }),

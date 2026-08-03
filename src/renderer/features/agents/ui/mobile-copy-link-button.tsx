@@ -46,7 +46,7 @@ export function MobileCopyLinkButton({ url }: MobileCopyLinkButtonProps) {
           )}
         />
       </div>
-      <span className="sr-only">{copied ? "Copied!" : "Copy link"}</span>
+      <span className="sr-only">{copied ? "已复制" : "复制链接"}</span>
     </Button>
   );
 }

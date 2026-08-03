@@ -20,16 +20,14 @@ import { useEffect, useRef, useState } from "react";
 import { Badge } from "../../components/ui/badge";
 import { Logo } from "../../components/ui/logo";
 import {
-  defaultProviderIdAtom,
-  enabledProviderIdsAtom,
   onboardingCompletedAtom,
   PROVIDER_INFO,
   type ProviderId,
 } from "../../lib/atoms";
 import { trpc } from "../../lib/trpc";
-import { normalizeProvidersList } from "../agents/hooks/use-providers";
 import { cn } from "../../lib/utils";
 import { selectedProjectAtom } from "../agents/atoms";
+import { normalizeProvidersList } from "../agents/hooks/use-providers";
 import { getProviderIcon } from "../agents/ui/provider-icons";
 
 // ============================================
@@ -37,6 +35,28 @@ import { getProviderIcon } from "../agents/ui/provider-icons";
 // ============================================
 
 type Step = "welcome" | "provider" | "repository" | "ready";
+
+const PROVIDER_ICON_STYLES: Record<
+  ProviderId,
+  { readonly background: string; readonly foreground: string }
+> = {
+  claude: {
+    background: "bg-[#D97757]/10",
+    foreground: "text-[#D97757]",
+  },
+  codex: {
+    background: "bg-[#10A37F]/10",
+    foreground: "text-[#10A37F]",
+  },
+  opencode: {
+    background: "bg-[#6366F1]/10",
+    foreground: "text-[#6366F1]",
+  },
+  grok: {
+    background: "bg-slate-100 dark:bg-slate-800",
+    foreground: "text-slate-900 dark:text-slate-100",
+  },
+};
 
 // ============================================
 // STEP PROGRESS
@@ -87,7 +107,7 @@ function ProviderStatusBadge({
         variant="outline"
         className="text-[10px] py-0 px-1.5 font-normal gap-1 text-muted-foreground border-border"
       >
-        Optional
+        可选
       </Badge>
     );
   }
@@ -99,7 +119,7 @@ function ProviderStatusBadge({
         className="text-[10px] py-0 px-1.5 font-normal gap-1 text-muted-foreground border-border"
       >
         <Loader2 className="w-2.5 h-2.5 animate-spin" />
-        Checking
+        正在检查
       </Badge>
     );
   }
@@ -111,7 +131,7 @@ function ProviderStatusBadge({
         className="text-[10px] py-0 px-1.5 font-normal gap-1 text-muted-foreground border-border"
       >
         <AlertCircle className="w-2.5 h-2.5" />
-        Install
+        安装
       </Badge>
     );
   }
@@ -123,7 +143,7 @@ function ProviderStatusBadge({
         className="text-[10px] py-0 px-1.5 font-normal gap-1 text-muted-foreground border-border"
       >
         <AlertCircle className="w-2.5 h-2.5" />
-        Setup Required
+        需要设置
       </Badge>
     );
   }
@@ -134,7 +154,7 @@ function ProviderStatusBadge({
       className="text-[10px] py-0 px-1.5 font-normal gap-1 text-primary border-primary/20 bg-primary/5"
     >
       <Check className="w-2.5 h-2.5" />
-      Ready
+      就绪
     </Badge>
   );
 }
@@ -206,7 +226,7 @@ function ClaudeInstructions({ installed }: { installed: boolean }) {
           </div>
           <div className="flex-1 space-y-2">
             <p className="text-sm text-muted-foreground">
-              Install Claude Code CLI:
+              安装 Claude Code CLI：
             </p>
             <CopyableCommand command="curl -fsSL https://claude.ai/install.sh | sh" />
           </div>
@@ -216,7 +236,7 @@ function ClaudeInstructions({ installed }: { installed: boolean }) {
             2
           </div>
           <div className="flex-1 space-y-2">
-            <p className="text-sm text-muted-foreground">Then authenticate:</p>
+            <p className="text-sm text-muted-foreground">然后完成身份验证：</p>
             <CopyableCommand command="claude login" />
           </div>
         </div>
@@ -230,16 +250,14 @@ function ClaudeInstructions({ installed }: { installed: boolean }) {
         <div className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-medium shrink-0 mt-0.5">
           1
         </div>
-        <p className="text-sm text-muted-foreground">Open Terminal</p>
+        <p className="text-sm text-muted-foreground">打开终端</p>
       </div>
       <div className="flex items-start gap-3">
         <div className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-medium shrink-0 mt-0.5">
           2
         </div>
         <div className="flex-1 space-y-2">
-          <p className="text-sm text-muted-foreground">
-            Run the login command:
-          </p>
+          <p className="text-sm text-muted-foreground">运行登录命令：</p>
           <CopyableCommand command="claude login" />
         </div>
       </div>
@@ -247,9 +265,7 @@ function ClaudeInstructions({ installed }: { installed: boolean }) {
         <div className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-medium shrink-0 mt-0.5">
           3
         </div>
-        <p className="text-sm text-muted-foreground">
-          Complete authentication in your browser
-        </p>
+        <p className="text-sm text-muted-foreground">在浏览器中完成身份验证</p>
       </div>
     </div>
   );
@@ -264,7 +280,7 @@ function CodexInstructions({ installed }: { installed: boolean }) {
             1
           </div>
           <div className="flex-1 space-y-2">
-            <p className="text-sm text-muted-foreground">Install Codex CLI:</p>
+            <p className="text-sm text-muted-foreground">安装 Codex CLI：</p>
             <CopyableCommand command="npm install -g @openai/codex" />
           </div>
         </div>
@@ -273,7 +289,7 @@ function CodexInstructions({ installed }: { installed: boolean }) {
             2
           </div>
           <div className="flex-1 space-y-2">
-            <p className="text-sm text-muted-foreground">Then authenticate:</p>
+            <p className="text-sm text-muted-foreground">然后完成身份验证：</p>
             <CopyableCommand command="codex login" />
           </div>
         </div>
@@ -284,21 +300,93 @@ function CodexInstructions({ installed }: { installed: boolean }) {
   return (
     <div className="space-y-3">
       <p className="text-xs font-medium text-muted-foreground">
-        Option 1: Login with OpenAI
+        方式一：使用 OpenAI 登录
       </p>
       <CopyableCommand command="codex login" />
       <div className="pt-2">
         <p className="text-xs font-medium text-muted-foreground">
-          Option 2: Use API Key
+          方式二：使用 API 密钥
         </p>
         <p className="text-xs text-muted-foreground mt-1">
-          Set the <code className="bg-muted px-1 rounded">OPENAI_API_KEY</code>{" "}
-          environment variable
+          设置 <code className="bg-muted px-1 rounded">OPENAI_API_KEY</code>{" "}
+          环境变量
         </p>
       </div>
     </div>
   );
 }
+
+function OpenCodeInstructions({ installed }: { installed: boolean }) {
+  return (
+    <div className="space-y-3">
+      {!installed && (
+        <div className="flex items-start gap-3">
+          <div className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-medium shrink-0 mt-0.5">
+            1
+          </div>
+          <div className="flex-1 space-y-2">
+            <p className="text-sm text-muted-foreground">安装 OpenCode CLI：</p>
+            <CopyableCommand command="npm install -g opencode-ai" />
+          </div>
+        </div>
+      )}
+      <div className="flex items-start gap-3">
+        <div className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-medium shrink-0 mt-0.5">
+          {installed ? "1" : "2"}
+        </div>
+        <div className="flex-1 space-y-2">
+          <p className="text-sm text-muted-foreground">
+            登录并配置模型提供商：
+          </p>
+          <CopyableCommand command="opencode auth login" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GrokInstructions({ installed }: { installed: boolean }) {
+  return (
+    <div className="space-y-3">
+      {!installed && (
+        <div className="flex items-start gap-3">
+          <div className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-medium shrink-0 mt-0.5">
+            1
+          </div>
+          <p className="text-sm text-muted-foreground">
+            请先安装 Grok Build CLI，再重新检查提供商状态。
+          </p>
+        </div>
+      )}
+      <div className="flex items-start gap-3">
+        <div className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-medium shrink-0 mt-0.5">
+          {installed ? "1" : "2"}
+        </div>
+        <div className="flex-1 space-y-2">
+          <p className="text-sm text-muted-foreground">登录 Grok Build：</p>
+          <CopyableCommand command="grok login" />
+          <p className="text-xs text-muted-foreground">
+            无法打开浏览器时，可运行{" "}
+            <code className="bg-muted px-1 rounded">
+              grok login --device-code
+            </code>
+            。
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const PROVIDER_INSTRUCTIONS: Record<
+  ProviderId,
+  (props: { installed: boolean }) => React.ReactNode
+> = {
+  claude: ClaudeInstructions,
+  codex: CodexInstructions,
+  opencode: OpenCodeInstructions,
+  grok: GrokInstructions,
+};
 
 function SetupInstructions({
   providerId,
@@ -314,7 +402,7 @@ function SetupInstructions({
       <div className="flex items-center gap-2 p-3 rounded-md bg-primary/5 border border-primary/10">
         <Check className="w-4 h-4 text-primary shrink-0" />
         <p className="text-sm text-primary">
-          {PROVIDER_INFO[providerId].name} is ready to use
+          {PROVIDER_INFO[providerId].name} 已可使用
         </p>
       </div>
     );
@@ -329,10 +417,10 @@ function SetupInstructions({
       className="overflow-hidden"
     >
       <div className="p-4 bg-muted/40 rounded-md border border-border">
-        {providerId === "claude" && (
-          <ClaudeInstructions installed={available} />
-        )}
-        {providerId === "codex" && <CodexInstructions installed={available} />}
+        {(() => {
+          const ProviderInstructions = PROVIDER_INSTRUCTIONS[providerId];
+          return <ProviderInstructions installed={available} />;
+        })()}
       </div>
     </motion.div>
   );
@@ -348,7 +436,7 @@ function ProviderCard({
   onSelect,
 }: {
   provider: {
-    id: string;
+    id: ProviderId;
     name: string;
     description: string;
     available?: boolean;
@@ -375,19 +463,12 @@ function ProviderCard({
         <div
           className={cn(
             "w-9 h-9 rounded-md flex items-center justify-center shrink-0",
-            provider.id === "claude" && "bg-[#D97757]/10",
-            provider.id === "codex" && "bg-[#10A37F]/10",
-            provider.id === "opencode" && "bg-[#6366F1]/10",
+            PROVIDER_ICON_STYLES[provider.id].background,
           )}
         >
           {getProviderIcon(
-            provider.id as ProviderId,
-            cn(
-              "w-5 h-5",
-              provider.id === "claude" && "text-[#D97757]",
-              provider.id === "codex" && "text-[#10A37F]",
-              provider.id === "opencode" && "text-[#6366F1]",
-            ),
+            provider.id,
+            cn("w-5 h-5", PROVIDER_ICON_STYLES[provider.id].foreground),
           )}
         </div>
 
@@ -445,11 +526,10 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
           className="space-y-2"
         >
           <h1 className="text-xl font-semibold tracking-tight">
-            Welcome to BetterCode
+            欢迎使用 SamBetterCode
           </h1>
           <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-            Your AI-powered coding assistant. Let's get you set up in just a few
-            steps.
+            你的 AI 编程助手。只需几步即可完成设置。
           </p>
         </motion.div>
       </div>
@@ -463,7 +543,7 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
         whileTap={{ scale: 0.97 }}
         className="w-full h-9 px-4 bg-primary text-primary-foreground rounded-md text-sm font-medium transition-colors hover:bg-primary/90 flex items-center justify-center gap-2 shadow-[0_0_0_0.5px_rgb(23,23,23),inset_0_0_0_1px_rgba(255,255,255,0.14)]"
       >
-        Get Started
+        开始使用
         <ChevronRight className="w-4 h-4" />
       </motion.button>
     </motion.div>
@@ -474,7 +554,7 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
 // STEP: PROVIDER
 // ============================================
 
-function ProviderStep({
+function _ProviderStep({
   onNext,
   selectedProviders,
   setSelectedProviders,
@@ -544,18 +624,16 @@ function ProviderStep({
       className="space-y-6"
     >
       <div className="text-center space-y-1">
-        <h1 className="text-xl font-semibold tracking-tight">
-          Choose Your Provider
-        </h1>
+        <h1 className="text-xl font-semibold tracking-tight">选择提供商</h1>
         <p className="text-sm text-muted-foreground">
-          Select the providers you want to enable (at least one)
+          选择要启用的提供商（至少一个）
         </p>
       </div>
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            Available Providers
+            可用提供商
           </span>
           <button
             type="button"
@@ -566,14 +644,14 @@ function ProviderStep({
             <RefreshCw
               className={cn("w-3 h-3", isRefetching && "animate-spin")}
             />
-            Refresh
+            刷新
           </button>
         </div>
 
         {isLoading ? (
           <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground">
             <Loader2 className="w-4 h-4 animate-spin" />
-            <span className="text-sm">Checking providers...</span>
+            <span className="text-sm">正在检查提供商…</span>
           </div>
         ) : (
           <div className="space-y-2">
@@ -619,11 +697,11 @@ function ProviderStep({
             !canContinue && "opacity-50 cursor-not-allowed hover:bg-primary",
           )}
         >
-          Continue
+          继续
           <ChevronRight className="w-4 h-4" />
         </motion.button>
         <p className="text-xs text-muted-foreground text-center">
-          You can change your providers anytime in Settings
+          你可以随时在设置中更改提供商
         </p>
       </div>
     </motion.div>
@@ -697,11 +775,9 @@ function RepositoryStep({ onNext }: { onNext: () => void }) {
       className="space-y-6"
     >
       <div className="text-center space-y-1">
-        <h1 className="text-xl font-semibold tracking-tight">
-          Select a Repository
-        </h1>
+        <h1 className="text-xl font-semibold tracking-tight">选择仓库</h1>
         <p className="text-sm text-muted-foreground">
-          Choose a local folder to start working with
+          选择一个本地文件夹开始工作
         </p>
       </div>
 
@@ -729,9 +805,9 @@ function RepositoryStep({ onNext }: { onNext: () => void }) {
               </div>
             )}
             <div className="space-y-1">
-              <p className="font-medium text-sm">Select a project folder</p>
+              <p className="font-medium text-sm">选择项目文件夹</p>
               <p className="text-xs text-muted-foreground">
-                Choose a local repository to start coding
+                选择一个本地仓库开始编程
               </p>
             </div>
           </div>
@@ -740,7 +816,7 @@ function RepositoryStep({ onNext }: { onNext: () => void }) {
         {recentProjects && recentProjects.length > 0 && (
           <div className="space-y-2">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Recent Projects
+              最近项目
             </p>
             <div className="space-y-1">
               {recentProjects.slice(0, 3).map((project) => (
@@ -772,8 +848,8 @@ function RepositoryStep({ onNext }: { onNext: () => void }) {
 
 function ReadyStep({ onComplete }: { onComplete: () => void }) {
   const tips = [
-    { icon: Terminal, text: "Use / commands for quick actions" },
-    { icon: Sparkles, text: "Plan mode helps structure complex tasks" },
+    { icon: Sparkles, text: "进入应用后，在设置中添加接口服务商" },
+    { icon: Terminal, text: "填写 Base URL、API Key、模型列表和上下文长度" },
   ];
 
   return (
@@ -807,17 +883,17 @@ function ReadyStep({ onComplete }: { onComplete: () => void }) {
           className="space-y-2"
         >
           <h1 className="text-xl font-semibold tracking-tight">
-            You're All Set!
+            一切准备就绪！
           </h1>
           <p className="text-sm text-muted-foreground">
-            BetterCode is ready to help you code faster
+            项目已准备好，下一步请配置接口服务商
           </p>
         </motion.div>
       </div>
 
       <div className="space-y-3">
         <p className="text-xs font-medium text-muted-foreground text-center uppercase tracking-wide">
-          Quick Tips
+          快速提示
         </p>
         <div className="space-y-2">
           {tips.map((tip, i) => (
@@ -844,7 +920,7 @@ function ReadyStep({ onComplete }: { onComplete: () => void }) {
         whileTap={{ scale: 0.97 }}
         className="w-full h-9 px-4 bg-primary text-primary-foreground rounded-md text-sm font-medium transition-colors hover:bg-primary/90 flex items-center justify-center gap-2 shadow-[0_0_0_0.5px_rgb(23,23,23),inset_0_0_0_1px_rgba(255,255,255,0.14)]"
       >
-        Start Coding
+        进入 SamBetterCode
         <Sparkles className="w-4 h-4" />
       </motion.button>
     </motion.div>
@@ -857,68 +933,31 @@ function ReadyStep({ onComplete }: { onComplete: () => void }) {
 
 export function OnboardingWizard() {
   const [currentStep, setCurrentStep] = useState<Step>("welcome");
-  const [enabledProviders, setEnabledProviders] = useAtom(
-    enabledProviderIdsAtom,
-  );
-  const [selectedProviders, setSelectedProviders] = useState<ProviderId[]>(
-    enabledProviders.length > 0 ? enabledProviders : [],
-  );
-  const [activeProvider, setActiveProvider] = useState<ProviderId>(
-    selectedProviders[0] ?? "claude",
-  );
-
   const setOnboardingCompleted = useSetAtom(onboardingCompletedAtom);
-  const setDefaultProvider = useSetAtom(defaultProviderIdAtom);
-
-  const steps: Step[] = ["welcome", "provider", "repository", "ready"];
-
-  useEffect(() => {
-    if (selectedProviders.length === 0) return;
-    if (!selectedProviders.includes(activeProvider)) {
-      setActiveProvider(selectedProviders[0]);
-    }
-  }, [activeProvider, selectedProviders]);
+  const steps: Step[] = ["welcome", "repository", "ready"];
 
   const handleComplete = () => {
-    const fallbackProvider = selectedProviders[0] || "claude";
-    setEnabledProviders(selectedProviders);
-    setDefaultProvider(fallbackProvider);
     setOnboardingCompleted(true);
   };
 
   const goToNext = () => {
     const currentIndex = steps.indexOf(currentStep);
-    if (currentIndex < steps.length - 1) {
-      setCurrentStep(steps[currentIndex + 1]);
-    }
+    const nextStep = steps[currentIndex + 1];
+    if (nextStep) setCurrentStep(nextStep);
   };
 
   return (
     <div className="h-screen w-screen flex flex-col items-center justify-center bg-background select-none">
-      {/* Draggable title bar area */}
       <div
         className="fixed top-0 left-0 right-0 h-10"
         style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
       />
 
-      <div className="w-full max-w-[520px] space-y-6 px-6">
-        {/* Progress */}
+      <div className="no-drag w-full max-w-[520px] space-y-6 px-6">
         <StepProgress steps={steps} currentStep={currentStep} />
-
-        {/* Content */}
         <AnimatePresence mode="wait">
           {currentStep === "welcome" && (
             <WelcomeStep key="welcome" onNext={goToNext} />
-          )}
-          {currentStep === "provider" && (
-            <ProviderStep
-              key="provider"
-              onNext={goToNext}
-              selectedProviders={selectedProviders}
-              setSelectedProviders={setSelectedProviders}
-              activeProvider={activeProvider}
-              setActiveProvider={setActiveProvider}
-            />
           )}
           {currentStep === "repository" && (
             <RepositoryStep key="repository" onNext={goToNext} />

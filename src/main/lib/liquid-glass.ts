@@ -43,8 +43,7 @@ export function initLiquidGlass(): boolean {
     return true;
   } catch (error) {
     isInitialized = true;
-    initializationError =
-      error instanceof Error ? error.message : "Unknown error";
+    initializationError = error instanceof Error ? error.message : "未知错误";
     console.log(
       "[LiquidGlass] Module not available (expected on non-macOS 26+):",
       initializationError,

@@ -4,7 +4,7 @@ export const DEFAULT_KEYBINDINGS: KeybindingDefinition[] = [
   // ===== GENERAL =====
   {
     id: "general.show-shortcuts",
-    label: "Show shortcuts",
+    label: "显示快捷键",
     category: "general",
     defaultBinding: {
       mac: { key: "?", shift: true },
@@ -14,7 +14,7 @@ export const DEFAULT_KEYBINDINGS: KeybindingDefinition[] = [
   },
   {
     id: "general.settings",
-    label: "Settings",
+    label: "设置",
     category: "general",
     defaultBinding: {
       mac: { key: ",", meta: true },
@@ -24,7 +24,7 @@ export const DEFAULT_KEYBINDINGS: KeybindingDefinition[] = [
   },
   {
     id: "general.toggle-sidebar",
-    label: "Toggle sidebar",
+    label: "切换侧栏",
     category: "general",
     defaultBinding: {
       mac: { key: "\\", meta: true },
@@ -34,7 +34,7 @@ export const DEFAULT_KEYBINDINGS: KeybindingDefinition[] = [
   },
   {
     id: "general.toggle-chats-sidebar",
-    label: "Toggle chats sidebar",
+    label: "切换对话侧栏",
     category: "general",
     defaultBinding: {
       mac: { key: "\\", meta: true, shift: true },
@@ -46,7 +46,7 @@ export const DEFAULT_KEYBINDINGS: KeybindingDefinition[] = [
   // ===== WORKSPACES =====
   {
     id: "workspaces.new",
-    label: "New workspace",
+    label: "新建工作区",
     category: "workspaces",
     defaultBinding: {
       mac: { key: "n", meta: true },
@@ -56,7 +56,7 @@ export const DEFAULT_KEYBINDINGS: KeybindingDefinition[] = [
   },
   {
     id: "workspaces.search",
-    label: "Search workspaces",
+    label: "搜索工作区",
     category: "workspaces",
     defaultBinding: {
       mac: { key: "f", meta: true },
@@ -66,7 +66,7 @@ export const DEFAULT_KEYBINDINGS: KeybindingDefinition[] = [
   },
   {
     id: "workspaces.archive",
-    label: "Archive workspace",
+    label: "归档工作区",
     category: "workspaces",
     defaultBinding: {
       mac: { key: "e", meta: true },
@@ -76,7 +76,7 @@ export const DEFAULT_KEYBINDINGS: KeybindingDefinition[] = [
   },
   {
     id: "workspaces.undo-archive",
-    label: "Undo archive",
+    label: "撤销归档",
     category: "workspaces",
     defaultBinding: {
       mac: { key: "z", meta: true },
@@ -86,7 +86,7 @@ export const DEFAULT_KEYBINDINGS: KeybindingDefinition[] = [
   },
   {
     id: "workspaces.quick-open",
-    label: "Go to file",
+    label: "转到文件",
     category: "workspaces",
     defaultBinding: {
       desktop: { key: "p", meta: true },
@@ -99,7 +99,7 @@ export const DEFAULT_KEYBINDINGS: KeybindingDefinition[] = [
   // ===== AGENTS =====
   {
     id: "agents.new-tab",
-    label: "New agent tab",
+    label: "新建智能体标签页",
     category: "agents",
     defaultBinding: {
       desktop: { key: "t", meta: true },
@@ -110,7 +110,7 @@ export const DEFAULT_KEYBINDINGS: KeybindingDefinition[] = [
   },
   {
     id: "agents.close-tab",
-    label: "Close agent tab",
+    label: "关闭智能体标签页",
     category: "agents",
     defaultBinding: {
       desktop: { key: "w", meta: true },
@@ -121,7 +121,7 @@ export const DEFAULT_KEYBINDINGS: KeybindingDefinition[] = [
   },
   {
     id: "agents.prev-tab",
-    label: "Previous agent",
+    label: "上一个智能体",
     category: "agents",
     defaultBinding: {
       desktop: { key: "[", meta: true },
@@ -132,7 +132,7 @@ export const DEFAULT_KEYBINDINGS: KeybindingDefinition[] = [
   },
   {
     id: "agents.next-tab",
-    label: "Next agent",
+    label: "下一个智能体",
     category: "agents",
     defaultBinding: {
       desktop: { key: "]", meta: true },
@@ -143,7 +143,7 @@ export const DEFAULT_KEYBINDINGS: KeybindingDefinition[] = [
   },
   {
     id: "agents.stop-generation",
-    label: "Stop generation",
+    label: "停止生成",
     category: "agents",
     defaultBinding: {
       mac: [
@@ -162,7 +162,7 @@ export const DEFAULT_KEYBINDINGS: KeybindingDefinition[] = [
   },
   {
     id: "agents.switch-model",
-    label: "Switch model",
+    label: "切换模型",
     category: "agents",
     defaultBinding: {
       mac: { key: "/", meta: true },
@@ -172,7 +172,7 @@ export const DEFAULT_KEYBINDINGS: KeybindingDefinition[] = [
   },
   {
     id: "agents.toggle-diff",
-    label: "Toggle diff sidebar",
+    label: "切换差异侧栏",
     category: "agents",
     defaultBinding: {
       mac: { key: "d", meta: true },
@@ -182,7 +182,7 @@ export const DEFAULT_KEYBINDINGS: KeybindingDefinition[] = [
   },
   {
     id: "agents.toggle-terminal",
-    label: "Toggle terminal",
+    label: "切换终端",
     category: "agents",
     defaultBinding: {
       mac: { key: "j", meta: true },
@@ -192,7 +192,7 @@ export const DEFAULT_KEYBINDINGS: KeybindingDefinition[] = [
   },
   {
     id: "agents.create-pr",
-    label: "Create PR",
+    label: "创建 PR",
     category: "agents",
     defaultBinding: {
       desktop: { key: "p", meta: true, shift: true },
@@ -203,7 +203,7 @@ export const DEFAULT_KEYBINDINGS: KeybindingDefinition[] = [
   },
   {
     id: "agents.restore-workspace",
-    label: "Restore archived workspace",
+    label: "恢复已归档工作区",
     category: "agents",
     defaultBinding: {
       mac: { key: "e", meta: true, shift: true },
@@ -213,7 +213,7 @@ export const DEFAULT_KEYBINDINGS: KeybindingDefinition[] = [
   },
   {
     id: "agents.focus-input",
-    label: "Focus input",
+    label: "聚焦输入框",
     category: "agents",
     defaultBinding: {
       mac: { key: "Enter" },
@@ -223,7 +223,7 @@ export const DEFAULT_KEYBINDINGS: KeybindingDefinition[] = [
   },
   {
     id: "agents.toggle-focus",
-    label: "Toggle focus",
+    label: "切换焦点模式",
     category: "agents",
     defaultBinding: {
       mac: { key: "Escape", meta: true },
@@ -234,7 +234,7 @@ export const DEFAULT_KEYBINDINGS: KeybindingDefinition[] = [
   },
   {
     id: "agents.approve-plan",
-    label: "Approve plan",
+    label: "批准规划",
     category: "agents",
     defaultBinding: {
       mac: { key: "Enter", meta: true },

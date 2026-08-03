@@ -5,7 +5,9 @@ import { app } from "electron";
 import * as fs from "fs/promises";
 import os from "os";
 import path from "path";
+import { z } from "zod";
 import { isWindows } from "../../platform";
+import { probeCliVersion, runCliCommand } from "../cli-runtime";
 import type {
   AIProvider,
   AuthStatus,
@@ -52,6 +54,14 @@ function getCliOAuthToken(): string | null {
 }
 
 // Dynamic import for ESM module
+const claudeAuthStatusSchema = z
+  .object({
+    loggedIn: z.boolean(),
+    authMethod: z.string().optional(),
+    apiProvider: z.string().optional(),
+  })
+  .passthrough();
+
 const getClaudeQuery = async () => {
   const sdk = await import("@anthropic-ai/claude-agent-sdk");
   return sdk.query;
@@ -65,7 +75,7 @@ export class ClaudeProvider implements AIProvider {
   readonly config: ProviderConfig = {
     id: "claude",
     name: "Claude Code",
-    description: "Anthropic's Claude AI with coding capabilities",
+    description: "具备编程能力的 Anthropic Claude AI",
     models: [
       { id: "opus46", name: "claude-opus-4-6", displayName: "Opus 4.6" },
       { id: "opus", name: "claude-opus-4-5-20251101", displayName: "Opus 4.5" },
@@ -85,11 +95,38 @@ export class ClaudeProvider implements AIProvider {
   };
 
   async isAvailable(): Promise<boolean> {
-    const result = getClaudeBinaryPath();
-    return result !== null;
+    const binary = getClaudeBinaryPath();
+    return binary !== null && probeCliVersion(binary) !== null;
   }
 
   async getAuthStatus(): Promise<AuthStatus> {
+    const binary = getClaudeBinaryPath();
+    if (binary) {
+      const result = runCliCommand(binary, ["auth", "status", "--json"], {
+        environment: buildClaudeEnv(),
+      });
+      const parsed = claudeAuthStatusSchema.safeParse(
+        (() => {
+          try {
+            return JSON.parse(result.stdout);
+          } catch {
+            return null;
+          }
+        })(),
+      );
+      if (parsed.success && parsed.data.loggedIn) {
+        const methodText =
+          `${parsed.data.authMethod ?? ""} ${parsed.data.apiProvider ?? ""}`.toLowerCase();
+        return {
+          authenticated: true,
+          method:
+            methodText.includes("api") || methodText.includes("key")
+              ? "api-key"
+              : "oauth",
+        };
+      }
+    }
+
     if (process.env.ANTHROPIC_API_KEY) {
       return { authenticated: true, method: "api-key" };
     }
@@ -99,7 +136,10 @@ export class ClaudeProvider implements AIProvider {
       return { authenticated: true, method: "oauth" };
     }
 
-    return { authenticated: false };
+    return {
+      authenticated: false,
+      error: binary ? "Claude CLI 尚未登录" : "未找到 Claude Code CLI",
+    };
   }
 
   async getProviderConfig(
@@ -158,7 +198,7 @@ export class ClaudeProvider implements AIProvider {
         console.error("[claude] Failed to load SDK:", errorMessage);
         yield {
           type: "error",
-          errorText: `Failed to load Claude SDK: ${errorMessage}`,
+          errorText: `加载 Claude SDK 失败：${errorMessage}`,
         };
         yield { type: "finish" };
         return;
@@ -210,7 +250,7 @@ export class ClaudeProvider implements AIProvider {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
           message:
-            "Claude Code binary not found. Install via https://claude.ai/install.sh",
+            "未找到 Claude Code 可执行文件，请通过 https://claude.ai/install.sh 安装",
         });
       }
       console.log(
@@ -266,6 +306,7 @@ export class ClaudeProvider implements AIProvider {
           systemPrompt: {
             type: "preset" as const,
             preset: "claude_code" as const,
+            ...(options.systemPrompt && { append: options.systemPrompt }),
           },
           ...(options.agents &&
             Object.keys(options.agents).length > 0 && {
@@ -338,7 +379,7 @@ export class ClaudeProvider implements AIProvider {
         console.error("[claude] Failed to create SDK query:", errorMessage);
         yield {
           type: "error",
-          errorText: `Failed to start Claude query: ${errorMessage}`,
+          errorText: `启动 Claude 查询失败：${errorMessage}`,
         };
         yield { type: "finish" };
         return;
@@ -364,8 +405,7 @@ export class ClaudeProvider implements AIProvider {
             JSON.stringify(msgAny, null, 2),
           );
 
-          const sdkError =
-            msgAny.error || msgAny.message || "Unknown SDK error";
+          const sdkError = msgAny.error || msgAny.message || "未知 SDK 错误";
 
           // Categorize SDK errors
           if (
@@ -374,8 +414,7 @@ export class ClaudeProvider implements AIProvider {
           ) {
             yield {
               type: "auth-error",
-              errorText:
-                "Authentication failed - not logged into Claude Code CLI",
+              errorText: "身份验证失败：尚未登录 Claude Code CLI",
             } as UIMessageChunk;
           } else if (
             sdkError === "rate_limit_exceeded" ||
@@ -383,7 +422,7 @@ export class ClaudeProvider implements AIProvider {
           ) {
             yield {
               type: "error",
-              errorText: "Rate limit exceeded",
+              errorText: "已超过速率限制",
               debugInfo: {
                 category: "RATE_LIMIT_SDK",
                 sdkError,
@@ -396,13 +435,13 @@ export class ClaudeProvider implements AIProvider {
           ) {
             yield {
               type: "error",
-              errorText: "Claude is overloaded, try again later",
+              errorText: "Claude 当前负载过高，请稍后重试",
               debugInfo: { category: "OVERLOADED_SDK", sdkError },
             } as UIMessageChunk;
           } else {
             yield {
               type: "error",
-              errorText: `Claude SDK error: ${sdkError}`,
+              errorText: `Claude SDK 错误：${sdkError}`,
               debugInfo: {
                 category: "SDK_ERROR",
                 sdkError,
@@ -477,7 +516,7 @@ export class ClaudeProvider implements AIProvider {
       if (messageCount === 0 && !abortController.signal.aborted) {
         yield {
           type: "error",
-          errorText: "No response received from Claude",
+          errorText: "未收到 Claude 响应",
         } as UIMessageChunk;
       }
     } catch (error) {
@@ -485,18 +524,18 @@ export class ClaudeProvider implements AIProvider {
       const err = error as Error;
       const stderrOutput = stderrLines.join("\n");
 
-      let errorContext = "Claude streaming error";
+      let errorContext = "Claude 流式响应错误";
       if (err.message?.includes("exited with code")) {
-        errorContext = "Claude Code process crashed";
+        errorContext = "Claude Code 进程崩溃";
       } else if (err.message?.includes("ENOENT")) {
-        errorContext = "Required executable not found in PATH";
+        errorContext = "PATH 中未找到所需的可执行文件";
       } else if (
         err.message?.includes("authentication") ||
         err.message?.includes("401")
       ) {
         yield {
           type: "auth-error",
-          errorText: "Authentication failed - check your API key",
+          errorText: "身份验证失败，请检查 API 密钥",
         } as UIMessageChunk;
         yield { type: "finish" } as UIMessageChunk;
         return;
@@ -506,7 +545,7 @@ export class ClaudeProvider implements AIProvider {
       ) {
         yield {
           type: "auth-error",
-          errorText: "Invalid API key",
+          errorText: "API 密钥无效",
         } as UIMessageChunk;
         yield { type: "finish" } as UIMessageChunk;
         return;
@@ -514,13 +553,13 @@ export class ClaudeProvider implements AIProvider {
         err.message?.includes("rate_limit") ||
         err.message?.includes("429")
       ) {
-        errorContext = "Rate limit exceeded";
+        errorContext = "已超过速率限制";
       } else if (
         err.message?.includes("network") ||
         err.message?.includes("ECONNREFUSED") ||
         err.message?.includes("fetch failed")
       ) {
-        errorContext = "Network error - check your connection";
+        errorContext = "网络错误，请检查网络连接";
       }
 
       if (!abortController.signal.aborted) {

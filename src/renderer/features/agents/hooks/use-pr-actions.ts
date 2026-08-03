@@ -41,7 +41,7 @@ export function usePrActions({
   // Handle Create PR - sends a message to Claude to create the PR
   const handleCreatePr = useCallback(async () => {
     if (!chatId) {
-      toast.error("Chat ID is required", { position: "top-center" });
+      toast.error("缺少对话 ID", { position: "top-center" });
       return;
     }
 
@@ -50,7 +50,7 @@ export function usePrActions({
       // Get PR context from backend
       const context = await trpcClient.chats.getPrContext.query({ chatId });
       if (!context) {
-        toast.error("Could not get git context", { position: "top-center" });
+        toast.error("无法获取 Git 上下文", { position: "top-center" });
         return;
       }
 
@@ -58,10 +58,9 @@ export function usePrActions({
       const message = generatePrMessage(context);
       setPendingPrMessage(message);
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to prepare PR request",
-        { position: "top-center" },
-      );
+      toast.error(error instanceof Error ? error.message : "准备 PR 请求失败", {
+        position: "top-center",
+      });
     } finally {
       setIsCreatingPr(false);
     }
@@ -70,7 +69,7 @@ export function usePrActions({
   // Handle Commit to existing PR - sends a message to Claude to commit and push
   const handleCommitToPr = useCallback(async () => {
     if (!chatId) {
-      toast.error("Chat ID is required", { position: "top-center" });
+      toast.error("缺少对话 ID", { position: "top-center" });
       return;
     }
 
@@ -78,19 +77,16 @@ export function usePrActions({
       setIsCommittingToPr(true);
       const context = await trpcClient.chats.getPrContext.query({ chatId });
       if (!context) {
-        toast.error("Could not get git context", { position: "top-center" });
+        toast.error("无法获取 Git 上下文", { position: "top-center" });
         return;
       }
 
       const message = generateCommitToPrMessage(context);
       setPendingPrMessage(message);
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to prepare commit request",
-        { position: "top-center" },
-      );
+      toast.error(error instanceof Error ? error.message : "准备提交请求失败", {
+        position: "top-center",
+      });
     } finally {
       setIsCommittingToPr(false);
     }
@@ -99,7 +95,7 @@ export function usePrActions({
   // Handle Review - sends a message to Claude to review the diff
   const handleReview = useCallback(async () => {
     if (!chatId) {
-      toast.error("Chat ID is required", { position: "top-center" });
+      toast.error("缺少对话 ID", { position: "top-center" });
       return;
     }
 
@@ -108,7 +104,7 @@ export function usePrActions({
       // Get PR context from backend
       const context = await trpcClient.chats.getPrContext.query({ chatId });
       if (!context) {
-        toast.error("Could not get git context", { position: "top-center" });
+        toast.error("无法获取 Git 上下文", { position: "top-center" });
         return;
       }
 
@@ -116,10 +112,9 @@ export function usePrActions({
       const message = generateReviewMessage(context);
       setPendingReviewMessage(message);
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to start review",
-        { position: "top-center" },
-      );
+      toast.error(error instanceof Error ? error.message : "启动审查失败", {
+        position: "top-center",
+      });
     } finally {
       setIsReviewing(false);
     }

@@ -52,7 +52,7 @@ export function ChatInputEditor({
   onArrowDown,
   onPaste,
   onBlur,
-  placeholder = "Plan, @ for context, / for commands",
+  placeholder = "制定计划，输入 @ 添加上下文，输入 / 使用命令",
   className,
   isMobile = false,
 }: ChatInputEditorProps) {

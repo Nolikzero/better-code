@@ -18,12 +18,12 @@ function getStatusLabel(
   state: PrState,
   reviewDecision?: ReviewDecision,
 ): string {
-  if (state === "merged") return "Merged";
-  if (state === "closed") return "Closed";
-  if (state === "draft") return "Draft";
-  if (reviewDecision === "approved") return "Ready to merge";
-  if (reviewDecision === "changes_requested") return "Changes requested";
-  return "Open";
+  if (state === "merged") return "已合并";
+  if (state === "closed") return "已关闭";
+  if (state === "draft") return "草稿";
+  if (reviewDecision === "approved") return "可以合并";
+  if (reviewDecision === "changes_requested") return "需要修改";
+  return "进行中";
 }
 
 export function PrStatusBar({ chatId, prUrl, prNumber }: PrStatusBarProps) {

@@ -45,7 +45,7 @@ class BranchWatcher extends EventEmitter {
         const content = await readFile(dotGitPath, "utf-8");
         const match = content.match(/^gitdir:\s*(.+)$/m);
         if (!match) {
-          throw new Error(`Invalid .git file format: ${dotGitPath}`);
+          throw new Error(`.git 文件格式无效：${dotGitPath}`);
         }
 
         let gitDir = match[1].trim();

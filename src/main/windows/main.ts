@@ -4,6 +4,7 @@ import {
   clipboard,
   dialog,
   ipcMain,
+  nativeTheme,
   shell,
 } from "electron";
 import { join } from "path";
@@ -199,22 +200,27 @@ export function createMainWindow(): BrowserWindow {
   // Register IPC handlers before creating window
   registerIpcHandlers(getWindow);
 
+  const isMacOS = process.platform === "darwin";
+  const opaqueBackgroundColor = nativeTheme.shouldUseDarkColors
+    ? "#09090b"
+    : "#ffffff";
+
   const window = new BrowserWindow({
     width: 1400,
     height: 900,
     minWidth: 500, // Allow narrow mobile-like mode
     minHeight: 600,
     show: false,
-    title: "BetterCode",
-    // Transparent background required for macOS vibrancy effect
-    // The actual background color is controlled by themes/CSS
-    transparent: true,
-    backgroundColor: "#00000000",
+    title: "SamBetterCode",
+    // Only macOS needs a transparent native window for vibrancy/liquid glass.
+    // Keeping Windows/Linux opaque prevents compositor gaps from exposing
+    // windows behind SamBetterCode while the renderer paints or resizes.
+    transparent: isMacOS,
+    backgroundColor: isMacOS ? "#00000000" : opaqueBackgroundColor,
     // hiddenInset shows native traffic lights inset in the window
     // Traffic lights start hidden via setWindowButtonVisibility, position is for when they're visible
-    titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
-    trafficLightPosition:
-      process.platform === "darwin" ? { x: 15, y: 12 } : undefined,
+    titleBarStyle: isMacOS ? "hiddenInset" : "default",
+    trafficLightPosition: isMacOS ? { x: 15, y: 12 } : undefined,
     webPreferences: {
       preload: join(__dirname, "../preload/preload.js"),
       nodeIntegration: false,

@@ -14,13 +14,13 @@ const WEB_SEARCH_OPTIONS: {
   label: string;
   description: string;
 }[] = [
-  { value: "disabled", label: "Web Off", description: "No web search" },
+  { value: "disabled", label: "网页搜索关闭", description: "不使用网页搜索" },
   {
     value: "cached",
-    label: "Cached",
-    description: "Use cached results + live fallback",
+    label: "已缓存",
+    description: "使用缓存结果 + 实时回退",
   },
-  { value: "live", label: "Live", description: "Always search live" },
+  { value: "live", label: "实时", description: "始终实时搜索" },
 ];
 
 interface WebSearchModeSelectorProps {

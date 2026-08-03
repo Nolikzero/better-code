@@ -111,6 +111,8 @@ export const subChats = sqliteTable(
     providerId: text("provider_id").default("claude"),
     // AI model (sonnet | opus | haiku | gpt-5.2-codex | etc.)
     modelId: text("model_id"),
+    // Built-in agent profile resolved by the main process (null = provider default)
+    agentId: text("agent_id"),
     // Computed columns for performance (avoid parsing messages JSON on every query)
     hasPendingPlanApproval: integer("has_pending_plan_approval", {
       mode: "boolean",
@@ -122,6 +124,8 @@ export const subChats = sqliteTable(
     addedDirs: text("added_dirs").default("[]"),
     // Emitted diff keys for deduplication across message turns (JSON array)
     emittedDiffKeys: text("emitted_diff_keys").default("[]"),
+    // Current Codex-style goal and its lifecycle state (JSON: ChatGoal)
+    goal: text("goal"),
   },
   (table) => ({
     chatIdIdx: index("sub_chats_chat_id_idx").on(table.chatId),
@@ -198,6 +202,24 @@ export const ralphProgressRelations = relations(ralphProgress, ({ one }) => ({
   }),
 }));
 
+// ============ API PROVIDERS ============
+export const apiProviders = sqliteTable("api_providers", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  protocol: text("protocol").notNull().default("openai-compatible"),
+  baseUrl: text("base_url").notNull(),
+  encryptedApiKey: text("encrypted_api_key").notNull(),
+  models: text("models").notNull().default("[]"),
+  contextWindow: integer("context_window").notNull().default(128000),
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
+    () => new Date(),
+  ),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(
+    () => new Date(),
+  ),
+});
+
 // ============ CLAUDE CODE CREDENTIALS ============
 // Stores encrypted OAuth token for Claude Code integration
 export const claudeCodeCredentials = sqliteTable("claude_code_credentials", {
@@ -216,6 +238,8 @@ export type Chat = typeof chats.$inferSelect;
 export type NewChat = typeof chats.$inferInsert;
 export type SubChat = typeof subChats.$inferSelect;
 export type NewSubChat = typeof subChats.$inferInsert;
+export type ApiProvider = typeof apiProviders.$inferSelect;
+export type NewApiProvider = typeof apiProviders.$inferInsert;
 export type ClaudeCodeCredential = typeof claudeCodeCredentials.$inferSelect;
 export type NewClaudeCodeCredential = typeof claudeCodeCredentials.$inferInsert;
 export type RalphPrd = typeof ralphPrds.$inferSelect;

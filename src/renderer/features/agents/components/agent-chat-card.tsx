@@ -78,7 +78,7 @@ function ChatIconWithBadge({
             )}
           />
         ) : hasUnseenChanges ? (
-          <div className="w-2 h-2 rounded-full bg-[#307BD0]" />
+          <div className="w-2 h-2 rounded-full bg-primary" />
         ) : lastMode === "plan" ? (
           <PlanIcon
             className={cn(
@@ -121,7 +121,7 @@ export function AgentChatCard({
   if (variant === "quick-switch") {
     // Desktop: use branch from chat and repo name from project
     const branch = chat.branch;
-    const displayRepoName = repoName || "Local project";
+    const displayRepoName = repoName || "本地项目";
     const displayText = branch
       ? `${displayRepoName} • ${branch}`
       : displayRepoName;
@@ -153,7 +153,7 @@ export function AgentChatCard({
                 isSelected ? "text-primary-foreground" : "text-foreground",
               )}
             >
-              {chat.name || "Untitled Chat"}
+              {chat.name || "未命名对话"}
             </span>
             {/* Branch/Repository info */}
             <span
@@ -197,7 +197,7 @@ export function AgentChatCard({
         </div>
         <div className="flex-1 min-w-0">
           <span className="truncate block text-sm leading-tight">
-            {chat.name || "Untitled Chat"}
+            {chat.name || "未命名对话"}
           </span>
         </div>
       </div>

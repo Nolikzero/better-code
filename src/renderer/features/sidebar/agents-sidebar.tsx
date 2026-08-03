@@ -8,7 +8,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
@@ -17,7 +16,6 @@ import {
 import {
   IconDoubleChevronLeft,
   KeyboardIcon,
-  ProfileIcon,
   QuestionCircleIcon,
   SettingsIcon,
 } from "../../components/ui/icons";
@@ -56,23 +54,7 @@ import {
 } from "./components";
 import { useHaptic } from "./hooks/use-haptic";
 
-// Stub for useCombinedAuth
-const useCombinedAuth = () => ({ userId: null, isLoaded: true });
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const AuthDialog = (_props: any) => null;
-
 interface AgentsSidebarProps {
-  userId?: string | null | undefined;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  clerkUser?: any;
-  desktopUser?: {
-    id: string;
-    email: string;
-    name?: string | null;
-    imageUrl?: string | null;
-    username?: string | null;
-  } | null;
-  onSignOut?: () => void;
   onToggleSidebar?: () => void;
   isMobileFullscreen?: boolean;
   onChatSelect?: () => void;
@@ -80,13 +62,6 @@ interface AgentsSidebarProps {
 }
 
 export function AgentsSidebar({
-  userId = "demo-user-id",
-  desktopUser = {
-    id: "demo-user-id",
-    email: "demo@example.com",
-    name: "Demo User",
-  },
-  onSignOut = () => {},
   onToggleSidebar,
   isMobileFullscreen = false,
   onChatSelect,
@@ -126,9 +101,6 @@ export function AgentsSidebar({
   const setSettingsDialogOpen = useSetAtom(agentsSettingsDialogOpenAtom);
   const setSettingsActiveTab = useSetAtom(agentsSettingsDialogActiveTabAtom);
   const setShortcutsDialogOpen = useSetAtom(agentsShortcutsDialogOpenAtom);
-  const { isLoaded: _isAuthLoaded } = useCombinedAuth();
-  const [showAuthDialog, setShowAuthDialog] = useState(false);
-
   // Haptic feedback
   const { trigger: triggerHaptic } = useHaptic();
 
@@ -191,144 +163,45 @@ export function AgentsSidebar({
                     <Logo className="w-4 h-4" />
                   </ButtonCustom>
                 </TooltipTrigger>
-                <TooltipContent side="right">Menu</TooltipContent>
+                <TooltipContent side="right">菜单</TooltipContent>
               </Tooltip>
             </TooltipProvider>
           </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="start"
-            className="w-52 pt-0"
-            sideOffset={8}
-          >
-            {userId ? (
-              <>
-                {/* Profile section */}
-                <div className="relative rounded-t-xl border-b overflow-hidden">
-                  <div className="absolute inset-0 bg-popover brightness-110" />
-                  <div className="relative pl-2 pt-1.5 pb-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="w-8 h-8 rounded flex items-center justify-center bg-background shrink-0 overflow-hidden">
-                        <Logo className="w-4 h-4" />
-                      </div>
-                      <div className="flex-1 min-w-0 overflow-hidden">
-                        <div className="font-medium text-sm text-foreground truncate">
-                          {desktopUser?.name || "User"}
-                        </div>
-                        <div className="text-xs text-muted-foreground truncate">
-                          {desktopUser?.email}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <DropdownMenuItem
-                  className="gap-2"
-                  onSelect={() => {
-                    setIsDropdownOpen(false);
-                    setSettingsActiveTab("profile");
-                    setSettingsDialogOpen(true);
-                  }}
+          <DropdownMenuContent align="start" className="w-52" sideOffset={8}>
+            <DropdownMenuItem
+              className="gap-2"
+              onSelect={() => {
+                setIsDropdownOpen(false);
+                setSettingsActiveTab("provider");
+                setSettingsDialogOpen(true);
+              }}
+            >
+              <SettingsIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              设置
+            </DropdownMenuItem>
+            {!isMobileFullscreen && (
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="gap-2">
+                  <QuestionCircleIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <span className="flex-1">帮助</span>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent
+                  className="w-36"
+                  sideOffset={6}
+                  alignOffset={-4}
                 >
-                  <SettingsIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  Settings
-                </DropdownMenuItem>
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="gap-2">
-                    <QuestionCircleIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    <span className="flex-1">Help</span>
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent
-                    className="w-36"
-                    sideOffset={6}
-                    alignOffset={-4}
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      setIsDropdownOpen(false);
+                      setShortcutsDialogOpen(true);
+                    }}
+                    className="gap-2"
                   >
-                    <DropdownMenuItem
-                      onSelect={() => {
-                        setIsDropdownOpen(false);
-                        setShortcutsDialogOpen(true);
-                      }}
-                      className="gap-2"
-                    >
-                      <KeyboardIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      <span className="flex-1">Shortcuts</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className="gap-2"
-                  onSelect={() => onSignOut()}
-                >
-                  <svg
-                    className="h-3.5 w-3.5 text-muted-foreground shrink-0"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <polyline
-                      points="16,17 21,12 16,7"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <line
-                      x1="21"
-                      y1="12"
-                      x2="9"
-                      y2="12"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                  Log out
-                </DropdownMenuItem>
-              </>
-            ) : (
-              <>
-                <DropdownMenuItem
-                  className="gap-2"
-                  onSelect={() => {
-                    setIsDropdownOpen(false);
-                    setShowAuthDialog(true);
-                  }}
-                >
-                  <ProfileIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  Login
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="gap-2">
-                    <QuestionCircleIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    <span className="flex-1">Help</span>
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent
-                    className="w-36"
-                    sideOffset={6}
-                    alignOffset={-4}
-                  >
-                    <DropdownMenuItem
-                      onSelect={() => {
-                        setIsDropdownOpen(false);
-                        setShortcutsDialogOpen(true);
-                      }}
-                      className="gap-2"
-                    >
-                      <KeyboardIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      <span className="flex-1">Shortcuts</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-              </>
+                    <KeyboardIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <span className="flex-1">快捷键</span>
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
             )}
           </DropdownMenuContent>
         </DropdownMenu>
@@ -348,7 +221,7 @@ export function AgentsSidebar({
                 <Plus className="h-4 w-4" />
               </ButtonCustom>
             </TooltipTrigger>
-            <TooltipContent side="right">New chat</TooltipContent>
+            <TooltipContent side="right">新建对话</TooltipContent>
           </Tooltip>
         </TooltipProvider>
       </div>
@@ -440,13 +313,13 @@ export function AgentsSidebar({
                     onClick={onToggleSidebar}
                     tabIndex={-1}
                     className="h-6 w-6 p-0 hover:bg-foreground/10 transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] text-foreground shrink-0 rounded-md"
-                    aria-label="Close sidebar"
+                    aria-label="关闭侧栏"
                   >
                     <IconDoubleChevronLeft className="h-4 w-4" />
                   </ButtonCustom>
                 </TooltipTrigger>
                 <TooltipContent>
-                  Close sidebar
+                  关闭侧栏
                   <Kbd>⌘\</Kbd>
                 </TooltipContent>
               </Tooltip>
@@ -477,7 +350,7 @@ export function AgentsSidebar({
                       </div>
                       <div className="min-w-0 flex-1 overflow-hidden">
                         <div className="text-sm font-medium text-foreground truncate">
-                          Better Code
+                          SamBetterCode
                         </div>
                       </div>
                       <ChevronDown
@@ -493,157 +366,43 @@ export function AgentsSidebar({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   align="start"
-                  className="w-52 pt-0"
+                  className="w-52"
                   sideOffset={8}
                 >
-                  {userId ? (
-                    <>
-                      {/* Project section at the top */}
-                      <div className="relative rounded-t-xl border-b overflow-hidden">
-                        <div className="absolute inset-0 bg-popover brightness-110" />
-                        <div className="relative pl-2 pt-1.5 pb-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <div className="w-8 h-8 rounded flex items-center justify-center bg-background shrink-0 overflow-hidden">
-                              <Logo className="w-4 h-4" />
-                            </div>
-                            <div className="flex-1 min-w-0 overflow-hidden">
-                              <div className="font-medium text-sm text-foreground truncate">
-                                {desktopUser?.name || "User"}
-                              </div>
-                              <div className="text-xs text-muted-foreground truncate">
-                                {desktopUser?.email}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Settings */}
-                      <DropdownMenuItem
-                        className="gap-2"
-                        onSelect={() => {
-                          setIsDropdownOpen(false);
-                          setSettingsActiveTab("profile");
-                          setSettingsDialogOpen(true);
-                        }}
+                  <DropdownMenuItem
+                    className="gap-2"
+                    onSelect={() => {
+                      setIsDropdownOpen(false);
+                      setSettingsActiveTab("provider");
+                      setSettingsDialogOpen(true);
+                    }}
+                  >
+                    <SettingsIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    设置
+                  </DropdownMenuItem>
+                  {!isMobileFullscreen && (
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger className="gap-2">
+                        <QuestionCircleIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span className="flex-1">帮助</span>
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent
+                        className="w-36"
+                        sideOffset={6}
+                        alignOffset={-4}
                       >
-                        <SettingsIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        Settings
-                      </DropdownMenuItem>
-
-                      {/* Help Submenu */}
-                      <DropdownMenuSub>
-                        <DropdownMenuSubTrigger className="gap-2">
-                          <QuestionCircleIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                          <span className="flex-1">Help</span>
-                        </DropdownMenuSubTrigger>
-                        <DropdownMenuSubContent
-                          className="w-36"
-                          sideOffset={6}
-                          alignOffset={-4}
-                        >
-                          {!isMobileFullscreen && (
-                            <DropdownMenuItem
-                              onSelect={() => {
-                                setIsDropdownOpen(false);
-                                setShortcutsDialogOpen(true);
-                              }}
-                              className="gap-2"
-                            >
-                              <KeyboardIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                              <span className="flex-1">Shortcuts</span>
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuSubContent>
-                      </DropdownMenuSub>
-
-                      <DropdownMenuSeparator />
-
-                      {/* Log out */}
-                      <div className="">
                         <DropdownMenuItem
-                          className="gap-2"
-                          onSelect={() => onSignOut()}
-                        >
-                          <svg
-                            className="h-3.5 w-3.5 text-muted-foreground shrink-0"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
-                            <path
-                              d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                            <polyline
-                              points="16,17 21,12 16,7"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                            <line
-                              x1="21"
-                              y1="12"
-                              x2="9"
-                              y2="12"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                          Log out
-                        </DropdownMenuItem>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      {/* Login for unauthenticated users */}
-                      <div className="">
-                        <DropdownMenuItem
-                          className="gap-2"
                           onSelect={() => {
                             setIsDropdownOpen(false);
-                            setShowAuthDialog(true);
+                            setShortcutsDialogOpen(true);
                           }}
+                          className="gap-2"
                         >
-                          <ProfileIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                          Login
+                          <KeyboardIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <span className="flex-1">快捷键</span>
                         </DropdownMenuItem>
-                      </div>
-
-                      <DropdownMenuSeparator />
-
-                      {/* Help Submenu */}
-                      <DropdownMenuSub>
-                        <DropdownMenuSubTrigger className="gap-2">
-                          <QuestionCircleIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                          <span className="flex-1">Help</span>
-                        </DropdownMenuSubTrigger>
-                        <DropdownMenuSubContent
-                          className="w-36"
-                          sideOffset={6}
-                          alignOffset={-4}
-                        >
-                          {!isMobileFullscreen && (
-                            <DropdownMenuItem
-                              onSelect={() => {
-                                setIsDropdownOpen(false);
-                                setShortcutsDialogOpen(true);
-                              }}
-                              className="gap-2"
-                            >
-                              <KeyboardIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                              <span className="flex-1">Shortcuts</span>
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuSubContent>
-                      </DropdownMenuSub>
-                    </>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -670,12 +429,5 @@ export function AgentsSidebar({
   // Show expanded sidebar when project is selected (not just when there are changes)
   const showExpandedSidebar = !!selectedProject || hasChanges;
 
-  return (
-    <>
-      {showExpandedSidebar ? sidebarContent : iconOnlySidebar}
-
-      {/* Auth Dialog */}
-      <AuthDialog open={showAuthDialog} onOpenChange={setShowAuthDialog} />
-    </>
-  );
+  return showExpandedSidebar ? sidebarContent : iconOnlySidebar;
 }

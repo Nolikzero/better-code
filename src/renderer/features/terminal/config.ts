@@ -5,101 +5,59 @@ import {
   type TerminalThemeResult,
 } from "@/lib/themes/terminal-theme-mapper";
 
-/**
- * Dark terminal theme synchronized with the app's design system.
- * Colors are based on Tailwind's zinc palette and CSS variables.
- *
- * Dark theme values:
- * - --background: hsl(240, 10%, 3.9%) = #0a0a0a
- * - --foreground: hsl(240, 4.8%, 95.9%) = #f4f4f5
- * - --tl-background: hsl(0, 0%, 7%) = #121212
- * - --muted-foreground: hsl(240, 4.4%, 58%) = #8c8c94
- * - --primary: #0034FF
- */
+/** Dracula terminal palette used before a full application theme is available. */
 export const TERMINAL_THEME_DARK: ITheme = {
-  // Background matches --tl-background (timeline/content area)
-  background: "#121212",
-  foreground: "#f4f4f5",
-
-  // Cursor matches foreground for clean look
-  cursor: "#f4f4f5",
-  cursorAccent: "#121212",
-
-  // Selection - subtle highlight
-  selectionBackground: "#3f3f46",
-  selectionForeground: "#ffffff",
-
-  // ANSI colors (zinc palette + Tailwind colors)
-  black: "#18181b", // zinc-900
-  red: "#ef4444", // red-500
-  green: "#22c55e", // green-500
-  yellow: "#eab308", // yellow-500
-  blue: "#0034FF", // --primary (brand blue)
-  magenta: "#a855f7", // purple-500
-  cyan: "#06b6d4", // cyan-500
-  white: "#f4f4f5", // zinc-100
-
-  // Bright variants
-  brightBlack: "#71717a", // zinc-500 (matches --muted-foreground)
-  brightRed: "#f87171", // red-400
-  brightGreen: "#4ade80", // green-400
-  brightYellow: "#facc15", // yellow-400
-  brightBlue: "#3b82f6", // blue-500
-  brightMagenta: "#c084fc", // purple-400
-  brightCyan: "#22d3ee", // cyan-400
-  brightWhite: "#fafafa", // zinc-50
+  background: "#21222c",
+  foreground: "#f8f8f2",
+  cursor: "#bd93f9",
+  cursorAccent: "#21222c",
+  selectionBackground: "#44475a",
+  selectionForeground: "#f8f8f2",
+  black: "#21222c",
+  red: "#ff5555",
+  green: "#50fa7b",
+  yellow: "#f1fa8c",
+  blue: "#8be9fd",
+  magenta: "#ff79c6",
+  cyan: "#8be9fd",
+  white: "#f8f8f2",
+  brightBlack: "#6272a4",
+  brightRed: "#ff6e6e",
+  brightGreen: "#69ff94",
+  brightYellow: "#ffffa5",
+  brightBlue: "#d6acff",
+  brightMagenta: "#ff92df",
+  brightCyan: "#a4ffff",
+  brightWhite: "#ffffff",
 };
 
-/**
- * Light terminal theme synchronized with the app's design system.
- *
- * Light theme values:
- * - --background: hsl(0, 0%, 100%) = #ffffff
- * - --foreground: hsl(240, 10%, 3.9%) = #0a0a0a
- * - --tl-background: hsl(0, 0%, 98%) = #fafafa
- * - --muted-foreground: hsl(240, 3.8%, 46.1%) = #717179
- * - --primary: #0034FF
- */
+/** Alucard terminal palette used before a full application theme is available. */
 export const TERMINAL_THEME_LIGHT: ITheme = {
-  // Background matches --tl-background (timeline/content area)
-  background: "#fafafa",
-  foreground: "#0a0a0a",
-
-  // Cursor matches foreground for clean look
-  cursor: "#0a0a0a",
-  cursorAccent: "#fafafa",
-
-  // Selection - subtle highlight
-  selectionBackground: "#d4d4d8",
-  selectionForeground: "#0a0a0a",
-
-  // ANSI colors (adjusted for light background)
-  black: "#18181b", // zinc-900
-  red: "#dc2626", // red-600 (darker for light bg)
-  green: "#16a34a", // green-600
-  yellow: "#ca8a04", // yellow-600
-  blue: "#0034FF", // --primary (brand blue)
-  magenta: "#9333ea", // purple-600
-  cyan: "#0891b2", // cyan-600
-  white: "#f4f4f5", // zinc-100
-
-  // Bright variants (standard colors work well on light)
-  brightBlack: "#52525b", // zinc-600
-  brightRed: "#ef4444", // red-500
-  brightGreen: "#22c55e", // green-500
-  brightYellow: "#eab308", // yellow-500
-  brightBlue: "#3b82f6", // blue-500
-  brightMagenta: "#a855f7", // purple-500
-  brightCyan: "#06b6d4", // cyan-500
-  brightWhite: "#fafafa", // zinc-50
+  background: "#f7f1d9",
+  foreground: "#1f1f1f",
+  cursor: "#644ac9",
+  cursorAccent: "#f7f1d9",
+  selectionBackground: "#cfcfde",
+  selectionForeground: "#1f1f1f",
+  black: "#1f1f1f",
+  red: "#cb3a2a",
+  green: "#14710a",
+  yellow: "#846e15",
+  blue: "#036a96",
+  magenta: "#a3144d",
+  cyan: "#036a96",
+  white: "#fffbeb",
+  brightBlack: "#6c664b",
+  brightRed: "#e14938",
+  brightGreen: "#238416",
+  brightYellow: "#9a821d",
+  brightBlue: "#087fab",
+  brightMagenta: "#b52360",
+  brightCyan: "#087fab",
+  brightWhite: "#fffdf5",
 };
 
-/** @deprecated Use TERMINAL_THEME_DARK instead */
-const _TERMINAL_THEME = TERMINAL_THEME_DARK;
-
-/**
- * Get terminal theme based on current app theme
- */
+/** Get the canonical terminal theme for the current application mode. */
 export function getTerminalTheme(isDark: boolean): ITheme {
   return isDark ? TERMINAL_THEME_DARK : TERMINAL_THEME_LIGHT;
 }
@@ -123,7 +81,7 @@ export function getTerminalThemeWithTransparency(
       isTransparent: forceTransparent,
       containerBackground: forceTransparent
         ? "transparent"
-        : theme.background || (isDark ? "#121212" : "#fafafa"),
+        : theme.background || (isDark ? "#21222c" : "#f7f1d9"),
     };
   }
   const result = extractTerminalThemeWithTransparency(themeColors);
@@ -137,17 +95,15 @@ export function getTerminalThemeWithTransparency(
 
 export const TERMINAL_OPTIONS: ITerminalOptions = {
   cursorBlink: true,
-  // Font size matches app's compact UI (text-xs = 12px, text-sm = 14px)
   fontSize: 13,
   lineHeight: 1.4,
   fontFamily: FONT_TERMINAL,
-  theme: TERMINAL_THEME_DARK, // Default, will be overridden dynamically
+  theme: TERMINAL_THEME_DARK,
   allowProposedApi: true,
   scrollback: 10000,
   macOptionIsMeta: true,
   cursorStyle: "block",
   cursorInactiveStyle: "outline",
-  // Better letter spacing for code readability
   letterSpacing: 0,
 };
 

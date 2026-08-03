@@ -136,7 +136,7 @@ export function CodeSelectionContextMenu({
           className="gap-2"
         >
           <MessageSquarePlus className="size-4" />
-          <span>Add to Chat</span>
+          <span>添加到对话</span>
           <ContextMenuShortcut>
             {isMacOS() ? "Cmd" : "Ctrl"}+Shift+A
           </ContextMenuShortcut>

@@ -169,7 +169,7 @@ export const ChatTreeItem = React.memo(function ChatTreeItem({
             <span className="truncate block text-sm leading-tight flex-1">
               <TypewriterText
                 text={name || ""}
-                placeholder="New Workspace"
+                placeholder="新建工作区"
                 id={id}
                 isJustCreated={isJustCreated}
                 showPlaceholder={true}
@@ -186,7 +186,7 @@ export const ChatTreeItem = React.memo(function ChatTreeItem({
                     onClick={handleCreateSubChat}
                     tabIndex={-1}
                     className="p-0.5 text-muted-foreground hover:text-foreground transition-colors rounded hover:bg-foreground/10"
-                    title="New chat"
+                    title="新建对话"
                   >
                     <Plus className="h-3.5 w-3.5" />
                   </button>
@@ -202,7 +202,7 @@ export const ChatTreeItem = React.memo(function ChatTreeItem({
                     }}
                     tabIndex={-1}
                     className="p-0.5 text-muted-foreground hover:text-foreground transition-colors rounded hover:bg-foreground/10"
-                    title="Archive"
+                    title="归档"
                   >
                     <ArchiveIcon className="h-3.5 w-3.5" />
                   </button>

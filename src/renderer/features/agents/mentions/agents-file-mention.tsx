@@ -118,13 +118,13 @@ export const AgentsFileMention = memo(function AgentsFileMention({
   useEffect(() => {
     if (indexStatus?.state === "building") {
       if (!indexToastId.current) {
-        indexToastId.current = toast.loading("Indexing project files...", {
+        indexToastId.current = toast.loading("正在索引项目文件…", {
           position: "top-center",
           duration: Infinity,
         });
       }
     } else if (indexStatus?.state === "ready" && indexToastId.current) {
-      toast.success("File index ready", {
+      toast.success("文件索引已就绪", {
         id: indexToastId.current,
         position: "top-center",
         duration: 2000,
@@ -660,14 +660,14 @@ export const AgentsFileMention = memo(function AgentsFileMention({
         {isLoading && options.length === 0 && isInSubpage && (
           <div className="flex items-center gap-1.5 h-7 px-1.5 mx-1 text-xs text-muted-foreground">
             <IconSpinner className="h-3.5 w-3.5" />
-            <span>Loading files...</span>
+            <span>正在加载文件…</span>
           </div>
         )}
 
         {/* Error state */}
         {error && (
           <div className="h-7 px-1.5 mx-1 flex items-center text-xs text-muted-foreground">
-            Error loading files
+            加载文件失败
           </div>
         )}
 
@@ -675,8 +675,8 @@ export const AgentsFileMention = memo(function AgentsFileMention({
         {!isLoading && !isFetching && !error && options.length === 0 && (
           <div className="h-7 px-1.5 mx-1 flex items-center text-xs text-muted-foreground">
             {debouncedSearchText
-              ? `No files matching "${debouncedSearchText}"`
-              : "No files found"}
+              ? `没有与“${debouncedSearchText}”匹配的文件`
+              : "未找到文件"}
           </div>
         )}
 
@@ -688,14 +688,14 @@ export const AgentsFileMention = memo(function AgentsFileMention({
               <div className="px-2.5 py-1.5 mx-1 text-xs font-medium text-muted-foreground flex items-center gap-1.5">
                 <span>
                   {showingFilesList || hasOnlyFiles
-                    ? "Files & Folders"
+                    ? "文件与文件夹"
                     : showingSkillsList
-                      ? "Skills"
+                      ? "技能"
                       : showingAgentsList
-                        ? "Agents"
+                        ? "智能体"
                         : showingToolsList
-                          ? "MCP Tools"
-                          : "Results"}
+                          ? "MCP 工具"
+                          : "结果"}
                 </span>
                 {isFetching && !isLoading && (
                   <IconSpinner className="h-2.5 w-2.5" />
@@ -741,8 +741,8 @@ export const AgentsFileMention = memo(function AgentsFileMention({
                         "h-7 px-1.5 justify-start text-xs rounded-md",
                         "transition-colors cursor-pointer select-none gap-1.5",
                         isSelected
-                          ? "dark:bg-neutral-800 bg-accent text-foreground"
-                          : "text-muted-foreground dark:hover:bg-neutral-800 hover:bg-accent hover:text-foreground",
+                          ? "bg-accent text-accent-foreground"
+                          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
                       )}
                     >
                       <OptionIcon className="h-3 w-3 text-muted-foreground shrink-0" />

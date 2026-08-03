@@ -126,7 +126,7 @@ async function getMRForBranch(
     if (!result.success) {
       console.error("[GitLab] MR schema validation failed:", result.error);
       console.error("[GitLab] Raw data:", JSON.stringify(raw, null, 2));
-      throw new Error("MR schema validation failed");
+      throw new Error("MR 数据结构验证失败");
     }
     const data = result.data;
 

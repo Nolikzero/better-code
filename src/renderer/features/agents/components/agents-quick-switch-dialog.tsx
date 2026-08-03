@@ -61,7 +61,7 @@ export function AgentsQuickSwitchDialog({
                 {chats.length === 0 ? (
                   <div className="px-4 py-12 text-center bg-background rounded-xs border-[0.5px]">
                     <p className="text-sm text-muted-foreground">
-                      No recent agents
+                      暂无最近使用的智能体
                     </p>
                   </div>
                 ) : (

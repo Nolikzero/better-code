@@ -61,9 +61,7 @@ export const RalphPlanningPromptCard = memo(function RalphPlanningPromptCard({
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-sm font-medium text-muted-foreground">
-              {phase === "executing"
-                ? "Ralph Execution Context"
-                : "Ralph Planning Instructions"}
+              {phase === "executing" ? "Ralph 执行上下文" : "Ralph 规划说明"}
             </DialogTitle>
           </DialogHeader>
           <div className="font-mono text-xs whitespace-pre-wrap">

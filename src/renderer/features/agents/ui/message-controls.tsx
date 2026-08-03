@@ -115,8 +115,8 @@ export function PlayButton({
 
   const handlePlay = async () => {
     // TTS feature requires external API - not available in local mode
-    toast.info("Text-to-speech is not available", {
-      description: "TTS requires a server API which is not configured",
+    toast.info("文本转语音不可用", {
+      description: "TTS 需要服务器 API，但当前尚未配置",
       duration: 4000,
     });
   };
@@ -191,7 +191,7 @@ export function PlayButton({
     }
 
     if (!response.body) {
-      throw new Error("No response body");
+      throw new Error("响应正文为空");
     }
 
     const reader = response.body.getReader();

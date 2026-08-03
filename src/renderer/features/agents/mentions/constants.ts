@@ -28,16 +28,16 @@ export const LARGE_TEXT_THRESHOLD = 50000;
 export const CATEGORY_OPTIONS: FileMentionOption[] = [
   {
     id: "files",
-    label: "Files & Folders",
+    label: "文件与文件夹",
     type: "category",
     path: "",
     repository: "",
   },
-  { id: "skills", label: "Skills", type: "category", path: "", repository: "" },
-  { id: "agents", label: "Agents", type: "category", path: "", repository: "" },
+  { id: "skills", label: "技能", type: "category", path: "", repository: "" },
+  { id: "agents", label: "智能体", type: "category", path: "", repository: "" },
   {
     id: "tools",
-    label: "MCP Tools",
+    label: "MCP 工具",
     type: "category",
     path: "",
     repository: "",
